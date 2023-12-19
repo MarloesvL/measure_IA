@@ -34,10 +34,10 @@ def create_group_hdf5(file, name):
 			else:
 				groups += '/'
 				groups += group
-		try:
-			group_file = file[groups]
-		except:
-			file.create_group(groups)
+			try:
+				group_file = file[groups]
+			except:
+				file.create_group(groups)
 	if groups != name:
 		raise ValueError('Created groups do not match specified one.')
 	return file[name]
