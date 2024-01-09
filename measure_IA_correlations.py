@@ -2,15 +2,24 @@ import numpy as np
 from src.read_data_TNG import ReadTNGdata
 from src.measure_IA import MeasureIA
 
+# creating random sample data
+positions = np.random.rand(100, 3) * 100  # in cMpc, so boxlength is 100 cMpc here
+positions_shape = np.random.rand(50, 3) * 100  # shape sample positions
+x_dir = np.random.rand(50)
+y_dir = np.sqrt(1. - x_dir ** 2)
+axis_dir = np.array([x_dir, y_dir]).transpose()
+q = np.random.rand(50)
+
 # read data
-COM = "center of mass data"
-Semimajor_Axis_Direction = "eigenvectors"
-q = "b/a"
+COM = positions  # "center of mass data"
+COM_shape = positions_shape  # "center of mass for shape data"
+Semimajor_Axis_Direction = axis_dir  # "eigenvectors"
+q = q  # "b/a"
 
 # create directory and parameters
 data_IA_projected = {
-	"Position": COM,
-	"Position_shape_sample": COM,
+	"Position": COM,  # this can also be COM_shape, if the shape and position samples are the same
+	"Position_shape_sample": COM_shape,
 	"Axis_Direction": Semimajor_Axis_Direction,
 	"LOS": 2,  # Line of sight
 	"q": q,
@@ -20,7 +29,7 @@ num_bins_pi = 8
 separation_limits = [2.0, 20.0]  # cMpc/h
 LOS_lims = None
 data_path_out = "data path for output data"
-file_name = "name of output file" # needs to be hdf5
+file_name = "name of output file"  # needs to be hdf5
 dataset_name = "specific dataset name"
 corr_type = ['g+', 'w']  # there are multiple choices here
 L_subboxes = 3  # for jk errors -> 3^3 boxes
@@ -36,7 +45,7 @@ IA_Projected = MeasureIA(
 )
 # wg+,wgg
 IA_Projected.measure_projected_correlation(dataset_name=dataset_name)
-IA_Projected.measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name)
+IA_Projected.measure_w_g_i(corr_type=corr_type[0], dataset_name=dataset_name)
 IA_Projected.measure_jackknife_errors_multiprocessing(
 	corr_type=corr_type,
 	dataset_name=dataset_name,
