@@ -27,6 +27,7 @@ data_IA_projected = {
 num_bins_r = 10
 num_bins_pi = 8
 separation_limits = [2.0, 20.0]  # cMpc/h
+boxsize = 100. # boxsize in cMpc/h
 LOS_lims = None
 data_path_out = "data path for output data"
 file_name = "name of output file"  # needs to be hdf5
@@ -42,6 +43,7 @@ IA_Projected = MeasureIA(
 	separation_limits=separation_limits,
 	LOS_lim=LOS_lims,
 	output_file_name=data_path_out + file_name,
+	boxsize=boxsize,
 )
 # wg+,wgg
 IA_Projected.measure_projected_correlation(dataset_name=dataset_name)
