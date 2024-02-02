@@ -2,7 +2,6 @@ import h5py
 import numpy as np
 from src.Sim_info import SimInfo
 from src.write_data import *
-import os
 
 
 class ReadTNGdata(SimInfo):
@@ -103,6 +102,11 @@ class ReadTNGdata(SimInfo):
         else:
             stack = False
         if write_output:
+            try:
+                dataset = group_out[variable]
+                del group_out[variable]
+            except:
+                pass
             if stack:
                 group_out.create_dataset(variable, data=data, maxshape=(None, np.shape(data)[1]), chunks=True)
             else:

@@ -146,7 +146,7 @@ class MeasureVariablesSnapshot(SimInfo):
             data_path=self.data_path,
         )
         number_of_particles_list = []
-        for n in np.arange(0, len(off)):
+        for n in np.arange(0, self.Num_halos):
             off_n = off[n]
             len_n = Len[n]
             if self.PT == 4:
@@ -181,7 +181,7 @@ class MeasureVariablesSnapshot(SimInfo):
             data_path=self.data_path,
         )
         velocities = []
-        for n in np.arange(0, len(mass)):
+        for n in np.arange(0, self.Num_halos):
             off_n = off[n]
             len_n = Len[n]
             mass_n = mass[n]
@@ -231,7 +231,7 @@ class MeasureVariablesSnapshot(SimInfo):
             data_path=self.data_path,
         )
         COM = []
-        for n in np.arange(0, len(mass)):
+        for n in np.arange(0, self.Num_halos):
             off_n = off[n]
             len_n = Len[n]
             mass_n = mass[n]
@@ -406,7 +406,7 @@ class MeasureVariablesSnapshot(SimInfo):
         else:
             return np.array(I_list)
 
-    def measure_projected_axes(self, LOS_ind=2, reduced=False):
+    def measure_projected_axes(self, LOS_ind=2, reduced=False, catalogue="Shapes"):
         """
         Measures the projected axes direcitons and lengths.
         :param reduced: Calculate reduced (True) or simple (False) inertia tensor.
@@ -415,7 +415,7 @@ class MeasureVariablesSnapshot(SimInfo):
         """
         not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], LOS_ind, invert=True)]
         TNG100_Shapes = ReadTNGdata(
-            self.simname, "Shapes", 99, sub_group="PT" + str(self.PT) + "/", data_path=self.data_path
+            self.simname, catalogue, self.snapshot, sub_group="PT" + str(self.PT) + "/", data_path=self.data_path
         )
         if reduced:
             I_name = "Reduced_Inertia_Tensor"
@@ -863,7 +863,7 @@ class MeasureIA(SimInfo):
     def __init__(
         self,
         data,
-        simulation="TNG100",
+        simulation=None,
         snapshot=99,
         separation_limits=[0.1, 20.0],
         num_bins_r=8,
@@ -871,10 +871,17 @@ class MeasureIA(SimInfo):
         PT=4,
         LOS_lim=None,
         output_file_name=None,
+        boxsize=None,
     ):
-        SimInfo.__init__(self, simulation, snapshot)
-        self.boxsize /= 1000.0  # ckpc -> cMpc
-        self.L_0p5 /= 1000.0
+        if type(simulation) == str: # simulation is a tag that is hardcoded into SimInfo
+            SimInfo.__init__(self, simulation, snapshot)
+            self.boxsize /= 1000.0  # ckpc -> cMpc
+            self.L_0p5 /= 1000.0
+        elif boxsize is not None: # boxsize is given manually
+            self.boxsize = boxsize
+            self.L_0p5 = boxsize / 2.0
+        else:
+            SimInfo.__init__(self, simulation, snapshot) # simulation is a SimInfo object created in the file that calls this class
         self.data = data
         self.output_file_name = output_file_name
         self.PT = PT
