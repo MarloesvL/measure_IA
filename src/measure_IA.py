@@ -1,5 +1,4 @@
 import math
-import time
 import numpy as np
 import h5py
 from numpy.linalg import eig, inv
@@ -11,7 +10,6 @@ from src.write_data import write_dataset_hdf5, create_group_hdf5
 from src.Sim_info import SimInfo
 
 KPC_TO_KM = 3.086e16  # 1 kpc is 3.086e16 km
-
 
 class MeasureVariablesSnapshot(SimInfo):
     """
