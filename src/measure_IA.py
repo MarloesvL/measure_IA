@@ -5,6 +5,9 @@ from numpy.linalg import eig, inv
 from scipy.special import lpmn
 import sympy
 from pathos.multiprocessing import ProcessingPool
+from tqdm import tqdm
+from scipy.spatial import KDTree
+from scipy.stats import binned_statistic
 from src.read_data_TNG import ReadTNGdata
 from src.write_data import write_dataset_hdf5, create_group_hdf5
 from src.Sim_info import SimInfo
@@ -1173,6 +1176,160 @@ class MeasureIA(SimInfo):
         else:
             return correlation, DD / RR_gg, separation_bins, pi_bins
 
+    def measure_projected_correlation_tree(self, masks=None, dataset_name="All_galaxies", return_output=False):
+        """
+        Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position sample using trees.
+        (Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
+        axes, q=b/a (q) and the index of the direction of the line of sight (LOS=2 for z axis).
+        Positions are assumed to be given in cMpc/h.
+        :param masks: the masks for the data to select only part of the data
+        :param dataset_name: the dataset name given in the hdf5 file.
+        :param return_output: Output is returned if True, saved to file if False.
+        :return: xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
+        """
+
+        if masks == None:
+            positions = self.data["Position"]
+            positions_shape_sample = self.data["Position_shape_sample"]
+            axis_direction_v = self.data["Axis_Direction"]
+            axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
+            axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
+            q = self.data["q"]
+        else:
+            positions = self.data["Position"][masks["Position"]]
+            positions_shape_sample = self.data["Position_shape_sample"][masks["Position_shape_sample"]]
+            axis_direction_v = self.data["Axis_Direction"][masks["Axis_Direction"]]
+            axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
+            axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
+            q = self.data["q"][masks["q"]]
+
+        LOS_ind = self.data["LOS"]  # eg 2 for z axis
+        not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], LOS_ind, invert=True)]  # eg 0,1 for x&y
+        e = (1 - q ** 2) / (1 + q ** 2)  # size of ellipticity
+        R = 1 - np.mean(e ** 2) / 2.0  # responsitivity factor
+        L3 = self.boxsize ** 3  # box volume
+        sub_box_len_logrp = (np.log10(self.separation_max) - np.log10(self.separation_min)) / self.num_bins_r
+        sub_box_len_pi = self.boxsize / self.num_bins_pi
+        DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)  # check this
+        Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+        Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+        RR_g_plus = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+        RR_gg = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+        variance = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+
+        dist_bin_min = np.log10(self.separation_min)
+        dist_bin_max = np.log10(self.separation_max)
+
+        tree_positions = KDTree(positions, boxsize=self.boxsize)
+        tree_shape = KDTree(positions_shape_sample, boxsize=self.boxsize)
+        indices = tree_positions.query_ball_tree(tree_shape, r=100)
+
+        cos_phi_array = []
+        dist = []
+        j = 0
+
+        for index_list in tqdm(indices):
+
+            index_list.remove(j)
+
+            if len(index_list) == 0:
+                j += 1
+                continue
+
+            separation = positions_shape_sample[index_list].T - positions[j][:, None]
+            separation = (separation + 0.5 * self.boxsize) % self.boxsize - 0.5 * self.boxsize
+            projected_sep = separation[not_LOS, :]
+            LOS = separation[LOS_ind, :]
+            separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=0))
+            separation_dir = (projected_sep / separation_len)  # normalisation of rp
+            cos_phi = np.abs(np.dot(separation_dir.T,
+                                    axis_direction[j]))  # get some which are > 1., but maybe precision err 1.00000002.
+
+            cos_phi[np.where(cos_phi > 1.0)] = 1.0
+            phi = np.arccos(cos_phi)  # [0,pi]
+            dist.extend(separation_len)
+            cos_phi_array.extend(cos_phi)
+            e_plus, e_cross = self.get_ellipticity(e[index_list], phi)
+            # if self.Num_position == self.Num_shape:
+            #     e_plus, e_cross = 0.0, 0.0        # what was this for?
+            mask = (separation_len >= self.bin_edges[0]) * (separation_len <= self.bin_edges[-1])
+            ind_r = np.floor(
+                np.log10(separation_len[mask]) / sub_box_len_logrp - np.log10(self.bin_edges[0]) / sub_box_len_logrp
+            )
+            ind_r = np.array(ind_r, dtype=int)
+
+            ind_pi = np.floor(
+                LOS[mask] / sub_box_len_pi - self.pi_bins[0] / sub_box_len_pi
+            )  # need length of LOS, so only positive values
+            ind_pi = np.array(ind_pi, dtype=int)
+            np.add.at(Splus_D, (ind_r, ind_pi), e_plus[mask] / (2 * R))
+            np.add.at(Scross_D, (ind_r, ind_pi), e_cross[mask] / (2 * R))
+            np.add.at(variance, (ind_r, ind_pi), (e_plus[mask] / (2 * R)) ** 2)
+            np.add.at(DD, (ind_r, ind_pi), 1.0)
+            j += 1
+
+        dist = np.array(dist)
+        cos_phi_array = np.array(cos_phi_array)
+        DD = DD / 2.0  # auto correlation, all pairs are double
+
+        for i in np.arange(0, self.num_bins_r):
+            for p in np.arange(0, self.num_bins_pi):
+                RR_g_plus[i, p] = self.get_random_pairs(
+                    self.bin_edges[i + 1], self.bin_edges[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "cross"
+                )
+                RR_gg[i, p] = self.get_random_pairs(
+                    self.bin_edges[i + 1], self.bin_edges[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "auto"
+                )
+        correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
+        xi_g_cross = Scross_D / RR_g_plus  # (Scross_D - Scross_R) / RR_g_plus
+        sigsq = variance / RR_g_plus ** 2
+        dsep = (self.bin_edges[1:] - self.bin_edges[:-1]) / 2.0
+        separation_bins = self.bin_edges[:-1] + abs(dsep)  # middle of bins
+        dpi = (self.pi_bins[1:] - self.pi_bins[:-1]) / 2.0
+        pi_bins = self.pi_bins[:-1] + abs(dpi)  # middle of bins
+
+        # bin up cos phi
+        cos_phi_means, cos_phi_edges, _ = binned_statistic(dist, cos_phi_array, statistic='mean',
+                                                           bins=np.logspace(dist_bin_min, dist_bin_max,
+                                                                            self.num_bins_r))
+        cos_phi_std, _, _ = binned_statistic(dist, cos_phi_array, statistic='std',
+                                             bins=np.logspace(dist_bin_min, dist_bin_max, self.num_bins_r))
+        cos_phi_counts, _, _ = binned_statistic(dist, cos_phi_array, statistic='count',
+                                                bins=np.logspace(dist_bin_min, dist_bin_max, self.num_bins_r))
+
+        if (self.output_file_name != None) & return_output == False:
+            print('Saving ...')
+            output_file = h5py.File(self.output_file_name, "a")
+            group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/w/xi_g_plus")
+            write_dataset_hdf5(group, dataset_name, data=correlation)
+            write_dataset_hdf5(group, dataset_name + "_SplusD", data=Splus_D)
+            write_dataset_hdf5(group, dataset_name + "_RR_g_plus", data=RR_g_plus)
+            write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
+            write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
+            write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
+            group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/w/xi_g_cross")
+            write_dataset_hdf5(group, dataset_name + "_ScrossD", data=Scross_D)
+            write_dataset_hdf5(group, dataset_name, data=xi_g_cross)
+            write_dataset_hdf5(group, dataset_name + "_RR_g_cross", data=RR_g_plus)
+            write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
+            write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
+            write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
+            group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/w/xi_gg")
+            write_dataset_hdf5(group, dataset_name, data=DD / RR_gg)
+            write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
+            write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
+            write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
+            write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
+            write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
+            group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/Angles/cos_phi")
+            write_dataset_hdf5(group, dataset_name + "_R", data=(cos_phi_edges[:-1] + cos_phi_edges[1:]) / 2.0)
+            write_dataset_hdf5(group, dataset_name + "_cos_phi", data=cos_phi_means)
+            write_dataset_hdf5(group, dataset_name + "_cos_phi_sig", data=cos_phi_std / np.sqrt(cos_phi_counts))
+            output_file.close()
+            return
+        else:
+            return correlation, DD / RR_gg, separation_bins, pi_bins
+
     def measure_projected_correlation_multipoles(
         self, masks=None, rp_cut=2.0, dataset_name="All_galaxies", return_output=False
     ):
@@ -1297,6 +1454,142 @@ class MeasureIA(SimInfo):
         else:
             return correlation, DD / RR_gg, separation_bins, mu_r_bins
 
+    def measure_projected_correlation_multipoles_tree(
+            self, masks=None, rp_cut=2.0, dataset_name="All_galaxies", return_output=False
+    ):
+        """
+        Measures the projected correlation function (xi_g_plus) for given coordinates of the position sample using trees
+        (Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
+        axes, q=b/a (q) and the index of the direction of the line of sight (LOS=2 for z axis).
+        Positions are assumed to be given in Mpc.
+        :param rp_cut: Limit for minimum r_p value for pairs to be included.
+        :param masks: the masks for the data to select only part of the data
+        :param dataset_name: the dataset name given in the hdf5 file.
+        :param return_output: Output is returned if True, saved to file if False.
+        :return: correlation, separation_bins, pi_bins if no output file is specified
+        """
+        if masks == None:
+            positions = self.data["Position"]
+            positions_shape_sample = self.data["Position_shape_sample"]
+            axis_direction_v = self.data["Axis_Direction"]
+            axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
+            axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
+            q = self.data["q"]
+        else:
+            positions = self.data["Position"][masks["Position"]]
+            positions_shape_sample = self.data["Position_shape_sample"][masks["Position_shape_sample"]]
+            axis_direction_v = self.data["Axis_Direction"][masks["Axis_Direction"]]
+            axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
+            axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
+            q = self.data["q"][masks["q"]]
+
+        if rp_cut == None:
+            rp_cut = 0.0
+        LOS_ind = self.data["LOS"]  # eg 2 for z axis
+        not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], LOS_ind, invert=True)]  # eg 0,1 for x&y
+        e = (1 - q ** 2) / (1 + q ** 2)  # size of ellipticity
+        R = 1 - np.mean(e ** 2) / 2.0  # responsitivity factor
+        L3 = self.boxsize ** 3  # box volume
+        sub_box_len_logr = (np.log10(self.separation_max) - np.log10(self.separation_min)) / self.num_bins_r
+        sub_box_len_mu_r = 2.0 / self.num_bins_pi  # mu_r ranges from -1 to 1. Same number of bins as pi
+        DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+        Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+        Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+        RR_g_plus = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+        RR_gg = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+
+        tree_positions = KDTree(positions, boxsize=self.boxsize)
+        tree_shape = KDTree(positions_shape_sample, boxsize=self.boxsize)
+        indices = tree_positions.query_ball_tree(tree_shape, r=100)
+
+        j = 0
+
+        for index_list in tqdm(indices):
+
+            index_list.remove(j)
+
+            if len(index_list) == 0:
+                j += 1
+                continue
+
+            separation = positions_shape_sample[index_list].T - positions[j][:, None]
+            separation = (separation + 0.5 * self.boxsize) % self.boxsize - 0.5 * self.boxsize
+            projected_sep = separation[not_LOS, :]
+            LOS = separation[LOS_ind, :]
+            projected_separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
+            separation_dir = (projected_sep.transpose() / projected_separation_len).transpose()  # normalisation of rp
+            separation_len = np.sqrt(np.sum(separation ** 2, axis=1))
+            mu_r = LOS / separation_len
+            cos_phi = np.abs(np.dot(separation_dir.T,
+                                    axis_direction[j]))  # get some which are > 1., but maybe precision err 1.00000002.
+
+            cos_phi[np.where(cos_phi > 1.0)] = 1.0
+            phi = np.arccos(cos_phi)  # [0,pi]
+
+            e_plus, e_cross = self.get_ellipticity(e[index_list], phi)
+            # get the indices for the binning
+            mask = (
+                    (projected_separation_len > rp_cut)
+                    * (separation_len >= self.bin_edges[0])
+                    * (separation_len <= self.bin_edges[-1])
+            )
+            ind_r = np.floor(
+                np.log10(separation_len[mask]) / sub_box_len_logr - np.log10(self.bin_edges[0]) / sub_box_len_logr
+            )
+            ind_r = np.array(ind_r, dtype=int)
+            ind_mu_r = np.floor(
+                mu_r[mask] / sub_box_len_mu_r - self.bins_mu_r[0] / sub_box_len_mu_r
+            )  # need length of LOS, so only positive values
+            ind_mu_r = np.array(ind_mu_r, dtype=int)
+
+            np.add.at(Splus_D, (ind_r, ind_mu_r), e_plus[mask] / (2 * R))
+            np.add.at(Scross_D, (ind_r, ind_mu_r), e_cross[mask] / (2 * R))
+            np.add.at(DD, (ind_r, ind_mu_r), 1.0)
+
+        DD = DD / 2.0  # auto correlation, all pairs are double
+
+        # analytical calc is much more difficult for (r,mu_r) bins
+        for i in np.arange(0, self.num_bins_r):
+            for p in np.arange(0, self.num_bins_pi):
+                RR_g_plus[i, p] = self.get_random_pairs_r_mur(
+                    self.bin_edges[i + 1], self.bin_edges[i], self.bins_mu_r[p + 1], self.bins_mu_r[p], L3, "cross"
+                )
+                RR_gg[i, p] = self.get_random_pairs_r_mur(
+                    self.bin_edges[i + 1], self.bin_edges[i], self.bins_mu_r[p + 1], self.bins_mu_r[p], L3, "auto"
+                )
+
+        correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
+        xi_g_cross = Scross_D / RR_g_plus  # (Scross_D - Scross_R) / RR_g_plus
+        dsep = (self.bin_edges[1:] - self.bin_edges[:-1]) / 2.0
+        separation_bins = self.bin_edges[:-1] + abs(dsep)  # middle of bins
+        dmur = (self.bins_mu_r[1:] - self.bins_mu_r[:-1]) / 2.0
+        mu_r_bins = self.bins_mu_r[:-1] + abs(dmur)  # middle of bins
+
+        if (self.output_file_name != None) & return_output == False:
+            print('Saving ...')
+            output_file = h5py.File(self.output_file_name, "a")
+            group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/multipoles/xi_g_plus")
+            write_dataset_hdf5(group, dataset_name, data=correlation)
+            write_dataset_hdf5(group, dataset_name + "_SplusD", data=Splus_D)
+            write_dataset_hdf5(group, dataset_name + "_RR_g_plus", data=RR_g_plus)
+            write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
+            write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
+            group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/multipoles/xi_g_cross")
+            write_dataset_hdf5(group, dataset_name, data=xi_g_cross)
+            write_dataset_hdf5(group, dataset_name + "_ScrossD", data=Scross_D)
+            write_dataset_hdf5(group, dataset_name + "_RR_g_cross", data=RR_g_plus)
+            write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
+            write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
+            group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/multipoles/xi_gg")
+            write_dataset_hdf5(group, dataset_name, data=DD / RR_gg)
+            write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
+            write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
+            write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
+            write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
+            output_file.close()
+            return
+        else:
+            return correlation, DD / RR_gg, separation_bins, mu_r_bins
     def measure_w_g_i(self, corr_type="both", dataset_name="All_galaxies", return_output=False):
         """
         Measures w_gi for a given xi_gi dataset that has been calculated with the measure projected correlation
