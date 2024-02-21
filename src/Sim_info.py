@@ -110,18 +110,18 @@ class SimInfo:
             self.masses_name = "Masses"
             self.coordinates_name = "Coordinates"
         elif self.simname == "EAGLE":  # CHANGE NAMES
-            self.mass_name = "SubhaloMassType"
-            self.ID_name = "SubhaloIDs"
+            self.mass_name = "MassType_Star"
+            self.ID_name = "GalaxyID"
             self.offset_name = "Offset_Subhalo"
-            self.sub_len_name = "SubhaloLenType"
-            self.group_len_name = "GroupLenType"
-            self.photo_name = "SubhaloStellarPhotometrics"
-            self.SFR_name = "SubhaloSFR"
-            self.flag_name = "SubhaloFlag"
-            self.wind_name = "GFM_StellarFormationTime"  # >0 for star particles
+            self.sub_len_name = "Len"
+            self.group_len_name = None#"GroupLenType"
+            self.photo_name = None #"SubhaloStellarPhotometrics"
+            self.SFR_name = "StarFormationRate"
+            self.flag_name = "Spurious"
+            self.wind_name = None #"GFM_StellarFormationTime"  # >0 for star particles
 
-            self.velocities_name = "Velocities"
-            self.masses_name = "Masses"
+            self.velocities_name = "Velocity"
+            self.masses_name = "Mass"
             self.coordinates_name = "Coordinates"
         else:
             raise KeyError("Simulation name not recognised. Choose from [TNG100, TNG300].")

@@ -1,6 +1,7 @@
 import math
 import numpy as np
 import h5py
+import time
 from numpy.linalg import eig, inv
 from scipy.special import lpmn
 import sympy
@@ -97,6 +98,55 @@ class MeasureVariablesSnapshot(SimInfo):
 		output_file.close()
 		return
 
+	def omit_wind_only_single(self, indices):
+		Wind_Flag = []
+		for n in indices:
+			Off = self.off_wind[n]
+			Len_n = self.len_wind[n]
+			wind_or_star = self.snap_wind.read_cat(self.wind_name, cut=[Off, Off + Len_n])
+			star_mask = wind_or_star > 0
+			if sum(star_mask) > 0.0:
+				Wind_Flag.append(0)
+			else:
+				Wind_Flag.append(1)
+
+		return Wind_Flag
+
+	def omit_wind_only_multiprocessing(self, numnodes=30):
+		"""
+		Loops through all subhalos to give a flag (1) to the subhalos that consist only of wind particles.
+		These can then be omitted in the 'select_nonzero_subhalos' method. Specific to IllustrisTNG simulations.
+		:return:
+		"""
+		TNG100_snapshot = ReadTNGdata(
+			self.simname,
+			self.simname + "_PT" + str(self.PT) + "_subhalos_only",
+			self.snapshot,
+			data_path=self.data_path,
+		)
+		TNG100_SubhaloPT = ReadTNGdata(
+			self.simname, "SubhaloPT", self.snapshot, sub_group="PT" + str(self.PT) + "/", data_path=self.data_path
+		)
+		off = TNG100_SubhaloPT.read_cat("Offset_Subhalo_all")
+		TNG100_subhalo = ReadTNGdata(self.simname, "Subhalo", self.snapshot, data_path=self.data_path)
+		Len = TNG100_subhalo.read_subhalo(self.sub_len_name)[:, self.PT]
+		Wind_Flag = []
+		multiproc_chuncks = np.array_split(np.arange(len(off)), numnodes)
+		self.snap_wind = TNG100_snapshot
+		self.off_wind = off
+		self.len_wind = Len
+		result = ProcessingPool(nodes=numnodes).map(
+			self.omit_wind_only_single,
+			multiproc_chuncks,
+		)
+		for i in np.arange(numnodes):
+			Wind_Flag.extend(result[i])
+		output_file = h5py.File(self.output_file_name, "a")
+		group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/PT" + str(self.PT))
+		write_dataset_hdf5(group, "Wind_Flag", Wind_Flag)
+		output_file.close()
+		return
+
 	def select_nonzero_subhalos(self):
 		"""
 		Selects the subhalos that have nonzero length and SubhaloFlag. Saves selected data in output file, including
@@ -129,6 +179,55 @@ class MeasureVariablesSnapshot(SimInfo):
 			SFR = TNG100_subhalo.read_subhalo(self.SFR_name)
 			write_dataset_hdf5(group, self.photo_name, photo_mag[mask])
 			write_dataset_hdf5(group, self.SFR_name, SFR[mask])
+		output_file.close()
+		return
+
+	def select_nonzero_subhalos_EAGLE(self):
+		"""
+		Selects the subhalos that have nonzero length and SubhaloFlag. Saves selected data in output file, including
+		the IDs for the original file. Specific to IllustrisTNG simulations.
+		:return:
+		"""
+		TNG100_subhalo = ReadTNGdata(self.simname, "Subhalo_cat", self.snapshot, data_path=self.data_path)
+		Len = TNG100_subhalo.read_subhalo(self.sub_len_name)
+		mass_subhalo = TNG100_subhalo.read_subhalo(self.mass_name)
+		# gn = TNG100_subhalo.read_subhalo("GroupNumber")
+		# sn = TNG100_subhalo.read_subhalo("SubGroupNumber")  # less
+		galaxyIDs = TNG100_subhalo.read_subhalo("GalaxyID")
+		file = h5py.File(f"{self.data_path}/EAGLE/diff_gnsn.hdf5", 'a')
+		indices_gnsn_in_sub = file['indices_gnsn_in_sub'][:]
+		file.close()
+		flag = TNG100_subhalo.read_subhalo(self.flag_name)
+		mask = (mass_subhalo > 0.0) * (flag == 0)
+		TNG100_SubhaloPT = ReadTNGdata(
+			self.simname, "SubhaloPT", self.snapshot, sub_group="PT" + str(self.PT) + "/", data_path=self.data_path
+		)
+		off = TNG100_SubhaloPT.read_cat("Offset_Subhalo_all")
+
+		# indices = np.arange(0, len(mass_subhalo))
+		# gnsn = np.array([indices, gn, sn]).transpose()
+		# sorted_gnsn = sorted(gnsn, key=lambda x: (x[1], x[2]))
+		# sorted_nonzero_indices = sorted_gnsn[:, 0][mask]
+		#
+		# indices_snap = np.arange(0, len(Len))
+		# gnsn_snap_ind = np.array([indices, gnsn[:, 0], gnsn[:, 1]]).transpose()
+		# sorted_gnsn_snap = sorted(gnsn_snap_ind, key=lambda x: (x[1], x[2]))
+		# sorted_indices_snap = sorted_gnsn_snap[:, 0]
+
+		# IDs = np.where(mask)
+
+		self.Num_halos = len(mass_subhalo[mask][indices_gnsn_in_sub])
+		output_file = h5py.File(self.output_file_name, "a")
+		group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/PT" + str(self.PT))
+		write_dataset_hdf5(group, self.sub_len_name, Len)
+		write_dataset_hdf5(group, self.offset_name, off)
+		write_dataset_hdf5(group, self.mass_name, mass_subhalo[mask][indices_gnsn_in_sub])
+		write_dataset_hdf5(group, self.ID_name, galaxyIDs[mask][indices_gnsn_in_sub])
+		if self.PT == 4:
+			# photo_mag = TNG100_subhalo.read_subhalo(self.photo_name)
+			SFR = TNG100_subhalo.read_subhalo(self.SFR_name)
+			# write_dataset_hdf5(group, self.photo_name, photo_mag[mask])
+			write_dataset_hdf5(group, self.SFR_name, SFR[mask][indices_gnsn_in_sub])
 		output_file.close()
 		return
 
