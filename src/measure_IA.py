@@ -233,8 +233,8 @@ class MeasureVariablesSnapshot(SimInfo):
 		self.Num_halos = len(mass_subhalo[indices_gnsn_in_sub])
 		output_file = h5py.File(self.output_file_name, "a")
 		group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/PT" + str(self.PT))
-		write_dataset_hdf5(group, self.sub_len_name, Len[indices_sub_in_gnsn][:, 0])
-		write_dataset_hdf5(group, self.offset_name, off[indices_sub_in_gnsn][:, 0])
+		write_dataset_hdf5(group, self.sub_len_name, Len[indices_sub_in_gnsn])
+		write_dataset_hdf5(group, self.offset_name, off[indices_sub_in_gnsn])
 		write_dataset_hdf5(group, self.mass_name, mass_subhalo)
 		write_dataset_hdf5(group, self.ID_name, galaxyIDs)
 		if self.PT == 4:
