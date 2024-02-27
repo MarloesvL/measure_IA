@@ -54,6 +54,8 @@ class MeasureVariablesSnapshot(SimInfo):
 		TNG100_subhalo = ReadTNGdata(self.simname, type, self.snapshot, data_path=self.data_path)
 		if type == "Subhalo":
 			len = TNG100_subhalo.read_subhalo(self.sub_len_name)[:, self.PT]
+		elif self.simname == "EAGLE":
+			len = TNG100_subhalo.read_cat(self.sub_len_name)
 		else:
 			len = TNG100_subhalo.read_subhalo(self.group_len_name)[:, self.PT]
 		off = np.append(np.array([0]), np.cumsum(len)[:-1])
@@ -189,26 +191,38 @@ class MeasureVariablesSnapshot(SimInfo):
 		:return:
 		"""
 		TNG100_subhalo = ReadTNGdata(self.simname, "Subhalo_cat", self.snapshot, data_path=self.data_path)
-		Len = TNG100_subhalo.read_subhalo(self.sub_len_name)
-		mass_subhalo = TNG100_subhalo.read_subhalo(self.mass_name)
-		# gn = TNG100_subhalo.read_subhalo("GroupNumber")
-		# sn = TNG100_subhalo.read_subhalo("SubGroupNumber")  # less
-		galaxyIDs = TNG100_subhalo.read_subhalo("GalaxyID")
+		Len = TNG100_subhalo.read_cat(self.sub_len_name)
+		mass_subhalo = TNG100_subhalo.read_cat(self.mass_name)
+		gn = TNG100_subhalo.read_cat("GroupNumber")
+		sn = TNG100_subhalo.read_cat("SubGroupNumber")  # less
+		galaxyIDs = TNG100_subhalo.read_cat("GalaxyID")
 		file = h5py.File(f"{self.data_path}/EAGLE/diff_gnsn.hdf5", 'a')
-		indices_gnsn_in_sub = file['indices_gnsn_in_sub'][:]
+		indices_gnsn_in_sub = file['indices_gnsn_in_sub'][:, 0]
+		indices_sub_in_gnsn = file["indices_sub_in_gnsn"][:, 0]  # dees
 		file.close()
-		flag = TNG100_subhalo.read_subhalo(self.flag_name)
+		flag = TNG100_subhalo.read_cat(self.flag_name)
 		mask = (mass_subhalo > 0.0) * (flag == 0)
 		TNG100_SubhaloPT = ReadTNGdata(
 			self.simname, "SubhaloPT", self.snapshot, sub_group="PT" + str(self.PT) + "/", data_path=self.data_path
 		)
-		off = TNG100_SubhaloPT.read_cat("Offset_Subhalo_all")
+		off = TNG100_SubhaloPT.read_cat("Offset_Subhalo_cat_all")
+		mass_subhalo = mass_subhalo[mask]
+		galaxyIDs = galaxyIDs[mask]
+		gn = gn[mask]
+		sn = sn[mask]
 
-		# indices = np.arange(0, len(mass_subhalo))
-		# gnsn = np.array([indices, gn, sn]).transpose()
-		# sorted_gnsn = sorted(gnsn, key=lambda x: (x[1], x[2]))
-		# sorted_nonzero_indices = sorted_gnsn[:, 0][mask]
-		#
+		indices = np.arange(0, len(mass_subhalo))
+		gnsn = np.array([indices, gn, sn]).transpose()
+		sorted_gnsn = sorted(gnsn, key=lambda x: (x[1], x[2]))
+		sorted_gnsn = np.array(sorted_gnsn)
+		sorted_indices = sorted_gnsn[:, 0]
+		sorted_indices = np.array(sorted_indices, dtype=int)
+
+		mass_subhalo = mass_subhalo[sorted_indices]
+		galaxyIDs = galaxyIDs[sorted_indices]
+		gn = gn[sorted_indices]
+		sn = sn[sorted_indices]
+
 		# indices_snap = np.arange(0, len(Len))
 		# gnsn_snap_ind = np.array([indices, gnsn[:, 0], gnsn[:, 1]]).transpose()
 		# sorted_gnsn_snap = sorted(gnsn_snap_ind, key=lambda x: (x[1], x[2]))
@@ -216,18 +230,20 @@ class MeasureVariablesSnapshot(SimInfo):
 
 		# IDs = np.where(mask)
 
-		self.Num_halos = len(mass_subhalo[mask][indices_gnsn_in_sub])
+		self.Num_halos = len(mass_subhalo[indices_gnsn_in_sub])
 		output_file = h5py.File(self.output_file_name, "a")
 		group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/PT" + str(self.PT))
-		write_dataset_hdf5(group, self.sub_len_name, Len)
-		write_dataset_hdf5(group, self.offset_name, off)
-		write_dataset_hdf5(group, self.mass_name, mass_subhalo[mask][indices_gnsn_in_sub])
-		write_dataset_hdf5(group, self.ID_name, galaxyIDs[mask][indices_gnsn_in_sub])
+		write_dataset_hdf5(group, self.sub_len_name, Len[indices_sub_in_gnsn][:, 0])
+		write_dataset_hdf5(group, self.offset_name, off[indices_sub_in_gnsn][:, 0])
+		write_dataset_hdf5(group, self.mass_name, mass_subhalo)
+		write_dataset_hdf5(group, self.ID_name, galaxyIDs)
 		if self.PT == 4:
 			# photo_mag = TNG100_subhalo.read_subhalo(self.photo_name)
-			SFR = TNG100_subhalo.read_subhalo(self.SFR_name)
+			SFR = TNG100_subhalo.read_cat(self.SFR_name)
+			SFR = SFR[mask]
+			SFR = SFR[sorted_indices]
 			# write_dataset_hdf5(group, self.photo_name, photo_mag[mask])
-			write_dataset_hdf5(group, self.SFR_name, SFR[mask][indices_gnsn_in_sub])
+			write_dataset_hdf5(group, self.SFR_name, SFR)
 		output_file.close()
 		return
 
@@ -252,7 +268,7 @@ class MeasureVariablesSnapshot(SimInfo):
 		for n in np.arange(0, self.Num_halos):
 			off_n = off[n]
 			len_n = Len[n]
-			if self.PT == 4:
+			if self.PT == 4 and "TNG" in self.simname:
 				wind_or_star = TNG100_snapshot.read_cat(self.wind_name, cut=[off_n, off_n + len_n])
 				star_mask = wind_or_star > 0
 				number_of_particles = sum(star_mask)
@@ -293,7 +309,7 @@ class MeasureVariablesSnapshot(SimInfo):
 				velocity_particles = TNG100_snapshot.read_cat(
 					self.velocities_name, cut=[off_n, off_n + len_n]
 				) * np.sqrt(self.scalefactor)
-			elif self.PT == 4:
+			elif self.PT == 4 and "TNG" in self.simname:
 				wind_or_star = TNG100_snapshot.read_cat(self.wind_name, cut=[off_n, off_n + len_n])
 				star_mask = wind_or_star > 0
 				mass_particles = TNG100_snapshot.read_cat(self.masses_name, cut=[off_n, off_n + len_n])[star_mask]
@@ -341,7 +357,7 @@ class MeasureVariablesSnapshot(SimInfo):
 			if self.PT == 1:
 				mass_particles = self.DM_part_mass
 				coordinates_particles = TNG100_snapshot.read_cat(self.coordinates_name, cut=[off_n, off_n + len_n])
-			elif self.PT == 4:
+			elif self.PT == 4 and "TNG" in self.simname:
 				wind_or_star = TNG100_snapshot.read_cat(self.wind_name, cut=[off_n, off_n + len_n])
 				star_mask = wind_or_star > 0
 				mass_particles = TNG100_snapshot.read_cat(self.masses_name, cut=[off_n, off_n + len_n])[star_mask]
@@ -422,7 +438,7 @@ class MeasureVariablesSnapshot(SimInfo):
 			if self.PT == 1:
 				particle_mass = self.DM_part_mass
 				rel_position = TNG100_snapshot.read_cat(self.coordinates_name, [off_n, off_n + len_n]) - COM[n]
-			elif self.PT == 4:
+			elif self.PT == 4 and "TNG" in self.simname:
 				wind_or_star = TNG100_snapshot.read_cat(self.wind_name, cut=[off_n, off_n + len_n])
 				star_mask = wind_or_star > 0
 				particle_mass = TNG100_snapshot.read_cat(self.masses_name, [off_n, off_n + len_n])[star_mask]
@@ -566,7 +582,7 @@ class MeasureVariablesSnapshot(SimInfo):
 			if self.PT == 1:
 				particle_mass = self.DM_part_mass
 				rel_position = TNG100_snapshot.read_cat(self.coordinates_name, [off_n, off_n + len_n]) - COM[n]
-			elif self.PT == 4:
+			elif self.PT == 4 and "TNG" in self.simname:
 				wind_or_star = TNG100_snapshot.read_cat(self.wind_name, cut=[off_n, off_n + len_n])
 				star_mask = wind_or_star > 0
 				particle_mass = TNG100_snapshot.read_cat(self.masses_name, [off_n, off_n + len_n])[star_mask]
@@ -740,7 +756,7 @@ class MeasureVariablesSnapshot(SimInfo):
 					self.scalefactor)
 						- velocity[n]
 				)
-			elif self.PT == 4:
+			elif self.PT == 4 and "TNG" in self.simname:
 				wind_or_star = TNG100_snapshot.read_cat(self.wind_name, cut=[off_n, off_n + len_n])
 				star_mask = wind_or_star > 0
 				particle_mass = TNG100_snapshot.read_cat(self.masses_name, [off_n, off_n + len_n])[star_mask] * 1e10
@@ -901,7 +917,7 @@ class MeasureVariablesSnapshot(SimInfo):
 						- velocity[n]
 				)
 				rel_position = TNG100_snapshot.read_cat(self.coordinates_name, [off_n, off_n + len_n]) - COM[n]
-			elif self.PT == 4:
+			elif self.PT == 4 and "TNG" in self.simname:
 				wind_or_star = TNG100_snapshot.read_cat(self.wind_name, cut=[off_n, off_n + len_n])
 				star_mask = wind_or_star > 0
 				particle_mass = TNG100_snapshot.read_cat(self.masses_name, [off_n, off_n + len_n])[star_mask]
@@ -1012,7 +1028,7 @@ class MeasureVariablesSnapshot(SimInfo):
 						- velocity[n]
 				)
 				rel_position = TNG100_snapshot.read_cat(self.coordinates_name, [off_n, off_n + len_n]) - COM[n]
-			elif self.PT == 4:
+			elif self.PT == 4 and "TNG" in self.simname:
 				wind_or_star = TNG100_snapshot.read_cat(self.wind_name, cut=[off_n, off_n + len_n])
 				star_mask = wind_or_star > 0
 				mass = TNG100_snapshot.read_cat(self.masses_name, [off_n, off_n + len_n])[star_mask]

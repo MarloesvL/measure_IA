@@ -143,6 +143,7 @@ class SimInfo:
         elif self.simname == "EAGLE":
             self.snap_folder = f"/snap_0{self.snapshot}/RefL0100N1504/snapshot_0{self.snapshot}_z000p000/snap_0{self.snapshot}_z000p000"  # update for different z?
             self.snap_group = f"Snapshot_{self.snapshot}/"
+            self.fof_folder = None
         else:
             raise KeyError("Simulation name not recognised. Choose from [TNG100, TNG300].")
         return
