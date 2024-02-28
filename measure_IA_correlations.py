@@ -26,8 +26,8 @@ data_IA_projected = {
 }
 num_bins_r = 10
 num_bins_pi = 8
-separation_limits = [2.0, 20.0]  # cMpc/h
-boxsize = 100. # boxsize in cMpc/h
+separation_limits = [0.1, 20.0]  # cMpc/h
+boxsize = 100.  # boxsize in cMpc/h
 LOS_lims = None
 data_path_out = "data path for output data"
 file_name = "name of output file"  # needs to be hdf5
@@ -38,6 +38,7 @@ rp_cut = None
 
 IA_Projected = MeasureIA(
 	data_IA_projected,
+	simulation="TNG100",
 	num_bins_r=num_bins_r,
 	num_bins_pi=num_bins_pi,
 	separation_limits=separation_limits,
@@ -48,6 +49,12 @@ IA_Projected = MeasureIA(
 # wg+,wgg
 IA_Projected.measure_projected_correlation(dataset_name=dataset_name)
 IA_Projected.measure_w_g_i(corr_type=corr_type[0], dataset_name=dataset_name)
+IA_Projected.measure_jackknife_errors(
+	corr_type=corr_type,
+	dataset_name=dataset_name,
+	L_subboxes=L_subboxes,
+	rp_cut=rp_cut,
+)
 IA_Projected.measure_jackknife_errors_multiprocessing(
 	corr_type=corr_type,
 	dataset_name=dataset_name,
