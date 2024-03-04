@@ -1205,7 +1205,7 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 		:return: Sphericity and triaxality unless output file name is given.
 		"""
 		TNG100_Shapes = ReadTNGdata(
-			self.simname, "Shapes", 99, sub_group="PT" + str(self.PT) + "/", data_path=self.data_path
+			self.simname, "Shapes", self.snapshot, sub_group="PT" + str(self.PT) + "/", data_path=self.data_path
 		)
 		axis_lengths = TNG100_Shapes.read_cat("Axis_Lengths")
 		a = axis_lengths[:, 2]  # largest
