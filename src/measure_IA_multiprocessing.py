@@ -528,7 +528,7 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 			v0.extend(result[i][2])
 			v1.extend(result[i][3])
 			v2.extend(result[i][4])
-			vectors_list.extend(result[i][4])
+			vectors_list.extend(result[i][5])
 		if sorted:
 			eigen_values = np.array(value_list)
 			sort_ind = np.argsort(eigen_values, axis=1)  # indices to sort from low to high values
