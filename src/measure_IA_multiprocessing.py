@@ -891,7 +891,7 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 		for n in indices:
 			off_n = self.off[n]
 			len_n = self.Len[n]
-			mass = self.mass_subhalo[n]
+			mass = self.mass[n]
 			if len_n < 2:
 				avg_rot_vel.append(0)
 				vel_disp.append(0)
