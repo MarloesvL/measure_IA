@@ -889,9 +889,11 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 		if self.calc_basis:
 			basis = []
 		for n in indices:
+			# print(n)
 			off_n = self.off[n]
 			len_n = self.Len[n]
 			mass = self.mass[n]
+			# print(n,'1')
 			if len_n < 2:
 				avg_rot_vel.append(0)
 				vel_disp.append(0)
@@ -911,6 +913,7 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 				if self.calc_basis:
 					basis.append([0, 0, 0, 0, 0, 0, 0, 0, 0])
 				continue
+			# print(n,'2')
 			if self.calc_basis:
 				transform_mat = self.find_cartesian_basis(spin_n)  # new orthonormal basis with Spin as z-axis
 				basis_n = np.array(transform_mat)
@@ -930,6 +933,7 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 				if self.calc_basis:
 					basis.append([0, 0, 0, 0, 0, 0, 0, 0, 0])
 				continue
+			# print(n,'3')
 			transform_mat_inv = inv(transform_mat)
 
 			if self.PT == 1:
@@ -963,7 +967,7 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 				)
 				rel_position = self.TNG100_snapshot.read_cat(self.coordinates_name, [off_n, off_n + len_n]) - self.COM[
 					n]
-
+			# print(n,'4')
 			# get coords relative to galactic COM, velocity
 
 			rel_position[rel_position > self.L_0p5] -= self.boxsize
@@ -978,6 +982,7 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 					np.sum((vel_theta.transpose() * particle_mass).transpose(), axis=0) / mass
 			)  # mass-weighted mean
 			avg_rot_vel.append(vel_theta_mean)
+			# print(n, '5')
 			if self.measure_dispersion:
 				vel_r_n = rel_velocity_transform[:, 0] * np.cos(theta) + rel_velocity_transform[:, 1] * np.sin(theta)
 				vel_z_n = rel_velocity_transform[:, 2]
@@ -992,7 +997,7 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 				vel_z_abs.append(np.sum(abs(vel_z_n) * particle_mass) / mass)
 				vel_disp_cyl.append(dvel_mean_cyl)
 				vel_disp.append(np.sqrt(np.sum(dvel_mean_cyl) / 3.0))
-
+			# print(n, '6')
 		return avg_rot_vel, vel_disp, vel_z, vel_disp_cyl, vel_z_abs, basis
 
 	@staticmethod
@@ -1074,6 +1079,7 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 			self.transform_mats = group["Cart_basis_L_is_z"]
 		self.calc_basis = calc_basis
 		self.measure_dispersion = measure_dispersion
+		# print('startup')
 		result = ProcessingPool(nodes=self.numnodes).map(
 			self.measure_rotational_velocity_single,
 			self.multiproc_chuncks,
