@@ -137,3 +137,64 @@ class ReadTNGdata(SimInfo):
 			return
 		else:
 			return data
+
+	def read_snapshot_multiple(self, variables):
+		"""
+		Read the data from the snapshot files for a specified shapshot number
+		:param variable: the variable name for the requested data
+		:return: the data or nothing if output_file_name is specified
+		"""
+		if self.output_file_name != None:
+			output_file = h5py.File(self.output_file_name, "a")
+			group_out = create_group_hdf5(output_file, self.snap_group)
+			write_output = True
+		else:
+			write_output = False
+		snap_file = h5py.File(f"{self.data_path}{self.snap_folder}.0.hdf5", "r")
+		Snap_data = snap_file[self.catalogue]
+		for i in np.arange(len(variables)):
+			try:
+				data = Snap_data[variables[i]][:]
+			except KeyError:
+				print("Variable not found in Snapshot files. Choose from ", Snap_data.keys())
+		if len(np.shape(data)) > 1:
+			stack = True
+		else:
+			stack = False
+		if write_output:
+			for variable in variables:
+				try:
+					dataset = group_out[variable]
+					del group_out[variable]
+				except:
+					pass
+				if stack:
+					group_out.create_dataset(variable, data=data, maxshape=(None, np.shape(data)[1]), chunks=True)
+				else:
+					group_out.create_dataset(variable, data=data, maxshape=(None,), chunks=True)
+		snap_file.close()
+
+		for n in np.arange(1, self.N_files):
+			snap_file = h5py.File(f"{self.data_path}{self.snap_folder}.{n}.hdf5", "r")
+			for variable in variables:
+				try:
+					Snap_data = snap_file[self.catalogue]
+					data_n = Snap_data[variable][:]  # get data single file
+				except KeyError:
+					print("problem at file ", n)
+					snap_file.close()
+					continue
+				if write_output:
+					group_out[variable].resize((group_out[variable].shape[0] + data_n.shape[0]), axis=0)
+					group_out[variable][-data_n.shape[0]:] = data_n
+				else:
+					if stack:
+						data = np.vstack((data, data_n))
+					else:
+						data = np.append(data, data_n)
+			snap_file.close()
+		if write_output:
+			output_file.close()
+			return
+		else:
+			return data
