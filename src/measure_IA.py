@@ -1387,6 +1387,8 @@ class MeasureIA(SimInfo):
 			e_plus, e_cross = self.get_ellipticity(e, phi)
 			if self.Num_position == self.Num_shape:
 				e_plus[n], e_cross[n] = 0.0, 0.0
+			e_plus[np.isnan(e_plus)] = 0.0
+			e_cross[np.isnan(e_cross)] = 0.0
 
 			# get the indices for the binning
 			mask = (separation_len >= self.bin_edges[0]) * (separation_len <= self.bin_edges[-1])
@@ -1663,6 +1665,8 @@ class MeasureIA(SimInfo):
 			if self.Num_position == self.Num_shape:
 				e_plus[n], e_cross[n] = 0.0, 0.0
 				mu_r[n] = 0.0
+			e_plus[np.isnan(e_plus)] = 0.0
+			e_cross[np.isnan(e_cross)] = 0.0
 
 			# get the indices for the binning
 			mask = (
