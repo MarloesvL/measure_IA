@@ -152,23 +152,24 @@ class ReadTNGdata(SimInfo):
 			write_output = False
 		snap_file = h5py.File(f"{self.data_path}{self.snap_folder}.0.hdf5", "r")
 		Snap_data = snap_file[self.catalogue]
+		stack = []
 		for i in np.arange(len(variables)):
 			try:
 				data = Snap_data[variables[i]][:]
 			except KeyError:
 				print("Variable not found in Snapshot files. Choose from ", Snap_data.keys())
-		if len(np.shape(data)) > 1:
-			stack = True
-		else:
-			stack = False
+			if len(np.shape(data)) > 1:
+				stack.append(True)
+			else:
+				stack.append(False)
 		if write_output:
-			for variable in variables:
+			for i, variable in enumerate(variables):
 				try:
 					dataset = group_out[variable]
 					del group_out[variable]
 				except:
 					pass
-				if stack:
+				if stack[i]:
 					group_out.create_dataset(variable, data=data, maxshape=(None, np.shape(data)[1]), chunks=True)
 				else:
 					group_out.create_dataset(variable, data=data, maxshape=(None,), chunks=True)
@@ -176,7 +177,7 @@ class ReadTNGdata(SimInfo):
 
 		for n in np.arange(1, self.N_files):
 			snap_file = h5py.File(f"{self.data_path}{self.snap_folder}.{n}.hdf5", "r")
-			for variable in variables:
+			for i, variable in enumerate(variables):
 				try:
 					Snap_data = snap_file[self.catalogue]
 					data_n = Snap_data[variable][:]  # get data single file
@@ -188,7 +189,7 @@ class ReadTNGdata(SimInfo):
 					group_out[variable].resize((group_out[variable].shape[0] + data_n.shape[0]), axis=0)
 					group_out[variable][-data_n.shape[0]:] = data_n
 				else:
-					if stack:
+					if stack[i]:
 						data = np.vstack((data, data_n))
 					else:
 						data = np.append(data, data_n)
