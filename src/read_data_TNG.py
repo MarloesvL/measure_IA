@@ -153,7 +153,7 @@ class ReadTNGdata(SimInfo):
 		snap_file = h5py.File(f"{self.data_path}{self.snap_folder}.0.hdf5", "r")
 		Snap_data = snap_file[self.catalogue]
 		stack = []
-		for i in np.arange(len(variables)):
+		for i, variable in enumerate(variables):
 			try:
 				data = Snap_data[variables[i]][:]
 			except KeyError:
@@ -162,8 +162,7 @@ class ReadTNGdata(SimInfo):
 				stack.append(True)
 			else:
 				stack.append(False)
-		if write_output:
-			for i, variable in enumerate(variables):
+			if write_output:
 				try:
 					dataset = group_out[variable]
 					del group_out[variable]
@@ -173,6 +172,7 @@ class ReadTNGdata(SimInfo):
 					group_out.create_dataset(variable, data=data, maxshape=(None, np.shape(data)[1]), chunks=True)
 				else:
 					group_out.create_dataset(variable, data=data, maxshape=(None,), chunks=True)
+
 		snap_file.close()
 
 		for n in np.arange(1, self.N_files):
