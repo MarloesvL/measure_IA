@@ -22,7 +22,8 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 	:param data_path: Start path to the raw data files
 	"""
 
-	def __init__(self, PT=4, project=None, snapshot=None, numnodes=30, output_file_name=None, data_path="./data/raw/"):
+	def __init__(self, PT=4, project=None, snapshot=None, numnodes=30, output_file_name=None, data_path="./data/raw/",
+				 exclude_wind=True):
 		if project == None:
 			raise KeyError("Input project name!")
 		SimInfo.__init__(self, project, snapshot)
@@ -35,6 +36,7 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 			self.Num_halos = len(mass_subhalo)
 		except:
 			self.Num_halos = 0
+		self.exclude_wind = exclude_wind
 		self.numnodes = numnodes
 		self.output_file_name = output_file_name
 		self.data_path = data_path
@@ -368,7 +370,7 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 			if self.PT == 1:
 				mass_particles = self.DM_part_mass
 				coordinates_particles = self.TNG100_snapshot.read_cat(self.coordinates_name, cut=[off_n, off_n + len_n])
-			elif self.PT == 4 and "TNG" in self.simname:
+			elif self.PT == 4 and "TNG" in self.simname and self.exclude_wind:
 				wind_or_star = self.TNG100_snapshot.read_cat(self.wind_name, cut=[off_n, off_n + len_n])
 				star_mask = wind_or_star > 0
 				mass_particles = self.TNG100_snapshot.read_cat(self.masses_name, cut=[off_n, off_n + len_n])[star_mask]
@@ -433,7 +435,7 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 				particle_mass = self.DM_part_mass
 				rel_position = self.TNG100_snapshot.read_cat(self.coordinates_name, [off_n, off_n + len_n]) - self.COM[
 					n]
-			elif self.PT == 4 and "TNG" in self.simname:
+			elif self.PT == 4 and "TNG" in self.simname and self.exclude_wind:
 				wind_or_star = self.TNG100_snapshot.read_cat(self.wind_name, cut=[off_n, off_n + len_n])
 				star_mask = wind_or_star > 0
 				particle_mass = self.TNG100_snapshot.read_cat(self.masses_name, [off_n, off_n + len_n])[star_mask]
@@ -595,7 +597,7 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 				particle_mass = self.DM_part_mass
 				rel_position = self.TNG100_snapshot.read_cat(self.coordinates_name, [off_n, off_n + len_n]) - self.COM[
 					n]
-			elif self.PT == 4 and "TNG" in self.simname:
+			elif self.PT == 4 and "TNG" in self.simname and self.exclude_wind:
 				wind_or_star = self.TNG100_snapshot.read_cat(self.wind_name, cut=[off_n, off_n + len_n])
 				star_mask = wind_or_star > 0
 				particle_mass = self.TNG100_snapshot.read_cat(self.masses_name, [off_n, off_n + len_n])[star_mask]
@@ -997,7 +999,7 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 				vel_z_abs.append(np.sum(abs(vel_z_n) * particle_mass) / mass)
 				vel_disp_cyl.append(dvel_mean_cyl)
 				vel_disp.append(np.sqrt(np.sum(dvel_mean_cyl) / 3.0))
-			# print(n, '6')
+		# print(n, '6')
 		return avg_rot_vel, vel_disp, vel_z, vel_disp_cyl, vel_z_abs, basis
 
 	@staticmethod
