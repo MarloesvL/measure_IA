@@ -49,13 +49,30 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 		off = TNG100_SubhaloPT.read_cat(self.offset_name)
 		Len = TNG100_SubhaloPT.read_cat(self.sub_len_name)
 		mass = TNG100_SubhaloPT.read_cat(self.mass_name)
-		TNG100_snapshot = ReadTNGdata(
-			self.simname,
-			self.simname + "_PT" + str(self.PT) + "_subhalos_only",
-			self.snapshot,
-			data_path=self.data_path,
-		)
-		self.TNG100_SubhaloPT = TNG100_SubhaloPT
+		if self.snapshot == 50 and self.simname == "TNG300":
+			TNG100_snapshot = ReadTNGdata(
+				self.simname,
+				self.simname + "_PT" + str(self.PT) + "_subhalos_only_snap50",
+				self.snapshot,
+				data_path=self.data_path,
+			)
+		else:
+			TNG100_snapshot = ReadTNGdata(
+				self.simname,
+				self.simname + "_PT" + str(self.PT) + "_subhalos_only",
+				self.snapshot,
+				data_path=self.data_path,
+			)
+		# self.TNG100_SubhaloPT = TNG100_SubhaloPT
+		if self.exclude_wind:
+			self.TNG100_SubhaloPT = ReadTNGdata(
+				self.simname, "SubhaloPT", self.snapshot, sub_group="PT" + str(self.PT) + "/", data_path=self.data_path
+			)
+		else:
+			self.TNG100_SubhaloPT = ReadTNGdata(
+				self.simname, "SubhaloPT_incl_wind", self.snapshot, sub_group="PT" + str(self.PT) + "/",
+				data_path=self.data_path
+			)
 		self.off = off
 		self.Len = Len
 		self.mass = mass
@@ -139,12 +156,20 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 		These can then be omitted in the 'select_nonzero_subhalos' method. Specific to IllustrisTNG simulations.
 		:return:
 		"""
-		TNG100_snapshot = ReadTNGdata(
-			self.simname,
-			self.simname + "_PT" + str(self.PT) + "_subhalos_only",
-			self.snapshot,
-			data_path=self.data_path,
-		)
+		if self.snapshot == 50 and self.simname == "TNG300":
+			TNG100_snapshot = ReadTNGdata(
+				self.simname,
+				self.simname + "_PT" + str(self.PT) + "_subhalos_only_snap50",
+				self.snapshot,
+				data_path=self.data_path,
+			)
+		else:
+			TNG100_snapshot = ReadTNGdata(
+				self.simname,
+				self.simname + "_PT" + str(self.PT) + "_subhalos_only",
+				self.snapshot,
+				data_path=self.data_path,
+			)
 		TNG100_SubhaloPT = ReadTNGdata(
 			self.simname, "SubhaloPT", self.snapshot, sub_group="PT" + str(self.PT) + "/", data_path=self.data_path
 		)
@@ -277,12 +302,20 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 		)
 		off = TNG100_SubhaloPT.read_cat(self.offset_name)
 		Len = TNG100_SubhaloPT.read_cat(self.sub_len_name)
-		TNG100_snapshot = ReadTNGdata(
-			self.simname,
-			self.simname + "_PT" + str(self.PT) + "_subhalos_only",
-			self.snapshot,
-			data_path=self.data_path,
-		)
+		if self.snapshot == 50 and self.simname == "TNG300":
+			TNG100_snapshot = ReadTNGdata(
+				self.simname,
+				self.simname + "_PT" + str(self.PT) + "_subhalos_only_snap50",
+				self.snapshot,
+				data_path=self.data_path,
+			)
+		else:
+			TNG100_snapshot = ReadTNGdata(
+				self.simname,
+				self.simname + "_PT" + str(self.PT) + "_subhalos_only",
+				self.snapshot,
+				data_path=self.data_path,
+			)
 		number_of_particles_list = []
 		for n in np.arange(0, self.Num_halos):
 			off_n = off[n]
