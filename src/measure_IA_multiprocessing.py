@@ -49,13 +49,14 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 		off = TNG100_SubhaloPT.read_cat(self.offset_name)
 		Len = TNG100_SubhaloPT.read_cat(self.sub_len_name)
 		mass = TNG100_SubhaloPT.read_cat(self.mass_name)
-		if self.snapshot == 50 and self.simname == "TNG300":
+		if self.snapshot == "50" and self.simname == "TNG300":
 			TNG100_snapshot = ReadTNGdata(
 				self.simname,
 				self.simname + "_PT" + str(self.PT) + "_subhalos_only_snap50",
 				self.snapshot,
 				data_path=self.data_path,
 			)
+			print("Using " + self.simname + "_PT" + str(self.PT) + "_subhalos_only_snap50")
 		else:
 			TNG100_snapshot = ReadTNGdata(
 				self.simname,
@@ -156,7 +157,7 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 		These can then be omitted in the 'select_nonzero_subhalos' method. Specific to IllustrisTNG simulations.
 		:return:
 		"""
-		if self.snapshot == 50 and self.simname == "TNG300":
+		if self.snapshot == "50" and self.simname == "TNG300":
 			TNG100_snapshot = ReadTNGdata(
 				self.simname,
 				self.simname + "_PT" + str(self.PT) + "_subhalos_only_snap50",
@@ -302,7 +303,7 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 		)
 		off = TNG100_SubhaloPT.read_cat(self.offset_name)
 		Len = TNG100_SubhaloPT.read_cat(self.sub_len_name)
-		if self.snapshot == 50 and self.simname == "TNG300":
+		if self.snapshot == "50" and self.simname == "TNG300":
 			TNG100_snapshot = ReadTNGdata(
 				self.simname,
 				self.simname + "_PT" + str(self.PT) + "_subhalos_only_snap50",
@@ -494,14 +495,23 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 				v2.append([0.0, 0.0, 0.0])
 			else:
 				I = self.measure_inertia_tensor_eq(mass, particle_mass, rel_position, self.reduced)
-				if self.eigen_v:
-					values, vectors = eig(I)
-					value_list.append(values)
-					vectors_list.append(vectors)
-					v0.append(vectors[:, 0])
-					v1.append(vectors[:, 1])
-					v2.append(vectors[:, 2])
-				I_list.append(I.reshape(9))
+				if sum(np.isnan(I.flatten())) > 0 or sum(np.isinf(I.flatten())) > 0:
+					print(f"NaN of inf found in galaxy {indices[n]}, I is {I}, mass {mass}, len {len_n}. Appending zeros.")
+					I_list.append([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+					value_list.append([0.0, 0.0, 0.0])
+					vectors_list.append(np.array([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]))
+					v0.append([0.0, 0.0, 0.0])
+					v1.append([0.0, 0.0, 0.0])
+					v2.append([0.0, 0.0, 0.0])
+				else:
+					if self.eigen_v:
+						values, vectors = eig(I)
+						value_list.append(values)
+						vectors_list.append(vectors)
+						v0.append(vectors[:, 0])
+						v1.append(vectors[:, 1])
+						v2.append(vectors[:, 2])
+					I_list.append(I.reshape(9))
 		return I_list, value_list, v0, v1, v2, vectors_list
 
 	@staticmethod
@@ -869,7 +879,7 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 				rel_position = self.TNG100_snapshot.read_cat(self.coordinates_name, [off_n, off_n + len_n]) - self.COM[
 					n]
 				rel_velocity = (
-						TNG100_snapshot.read_cat(self.velocities_name, [off_n, off_n + len_n]) * np.sqrt(
+						self.TNG100_snapshot.read_cat(self.velocities_name, [off_n, off_n + len_n]) * np.sqrt(
 					self.scalefactor)
 						- self.velocity[n]
 				)
