@@ -334,6 +334,53 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 		output_file.close()
 		return
 
+	def measure_masses_excl_wind(self):
+		"""
+		Saves the number of particles used in the snapshot calculations. This is usually equal to the 'Len' parameter,
+		except when wind particles are omitted from the stellar particles.
+		:return:
+		"""
+		if self.PT == 4 and "TNG" in self.simname:
+			pass
+		else:
+			print('Use given mass for this input')
+			exit()
+		TNG100_SubhaloPT = ReadTNGdata(
+			self.simname, "SubhaloPT", self.snapshot, sub_group="PT" + str(self.PT) + "/", data_path=self.data_path
+		)
+		off = TNG100_SubhaloPT.read_cat(self.offset_name)
+		Len = TNG100_SubhaloPT.read_cat(self.sub_len_name)
+		if self.snapshot == "50" and self.simname == "TNG300":
+			TNG100_snapshot = ReadTNGdata(
+				self.simname,
+				self.simname + "_PT" + str(self.PT) + "_subhalos_only_snap50",
+				self.snapshot,
+				data_path=self.data_path,
+			)
+		else:
+			TNG100_snapshot = ReadTNGdata(
+				self.simname,
+				self.simname + "_PT" + str(self.PT) + "_subhalos_only",
+				self.snapshot,
+				data_path=self.data_path,
+			)
+		mass_list = []
+		for n in np.arange(0, self.Num_halos):
+			off_n = off[n]
+			len_n = Len[n]
+			wind_or_star = TNG100_snapshot.read_cat(self.wind_name, cut=[off_n, off_n + len_n])
+			star_mask = wind_or_star > 0
+			masses = TNG100_snapshot.read_cat(self.masses_name, cut=[off_n, off_n + len_n])[star_mask]
+			mass = sum(masses)
+			mass_list.append(mass)
+
+		output_file = h5py.File(self.output_file_name, "a")
+		group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/PT" + str(self.PT))
+		write_dataset_hdf5(group, "StellarMass", data=np.array(mass_list))
+		output_file.close()
+		return
+
+
 	def measure_velocities_single(self, indices):
 		velocities = []
 		for n in indices:
@@ -541,12 +588,7 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 		:param eigen_v: Also returns eigen values and vectors if True.
 		:return: The inertia tensor, eigen values and vectors if no output file is specified.
 		"""
-		if self.output_file_name != None:
-			output_file = h5py.File(self.output_file_name, "a")
-			group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/PT" + str(self.PT))
-			write_output = True
-		else:
-			write_output = False
+
 		# TNG100_snapshot = ReadTNGdata(
 		# 	self.simname,
 		# 	self.simname + "_PT" + str(self.PT) + "_subhalos_only",
@@ -586,8 +628,9 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 				eigen_vectors_sorted["0"].append(vector_sorted[:, 0])
 				eigen_vectors_sorted["1"].append(vector_sorted[:, 1])
 				eigen_vectors_sorted["2"].append(vector_sorted[:, 2])
-
-		if write_output:
+		if self.output_file_name != None:
+			output_file = h5py.File(self.output_file_name, "a")
+			group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/PT" + str(self.PT))
 			if reduced:
 				write_dataset_hdf5(group, "Reduced_Inertia_Tensor", data=np.array(I_list))
 				if eigen_v:
@@ -624,7 +667,11 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 							group, "Intermediate_Axis_Direction", data=np.array(eigen_vectors_sorted["1"])
 						)
 						write_dataset_hdf5(group, "Major_Axis_Direction", data=np.array(eigen_vectors_sorted["2"]))
+			print('closing file, reduced is ',reduced)
+			print(output_file,group)
 			output_file.close()
+			print('file closed')
+			print(output_file, group)
 			return
 		else:
 			return np.array(I_list)

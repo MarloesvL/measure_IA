@@ -96,7 +96,7 @@ class SimInfo:
 			self.masses_name = masses_name
 			self.coordinates_name = coordinates_name
 		elif "TNG" in self.simname:
-			self.mass_name = "SubhaloMassType"
+			self.mass_name = "StellarMass" #"SubhaloMassType"
 			self.ID_name = "SubhaloIDs"
 			self.offset_name = "Offset_Subhalo"
 			self.sub_len_name = "SubhaloLenType"
