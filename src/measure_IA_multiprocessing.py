@@ -32,8 +32,8 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 			self.simname, "SubhaloPT", self.snapshot, sub_group="PT" + str(self.PT) + "/", data_path=data_path
 		)
 		try:
-			mass_subhalo = TNG100_SubhaloPT.read_cat(self.mass_name)
-			self.Num_halos = len(mass_subhalo)
+			Len = TNG100_SubhaloPT.read_cat(self.sub_len_name)
+			self.Num_halos = len(Len)
 		except:
 			self.Num_halos = 0
 		self.exclude_wind = exclude_wind
@@ -280,7 +280,7 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 		group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/PT" + str(self.PT))
 		write_dataset_hdf5(group, self.sub_len_name, Len[indices_sub_in_gnsn])
 		write_dataset_hdf5(group, self.offset_name, off[indices_sub_in_gnsn])
-		write_dataset_hdf5(group, self.mass_name, mass_subhalo)
+		write_dataset_hdf5(group, self.mass_name, mass_subhalo/self.h/1e10)
 		write_dataset_hdf5(group, self.ID_name, galaxyIDs)
 		if self.PT == 4:
 			# photo_mag = TNG100_subhalo.read_subhalo(self.photo_name)
