@@ -280,7 +280,7 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 		group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/PT" + str(self.PT))
 		write_dataset_hdf5(group, self.sub_len_name, Len[indices_sub_in_gnsn])
 		write_dataset_hdf5(group, self.offset_name, off[indices_sub_in_gnsn])
-		write_dataset_hdf5(group, self.mass_name, mass_subhalo/self.h/1e10)
+		write_dataset_hdf5(group, self.mass_name, mass_subhalo / self.h / 1e10)
 		write_dataset_hdf5(group, self.ID_name, galaxyIDs)
 		if self.PT == 4:
 			# photo_mag = TNG100_subhalo.read_subhalo(self.photo_name)
@@ -380,6 +380,63 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 		output_file.close()
 		return
 
+	def measure_masses_excl_wind_single(self, indices):
+		mass_list = []
+		for n in indices:
+			off_n = self.off[n]
+			len_n = self.Len[n]
+			wind_or_star = self.TNG100_snapshot.read_cat(self.wind_name, cut=[off_n, off_n + len_n])
+			star_mask = wind_or_star > 0
+			masses = self.TNG100_snapshot.read_cat(self.masses_name, cut=[off_n, off_n + len_n])[star_mask]
+			mass = sum(masses)
+			mass_list.append(mass)
+		return mass_list
+
+	def measure_masses_excl_wind_multiprocessing(self):
+		"""
+		Measures the stellar masses of the galaxies used in the snapshot calculations.
+		This is usually equal to the 'SubhaloMassType' parameter,
+		except when wind particles are omitted from the stellar particles.
+		:return:
+		"""
+		if self.PT == 4 and "TNG" in self.simname:
+			pass
+		else:
+			print('Use given mass for this input')
+			exit()
+		TNG100_SubhaloPT = ReadTNGdata(
+			self.simname, "SubhaloPT", self.snapshot, sub_group="PT" + str(self.PT) + "/", data_path=self.data_path
+		)
+		self.off = TNG100_SubhaloPT.read_cat(self.offset_name)
+		self.Len = TNG100_SubhaloPT.read_cat(self.sub_len_name)
+		if self.snapshot == "50" and self.simname == "TNG300":
+			self.TNG100_snapshot = ReadTNGdata(
+				self.simname,
+				self.simname + "_PT" + str(self.PT) + "_subhalos_only_snap50",
+				self.snapshot,
+				data_path=self.data_path,
+			)
+		else:
+			self.TNG100_snapshot = ReadTNGdata(
+				self.simname,
+				self.simname + "_PT" + str(self.PT) + "_subhalos_only",
+				self.snapshot,
+				data_path=self.data_path,
+			)
+		mass_list = []
+		multiproc_chuncks = np.array_split(np.arange(len(self.off)), self.numnodes)
+		result = ProcessingPool(nodes=self.numnodes).map(
+			self.measure_masses_excl_wind_single,
+			multiproc_chuncks,
+		)
+		for i in np.arange(self.numnodes):
+			mass_list.extend(result[i])
+
+		output_file = h5py.File(self.output_file_name, "a")
+		group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/PT" + str(self.PT))
+		write_dataset_hdf5(group, "StellarMass", data=np.array(mass_list))
+		output_file.close()
+		return
 
 	def measure_velocities_single(self, indices):
 		velocities = []
@@ -543,7 +600,8 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 			else:
 				I = self.measure_inertia_tensor_eq(mass, particle_mass, rel_position, self.reduced)
 				if sum(np.isnan(I.flatten())) > 0 or sum(np.isinf(I.flatten())) > 0:
-					print(f"NaN of inf found in galaxy {indices[n]}, I is {I}, mass {mass}, len {len_n}. Appending zeros.")
+					print(
+						f"NaN of inf found in galaxy {indices[n]}, I is {I}, mass {mass}, len {len_n}. Appending zeros.")
 					I_list.append([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 					value_list.append([0.0, 0.0, 0.0])
 					vectors_list.append(np.array([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]))
@@ -667,8 +725,8 @@ class MeasureVariablesSnapshotMultiprocessing(SimInfo):
 							group, "Intermediate_Axis_Direction", data=np.array(eigen_vectors_sorted["1"])
 						)
 						write_dataset_hdf5(group, "Major_Axis_Direction", data=np.array(eigen_vectors_sorted["2"]))
-			print('closing file, reduced is ',reduced)
-			print(output_file,group)
+			print('closing file, reduced is ', reduced)
+			print(output_file, group)
 			output_file.close()
 			print('file closed')
 			print(output_file, group)
