@@ -135,7 +135,7 @@ class MeasureSnapshotVariables(SimInfo):
 		"""
 		TNG100_subhalo = ReadTNGdata(self.simname, "Subhalo", self.snapshot, data_path=self.data_path)
 		Len = TNG100_subhalo.read_subhalo(self.sub_len_name)[:, self.PT]
-		mass_subhalo = TNG100_subhalo.read_subhalo(self.mass_name)[:, self.PT]
+		mass_subhalo = TNG100_subhalo.read_subhalo("MassType_Star")[:, self.PT]
 		flag = TNG100_subhalo.read_subhalo(self.flag_name)
 		TNG100_SubhaloPT = ReadTNGdata(
 			self.simname, self.subhalo_cat, self.snapshot, sub_group=f"PT{self.PT}/", data_path=self.data_path
@@ -152,7 +152,7 @@ class MeasureSnapshotVariables(SimInfo):
 		group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/PT" + str(self.PT))
 		write_dataset_hdf5(group, self.sub_len_name, Len[mask])
 		write_dataset_hdf5(group, self.offset_name, off[mask])
-		write_dataset_hdf5(group, "MassType_Star", mass_subhalo[mask])
+		write_dataset_hdf5(group, self.mass_name, mass_subhalo[mask])
 		write_dataset_hdf5(group, self.ID_name, IDs)
 		if self.PT == 4:
 			photo_mag = TNG100_subhalo.read_subhalo(self.photo_name)
