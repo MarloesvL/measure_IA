@@ -152,7 +152,7 @@ class MeasureSnapshotVariables(SimInfo):
 		group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/PT" + str(self.PT))
 		write_dataset_hdf5(group, self.sub_len_name, Len[mask])
 		write_dataset_hdf5(group, self.offset_name, off[mask])
-		write_dataset_hdf5(group, self.mass_name, mass_subhalo[mask])
+		write_dataset_hdf5(group, "MassType_Star", mass_subhalo[mask])
 		write_dataset_hdf5(group, self.ID_name, IDs)
 		if self.PT == 4:
 			photo_mag = TNG100_subhalo.read_subhalo(self.photo_name)
