@@ -7,20 +7,25 @@ class SimInfo:
 	:param snapshot: number of the snapshot, influences which folders are located.
 	"""
 
-	def __init__(self, sim_name, snapshot, manual=False):
+	def __init__(self, sim_name, snapshot, PT=None, manual=False, update=False):
 		if type(sim_name) == str:
 			self.simname = sim_name
 			self.snapshot = str(snapshot)
+			self.PT = PT
 			self.manual = manual
 			if not self.manual:
 				self.get_specs()
 				self.get_variable_names()
 				self.get_folders()
 				self.get_scalefactor()
+				self.get_catalogue_names()
 		else:
 			self.sim_name = sim_name
 			self.snapshot = str(snapshot)
+			self.PT = PT
 			self.manual = manual
+		if update:
+			self.manual = True
 		return
 
 	def __getattr__(self, name):
@@ -28,6 +33,19 @@ class SimInfo:
 			return getattr(self.sim_name, name)
 		except:
 			raise AttributeError("Child' object has no attribute '%s'" % name)
+
+	def get_catalogue_names(self, shapes_cat=None, subhalo_cat=None, snap_cat=None):
+		self.shapes_cat = "Shapes"
+		self.subhalo_cat = "SubhaloPT"
+		self.snap_cat = f"{self.simname}_PT{self.PT}_subhalos_only"
+		if self.manual:
+			if shapes_cat != None:
+				self.shapes_cat = shapes_cat
+			if subhalo_cat != None:
+				self.subhalo_cat = subhalo_cat
+			if snap_cat != None:
+				self.snap_cat = snap_cat
+		return
 
 	def get_specs(self, boxsize=None, h=None, DM_part_mass=None, N_files=None):
 		"""
@@ -53,7 +71,7 @@ class SimInfo:
 			self.DM_part_mass = 0.00398342749867548  # 10^10 M_sun/h
 			self.N_files = 600
 		elif self.simname == "EAGLE":
-			self.boxsize = 100000.0/0.6777  # ckpc/h
+			self.boxsize = 100000.0 / 0.6777  # ckpc/h
 			self.L_0p5 = self.boxsize / 2.0
 			self.h = 0.6777
 			self.DM_part_mass = 0.000970  # 10^10 M_sun (*h?)
@@ -96,7 +114,7 @@ class SimInfo:
 			self.masses_name = masses_name
 			self.coordinates_name = coordinates_name
 		elif "TNG" in self.simname:
-			self.mass_name = "StellarMass" #"SubhaloMassType"
+			self.mass_name = "StellarMass"  # "SubhaloMassType"
 			self.ID_name = "SubhaloIDs"
 			self.offset_name = "Offset_Subhalo"
 			self.sub_len_name = "SubhaloLenType"
