@@ -218,9 +218,9 @@ class MeasureSnapshotVariables(SimInfo):
 		output_file.close()
 		return
 
-	def save_number_of_particles_single(self):
+	def save_number_of_particles_single(self,indices):
 		number_of_particles_list = []
-		for n in np.arange(0, self.Num_halos):
+		for n in indices:
 			off_n = self.off[n]
 			len_n = self.Len[n]
 			if self.PT == 4 and "TNG" in self.simname and self.exclude_wind:
