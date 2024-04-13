@@ -135,7 +135,7 @@ class MeasureSnapshotVariables(SimInfo):
 		"""
 		TNG100_subhalo = ReadTNGdata(self.simname, "Subhalo", self.snapshot, data_path=self.data_path)
 		Len = TNG100_subhalo.read_subhalo(self.sub_len_name)[:, self.PT]
-		mass_subhalo = TNG100_subhalo.read_subhalo("MassType_Star")[:, self.PT]
+		mass_subhalo = TNG100_subhalo.read_subhalo("SubhaloMassType")[:, self.PT]
 		flag = TNG100_subhalo.read_subhalo(self.flag_name)
 		TNG100_SubhaloPT = ReadTNGdata(
 			self.simname, self.subhalo_cat, self.snapshot, sub_group=f"PT{self.PT}/", data_path=self.data_path
@@ -239,7 +239,7 @@ class MeasureSnapshotVariables(SimInfo):
 		:return:
 		"""
 		try:
-			len = self.Len
+			Len = self.Len
 		except:
 			self.create_self_arguments()
 		number_of_particles_list = []
@@ -282,7 +282,7 @@ class MeasureSnapshotVariables(SimInfo):
 			print('Use given mass for this input')
 			exit()
 		try:
-			len = self.Len
+			Len = self.Len
 		except:
 			self.create_self_arguments()
 		mass_list = []
@@ -336,7 +336,7 @@ class MeasureSnapshotVariables(SimInfo):
 		:return:
 		"""
 		try:
-			len = self.Len
+			Len = self.Len
 		except:
 			self.create_self_arguments()
 		velocities = []
@@ -391,7 +391,7 @@ class MeasureSnapshotVariables(SimInfo):
 		:return:
 		"""
 		try:
-			len = self.Len
+			Len = self.Len
 		except:
 			self.create_self_arguments()
 		COM = []
@@ -492,7 +492,7 @@ class MeasureSnapshotVariables(SimInfo):
 		:return: The inertia tensor, eigen values and vectors if no output file is specified.
 		"""
 		try:
-			len = self.Len
+			Len = self.Len
 		except:
 			self.create_self_arguments()
 		self.reduced = reduced
@@ -641,7 +641,7 @@ class MeasureSnapshotVariables(SimInfo):
 		:return: The inertia tensor, eigen values and vectors if no output file is specified.
 		"""
 		try:
-			len = self.Len
+			Len = self.Len
 		except:
 			self.create_self_arguments()
 		if self.output_file_name != None:
@@ -777,7 +777,7 @@ class MeasureSnapshotVariables(SimInfo):
 		:return: Spin if no output file name is specified.
 		"""
 		try:
-			len = self.Len
+			Len = self.Len
 		except:
 			self.create_self_arguments()
 		if self.output_file_name != None:
@@ -963,7 +963,7 @@ class MeasureSnapshotVariables(SimInfo):
 		:return: average tangential velocity of each galaxy (if no output file name is given)
 		"""
 		try:
-			len = self.Len
+			Len = self.Len
 		except:
 			self.create_self_arguments()
 		if self.output_file_name != None:
@@ -1080,7 +1080,7 @@ class MeasureSnapshotVariables(SimInfo):
 		:return: K_rot if output filename is not given.
 		"""
 		try:
-			len = self.Len
+			Len = self.Len
 		except:
 			self.create_self_arguments()
 		if self.output_file_name != None:
