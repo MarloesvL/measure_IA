@@ -23,10 +23,10 @@ class MeasureSnapshotVariables(SimInfo):
 	"""
 
 	def __init__(self, PT=4, project=None, snapshot=None, numnodes=30, output_file_name=None, data_path="./data/raw/",
-				 exclude_wind=True,update=False):
+				 exclude_wind=True, update=False):
 		if project == None:
 			raise KeyError("Input project name!")
-		SimInfo.__init__(self, project, snapshot, PT,update=update)
+		SimInfo.__init__(self, project, snapshot, PT, update=update)
 		TNG100_SubhaloPT = ReadTNGdata(
 			self.simname, self.subhalo_cat, self.snapshot, sub_group=f"PT{self.PT}/", data_path=data_path
 		)
@@ -49,6 +49,12 @@ class MeasureSnapshotVariables(SimInfo):
 		self.TNG100_SubhaloPT = ReadTNGdata(
 			self.simname, self.subhalo_cat, self.snapshot, sub_group=f"PT{self.PT}/",
 			data_path=self.data_path)
+		if self.Num_halos == 0:
+			try:
+				Len = self.TNG100_SubhaloPT.read_cat(self.sub_len_name)
+				self.Num_halos = len(Len)
+			except:
+				self.Num_halos = 0
 		self.off = self.TNG100_SubhaloPT.read_cat(self.offset_name)
 		self.Len = self.TNG100_SubhaloPT.read_cat(self.sub_len_name)
 		self.mass = self.TNG100_SubhaloPT.read_cat(self.mass_name)
@@ -218,7 +224,7 @@ class MeasureSnapshotVariables(SimInfo):
 		output_file.close()
 		return
 
-	def save_number_of_particles_single(self,indices):
+	def save_number_of_particles_single(self, indices):
 		number_of_particles_list = []
 		for n in indices:
 			off_n = self.off[n]
@@ -232,7 +238,7 @@ class MeasureSnapshotVariables(SimInfo):
 			number_of_particles_list.append(number_of_particles)
 		return number_of_particles_list
 
-	def save_number_of_particles(self):  # todo: update so it can be run after/with create self arguments
+	def save_number_of_particles(self):
 		"""
 		Saves the number of particles used in the snapshot calculations. This is usually equal to the 'Len' parameter,
 		except when wind particles are omitted from the stellar particles.
@@ -498,11 +504,13 @@ class MeasureSnapshotVariables(SimInfo):
 		self.reduced = reduced
 		self.eigen_v = eigen_v
 		self.COM = self.TNG100_SubhaloPT.read_cat("COM")
+		print(self.multiproc_chuncks)
 		I_list, value_list, v0, v1, v2, vectors_list = [], [], [], [], [], []
 		result = ProcessingPool(nodes=self.numnodes).map(
 			self.measure_inertia_tensor_single,
 			self.multiproc_chuncks,
 		)
+		print(result)
 		for i in np.arange(self.numnodes):
 			I_list.extend(result[i][0])
 			value_list.extend(result[i][1])
