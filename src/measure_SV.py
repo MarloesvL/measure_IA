@@ -452,7 +452,7 @@ class MeasureSnapshotVariables(SimInfo):
 				I = self.measure_inertia_tensor_eq(mass, particle_mass, rel_position, self.reduced)
 				if sum(np.isnan(I.flatten())) > 0 or sum(np.isinf(I.flatten())) > 0:
 					print(
-						f"NaN of inf found in galaxy {indices[n]}, I is {I}, mass {mass}, len {len_n}. Appending zeros.")
+						f"NaN or inf found in galaxy {n}, I is {I}, mass {mass}, len {len_n}. Appending zeros.")
 					I_list.append([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 					value_list.append([0.0, 0.0, 0.0])
 					vectors_list.append(np.array([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]))
@@ -504,13 +504,11 @@ class MeasureSnapshotVariables(SimInfo):
 		self.reduced = reduced
 		self.eigen_v = eigen_v
 		self.COM = self.TNG100_SubhaloPT.read_cat("COM")
-		print(self.multiproc_chuncks)
 		I_list, value_list, v0, v1, v2, vectors_list = [], [], [], [], [], []
 		result = ProcessingPool(nodes=self.numnodes).map(
 			self.measure_inertia_tensor_single,
 			self.multiproc_chuncks,
 		)
-		print(result)
 		for i in np.arange(self.numnodes):
 			I_list.extend(result[i][0])
 			value_list.extend(result[i][1])
@@ -575,7 +573,7 @@ class MeasureSnapshotVariables(SimInfo):
 			return np.array(I_list)
 
 	def measure_projected_inertia_tensor_single(self, indices):
-		I_list, value_list, v0, v1, v2, vectors_list = [], [], [], [], [], []
+		I_list, value_list, v0, v1, vectors_list = [], [], [], [], []
 		for n in indices:
 			off_n = self.off[n]
 			len_n = self.Len[n]
@@ -609,17 +607,25 @@ class MeasureSnapshotVariables(SimInfo):
 				vectors_list.append(np.array([[0.0, 0.0], [0.0, 0.0]]))
 				v0.append([0.0, 0.0])
 				v1.append([0.0, 0.0])
-				v2.append([0.0, 0.0])
 			else:
 				I = self.measure_projected_inertia_tensor_eq(mass, particle_mass, rel_position, self.reduced)
-				if self.eigen_v:
-					values, vectors = eig(I)
-					value_list.append(values)
-					vectors_list.append(vectors)
-					v0.append(vectors[:, 0])
-					v1.append(vectors[:, 1])
-				I_list.append(I.reshape(4))
-		return I_list, value_list, v0, v1, v2, vectors_list
+				if sum(np.isnan(I.flatten())) > 0 or sum(np.isinf(I.flatten())) > 0:
+					print(
+						f"NaN or inf found in galaxy {n}, I is {I}, mass {mass}, len {len_n}. Appending zeros.")
+					I_list.append([0.0, 0.0, 0.0, 0.0])
+					value_list.append([0.0, 0.0])
+					vectors_list.append(np.array([[0.0, 0.0], [0.0, 0.0]]))
+					v0.append([0.0, 0.0])
+					v1.append([0.0, 0.0])
+				else:
+					if self.eigen_v:
+						values, vectors = eig(I)
+						value_list.append(values)
+						vectors_list.append(vectors)
+						v0.append(vectors[:, 0])
+						v1.append(vectors[:, 1])
+					I_list.append(I.reshape(4))
+		return I_list, value_list, v0, v1, vectors_list
 
 	@staticmethod
 	def measure_projected_inertia_tensor_eq(mass, particle_mass, rel_position, reduced=False):
@@ -663,7 +669,7 @@ class MeasureSnapshotVariables(SimInfo):
 		self.COM = self.TNG100_SubhaloPT.read_cat("COM")
 		self.not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], LOS_ind, invert=True)]
 		LOS_axis = {0: 'x', 1: 'y', 2: 'z'}
-		I_list, value_list, v0, v1, v2, vectors_list = [], [], [], [], [], []
+		I_list, value_list, v0, v1, vectors_list = [], [], [], [], []
 		result = ProcessingPool(nodes=self.numnodes).map(
 			self.measure_projected_inertia_tensor_single,
 			self.multiproc_chuncks,
@@ -673,8 +679,7 @@ class MeasureSnapshotVariables(SimInfo):
 			value_list.extend(result[i][1])
 			v0.extend(result[i][2])
 			v1.extend(result[i][3])
-			v2.extend(result[i][4])
-			vectors_list.extend(result[i][5])
+			vectors_list.extend(result[i][4])
 
 		if sorted:
 			eigen_values = np.array(value_list)
