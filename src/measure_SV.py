@@ -49,12 +49,11 @@ class MeasureSnapshotVariables(SimInfo):
 		self.TNG100_SubhaloPT = ReadTNGdata(
 			self.simname, self.subhalo_cat, self.snapshot, sub_group=f"PT{self.PT}/",
 			data_path=self.data_path)
-		if self.Num_halos == 0:
-			try:
-				Len = self.TNG100_SubhaloPT.read_cat(self.sub_len_name)
-				self.Num_halos = len(Len)
-			except:
-				self.Num_halos = 0
+		try:
+			Len = self.TNG100_SubhaloPT.read_cat(self.sub_len_name)
+			self.Num_halos = len(Len)
+		except:
+			self.Num_halos = 0
 		self.off = self.TNG100_SubhaloPT.read_cat(self.offset_name)
 		self.Len = self.TNG100_SubhaloPT.read_cat(self.sub_len_name)
 		self.mass = self.TNG100_SubhaloPT.read_cat(self.mass_name)
