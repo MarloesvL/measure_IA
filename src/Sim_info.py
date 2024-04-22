@@ -64,6 +64,12 @@ class SimInfo:
 			self.h = 0.6774
 			self.DM_part_mass = 0.000505574296436975  # 10^10 M_sun/h
 			self.N_files = 448
+		elif self.simname == "TNG100_2":
+			self.boxsize = 75000.0  # ckpc/h
+			self.L_0p5 = self.boxsize / 2.0
+			self.h = 0.6774
+			self.DM_part_mass = 0.0040445943714958  # 10^10 M_sun/h
+			self.N_files = 56
 		elif self.simname == "TNG300":
 			self.boxsize = 205000.0  # ckpc/h
 			self.L_0p5 = self.boxsize / 2.0
