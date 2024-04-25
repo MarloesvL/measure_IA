@@ -403,14 +403,11 @@ class MeasureIA(SimInfo):
 		RR_gg = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		variance = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 
-		start = time.time()
 		pos_tree = KDTree(positions, boxsize=self.boxsize)
 		shape_tree = KDTree(positions_shape_sample, boxsize=self.boxsize)
 		ind_min = shape_tree.query_ball_tree(pos_tree, self.separation_min)
 		ind_max = shape_tree.query_ball_tree(pos_tree, self.separation_max)
 		ind_rbin = self.setdiff2D(ind_max, ind_min)
-		print('1', time.time() - start)
-		start_loop = time.time()
 		for n in np.arange(0, len(positions_shape_sample)):
 			# for Splus_D (calculate ellipticities around position sample)
 			separation = positions_shape_sample[n] - positions[ind_rbin[n]]
@@ -442,7 +439,6 @@ class MeasureIA(SimInfo):
 			np.add.at(Scross_D, (ind_r, ind_pi), e_cross[mask] / (2 * R))
 			np.add.at(variance, (ind_r, ind_pi), (e_plus[mask] / (2 * R)) ** 2)
 			np.add.at(DD, (ind_r, ind_pi), 1.0)
-		print('2', time.time() - start_loop)
 
 		DD = DD / 2.0  # auto correlation, all pairs are double
 
