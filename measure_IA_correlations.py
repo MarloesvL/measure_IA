@@ -47,7 +47,7 @@ IA_Projected = MeasureIA(
 	boxsize=boxsize,
 )
 # wg+,wgg
-IA_Projected.measure_projected_correlation(dataset_name=dataset_name)
+IA_Projected.measure_projected_correlation_tree(dataset_name=dataset_name)
 IA_Projected.measure_w_g_i(corr_type=corr_type[0], dataset_name=dataset_name)
 IA_Projected.measure_jackknife_errors(
 	corr_type=corr_type,
@@ -64,7 +64,7 @@ IA_Projected.measure_jackknife_errors_multiprocessing(
 )
 corr_type = ['g+', 'multipoles']
 # multipoles
-IA_Projected.measure_projected_correlation_multipoles(dataset_name=dataset_name, rp_cut=rp_cut)
+IA_Projected.measure_projected_correlation_multipoles_tree(dataset_name=dataset_name, rp_cut=rp_cut)
 IA_Projected.measure_multipoles(dataset_name=dataset_name, corr_type=corr_type[0])
 IA_Projected.measure_jackknife_errors_multiprocessing(
 	corr_type=corr_type,
