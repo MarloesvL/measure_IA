@@ -235,7 +235,8 @@ class MeasureIA(SimInfo):
 			raise ValueError("Unknown input for corrtype, choose from auto or cross.")
 		return abs(RR)
 
-	def measure_projected_correlation(self, masks=None, dataset_name="All_galaxies", return_output=False):
+	def measure_projected_correlation(self, masks=None, dataset_name="All_galaxies", return_output=False
+									  ):
 		"""
 		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
@@ -261,6 +262,8 @@ class MeasureIA(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][masks["q"]]
+			print(
+				f"There are {len(positions_shape_sample)} galaxies in the shape sample and {len(positions)} galaxies in the position sample.")
 
 		LOS_ind = self.data["LOS"]  # eg 2 for z axis
 		not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], LOS_ind, invert=True)]  # eg 0,1 for x&y
@@ -388,6 +391,8 @@ class MeasureIA(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][masks["q"]]
+			print(
+				f"There are {len(positions_shape_sample)} galaxies in the shape sample and {len(positions)} galaxies in the position sample.")
 
 		LOS_ind = self.data["LOS"]  # eg 2 for z axis
 		not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], LOS_ind, invert=True)]  # eg 0,1 for x&y
@@ -763,6 +768,8 @@ class MeasureIA(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][masks["q"]]
+			print(
+				f"There are {len(positions_shape_sample)} galaxies in the shape sample and {len(positions)} galaxies in the position sample.")
 
 		if rp_cut == None:
 			rp_cut = 0.0
@@ -888,6 +895,8 @@ class MeasureIA(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][masks["q"]]
+			print(
+				f"There are {len(positions_shape_sample)} galaxies in the shape sample and {len(positions)} galaxies in the position sample.")
 
 		if rp_cut == None:
 			rp_cut = 0.0
@@ -1263,7 +1272,7 @@ class MeasureIA(SimInfo):
 		return
 
 	def measure_jackknife_errors(
-			self, corr_type=["both", "multipoles"], dataset_name="All_galaxies", L_subboxes=3, rp_cut=2.0
+			self, masks=None,corr_type=["both", "multipoles"], dataset_name="All_galaxies", L_subboxes=3, rp_cut=2.0
 	):
 		"""
 		Measures the errors in the projected correlation function using the jackknife method.
@@ -1297,6 +1306,8 @@ class MeasureIA(SimInfo):
 					mask_position = np.invert(
 						x_mask * y_mask * z_mask
 					)  # mask that is True for all positions not in the subbox
+
+
 					if self.Num_position == self.Num_shape:
 						mask_shape = mask_position
 					else:
@@ -1312,6 +1323,9 @@ class MeasureIA(SimInfo):
 						mask_shape = np.invert(
 							x_mask * y_mask * z_mask
 						)  # mask that is True for all positions not in the subbox
+					if masks != None:
+						mask_position = mask_position*masks["Position"]
+						mask_shape = mask_shape * masks["Position_shape_sample"]
 					if corr_type[1] == "multipoles":
 						self.measure_projected_correlation_multipoles_tree(
 							{
@@ -1371,6 +1385,7 @@ class MeasureIA(SimInfo):
 
 	def measure_jackknife_errors_multiprocessing(
 			self,
+			masks=None,
 			corr_type=["both", "multipoles"],
 			dataset_name="All_galaxies",
 			L_subboxes=3,
@@ -1445,6 +1460,9 @@ class MeasureIA(SimInfo):
 						mask_shape = np.invert(
 							x_mask * y_mask * z_mask
 						)  # mask that is True for all positions not in the subbox
+					if masks != None:
+						mask_position = mask_position*masks["Position"]
+						mask_shape = mask_shape * masks["Position_shape_sample"]
 					if corr_type[1] == "multipoles":
 						args_xi_g_plus.append(
 							(
