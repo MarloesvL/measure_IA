@@ -235,7 +235,7 @@ class MeasureIA(SimInfo):
 			raise ValueError("Unknown input for corrtype, choose from auto or cross.")
 		return abs(RR)
 
-	def measure_projected_correlation(self, masks=None, dataset_name="All_galaxies", return_output=False
+	def measure_projected_correlation(self, masks=None, dataset_name="All_galaxies", return_output=False, print_num=True
 									  ):
 		"""
 		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
@@ -262,6 +262,7 @@ class MeasureIA(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][masks["q"]]
+		if print_num:
 			print(
 				f"There are {len(positions_shape_sample)} galaxies in the shape sample and {len(positions)} galaxies in the position sample.")
 
@@ -365,7 +366,7 @@ class MeasureIA(SimInfo):
 		return diff
 
 	def measure_projected_correlation_tree(self, masks=None, dataset_name="All_galaxies",
-										   return_output=False):
+										   return_output=False, print_num=True):
 		"""
 		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
@@ -391,6 +392,7 @@ class MeasureIA(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][masks["q"]]
+		if print_num:
 			print(
 				f"There are {len(positions_shape_sample)} galaxies in the shape sample and {len(positions)} galaxies in the position sample.")
 
@@ -741,7 +743,7 @@ class MeasureIA(SimInfo):
 			return correlation, DD / RR_gg, separation_bins, pi_bins
 
 	def measure_projected_correlation_multipoles(
-			self, masks=None, rp_cut=2.0, dataset_name="All_galaxies", return_output=False
+			self, masks=None, rp_cut=2.0, dataset_name="All_galaxies", return_output=False, print_num=True
 	):
 		"""
 		Measures the projected correlation function (xi_g_plus) for given coordinates of the position and shape sample
@@ -768,6 +770,7 @@ class MeasureIA(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][masks["q"]]
+		if print_num:
 			print(
 				f"There are {len(positions_shape_sample)} galaxies in the shape sample and {len(positions)} galaxies in the position sample.")
 
@@ -869,7 +872,7 @@ class MeasureIA(SimInfo):
 			return correlation, DD / RR_gg, separation_bins, mu_r_bins
 
 	def measure_projected_correlation_multipoles_tree(self, masks=None, rp_cut=2.0, dataset_name="All_galaxies",
-													  return_output=False):
+													  return_output=False, print_num=True):
 		"""
 		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
@@ -895,6 +898,7 @@ class MeasureIA(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][masks["q"]]
+		if print_num:
 			print(
 				f"There are {len(positions_shape_sample)} galaxies in the shape sample and {len(positions)} galaxies in the position sample.")
 
@@ -1306,8 +1310,6 @@ class MeasureIA(SimInfo):
 					mask_position = np.invert(
 						x_mask * y_mask * z_mask
 					)  # mask that is True for all positions not in the subbox
-
-
 					if self.Num_position == self.Num_shape:
 						mask_shape = mask_position
 					else:
@@ -1336,6 +1338,7 @@ class MeasureIA(SimInfo):
 							},
 							rp_cut=rp_cut,
 							dataset_name=dataset_name + "_" + str(num_box),
+							print_num=False,
 						)
 						self.measure_multipoles(corr_type=corr_type[0], dataset_name=dataset_name + "_" + str(num_box))
 					else:
@@ -1347,6 +1350,7 @@ class MeasureIA(SimInfo):
 								"q": mask_shape,
 							},
 							dataset_name=dataset_name + "_" + str(num_box),
+							print_num=False,
 						)
 						self.measure_w_g_i(corr_type=corr_type[0], dataset_name=dataset_name + "_" + str(num_box))
 
@@ -1475,6 +1479,7 @@ class MeasureIA(SimInfo):
 								rp_cut,
 								dataset_name + "_" + str(num_box),
 								True,
+								False,
 							)
 						)
 					else:
@@ -1488,6 +1493,7 @@ class MeasureIA(SimInfo):
 								},
 								dataset_name + "_" + str(num_box),
 								True,
+								False,
 							)
 						)
 					args_multipoles.append([corr_type[0], dataset_name + "_" + str(num_box)])
@@ -1505,6 +1511,7 @@ class MeasureIA(SimInfo):
 					args_xi_g_plus[chunck][:, 1],
 					args_xi_g_plus[chunck][:, 2],
 					args_xi_g_plus[chunck][:, 3],
+					args_xi_g_plus[chunck][:, 4],
 				)
 			else:
 				result = ProcessingPool(nodes=len(chunck)).map(
@@ -1512,6 +1519,7 @@ class MeasureIA(SimInfo):
 					args_xi_g_plus[chunck][:, 0],
 					args_xi_g_plus[chunck][:, 1],
 					args_xi_g_plus[chunck][:, 2],
+					args_xi_g_plus[chunck][:, 3],
 				)
 			output_file = h5py.File(self.output_file_name, "a")
 			for i in np.arange(0, len(chunck)):
