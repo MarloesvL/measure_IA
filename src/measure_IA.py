@@ -1223,7 +1223,7 @@ class MeasureIA(SimInfo):
 							x_mask * y_mask * z_mask
 						)  # mask that is True for all positions not in the subbox
 					if masks != None:
-						mask_position = mask_position*masks["Position"]
+						mask_position = mask_position * masks["Position"]
 						mask_shape = mask_shape * masks["Position_shape_sample"]
 					if corr_type[1] == "multipoles":
 						self.measure_projected_correlation_multipoles_tree(
@@ -1362,7 +1362,7 @@ class MeasureIA(SimInfo):
 							x_mask * y_mask * z_mask
 						)  # mask that is True for all positions not in the subbox
 					if masks != None:
-						mask_position = mask_position*masks["Position"]
+						mask_position = mask_position * masks["Position"]
 						mask_shape = mask_shape * masks["Position_shape_sample"]
 					if corr_type[1] == "multipoles":
 						args_xi_g_plus.append(
