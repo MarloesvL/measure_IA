@@ -280,7 +280,7 @@ class MeasureIA(SimInfo):
 		RR_g_plus = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		RR_gg = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		variance = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
-		start = time.time()
+
 		for n in np.arange(0, len(positions)):
 			# for Splus_D (calculate ellipticities around position sample)
 			separation = positions_shape_sample - positions[n]
@@ -292,8 +292,8 @@ class MeasureIA(SimInfo):
 			separation_dir = (projected_sep.transpose() / separation_len).transpose()  # normalisation of rp
 			phi = np.arccos(self.calculate_dot_product_arrays(separation_dir, axis_direction))  # [0,pi]
 			e_plus, e_cross = self.get_ellipticity(e, phi)
-			if self.Num_position == self.Num_shape:
-				e_plus[n], e_cross[n] = 0.0, 0.0
+			# if self.Num_position == self.Num_shape:
+			# 	e_plus[n], e_cross[n] = 0.0, 0.0
 			e_plus[np.isnan(e_plus)] = 0.0
 			e_cross[np.isnan(e_cross)] = 0.0
 
@@ -311,9 +311,9 @@ class MeasureIA(SimInfo):
 			np.add.at(Scross_D, (ind_r, ind_pi), e_cross[mask] / (2 * R))
 			np.add.at(variance, (ind_r, ind_pi), (e_plus[mask] / (2 * R)) ** 2)
 			np.add.at(DD, (ind_r, ind_pi), 1.0)
-		print(time.time() - start)
 
-		DD = DD / 2.0  # auto correlation, all pairs are double
+		if self.Num_position == self.Num_shape:
+			DD = DD / 2.0  # auto correlation, all pairs are double
 
 		for i in np.arange(0, self.num_bins_r):
 			for p in np.arange(0, self.num_bins_pi):
@@ -429,8 +429,8 @@ class MeasureIA(SimInfo):
 			phi = np.arccos(separation_dir[:, 0] * axis_direction[n, 0] + separation_dir[:, 1] * axis_direction[
 				n, 1])  # [0,pi]
 			e_plus, e_cross = self.get_ellipticity(e[n], phi)
-			if self.Num_position == self.Num_shape:
-				e_plus[n], e_cross[n] = 0.0, 0.0
+			# if self.Num_position == self.Num_shape:
+			# 	e_plus[n], e_cross[n] = 0.0, 0.0
 			e_plus[np.isnan(e_plus)] = 0.0
 			e_cross[np.isnan(e_cross)] = 0.0
 
@@ -449,7 +449,8 @@ class MeasureIA(SimInfo):
 			np.add.at(variance, (ind_r, ind_pi), (e_plus[mask] / (2 * R)) ** 2)
 			np.add.at(DD, (ind_r, ind_pi), 1.0)
 
-		DD = DD / 2.0  # auto correlation, all pairs are double
+		if self.Num_position == self.Num_shape:
+			DD = DD / 2.0  # auto correlation, all pairs are double
 
 		for i in np.arange(0, self.num_bins_r):
 			for p in np.arange(0, self.num_bins_pi):
@@ -649,11 +650,12 @@ class MeasureIA(SimInfo):
 			mu_r = LOS / separation_len
 			phi = np.arccos(self.calculate_dot_product_arrays(separation_dir, axis_direction))  # [0,pi]
 			e_plus, e_cross = self.get_ellipticity(e, phi)
-			if self.Num_position == self.Num_shape:
-				e_plus[n], e_cross[n] = 0.0, 0.0
-				mu_r[n] = 0.0
+			# if self.Num_position == self.Num_shape:
+			# 	e_plus[n], e_cross[n] = 0.0, 0.0
+			# 	mu_r[n] = 0.0
 			e_plus[np.isnan(e_plus)] = 0.0
 			e_cross[np.isnan(e_cross)] = 0.0
+			mu_r[np.isnan(e_plus)] = 0.0
 
 			# get the indices for the binning
 			mask = (
@@ -674,7 +676,8 @@ class MeasureIA(SimInfo):
 			np.add.at(Scross_D, (ind_r, ind_mu_r), e_cross[mask] / (2 * R))
 			np.add.at(DD, (ind_r, ind_mu_r), 1.0)
 
-		DD = DD / 2.0  # auto correlation, all pairs are double
+		if self.Num_position == self.Num_shape:
+			DD = DD / 2.0  # auto correlation, all pairs are double
 
 		# analytical calc is much more difficult for (r,mu_r) bins
 		for i in np.arange(0, self.num_bins_r):
@@ -763,7 +766,6 @@ class MeasureIA(SimInfo):
 		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		RR_g_plus = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		RR_gg = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
-
 		pos_tree = KDTree(positions, boxsize=self.boxsize)
 		shape_tree = KDTree(positions_shape_sample, boxsize=self.boxsize)
 		ind_min = shape_tree.query_ball_tree(pos_tree, self.separation_min)
@@ -784,10 +786,11 @@ class MeasureIA(SimInfo):
 			phi = np.arccos(separation_dir[:, 0] * axis_direction[n, 0] + separation_dir[:, 1] * axis_direction[
 				n, 1])  # [0,pi]
 			e_plus, e_cross = self.get_ellipticity(e[n], phi)
-			if self.Num_position == self.Num_shape:
-				e_plus[n], e_cross[n] = 0.0, 0.0
-				mu_r[n] = 0.0
+			# if self.Num_position == self.Num_shape:
+			# 	e_plus[n], e_cross[n] = 0.0, 0.0
+			# 	mu_r[n] = 0.0
 			e_plus[np.isnan(e_plus)] = 0.0
+			mu_r[np.isnan(e_plus)] = 0.0
 			e_cross[np.isnan(e_cross)] = 0.0
 
 			# get the indices for the binning
@@ -809,7 +812,8 @@ class MeasureIA(SimInfo):
 			np.add.at(Scross_D, (ind_r, ind_mu_r), e_cross[mask] / (2 * R))
 			np.add.at(DD, (ind_r, ind_mu_r), 1.0)
 
-		DD = DD / 2.0  # auto correlation, all pairs are double
+		if self.Num_position == self.Num_shape:
+			DD = DD / 2.0  # auto correlation, all pairs are double
 
 		# analytical calc is much more difficult for (r,mu_r) bins
 		for i in np.arange(0, self.num_bins_r):
