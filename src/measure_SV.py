@@ -3,6 +3,8 @@ import h5py
 import time
 from numpy.linalg import eig, inv
 import sympy
+import sys
+sys.set_int_max_str_digits(8600)
 from pathos.multiprocessing import ProcessingPool
 from src.read_data_TNG import ReadTNGdata
 from src.write_data import write_dataset_hdf5, create_group_hdf5
@@ -360,12 +362,9 @@ class MeasureSnapshotVariables(SimInfo):
 	def measure_COM_single(self, indices):
 		COM = []
 		for n in indices:
-			# start_time = time.time()
 			off_n = self.off[n]
 			len_n = self.Len[n]
 			mass_n = self.mass[n]
-			# self.other_time += (time.time() - start_time)
-			# start_time = time.time()
 			if self.PT == 1:
 				mass_particles = self.DM_part_mass
 				coordinates_particles = self.TNG100_snapshot.read_cat(self.coordinates_name, cut=[off_n, off_n + len_n])
@@ -380,8 +379,6 @@ class MeasureSnapshotVariables(SimInfo):
 			else:
 				mass_particles = self.TNG100_snapshot.read_cat(self.masses_name, cut=[off_n, off_n + len_n])
 				coordinates_particles = self.TNG100_snapshot.read_cat(self.coordinates_name, cut=[off_n, off_n + len_n])
-			# self.read_time += (time.time() - start_time)
-			# start_time = time.time()
 			# account for periodicity of the box
 			min_coord = np.min(coordinates_particles, axis=0)
 			coordinates_particles[(coordinates_particles - min_coord) > self.L_0p5] -= self.boxsize
@@ -391,7 +388,6 @@ class MeasureSnapshotVariables(SimInfo):
 			COM_n = np.sum(mass_coord, axis=0) / mass_n
 			COM_n[COM_n < 0.0] += self.boxsize  # if negative: COM is on other side of box.
 			COM.append(COM_n)
-			# self.calc_time += (time.time() - start_time)
 		return COM
 
 	def measure_COM(self):
@@ -405,26 +401,10 @@ class MeasureSnapshotVariables(SimInfo):
 		except:
 			self.create_self_arguments()
 		COM = []
-		# self.calc_time = 0
-		# self.read_time = 0
-		# self.other_time = 0
 		result = ProcessingPool(nodes=self.numnodes).map(
 			self.measure_COM_single,
 			self.multiproc_chuncks,
 		)
-		# print(f"calc time {self.calc_time}, read time {self.read_time}, other time {self.other_time}")
-		# 4
-		# 50
-		# TNG300
-		# calc
-		# time
-		# 0, read
-		# time
-		# 0, other
-		# time
-		# 0
-		# COM
-		# 353.83592104911804
 		for i in np.arange(self.numnodes):
 			COM.extend(result[i])
 		output_file = h5py.File(self.output_file_name, "a")
