@@ -305,7 +305,7 @@ class MeasureIA(SimInfo):
 			e_cross[np.isnan(e_cross)] = 0.0
 
 			# get the indices for the binning
-			mask = (separation_len >= self.bin_edges[0]) * (separation_len <= self.bin_edges[-1])
+			mask = (separation_len >= self.bin_edges[0]) * (separation_len < self.bin_edges[-1])
 			ind_r = np.floor(
 				np.log10(separation_len[mask]) / sub_box_len_logrp - np.log10(self.bin_edges[0]) / sub_box_len_logrp
 			)
@@ -441,7 +441,7 @@ class MeasureIA(SimInfo):
 			e_cross[np.isnan(e_cross)] = 0.0
 
 			# get the indices for the binning
-			mask = (separation_len >= self.bin_edges[0]) * (separation_len <= self.bin_edges[-1])
+			mask = (separation_len >= self.bin_edges[0]) * (separation_len < self.bin_edges[-1])
 			ind_r = np.floor(
 				np.log10(separation_len[mask]) / sub_box_len_logrp - np.log10(self.bin_edges[0]) / sub_box_len_logrp
 			)
@@ -618,7 +618,7 @@ class MeasureIA(SimInfo):
 			e_cross[np.isnan(e_cross)] = 0.0
 
 			# get the indices for the binning
-			mask = (separation_len >= self.bin_edges[0]) * (separation_len <= self.bin_edges[-1])
+			mask = (separation_len >= self.bin_edges[0]) * (separation_len < self.bin_edges[-1])
 			ind_r = np.floor(
 				np.log10(separation_len[mask]) / sub_box_len_logrp - np.log10(self.bin_edges[0]) / sub_box_len_logrp
 			)
@@ -844,7 +844,7 @@ class MeasureIA(SimInfo):
 			mask = (
 					(projected_separation_len > rp_cut)
 					* (separation_len >= self.bin_edges[0])
-					* (separation_len <= self.bin_edges[-1])
+					* (separation_len < self.bin_edges[-1])
 			)
 			ind_r = np.floor(
 				np.log10(separation_len[mask]) / sub_box_len_logr - np.log10(self.bin_edges[0]) / sub_box_len_logr
@@ -981,7 +981,7 @@ class MeasureIA(SimInfo):
 			mask = (
 					(projected_separation_len > rp_cut)
 					* (separation_len >= self.bin_edges[0])
-					* (separation_len <= self.bin_edges[-1])
+					* (separation_len < self.bin_edges[-1])
 			)
 			ind_r = np.floor(
 				np.log10(separation_len[mask]) / sub_box_len_logr - np.log10(self.bin_edges[0]) / sub_box_len_logr
@@ -991,7 +991,6 @@ class MeasureIA(SimInfo):
 				mu_r[mask] / sub_box_len_mu_r - self.bins_mu_r[0] / sub_box_len_mu_r
 			)  # need length of LOS, so only positive values
 			ind_mu_r = np.array(ind_mu_r, dtype=int)
-
 			np.add.at(Splus_D, (ind_r, ind_mu_r), e_plus[mask] / (2 * R))
 			np.add.at(Scross_D, (ind_r, ind_mu_r), e_cross[mask] / (2 * R))
 			np.add.at(DD, (ind_r, ind_mu_r), 1.0)
