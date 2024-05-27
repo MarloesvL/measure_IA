@@ -52,6 +52,7 @@ class MeasureIA(SimInfo):
 			self.boxsize = boxsize
 			self.L_0p5 = boxsize / 2.0
 			self.PT = PT
+			self.snapshot = snapshot
 		else:
 			SimInfo.__init__(self, simulation,
 							 snapshot, PT)  # simulation is a SimInfo object created in the file that calls this class
