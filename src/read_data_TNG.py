@@ -17,9 +17,9 @@ class ReadTNGdata(SimInfo):
 
 	def __init__(
 			self, project, catalogue, snapshot, sub_group="", output_file_name=None, data_path="./data/raw/",
-			sub_folder=""
+			sub_folder="", manual=False, update=False
 	):
-		SimInfo.__init__(self, project, snapshot)
+		SimInfo.__init__(self, project, snapshot, manual=manual,update=update)
 		self.catalogue = catalogue
 		self.sub_group = sub_group
 		self.data_path = data_path + project + "/" + sub_folder + "/"
