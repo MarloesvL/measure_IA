@@ -49,12 +49,12 @@ IA_Projected = MeasureIA(
 # wg+,wgg
 IA_Projected.measure_projected_correlation_tree(dataset_name=dataset_name)
 IA_Projected.measure_w_g_i(corr_type=corr_type[0], dataset_name=dataset_name)
-IA_Projected.measure_jackknife_errors(
-	corr_type=corr_type,
-	dataset_name=dataset_name,
-	L_subboxes=L_subboxes,
-	rp_cut=rp_cut,
-)
+# IA_Projected.measure_jackknife_errors(
+# 	corr_type=corr_type,
+# 	dataset_name=dataset_name,
+# 	L_subboxes=L_subboxes,
+# 	rp_cut=rp_cut,
+# )
 IA_Projected.measure_jackknife_errors_multiprocessing(
 	corr_type=corr_type,
 	dataset_name=dataset_name,
