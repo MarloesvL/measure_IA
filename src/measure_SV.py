@@ -4,6 +4,7 @@ import time
 from numpy.linalg import eig, inv
 import sympy
 import sys
+
 sys.set_int_max_str_digits(8600)
 from pathos.multiprocessing import ProcessingPool
 from src.read_data_TNG import ReadTNGdata
@@ -58,7 +59,7 @@ class MeasureSnapshotVariables(SimInfo):
 			self.Num_halos = 0
 		self.off = self.TNG100_SubhaloPT.read_cat(self.offset_name)
 		self.Len = self.TNG100_SubhaloPT.read_cat(self.sub_len_name)
-		self.mass = self.TNG100_SubhaloPT.read_cat(self.mass_name)
+		self.mass = self.TNG100_SubhaloPT.read_cat("SubhaloMassType")  # self.TNG100_SubhaloPT.read_cat(self.mass_name)
 		self.TNG100_snapshot = ReadTNGdata(
 			self.simname,
 			self.snap_cat,
@@ -159,7 +160,7 @@ class MeasureSnapshotVariables(SimInfo):
 		group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/PT" + str(self.PT))
 		write_dataset_hdf5(group, self.sub_len_name, Len[mask])
 		write_dataset_hdf5(group, self.offset_name, off[mask])
-		write_dataset_hdf5(group, self.mass_name, mass_subhalo[mask])
+		write_dataset_hdf5(group, "SubhaloMassType", mass_subhalo[mask])
 		write_dataset_hdf5(group, self.ID_name, IDs)
 		if self.PT == 4:
 			photo_mag = TNG100_subhalo.read_subhalo(self.photo_name)
@@ -207,7 +208,6 @@ class MeasureSnapshotVariables(SimInfo):
 		galaxyIDs = galaxyIDs[sorted_indices]
 		gn = gn[sorted_indices]
 		sn = sn[sorted_indices]
-
 		self.Num_halos = len(mass_subhalo[indices_gnsn_in_sub])
 		output_file = h5py.File(self.output_file_name, "a")
 		group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/PT" + str(self.PT))
@@ -266,6 +266,7 @@ class MeasureSnapshotVariables(SimInfo):
 
 	def measure_masses_excl_wind_single(self, indices):
 		mass_list = []
+		much_wind = 0
 		for n in indices:
 			off_n = self.off[n]
 			len_n = self.Len[n]
@@ -274,6 +275,13 @@ class MeasureSnapshotVariables(SimInfo):
 			masses = self.TNG100_snapshot.read_cat(self.masses_name, cut=[off_n, off_n + len_n])[star_mask]
 			mass = sum(masses)
 			mass_list.append(mass)
+			num_wind = len_n - sum(star_mask)
+			if mass / self.mass[n] > 1.01:
+				# print(n, num_wind / len_n, self.mass[n], mass, len_n, len_n - sum(star_mask))
+				if len_n == 1.:
+					print(n, len_n, num_wind, self.mass[n], mass, masses)
+				much_wind += 1
+		# print(much_wind, len(indices))
 		return mass_list
 
 	def measure_masses_excl_wind(self):
@@ -300,6 +308,7 @@ class MeasureSnapshotVariables(SimInfo):
 		)
 		for i in np.arange(self.numnodes):
 			mass_list.extend(result[i])
+		# print(sum(np.array(mass_list) / self.mass > 1.))
 
 		output_file = h5py.File(self.output_file_name, "a")
 		group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/PT" + str(self.PT))
@@ -361,6 +370,7 @@ class MeasureSnapshotVariables(SimInfo):
 
 	def measure_COM_single(self, indices):
 		COM = []
+		info = []
 		for n in indices:
 			off_n = self.off[n]
 			len_n = self.Len[n]
@@ -376,6 +386,8 @@ class MeasureSnapshotVariables(SimInfo):
 					self.TNG100_snapshot.read_cat(self.coordinates_name, cut=[off_n, off_n + len_n])[
 						star_mask
 					]
+				info.append([min(coordinates_particles[:, 0]), max(coordinates_particles[:, 0]), min(mass_particles),
+							 max(mass_particles), mass_n])
 			else:
 				mass_particles = self.TNG100_snapshot.read_cat(self.masses_name, cut=[off_n, off_n + len_n])
 				coordinates_particles = self.TNG100_snapshot.read_cat(self.coordinates_name, cut=[off_n, off_n + len_n])
@@ -388,7 +400,7 @@ class MeasureSnapshotVariables(SimInfo):
 			COM_n = np.sum(mass_coord, axis=0) / mass_n
 			COM_n[COM_n < 0.0] += self.boxsize  # if negative: COM is on other side of box.
 			COM.append(COM_n)
-		return COM
+		return COM, info
 
 	def measure_COM(self):
 		"""
@@ -406,7 +418,22 @@ class MeasureSnapshotVariables(SimInfo):
 			self.multiproc_chuncks,
 		)
 		for i in np.arange(self.numnodes):
-			COM.extend(result[i])
+			COM.extend(result[i][0])
+		info = result[0][1]
+		for i in np.arange(1, self.numnodes):
+			np.vstack((info, result[i][1]))
+		print(np.shape(info))
+		info = np.array(info)
+		print(min(info[:, 0]), max(info[:, 1]), min(info[:, 2]), max(info[:, 3]), min(info[:, 4]), max(info[:, 4]))
+		# (83430, 5)
+		# 0.010551714018220082
+		# 204999.99517661438
+		# 9.01220028026728e-06
+		# 0.0014873057371005416
+		# 5.0742786697810516e-05
+		# 535.0704680964336
+		# COM
+		# 74.14391207695007
 		output_file = h5py.File(self.output_file_name, "a")
 		group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/PT" + str(self.PT))
 		write_dataset_hdf5(group, "COM", data=np.array(COM))
