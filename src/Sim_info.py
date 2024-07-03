@@ -165,7 +165,10 @@ class SimInfo:
 			self.snap_folder = f"/snap_0{self.snapshot}/snap_0{self.snapshot}"
 			self.snap_group = f"Snapshot_{self.snapshot}/"
 		elif self.simname == "EAGLE":
-			self.snap_folder = f"/snap_0{self.snapshot}/RefL0100N1504/snapshot_0{self.snapshot}_z000p000/snap_0{self.snapshot}_z000p000"  # update for different z?
+			znames = {"28": "z000p000", "17": "z001p487", "19": "z001p004", "21": "z000p736", "23": "z000p503",
+					  "25": "z000p271"}
+			zname = znames[self.snapshot]
+			self.snap_folder = f"/snap_0{self.snapshot}/RefL0100N1504/snapshot_0{self.snapshot}_{zname}/snap_0{self.snapshot}_{zname}"  # update for different z?
 			self.snap_group = f"Snapshot_{self.snapshot}/"
 			self.fof_folder = None
 		else:
@@ -178,7 +181,7 @@ class SimInfo:
 		elif "TNG" in self.simname:
 			redshifts = {"40": 1.5, "50": 1.0, "67": 0.5, "78": 0.3, "59": 0.7, "99": 0.0}
 		elif self.simname == "EAGLE":
-			redshifts = {"28": 0.0}
+			redshifts = {"28": 0.0, "17": 1.487, "19": 1.004, "21": 0.736, "23": 0.503, "25": 0.271}
 		else:
 			raise KeyError("Simulation name not recognised. Choose from [TNG100, TNG300].")
 		try:
