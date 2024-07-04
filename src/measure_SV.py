@@ -59,7 +59,7 @@ class MeasureSnapshotVariables(SimInfo):
 			self.Num_halos = 0
 		self.off = self.TNG100_SubhaloPT.read_cat(self.offset_name)
 		self.Len = self.TNG100_SubhaloPT.read_cat(self.sub_len_name)
-		self.mass = self.TNG100_SubhaloPT.read_cat("SubhaloMassType")  # self.TNG100_SubhaloPT.read_cat(self.mass_name)
+		self.mass = self.TNG100_SubhaloPT.read_cat(self.mass_name)#self.TNG100_SubhaloPT.read_cat("SubhaloMassType")  #
 		self.TNG100_snapshot = ReadTNGdata(
 			self.simname,
 			self.snap_cat,
@@ -370,7 +370,7 @@ class MeasureSnapshotVariables(SimInfo):
 
 	def measure_COM_single(self, indices):
 		COM = []
-		info = []
+		# info = []
 		for n in indices:
 			off_n = self.off[n]
 			len_n = self.Len[n]
@@ -386,8 +386,8 @@ class MeasureSnapshotVariables(SimInfo):
 					self.TNG100_snapshot.read_cat(self.coordinates_name, cut=[off_n, off_n + len_n])[
 						star_mask
 					]
-				info.append([min(coordinates_particles[:, 0]), max(coordinates_particles[:, 0]), min(mass_particles),
-							 max(mass_particles), mass_n])
+				# info.append([min(coordinates_particles[:, 0]), max(coordinates_particles[:, 0]), min(mass_particles),
+				# 			 max(mass_particles), mass_n])
 			else:
 				mass_particles = self.TNG100_snapshot.read_cat(self.masses_name, cut=[off_n, off_n + len_n])
 				coordinates_particles = self.TNG100_snapshot.read_cat(self.coordinates_name, cut=[off_n, off_n + len_n])
@@ -400,7 +400,7 @@ class MeasureSnapshotVariables(SimInfo):
 			COM_n = np.sum(mass_coord, axis=0) / mass_n
 			COM_n[COM_n < 0.0] += self.boxsize  # if negative: COM is on other side of box.
 			COM.append(COM_n)
-		return COM, info
+		return COM#, info
 
 	def measure_COM(self):
 		"""
@@ -418,13 +418,13 @@ class MeasureSnapshotVariables(SimInfo):
 			self.multiproc_chuncks,
 		)
 		for i in np.arange(self.numnodes):
-			COM.extend(result[i][0])
-		info = result[0][1]
-		for i in np.arange(1, self.numnodes):
-			np.vstack((info, result[i][1]))
-		print(np.shape(info))
-		info = np.array(info)
-		print(min(info[:, 0]), max(info[:, 1]), min(info[:, 2]), max(info[:, 3]), min(info[:, 4]), max(info[:, 4]))
+			COM.extend(result[i])#[0])
+		# info = result[0][1]
+		# for i in np.arange(1, self.numnodes):
+		# 	np.vstack((info, result[i][1]))
+		# print(np.shape(info))
+		# info = np.array(info)
+		# print(min(info[:, 0]), max(info[:, 1]), min(info[:, 2]), max(info[:, 3]), min(info[:, 4]), max(info[:, 4]))
 		# (83430, 5)
 		# 0.010551714018220082
 		# 204999.99517661438
