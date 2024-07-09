@@ -1173,7 +1173,7 @@ class MeasureIA(SimInfo):
 		return
 
 	def measure_jackknife_errors(
-			self, masks=None,corr_type=["both", "multipoles"], dataset_name="All_galaxies", L_subboxes=3, rp_cut=2.0
+			self, masks=None, corr_type=["both", "multipoles"], dataset_name="All_galaxies", L_subboxes=3, rp_cut=2.0
 	):
 		"""
 		Measures the errors in the projected correlation function using the jackknife method.
@@ -1470,6 +1470,139 @@ class MeasureIA(SimInfo):
 				return
 			else:
 				return cov, std
+
+	def measure_covariance_multiple_datasets(self, corr_type, dataset_names, num_box=3):
+		"""
+		Combines the jackknife measurements for different datasets into one covariance matrix.
+		Author: Marta Garcia Escobar (starting from measure_jackknife_errors code); updated
+		:param corr_type: Takes "w_g_plus" or "multipoles_g_plus".
+		:param dataset_names: List of the dataset names. If there is only one value, it calculates the covariance matrix with itself.
+		:param num_box: Number of boxes.
+		"""
+		# check if corr_type is valid
+		valid_corr_types = ["w_g_plus", "multipoles_g_plus"]
+		if corr_type not in valid_corr_types:
+			raise ValueError("corr_type must be 'w_g_plus' or 'multipoles_g_plus'.")
+
+		data_file = h5py.File(self.output_file_name, "a")
+		group = data_file[f"Snapshot_{self.snapshot}/" + corr_type]
+
+		mean_list = []  # list of arrays
+
+		for dataset_name in dataset_names:
+			mean_multipoles = np.zeros(self.num_bins_r)
+			for b in np.arange(0, num_box):
+				mean_multipoles += group[dataset_name + "_" + str(b)]
+			mean_multipoles /= num_box
+			mean_list.append(mean_multipoles)
+
+		# calculation the covariance matrix and the standard deviation (sqrt of diag of cov)
+		cov = np.zeros((self.num_bins_r, self.num_bins_r))
+		std = np.zeros(self.num_bins_r)
+
+		if len(dataset_names) == 1:  # covariance with itself
+			dataset_name = dataset_names[0]
+			for b in np.arange(0, num_box):
+				std += (group[dataset_name + "_" + str(b)] - mean_list[0]) ** 2
+				for i in np.arange(self.num_bins_r):
+					cov[:, i] += (group[dataset_name + "_" + str(b)] - mean_list[0]) * (
+							group[dataset_name + "_" + str(b)][i] - mean_list[0][i]
+					)
+		elif len(dataset_names) == 2:
+			for b in np.arange(0, num_box):
+				std += (group[dataset_names[0] + "_" + str(b)] - mean_list[0]) * (
+						group[dataset_names[1] + "_" + str(b)] - mean_list[1])
+				for i in np.arange(self.num_bins_r):
+					cov[:, i] += (group[dataset_names[0] + "_" + str(b)] - mean_list[0]) * (
+							group[dataset_names[1] + "_" + str(b)][i] - mean_list[1][i]
+					)
+		else:
+			raise KeyError("Too many datasets given, choose either 1 or 2")
+
+		std *= (num_box - 1) / num_box  # see Singh 2023
+		std = np.sqrt(std)  # size of errorbars
+		cov *= (num_box - 1) / num_box  # cov not sqrt so to get std, sqrt of diag would need to be taken
+
+		data_file.close()
+
+		if self.output_file_name != None:
+			output_file = h5py.File(self.output_file_name, "a")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/" + corr_type)
+			if len(dataset_names) == 2:
+				write_dataset_hdf5(group, dataset_names[0] + "_" + dataset_names[1] + "_combined_jackknife_cov_" + str(
+					num_box), data=cov)
+				write_dataset_hdf5(group,
+								   dataset_names[0] + "_" + dataset_names[1] + "_combined_jackknife_" + str(num_box),
+								   data=std)
+
+			else:
+				write_dataset_hdf5(group, dataset_names[0] + "_combined_jackknife_cov_" + str(num_box), data=cov)
+				write_dataset_hdf5(group, dataset_names[0] + "_combined_jackknife_" + str(num_box), data=std)
+			output_file.close()
+			return
+		else:
+			return cov, std
+
+	def create_full_cov_matrix_projections(self, corr_type, dataset_names=["LOS_x", "LOS_y", "LOS_z"], num_box=27):
+		'''
+		Function that creates the full covariance matrix for all 3 projections by combining previously obtained jackknife information.
+		Generalised from Marta Garcia Escobar's code.
+		:param corr_type:
+		:param dataset_names:
+		:param num_box:
+		:return:
+		'''
+		self.measure_covariance_multiple_datasets(corr_type=corr_type,
+												  dataset_names=[dataset_names[0], dataset_names[1]], num_box=num_box)
+		self.measure_covariance_multiple_datasets(corr_type=corr_type,
+												  dataset_names=[dataset_names[0], dataset_names[2]], num_box=num_box)
+		self.measure_covariance_multiple_datasets(corr_type=corr_type,
+												  dataset_names=[dataset_names[1], dataset_names[2]], num_box=num_box)
+
+		# import needed datasets
+		output_file = h5py.File(self.output_file_name, "a")
+		group = output_file[f"Snapshot_{self.snapshot}/{corr_type}"]
+
+		# cov matrix between datasets
+		cov_xx = group[f'{dataset_names[0]}_jackknife_cov_{num_box}'][:]
+		cov_yy = group[f'{dataset_names[1]}_jackknife_cov_{num_box}'][:]
+		cov_zz = group[f'{dataset_names[2]}_jackknife_cov_{num_box}'][:]
+		cov_xy = group[f'{dataset_names[0]}_{dataset_names[1]}_combined_jackknife_cov_{num_box}'][:]
+		cov_yz = group[f'{dataset_names[0]}_{dataset_names[2]}_combined_jackknife_cov_{num_box}'][:]
+		cov_xz = group[f'{dataset_names[1]}_{dataset_names[2]}_combined_jackknife_cov_{num_box}'][:]
+
+		# 3 projections
+		cov_top = np.concatenate((cov_xx, cov_xy, cov_xz), axis=1)
+		cov_middle = np.concatenate((cov_xy.T, cov_yy, cov_yz), axis=1)  # cov_xy.T = cov_yx
+		cov_bottom = np.concatenate((cov_xz.T, cov_yz.T, cov_zz), axis=1)
+		cov = np.concatenate((cov_top, cov_middle, cov_bottom), axis=0)
+		write_dataset_hdf5(group,
+						   f"{dataset_names[0]}_{dataset_names[1]}_{dataset_names[2]}_combined_jackknife_cov_{num_box}",
+						   data=cov)
+
+		# all 2 projections (this overwrites the parts that make up the combined cov matrices)
+		cov_top = np.concatenate((cov_xx, cov_xy), axis=1)
+		cov_middle = np.concatenate((cov_xy.T, cov_yy), axis=1)  # cov_xz.T = cov_zx
+		cov = np.concatenate((cov_top, cov_middle), axis=0)
+		write_dataset_hdf5(group,
+						   f'{dataset_names[0]}_{dataset_names[1]}_combined_jackknife_cov_{num_box}',
+						   data=cov)
+
+		cov_top = np.concatenate((cov_xx, cov_xz), axis=1)
+		cov_middle = np.concatenate((cov_xz.T, cov_zz), axis=1)  # cov_xz.T = cov_zx
+		cov = np.concatenate((cov_top, cov_middle), axis=0)
+		write_dataset_hdf5(group,
+						   f'{dataset_names[0]}_{dataset_names[2]}_combined_jackknife_cov_{num_box}',
+						   data=cov)
+
+		cov_top = np.concatenate((cov_yy, cov_yz), axis=1)
+		cov_middle = np.concatenate((cov_yz.T, cov_zz), axis=1)  # cov_xz.T = cov_zx
+		cov = np.concatenate((cov_top, cov_middle), axis=0)
+		write_dataset_hdf5(group,
+						   f'{dataset_names[1]}_{dataset_names[2]}_combined_jackknife_cov_{num_box}',
+						   data=cov)
+
+		return
 
 	def measure_misalignment_angle(self, vector1_name, vector2_name, normalise=False):
 		"""
