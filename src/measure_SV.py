@@ -26,7 +26,7 @@ class MeasureSnapshotVariables(SimInfo):
 	"""
 
 	def __init__(self, PT=4, project=None, snapshot=None, numnodes=30, output_file_name=None, data_path="./data/raw/",
-				 exclude_wind=True, update=False):
+				 exclude_wind=True, update=False,snap_data_path=None):
 		if project == None:
 			raise KeyError("Input project name!")
 		SimInfo.__init__(self, project, snapshot, PT, update=update)
@@ -42,6 +42,10 @@ class MeasureSnapshotVariables(SimInfo):
 		self.numnodes = numnodes
 		self.output_file_name = output_file_name
 		self.data_path = data_path
+		if snap_data_path!=None:
+			self.data_path_snap = snap_data_path
+		else:
+			self.data_path_snap = data_path
 		return
 
 	def create_self_arguments(self):
@@ -64,7 +68,7 @@ class MeasureSnapshotVariables(SimInfo):
 			self.simname,
 			self.snap_cat,
 			self.snapshot,
-			data_path=self.data_path,
+			data_path=self.data_path_snap,
 		)
 		self.multiproc_chuncks = np.array_split(np.arange(self.Num_halos), self.numnodes)
 		return
