@@ -82,6 +82,12 @@ class SimInfo:
 			self.h = 0.6777
 			self.DM_part_mass = 0.000970  # 10^10 M_sun (*h?)
 			self.N_files = 256
+		elif self.simname == "HorizonAGN":
+			self.boxsize = 100000.0  # ckpc/h
+			self.L_0p5 = self.boxsize / 2.0
+			self.h = 0.704
+			self.DM_part_mass = 0.008 / self.h  # 10^10 M_sun/h
+			self.N_files = 1.
 		else:
 			raise KeyError("Simulation name not recognised. Choose from [TNG100, TNG300, EAGLE].")
 		return
@@ -147,6 +153,20 @@ class SimInfo:
 			self.velocities_name = "Velocity"
 			self.masses_name = "Mass"
 			self.coordinates_name = "Coordinates"
+		elif self.simname == "HorizonAGN":
+			self.mass_name = "StellarMass"
+			self.ID_name = "GalaxyID"
+			self.offset_name = None
+			self.sub_len_name = "Len"
+			self.group_len_name = None
+			self.photo_name = None
+			self.SFR_name = None
+			self.flag_name = None
+			self.wind_name = None  # "GFM_StellarFormationTime"  # >0 for star particles
+
+			self.velocities_name = "Velocity"
+			self.masses_name = "Mass"
+			self.coordinates_name = "Coordinates"
 		else:
 			raise KeyError("Simulation name not recognised. Choose from [TNG100, TNG300].")
 		return
@@ -171,6 +191,10 @@ class SimInfo:
 			self.snap_folder = f"/snap_0{self.snapshot}/RefL0100N1504/snapshot_0{self.snapshot}_{zname}/snap_0{self.snapshot}_{zname}"  # update for different z?
 			self.snap_group = f"Snapshot_{self.snapshot}/"
 			self.fof_folder = None
+		elif self.simname == "HorizonAGN":
+			self.fof_folder = None
+			self.snap_folder = None
+			self.snap_group = None
 		else:
 			raise KeyError("Simulation name not recognised. Choose from [TNG100, TNG300].")
 		return
@@ -182,6 +206,9 @@ class SimInfo:
 			redshifts = {"40": 1.5, "50": 1.0, "67": 0.5, "78": 0.3, "59": 0.7, "99": 0.0}
 		elif self.simname == "EAGLE":
 			redshifts = {"28": 0.0, "17": 1.487, "19": 1.004, "21": 0.736, "23": 0.503, "25": 0.271}
+		elif self.simname == "HorizonAGN":
+			redshifts = {"519": 0.5, "302": 1.2, "248": 1.6, "691": 0.2, "406": 0.8, "638": 0.3, "761": 0.0556,
+						 "213": 1.8, "175": 2.2, "125": 3, "197": 2, "266": 1.5, "343": 1, "154": 2.5}
 		else:
 			raise KeyError("Simulation name not recognised. Choose from [TNG100, TNG300].")
 		try:
