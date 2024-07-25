@@ -1,10 +1,6 @@
-import numpy as np
-import h5py
-from multiprocessing import Pool
 import time
 import configparser
-from src.read_data_TNG import ReadTNGdata
-from src.measure_IA import MeasureVariablesSnapshot
+from src.measure_IA_sims.measure_IA import MeasureVariablesSnapshot
 
 config = configparser.RawConfigParser()
 config.read("./configs/measure_variables.cfg")

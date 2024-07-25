@@ -1,5 +1,4 @@
 import numpy as np
-from src.read_data_TNG import ReadTNGdata
 from src.measure_IA import MeasureIA
 
 # creating random sample data
