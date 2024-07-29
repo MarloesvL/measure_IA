@@ -367,11 +367,14 @@ class MeasureSnapshotVariables(SimInfo):
 		)
 		for i in np.arange(self.numnodes):
 			velocities.extend(result[i])
-		output_file = h5py.File(self.output_file_name, "a")
-		group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/PT" + str(self.PT))
-		write_dataset_hdf5(group, "Velocity", data=np.array(velocities))
-		output_file.close()
-		return
+		if self.output_file_name != None:
+			output_file = h5py.File(self.output_file_name, "a")
+			group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/PT" + str(self.PT))
+			write_dataset_hdf5(group, "Velocity", data=np.array(velocities))
+			output_file.close()
+			return
+		else:
+			return np.array(velocities)
 
 	def measure_COM_single(self, indices):
 		COM = []
