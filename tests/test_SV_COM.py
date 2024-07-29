@@ -13,8 +13,13 @@ import numpy as np
 # 	# assert sim == 16 # see conftest file
 # 	return
 
-# need mock data
 def test_COM(SV_PT4_TNG100_99):
+	'''
+	Test for measure_COM methods which measures the centres of masses of galaxies. Mock data has 3 galaxies, with various
+	cases to test the periodicity and mass weights.
+	:param SV_PT4_TNG100_99:
+	:return:
+	'''
 	COM = SV_PT4_TNG100_99.measure_COM()
 	assert max(COM[:, 0]) < SV_PT4_TNG100_99.boxsize
 	assert max(COM[:, 1]) < SV_PT4_TNG100_99.boxsize
