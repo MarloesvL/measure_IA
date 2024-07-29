@@ -1,5 +1,6 @@
 import pytest
 from src.measure_SV import MeasureSnapshotVariables
+from src.measure_IA import MeasureIA
 
 
 # this file has to be called conftest otherwise the fixtures will not work
@@ -28,6 +29,12 @@ def SV_PT4_TNG300_99():
 def SV_PT4_EAGLE_28():
 	raw_path = "./data/raw/"
 	return MeasureSnapshotVariables(4, "EAGLE", 28, numnodes=1, output_file_name=None, data_path=raw_path, update=True)
+
+
+@pytest.fixture()
+def IA_TNG100_99():
+	data = {}
+	return MeasureIA(data, simulation="TNG100", snapshot=99, separation_limits=[], num_bins_r=1, num_bins_pi=2)
 
 # def MSV(project, snapshot):
 # 	raw_path = "./data/raw/"
