@@ -391,21 +391,35 @@ class MeasureSnapshotVariables(SimInfo):
 					self.TNG100_snapshot.read_cat(self.coordinates_name, cut=[off_n, off_n + len_n])[
 						star_mask
 					]
-				# info.append([min(coordinates_particles[:, 0]), max(coordinates_particles[:, 0]), min(mass_particles),
-				# 			 max(mass_particles), mass_n])
 			else:
 				mass_particles = self.TNG100_snapshot.read_cat(self.masses_name, cut=[off_n, off_n + len_n])
 				coordinates_particles = self.TNG100_snapshot.read_cat(self.coordinates_name, cut=[off_n, off_n + len_n])
+			assert min(coordinates_particles[:, 0]) >= 0. and min(coordinates_particles[:, 1]) >= 0. and min(
+				coordinates_particles[:, 2]) >= 0., "Minimum coordinates particles negative."
+			assert max(coordinates_particles[:, 0]) <= self.boxsize and max(
+				coordinates_particles[:, 1]) <= self.boxsize and max(
+				coordinates_particles[:, 2]) <= self.boxsize, "Maximum coordinates particles larger than boxsize."
 			# account for periodicity of the box
-			min_coord = np.min(coordinates_particles, axis=0)
-			coordinates_particles[(coordinates_particles - min_coord) > self.L_0p5] -= self.boxsize
-			coordinates_particles[(coordinates_particles - min_coord) < -self.L_0p5] += self.boxsize
-
+			coordinates_particles[coordinates_particles > self.L_0p5] -= self.boxsize
+			coordinates_particles[coordinates_particles < -self.L_0p5] += self.boxsize
+			# min_coord = np.min(coordinates_particles, axis=0)
+			# coordinates_particles[(coordinates_particles - min_coord) > self.L_0p5] -= self.boxsize
+			# coordinates_particles[(coordinates_particles - min_coord) < -self.L_0p5] += self.boxsize
+			assert min(coordinates_particles[:, 0]) >= -self.L_0p5 and min(
+				coordinates_particles[:, 1]) >= -self.L_0p5 and min(
+				coordinates_particles[:, 2]) >= -self.L_0p5, "Minimum relative coordinates particles < -boxsize/2."
+			assert max(coordinates_particles[:, 0]) <= self.L_0p5 and max(
+				coordinates_particles[:, 1]) <= self.L_0p5 and max(
+				coordinates_particles[:,
+				2]) <= self.L_0p5, f"Maximum relative coordiantes particles > boxsize/2. {max(coordinates_particles[:, 0])}, {max(coordinates_particles[:, 1])}, {max(coordinates_particles[:, 2])}, boxsize/2: {self.L_0p5}"
+			assert np.isclose(np.sum(mass_particles), mass_n,
+							  rtol=1e-5), f"Sum particle masses unequal to mass. sum: {np.sum(mass_particles)}, mass: {mass_n}"
 			mass_coord = (coordinates_particles.transpose() * mass_particles).transpose()
 			COM_n = np.sum(mass_coord, axis=0) / mass_n
 			COM_n[COM_n < 0.0] += self.boxsize  # if negative: COM is on other side of box.
+			assert (COM_n < self.boxsize).all() and (COM_n > 0.0).all(), "COM coordinate not inside of box"
 			COM.append(COM_n)
-		return COM#, info
+		return COM  # , info
 
 	def measure_COM(self):
 		"""
@@ -414,7 +428,7 @@ class MeasureSnapshotVariables(SimInfo):
 		:return:
 		"""
 		try:
-			Len = self.Len
+			Len = self.Len  # exists if self.create_self_arguments() has been run
 		except:
 			self.create_self_arguments()
 		COM = []
@@ -423,27 +437,15 @@ class MeasureSnapshotVariables(SimInfo):
 			self.multiproc_chuncks,
 		)
 		for i in np.arange(self.numnodes):
-			COM.extend(result[i])#[0])
-		# info = result[0][1]
-		# for i in np.arange(1, self.numnodes):
-		# 	np.vstack((info, result[i][1]))
-		# print(np.shape(info))
-		# info = np.array(info)
-		# print(min(info[:, 0]), max(info[:, 1]), min(info[:, 2]), max(info[:, 3]), min(info[:, 4]), max(info[:, 4]))
-		# (83430, 5)
-		# 0.010551714018220082
-		# 204999.99517661438
-		# 9.01220028026728e-06
-		# 0.0014873057371005416
-		# 5.0742786697810516e-05
-		# 535.0704680964336
-		# COM
-		# 74.14391207695007
-		output_file = h5py.File(self.output_file_name, "a")
-		group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/PT" + str(self.PT))
-		write_dataset_hdf5(group, "COM", data=np.array(COM))
-		output_file.close()
-		return
+			COM.extend(result[i])
+		if self.output_file_name != None:
+			output_file = h5py.File(self.output_file_name, "a")
+			group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/PT" + str(self.PT))
+			write_dataset_hdf5(group, "COM", data=np.array(COM))
+			output_file.close()
+			return
+		else:
+			return np.array(COM)
 
 	def measure_inertia_tensor_single(self, indices):
 		I_list, value_list, v0, v1, v2, vectors_list = [], [], [], [], [], []
