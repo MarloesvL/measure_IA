@@ -5,7 +5,7 @@ from numpy.linalg import eig, inv
 import sympy
 import sys
 
-sys.set_int_max_str_digits(8600)
+# sys.set_int_max_str_digits(8600)
 from pathos.multiprocessing import ProcessingPool
 from src.read_data_TNG import ReadTNGdata
 from src.write_data import write_dataset_hdf5, create_group_hdf5
@@ -857,11 +857,9 @@ class MeasureSnapshotVariables(SimInfo):
 		if self.calc_basis:
 			basis = []
 		for n in indices:
-			# print(n)
 			off_n = self.off[n]
 			len_n = self.Len[n]
 			mass = self.mass[n]
-			# print(n,'1')
 			if len_n < 2:
 				avg_rot_vel.append(0)
 				vel_disp.append(0)
@@ -881,7 +879,6 @@ class MeasureSnapshotVariables(SimInfo):
 				if self.calc_basis:
 					basis.append([0, 0, 0, 0, 0, 0, 0, 0, 0])
 				continue
-			# print(n,'2')
 			if self.calc_basis:
 				transform_mat = self.find_cartesian_basis(spin_n)  # new orthonormal basis with Spin as z-axis
 				basis_n = np.array(transform_mat)
@@ -901,8 +898,9 @@ class MeasureSnapshotVariables(SimInfo):
 				if self.calc_basis:
 					basis.append([0, 0, 0, 0, 0, 0, 0, 0, 0])
 				continue
-			# print(n,'3')
 			transform_mat_inv = inv(transform_mat)
+			assert np.allclose(transform_mat @ transform_mat_inv, np.eye(3, 3),
+							   atol=1e-10), "Inverse of basis @ basis not within 1e-10 of identity."
 
 			if self.PT == 1:
 				particle_mass = self.DM_part_mass
@@ -935,9 +933,8 @@ class MeasureSnapshotVariables(SimInfo):
 				)
 				rel_position = self.TNG100_snapshot.read_cat(self.coordinates_name, [off_n, off_n + len_n]) - self.COM[
 					n]
-			# print(n,'4')
-			# get coords relative to galactic COM, velocity
 
+			# get coords relative to galactic COM, velocity
 			rel_position[rel_position > self.L_0p5] -= self.boxsize
 			rel_position[rel_position < -self.L_0p5] += self.boxsize
 			# transform to new coords
@@ -950,7 +947,6 @@ class MeasureSnapshotVariables(SimInfo):
 					np.sum((vel_theta.transpose() * particle_mass).transpose(), axis=0) / mass
 			)  # mass-weighted mean
 			avg_rot_vel.append(vel_theta_mean)
-			# print(n, '5')
 			if self.measure_dispersion:
 				vel_r_n = rel_velocity_transform[:, 0] * np.cos(theta) + rel_velocity_transform[:, 1] * np.sin(theta)
 				vel_z_n = rel_velocity_transform[:, 2]
@@ -965,7 +961,7 @@ class MeasureSnapshotVariables(SimInfo):
 				vel_z_abs.append(np.sum(abs(vel_z_n) * particle_mass) / mass)
 				vel_disp_cyl.append(dvel_mean_cyl)
 				vel_disp.append(np.sqrt(np.sum(dvel_mean_cyl) / 3.0))
-		# print(n, '6')
+
 		return avg_rot_vel, vel_disp, vel_z, vel_disp_cyl, vel_z_abs, basis
 
 	@staticmethod
@@ -996,6 +992,12 @@ class MeasureSnapshotVariables(SimInfo):
 		v1 = np.array([sol[x1], sol[x2], sol[x3]])
 		v2 = np.array([sol[y1], sol[y2], y3])
 		v3 = np.array([z1, z2, z3])
+		assert np.sum(v1 ** 2) == 1.0, "V1 not unit length."
+		assert np.sum(v2 ** 2) == 1.0, "V2 not unit length."
+		assert np.sum(v3 ** 2) == 1.0, "V3 not unit length."
+		assert np.dot(v1, v2) == 0.0, "V1, V2 not orthogonal."
+		assert np.dot(v1, v3) == 0.0, "V1, V3 not orthogonal."
+		assert np.dot(v3, v2) == 0.0, "V3, V2 not orthogonal."
 
 		return np.array([v1, v2, v3], dtype=np.float64).transpose()  # new orthonormal basis with z=L
 
@@ -1016,12 +1018,6 @@ class MeasureSnapshotVariables(SimInfo):
 			Len = self.Len
 		except:
 			self.create_self_arguments()
-		if self.output_file_name != None:
-			output_file = h5py.File(self.output_file_name, "a")
-			group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/PT" + str(self.PT))
-			write_output = True
-		else:
-			write_output = False
 		self.COM = self.TNG100_SubhaloPT.read_cat("COM")
 		self.velocity = self.TNG100_SubhaloPT.read_cat("Velocity")
 		self.spin = self.TNG100_SubhaloPT.read_cat("Spin")
@@ -1029,14 +1025,20 @@ class MeasureSnapshotVariables(SimInfo):
 		if calc_basis:
 			basis = []
 		else:
+			output_file = h5py.File(self.output_file_name, "a")
+			group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/PT" + str(self.PT))
 			try:
 				transform_mat = group["Cart_basis_L_is_z"][0]
 			except:
 				print("Cart_basis_L_is_z does not exist but calc_basis is False. Changing calc_basis to True.")
 				calc_basis = True
 				basis = []
+			output_file.close()
 		if not calc_basis:
+			output_file = h5py.File(self.output_file_name, "a")
+			group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/PT" + str(self.PT))
 			self.transform_mats = group["Cart_basis_L_is_z"]
+			output_file.close()
 		self.calc_basis = calc_basis
 		self.measure_dispersion = measure_dispersion
 		# print('startup')
@@ -1053,7 +1055,9 @@ class MeasureSnapshotVariables(SimInfo):
 			if calc_basis:
 				basis.extend(result[i][5])
 
-		if write_output:
+		if self.output_file_name != None:
+			output_file = h5py.File(self.output_file_name, "a")
+			group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/PT" + str(self.PT))
 			write_dataset_hdf5(group, "Average_Tangential_Velocity", data=np.array(avg_rot_vel))
 			if measure_dispersion:
 				write_dataset_hdf5(group, "Velocity_Dispersion", data=np.array(vel_disp))
