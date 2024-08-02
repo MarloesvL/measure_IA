@@ -338,7 +338,7 @@ class MeasureIA(SimInfo):
 		dpi = (self.pi_bins[1:] - self.pi_bins[:-1]) / 2.0
 		pi_bins = self.pi_bins[:-1] + abs(dpi)  # middle of bins
 
-		if (self.output_file_name != None) & return_output == False:
+		if (self.output_file_name != None) and (return_output == False):
 			output_file = h5py.File(self.output_file_name, "a")
 			group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/w/xi_g_plus")
 			write_dataset_hdf5(group, dataset_name, data=correlation)
