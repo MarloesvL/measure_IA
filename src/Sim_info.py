@@ -194,7 +194,7 @@ class SimInfo:
 		elif self.simname == "HorizonAGN":
 			self.fof_folder = None
 			self.snap_folder = None
-			self.snap_group = None
+			self.snap_group = f"Snapshot_{self.snapshot}/"
 		else:
 			raise KeyError("Simulation name not recognised. Choose from [TNG100, TNG300].")
 		return
