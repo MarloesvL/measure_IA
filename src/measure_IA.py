@@ -1529,15 +1529,15 @@ class MeasureIA(SimInfo):
 			output_file = h5py.File(self.output_file_name, "a")
 			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/" + corr_type)
 			if len(dataset_names) == 2:
-				write_dataset_hdf5(group, dataset_names[0] + "_" + dataset_names[1] + "_combined_jackknife_cov_" + str(
+				write_dataset_hdf5(group, dataset_names[0] + "_" + dataset_names[1] + "_jackknife_cov_" + str(
 					num_box), data=cov)
 				write_dataset_hdf5(group,
-								   dataset_names[0] + "_" + dataset_names[1] + "_combined_jackknife_" + str(num_box),
+								   dataset_names[0] + "_" + dataset_names[1] + "_jackknife_" + str(num_box),
 								   data=std)
 
 			else:
-				write_dataset_hdf5(group, dataset_names[0] + "_combined_jackknife_cov_" + str(num_box), data=cov)
-				write_dataset_hdf5(group, dataset_names[0] + "_combined_jackknife_" + str(num_box), data=std)
+				write_dataset_hdf5(group, dataset_names[0] + "_jackknife_cov_" + str(num_box), data=cov)
+				write_dataset_hdf5(group, dataset_names[0] + "_jackknife_" + str(num_box), data=std)
 			output_file.close()
 			return
 		else:
@@ -1568,9 +1568,9 @@ class MeasureIA(SimInfo):
 		cov_xx = group[f'{dataset_names[0]}_jackknife_cov_{num_box}'][:]
 		cov_yy = group[f'{dataset_names[1]}_jackknife_cov_{num_box}'][:]
 		cov_zz = group[f'{dataset_names[2]}_jackknife_cov_{num_box}'][:]
-		cov_xy = group[f'{dataset_names[0]}_{dataset_names[1]}_combined_jackknife_cov_{num_box}'][:]
-		cov_yz = group[f'{dataset_names[0]}_{dataset_names[2]}_combined_jackknife_cov_{num_box}'][:]
-		cov_xz = group[f'{dataset_names[1]}_{dataset_names[2]}_combined_jackknife_cov_{num_box}'][:]
+		cov_xy = group[f'{dataset_names[0]}_{dataset_names[1]}_jackknife_cov_{num_box}'][:]
+		cov_yz = group[f'{dataset_names[0]}_{dataset_names[2]}_jackknife_cov_{num_box}'][:]
+		cov_xz = group[f'{dataset_names[1]}_{dataset_names[2]}_jackknife_cov_{num_box}'][:]
 
 		# 3 projections
 		cov_top = np.concatenate((cov_xx, cov_xy, cov_xz), axis=1)
@@ -1578,7 +1578,7 @@ class MeasureIA(SimInfo):
 		cov_bottom = np.concatenate((cov_xz.T, cov_yz.T, cov_zz), axis=1)
 		cov3 = np.concatenate((cov_top, cov_middle, cov_bottom), axis=0)
 
-		# all 2 projections (this overwrites the parts that make up the combined cov matrices)
+		# all 2 projections
 		cov_top = np.concatenate((cov_xx, cov_xy), axis=1)
 		cov_middle = np.concatenate((cov_xy.T, cov_yy), axis=1)  # cov_xz.T = cov_zx
 		cov2xy = np.concatenate((cov_top, cov_middle), axis=0)
