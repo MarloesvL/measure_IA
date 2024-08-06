@@ -1471,7 +1471,7 @@ class MeasureIA(SimInfo):
 			else:
 				return cov, std
 
-	def measure_covariance_multiple_datasets(self, corr_type, dataset_names, num_box=3):
+	def measure_covariance_multiple_datasets(self, corr_type, dataset_names, num_box=3, return_output=False):
 		"""
 		Combines the jackknife measurements for different datasets into one covariance matrix.
 		Author: Marta Garcia Escobar (starting from measure_jackknife_errors code); updated
@@ -1525,7 +1525,7 @@ class MeasureIA(SimInfo):
 
 		data_file.close()
 
-		if self.output_file_name != None:
+		if (self.output_file_name != None) and (return_output == False):
 			output_file = h5py.File(self.output_file_name, "a")
 			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/" + corr_type)
 			if len(dataset_names) == 2:
@@ -1543,7 +1543,8 @@ class MeasureIA(SimInfo):
 		else:
 			return cov, std
 
-	def create_full_cov_matrix_projections(self, corr_type, dataset_names=["LOS_x", "LOS_y", "LOS_z"], num_box=27):
+	def create_full_cov_matrix_projections(self, corr_type, dataset_names=["LOS_x", "LOS_y", "LOS_z"], num_box=27,
+										   retun_output=False):
 		'''
 		Function that creates the full covariance matrix for all 3 projections by combining previously obtained jackknife information.
 		Generalised from Marta Garcia Escobar's code.
@@ -1575,34 +1576,37 @@ class MeasureIA(SimInfo):
 		cov_top = np.concatenate((cov_xx, cov_xy, cov_xz), axis=1)
 		cov_middle = np.concatenate((cov_xy.T, cov_yy, cov_yz), axis=1)  # cov_xy.T = cov_yx
 		cov_bottom = np.concatenate((cov_xz.T, cov_yz.T, cov_zz), axis=1)
-		cov = np.concatenate((cov_top, cov_middle, cov_bottom), axis=0)
-		write_dataset_hdf5(group,
-						   f"{dataset_names[0]}_{dataset_names[1]}_{dataset_names[2]}_combined_jackknife_cov_{num_box}",
-						   data=cov)
+		cov3 = np.concatenate((cov_top, cov_middle, cov_bottom), axis=0)
 
 		# all 2 projections (this overwrites the parts that make up the combined cov matrices)
 		cov_top = np.concatenate((cov_xx, cov_xy), axis=1)
 		cov_middle = np.concatenate((cov_xy.T, cov_yy), axis=1)  # cov_xz.T = cov_zx
-		cov = np.concatenate((cov_top, cov_middle), axis=0)
-		write_dataset_hdf5(group,
-						   f'{dataset_names[0]}_{dataset_names[1]}_combined_jackknife_cov_{num_box}',
-						   data=cov)
+		cov2xy = np.concatenate((cov_top, cov_middle), axis=0)
 
 		cov_top = np.concatenate((cov_xx, cov_xz), axis=1)
 		cov_middle = np.concatenate((cov_xz.T, cov_zz), axis=1)  # cov_xz.T = cov_zx
-		cov = np.concatenate((cov_top, cov_middle), axis=0)
-		write_dataset_hdf5(group,
-						   f'{dataset_names[0]}_{dataset_names[2]}_combined_jackknife_cov_{num_box}',
-						   data=cov)
+		cov2xz = np.concatenate((cov_top, cov_middle), axis=0)
 
 		cov_top = np.concatenate((cov_yy, cov_yz), axis=1)
 		cov_middle = np.concatenate((cov_yz.T, cov_zz), axis=1)  # cov_xz.T = cov_zx
-		cov = np.concatenate((cov_top, cov_middle), axis=0)
-		write_dataset_hdf5(group,
-						   f'{dataset_names[1]}_{dataset_names[2]}_combined_jackknife_cov_{num_box}',
-						   data=cov)
+		cov2yz = np.concatenate((cov_top, cov_middle), axis=0)
 
-		return
+		if retun_output:
+			return cov3, cov2xy, cov2xz, cov2yz
+		else:
+			write_dataset_hdf5(group,
+							   f"{dataset_names[0]}_{dataset_names[1]}_{dataset_names[2]}_combined_jackknife_cov_{num_box}",
+							   data=cov3)
+			write_dataset_hdf5(group,
+							   f'{dataset_names[0]}_{dataset_names[1]}_combined_jackknife_cov_{num_box}',
+							   data=cov2xy)
+			write_dataset_hdf5(group,
+							   f'{dataset_names[0]}_{dataset_names[2]}_combined_jackknife_cov_{num_box}',
+							   data=cov2xz)
+			write_dataset_hdf5(group,
+							   f'{dataset_names[1]}_{dataset_names[2]}_combined_jackknife_cov_{num_box}',
+							   data=cov2yz)
+			return
 
 	def measure_misalignment_angle(self, vector1_name, vector2_name, normalise=False):
 		"""
