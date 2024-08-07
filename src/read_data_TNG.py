@@ -4,7 +4,7 @@ from src.Sim_info import SimInfo
 from src.write_data import *
 
 
-class ReadTNGdata(SimInfo):
+class ReadData(SimInfo):
 	"""
 	Class to read different TNG data files.
 	:param project (str): Project name. Choose 'TNG100' or 'TNG300'
