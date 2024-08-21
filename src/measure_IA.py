@@ -8,8 +8,9 @@ import sympy
 from pathos.multiprocessing import ProcessingPool
 from tqdm import tqdm
 from scipy.spatial import KDTree
+# from scipy.spatial import cKDTree as KDTree
 from scipy.stats import binned_statistic
-from src.read_data_TNG import ReadTNGdata
+from src.read_data import ReadData
 from src.write_data import write_dataset_hdf5, create_group_hdf5
 from src.Sim_info import SimInfo
 from astropy.table import Table, join, vstack
@@ -143,7 +144,7 @@ class MeasureIA(SimInfo):
 
 		if self.output_file_name != None:
 			output_file = h5py.File(self.output_file_name, "a")
-			group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/3D_correlations")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/3D_correlations")
 			write_dataset_hdf5(group, dataset_name, data=np.array([separation_bins, correlation]).transpose())
 			output_file.close()
 			return
@@ -340,21 +341,21 @@ class MeasureIA(SimInfo):
 
 		if (self.output_file_name != None) and (return_output == False):
 			output_file = h5py.File(self.output_file_name, "a")
-			group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/w/xi_g_plus")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_g_plus")
 			write_dataset_hdf5(group, dataset_name, data=correlation)
 			write_dataset_hdf5(group, dataset_name + "_SplusD", data=Splus_D)
 			write_dataset_hdf5(group, dataset_name + "_RR_g_plus", data=RR_g_plus)
 			write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
-			group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/w/xi_g_cross")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_g_cross")
 			write_dataset_hdf5(group, dataset_name + "_ScrossD", data=Scross_D)
 			write_dataset_hdf5(group, dataset_name, data=xi_g_cross)
 			write_dataset_hdf5(group, dataset_name + "_RR_g_cross", data=RR_g_plus)
 			write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
-			group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/w/xi_gg")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_gg")
 			write_dataset_hdf5(group, dataset_name, data=DD / RR_gg)
 			write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
 			write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
@@ -476,21 +477,21 @@ class MeasureIA(SimInfo):
 
 		if (self.output_file_name != None) & return_output == False:
 			output_file = h5py.File(self.output_file_name, "a")
-			group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/w/xi_g_plus")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_g_plus")
 			write_dataset_hdf5(group, dataset_name, data=correlation)
 			write_dataset_hdf5(group, dataset_name + "_SplusD", data=Splus_D)
 			write_dataset_hdf5(group, dataset_name + "_RR_g_plus", data=RR_g_plus)
 			write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
-			group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/w/xi_g_cross")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_g_cross")
 			write_dataset_hdf5(group, dataset_name + "_ScrossD", data=Scross_D)
 			write_dataset_hdf5(group, dataset_name, data=xi_g_cross)
 			write_dataset_hdf5(group, dataset_name + "_RR_g_cross", data=RR_g_plus)
 			write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
-			group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/w/xi_gg")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_gg")
 			write_dataset_hdf5(group, dataset_name, data=DD / RR_gg)
 			write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
 			write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
@@ -653,21 +654,21 @@ class MeasureIA(SimInfo):
 
 		if (self.output_file_name != None) & return_output == False:
 			output_file = h5py.File(self.output_file_name, "a")
-			group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/w/xi_g_plus")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_g_plus")
 			write_dataset_hdf5(group, dataset_name, data=correlation)
 			write_dataset_hdf5(group, dataset_name + "_SplusD", data=Splus_D)
 			write_dataset_hdf5(group, dataset_name + "_RR_g_plus", data=RR_g_plus)
 			write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
-			group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/w/xi_g_cross")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_g_cross")
 			write_dataset_hdf5(group, dataset_name + "_ScrossD", data=Scross_D)
 			write_dataset_hdf5(group, dataset_name, data=xi_g_cross)
 			write_dataset_hdf5(group, dataset_name + "_RR_g_cross", data=RR_g_plus)
 			write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
-			group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/w/xi_gg")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_gg")
 			write_dataset_hdf5(group, dataset_name, data=DD / RR_gg)
 			write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
 			write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
@@ -762,7 +763,7 @@ class MeasureIA(SimInfo):
 			else:
 				group[dataset_name].resize((group[dataset_name].shape[0] + write_data.shape[0]), axis=0)
 				group[dataset_name][-write_data.shape[0]:] = write_data
-			if sum(np.isin([first, second, third, done], n)) > 0:
+			if sum(np.isin(n, [first, second, third, done])) > 0:
 				print(n, [first, second, third, done], time.time() - start_time)
 		# write_dataset_hdf5(group, f"{n}",
 		# 				   np.array([[n]*len(ind_r),indices_shape[mask], ind_r, ind_pi, e_plus[mask] / (2 * R)]).transpose())
@@ -881,19 +882,19 @@ class MeasureIA(SimInfo):
 
 		if (self.output_file_name != None) & return_output == False:
 			output_file = h5py.File(self.output_file_name, "a")
-			group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/multipoles/xi_g_plus")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/multipoles/xi_g_plus")
 			write_dataset_hdf5(group, dataset_name, data=correlation)
 			write_dataset_hdf5(group, dataset_name + "_SplusD", data=Splus_D)
 			write_dataset_hdf5(group, dataset_name + "_RR_g_plus", data=RR_g_plus)
 			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
-			group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/multipoles/xi_g_cross")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/multipoles/xi_g_cross")
 			write_dataset_hdf5(group, dataset_name, data=xi_g_cross)
 			write_dataset_hdf5(group, dataset_name + "_ScrossD", data=Scross_D)
 			write_dataset_hdf5(group, dataset_name + "_RR_g_cross", data=RR_g_plus)
 			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
-			group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/multipoles/xi_gg")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/multipoles/xi_gg")
 			write_dataset_hdf5(group, dataset_name, data=DD / RR_gg)
 			write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
 			write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
@@ -1017,19 +1018,19 @@ class MeasureIA(SimInfo):
 
 		if (self.output_file_name != None) & return_output == False:
 			output_file = h5py.File(self.output_file_name, "a")
-			group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/multipoles/xi_g_plus")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/multipoles/xi_g_plus")
 			write_dataset_hdf5(group, dataset_name, data=correlation)
 			write_dataset_hdf5(group, dataset_name + "_SplusD", data=Splus_D)
 			write_dataset_hdf5(group, dataset_name + "_RR_g_plus", data=RR_g_plus)
 			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
-			group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/multipoles/xi_g_cross")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/multipoles/xi_g_cross")
 			write_dataset_hdf5(group, dataset_name, data=xi_g_cross)
 			write_dataset_hdf5(group, dataset_name + "_ScrossD", data=Scross_D)
 			write_dataset_hdf5(group, dataset_name + "_RR_g_cross", data=RR_g_plus)
 			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
-			group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/multipoles/xi_gg")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/multipoles/xi_gg")
 			write_dataset_hdf5(group, dataset_name, data=DD / RR_gg)
 			write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
 			write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
@@ -1062,7 +1063,7 @@ class MeasureIA(SimInfo):
 			raise KeyError("Unknown value for corr_type. Choose from [g+, gg, both]")
 		for i in np.arange(0, len(xi_data)):
 			correlation_data_file = h5py.File(self.output_file_name, "a")
-			group = correlation_data_file["Snapshot_" + self.snapshot + "/w/" + xi_data[i]]
+			group = correlation_data_file[f"Snapshot_{self.snapshot}/w/" + xi_data[i]]
 			correlation_data = group[dataset_name][:]
 			pi = group[dataset_name + "_pi"]
 			rp = group[dataset_name + "_rp"]
@@ -1082,7 +1083,7 @@ class MeasureIA(SimInfo):
 				correlation_data_file.close()
 				return output_data
 			else:
-				group_out = create_group_hdf5(correlation_data_file, "Snapshot_" + self.snapshot + "/" + wg_data[i])
+				group_out = create_group_hdf5(correlation_data_file, f"Snapshot_{self.snapshot}/" + wg_data[i])
 				write_dataset_hdf5(group_out, dataset_name + "_rp", data=rp)
 				write_dataset_hdf5(group_out, dataset_name, data=w_g_i)
 				write_dataset_hdf5(group_out, dataset_name + "_sigma", data=np.sqrt(sigsq))
@@ -1101,7 +1102,7 @@ class MeasureIA(SimInfo):
 		"""
 		correlation_data_file = h5py.File(self.output_file_name, "a")
 		if corr_type == "g+":  # todo: expand to include ++ option
-			group = correlation_data_file["Snapshot_" + self.snapshot + "/multipoles/xi_g_plus"]
+			group = correlation_data_file[f"Snapshot_{self.snapshot}/multipoles/xi_g_plus"]
 			correlation_data_list = [group[dataset_name][:]]  # xi_g+ in grid of r,mur
 			r_list = [group[dataset_name + "_r"][:]]
 			mu_r_list = [group[dataset_name + "_mu_r"][:]]
@@ -1109,7 +1110,7 @@ class MeasureIA(SimInfo):
 			l_list = sab_list
 			corr_type_list = ["g_plus"]
 		elif corr_type == "gg":
-			group = correlation_data_file["Snapshot_" + self.snapshot + "/multipoles/xi_gg"]
+			group = correlation_data_file[f"Snapshot_{self.snapshot}/multipoles/xi_gg"]
 			correlation_data_list = [group[dataset_name][:]]  # xi_g+ in grid of rp,pi
 			r_list = [group[dataset_name + "_r"][:]]
 			mu_r_list = [group[dataset_name + "_mu_r"][:]]
@@ -1117,11 +1118,11 @@ class MeasureIA(SimInfo):
 			l_list = sab_list
 			corr_type_list = ["gg"]
 		elif corr_type == "both":
-			group = correlation_data_file["Snapshot_" + self.snapshot + "/multipoles/xi_g_plus"]
+			group = correlation_data_file[f"Snapshot_{self.snapshot}/multipoles/xi_g_plus"]
 			correlation_data_list = [group[dataset_name][:]]  # xi_g+ in grid of rp,pi
 			r_list = [group[dataset_name + "_r"][:]]
 			mu_r_list = [group[dataset_name + "_mu_r"][:]]
-			group = correlation_data_file["Snapshot_" + self.snapshot + "/multipoles/xi_gg"]
+			group = correlation_data_file[f"Snapshot_{self.snapshot}/multipoles/xi_gg"]
 			correlation_data_list.append(group[dataset_name][:])  # xi_g+ in grid of rp,pi
 			r_list.append(group[dataset_name + "_r"][:])
 			mu_r_list.append(group[dataset_name + "_mu_r"][:])
@@ -1165,7 +1166,7 @@ class MeasureIA(SimInfo):
 				np.array([separation, multipoles]).transpose()
 			else:
 				group_out = create_group_hdf5(
-					correlation_data_file, "Snapshot_" + self.snapshot + "/multipoles_" + corr_type_i
+					correlation_data_file, f"Snapshot_{self.snapshot}/multipoles_" + corr_type_i
 				)
 				write_dataset_hdf5(group_out, dataset_name + "_r", data=separation)
 				write_dataset_hdf5(group_out, dataset_name, data=multipoles)
@@ -1254,7 +1255,7 @@ class MeasureIA(SimInfo):
 					num_box += 1
 		for d in np.arange(0, len(data)):
 			data_file = h5py.File(self.output_file_name, "a")
-			group_multipoles = data_file["Snapshot_" + self.snapshot + "/" + data[d]]
+			group_multipoles = data_file[f"Snapshot_{self.snapshot}/" + data[d]]
 			# calculating mean of the datavectors
 			mean_multipoles = np.zeros(self.num_bins_r)
 			for b in np.arange(0, num_box):
@@ -1276,7 +1277,7 @@ class MeasureIA(SimInfo):
 			data_file.close()
 			if self.output_file_name != None:
 				output_file = h5py.File(self.output_file_name, "a")
-				group_multipoles = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/" + data[d])
+				group_multipoles = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/" + data[d])
 				write_dataset_hdf5(group_multipoles, dataset_name + "_jackknife_" + str(num_box), data=std)
 				write_dataset_hdf5(group_multipoles, dataset_name + "_jackknife_cov_" + str(num_box), data=cov)
 				output_file.close()
@@ -1422,7 +1423,7 @@ class MeasureIA(SimInfo):
 			for i in np.arange(0, len(chunck)):
 				for j, data_j in enumerate(data):
 					group_xigplus = create_group_hdf5(
-						output_file, "Snapshot_" + self.snapshot + "/" + corr_type[1] + "/xi" + corr_type_suff[j]
+						output_file, f"Snapshot_{self.snapshot}/" + corr_type[1] + "/xi" + corr_type_suff[j]
 					)
 					write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i]}", data=result[i][j])
 					write_dataset_hdf5(
@@ -1441,7 +1442,7 @@ class MeasureIA(SimInfo):
 
 		for d in np.arange(0, len(data)):
 			data_file = h5py.File(self.output_file_name, "a")
-			group_multipoles = data_file["Snapshot_" + self.snapshot + "/" + data[d]]
+			group_multipoles = data_file[f"Snapshot_{self.snapshot}/" + data[d]]
 			# calculating mean of the datavectors
 			mean_multipoles = np.zeros((self.num_bins_r))
 			for b in np.arange(0, num_box):
@@ -1463,7 +1464,7 @@ class MeasureIA(SimInfo):
 			data_file.close()
 			if self.output_file_name != None:
 				output_file = h5py.File(self.output_file_name, "a")
-				group_multipoles = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/" + data[d])
+				group_multipoles = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/" + data[d])
 				write_dataset_hdf5(group_multipoles, dataset_name + "_jackknife_" + str(num_box), data=std)
 				write_dataset_hdf5(group_multipoles, dataset_name + "_jackknife_cov_" + str(num_box), data=cov)
 				output_file.close()
@@ -1628,7 +1629,7 @@ class MeasureIA(SimInfo):
 
 		if self.output_file_name != None:
 			output_file = h5py.File(self.output_file_name, "a")
-			group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/Misalignment_angels")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/Misalignment_angels")
 			write_dataset_hdf5(group, vector1_name + "_" + vector2_name, data=misalignment_angle)
 			output_file.close()
 		else:
