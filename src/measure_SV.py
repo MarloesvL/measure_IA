@@ -697,12 +697,6 @@ class MeasureSnapshotVariables(SimInfo):
 			Len = self.Len
 		except:
 			self.create_self_arguments()
-		if self.output_file_name != None:
-			output_file = h5py.File(self.output_file_name, "a")
-			group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/PT" + str(self.PT))
-			write_output = True
-		else:
-			write_output = False
 		self.reduced = reduced
 		self.eigen_v = eigen_v
 		self.COM = self.TNG100_SubhaloPT.read_cat("COM")
@@ -732,7 +726,9 @@ class MeasureSnapshotVariables(SimInfo):
 				eigen_vectors_sorted["0"].append(vector_sorted[:, 0])
 				eigen_vectors_sorted["1"].append(vector_sorted[:, 1])
 
-		if write_output:
+		if self.output_file_name != None:
+			output_file = h5py.File(self.output_file_name, "a")
+			group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/PT" + str(self.PT))
 			if reduced:
 				write_dataset_hdf5(group, f"Reduced_Projected_{LOS_axis[LOS_ind]}_Inertia_Tensor",
 								   data=np.array(I_list))
@@ -754,7 +750,6 @@ class MeasureSnapshotVariables(SimInfo):
 							group, f"Semimajor_Axis_Direction_reduced_{LOS_axis[LOS_ind]}",
 							data=np.array(eigen_vectors_sorted["1"])
 						)
-
 			else:
 				write_dataset_hdf5(group, f"Projected_{LOS_axis[LOS_ind]}_Inertia_Tensor", data=np.array(I_list))
 				if eigen_v:
