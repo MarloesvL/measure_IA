@@ -775,7 +775,7 @@ class MeasureIA(SimInfo):
 		return
 
 	def measure_projected_correlation_multipoles(
-			self, masks=None, rp_cut=2.0, dataset_name="All_galaxies", return_output=False, print_num=True
+			self, masks=None, rp_cut=None, dataset_name="All_galaxies", return_output=False, print_num=True
 	):
 		"""
 		Measures the projected correlation function (xi_g_plus) for given coordinates of the position and shape sample
@@ -905,7 +905,7 @@ class MeasureIA(SimInfo):
 		else:
 			return correlation, DD / RR_gg, separation_bins, mu_r_bins
 
-	def measure_projected_correlation_multipoles_tree(self, masks=None, rp_cut=2.0, dataset_name="All_galaxies",
+	def measure_projected_correlation_multipoles_tree(self, masks=None, rp_cut=None, dataset_name="All_galaxies",
 													  return_output=False, print_num=True):
 		"""
 		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
