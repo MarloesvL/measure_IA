@@ -1174,7 +1174,7 @@ class MeasureIA(SimInfo):
 		return
 
 	def measure_jackknife_errors(
-			self, masks=None, corr_type=["both", "multipoles"], dataset_name="All_galaxies", L_subboxes=3, rp_cut=2.0
+			self, masks=None, corr_type=["both", "multipoles"], dataset_name="All_galaxies", L_subboxes=3, rp_cut=None
 	):
 		"""
 		Measures the errors in the projected correlation function using the jackknife method.
@@ -1291,7 +1291,7 @@ class MeasureIA(SimInfo):
 			corr_type=["both", "multipoles"],
 			dataset_name="All_galaxies",
 			L_subboxes=3,
-			rp_cut=2.0,
+			rp_cut=None,
 			num_nodes=4,
 			twoD=False,
 	):
