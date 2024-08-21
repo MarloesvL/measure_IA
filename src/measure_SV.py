@@ -7,7 +7,7 @@ import sys
 
 # sys.set_int_max_str_digits(8600)
 from pathos.multiprocessing import ProcessingPool
-from src.read_data_TNG import ReadTNGdata
+from src.read_data import ReadData
 from src.write_data import write_dataset_hdf5, create_group_hdf5
 from src.Sim_info import SimInfo
 
@@ -16,21 +16,26 @@ KPC_TO_KM = 3.086e16  # 1 kpc is 3.086e16 km
 
 class MeasureSnapshotVariables(SimInfo):
 	"""
-	Measures different variables using the particle snapshot data.
-	WARNING: Currently set up for TNG only. Should work for other sims. Take care with velocity units.
+	Measures different galaxy variables using the particle snapshot data and galaxy catalogues of hydrodynamical simulations.
+	WARNING: Currently set up for TNG and EAGLE only. Should work for other sims, if added to SimInfo.
+	Take care with units. Make sure data files are in the specified format.
 	:param PT: Number indicating particle type
-	:param project: Indicator of simulation. Choose from [TNG100, TNG300] for now.
-	:param snapshot: Number of the snapshot
+	:param project: Indicator of simulation. Choose from [TNG100, TNG100_2, TNG300, EAGLE] unless added to SimInfo.
+	:param snapshot: Number of the snapshot in the simulation
+	:param numnodes: Number of nodes to be used in multiprocessing.
 	:param output_file_name: Name and filepath of the file where the output should be stored.
-	:param data_path: Start path to the raw data files
+	:param data_path: Start path to the raw data files. Assumes next folder to be self.simname (=project).
+	:param snap_data_path: Start path to snapshot data files. If None (default) the data_path will be used.
+	:param exclude_wind: If simulation is in the TNG project, True, will exclude wind particles from galaxies.
+	:param update: If True, any SimInfo variables can be updated by calling the SimInfo methods they are created in.
 	"""
 
 	def __init__(self, PT=4, project=None, snapshot=None, numnodes=30, output_file_name=None, data_path="./data/raw/",
-				 exclude_wind=True, update=False, snap_data_path=None):
+				 snap_data_path=None, exclude_wind=True, update=False):
 		if project == None:
 			raise KeyError("Input project name!")
 		SimInfo.__init__(self, project, snapshot, PT, update=update)
-		TNG100_SubhaloPT = ReadTNGdata(
+		TNG100_SubhaloPT = ReadData(
 			self.simname, self.subhalo_cat, self.snapshot, sub_group=f"PT{self.PT}/", data_path=data_path
 		)
 		try:
@@ -53,7 +58,7 @@ class MeasureSnapshotVariables(SimInfo):
 		Creates the reading objects and data variables most widely used in multiprocessing calculations.
 		:return:
 		'''
-		self.TNG100_SubhaloPT = ReadTNGdata(
+		self.TNG100_SubhaloPT = ReadData(
 			self.simname, self.subhalo_cat, self.snapshot, sub_group=f"PT{self.PT}/",
 			data_path=self.data_path)
 		try:
@@ -64,8 +69,8 @@ class MeasureSnapshotVariables(SimInfo):
 		self.off = self.TNG100_SubhaloPT.read_cat(self.offset_name)
 		self.Len = self.TNG100_SubhaloPT.read_cat(self.sub_len_name)
 		self.mass = self.TNG100_SubhaloPT.read_cat(
-			self.mass_name)  # self.TNG100_SubhaloPT.read_cat("SubhaloMassType")  #
-		self.TNG100_snapshot = ReadTNGdata(
+			self.mass_name)
+		self.TNG100_snapshot = ReadData(
 			self.simname,
 			self.snap_cat,
 			self.snapshot,
@@ -77,11 +82,12 @@ class MeasureSnapshotVariables(SimInfo):
 	def measure_offsets(self, type="Subhalo"):
 		"""
 		Measures the Offsets for each subhalo or group needed to read snapshot files.
-		Writes away data to SubhaloPT file in appropriate PT group.
+		EAGLE data differs from TNG and therefore EAGLE is given a separate case.
+		Writes away data to output_file in appropriate PT group.
 		:param type: Determines if offsets for Subhalos or Groups are calculated (default is Subhalo).
 		:return:
 		"""
-		TNG100_subhalo = ReadTNGdata(self.simname, type, self.snapshot, data_path=self.data_path)
+		TNG100_subhalo = ReadData(self.simname, type, self.snapshot, data_path=self.data_path)
 		if type == "Subhalo":
 			len = TNG100_subhalo.read_subhalo(self.sub_len_name)[:, self.PT]
 		elif self.simname == "EAGLE":
@@ -97,6 +103,13 @@ class MeasureSnapshotVariables(SimInfo):
 		return
 
 	def omit_wind_only_single(self, indices):
+		'''
+		Creates a flag for a chunck of galaxies that is 1 if the 'galaxy' contains only wind particles and 0 otherwise.
+		The pure wind particle galaxies can then be omitted in the 'select_nonzero_subhalos' method.
+		Specific to IllustrisTNG simulations.
+		:param indices: indices for the chunck of galaxies to be calculated.
+		:return:
+		'''
 		Wind_Flag = []
 		for n in indices:
 			Off = self.off_wind[n]
@@ -112,16 +125,16 @@ class MeasureSnapshotVariables(SimInfo):
 
 	def omit_wind_only(self):
 		"""
-		Loops through all subhalos to give a flag (1) to the subhalos that consist only of wind particles.
-		These can then be omitted in the 'select_nonzero_subhalos' method. Specific to IllustrisTNG simulations.
+		Wrapper function for omit_wind_onlu_single method. This function reads the data and creates the
+		multiprocessing pool. Finally, it gathers the results and writes to the output_file.
 		:return:
 		"""
-		TNG100_snapshot = ReadTNGdata(self.simname, self.snap_cat, self.snapshot, data_path=self.data_path_snap)
-		TNG100_SubhaloPT = ReadTNGdata(
+		TNG100_snapshot = ReadData(self.simname, self.snap_cat, self.snapshot, data_path=self.data_path_snap)
+		TNG100_SubhaloPT = ReadData(
 			self.simname, self.subhalo_cat, self.snapshot, sub_group=f"PT{self.PT}/", data_path=self.data_path
 		)
 		off = TNG100_SubhaloPT.read_cat("Offset_Subhalo_all")
-		TNG100_subhalo = ReadTNGdata(self.simname, "Subhalo", self.snapshot, data_path=self.data_path)
+		TNG100_subhalo = ReadData(self.simname, "Subhalo", self.snapshot, data_path=self.data_path)
 		Len = TNG100_subhalo.read_subhalo(self.sub_len_name)[:, self.PT]
 		Wind_Flag = []
 		multiproc_chuncks = np.array_split(np.arange(len(off)), self.numnodes)
@@ -146,11 +159,11 @@ class MeasureSnapshotVariables(SimInfo):
 		the IDs for the original file. Specific to IllustrisTNG simulations.
 		:return:
 		"""
-		TNG100_subhalo = ReadTNGdata(self.simname, "Subhalo", self.snapshot, data_path=self.data_path)
+		TNG100_subhalo = ReadData(self.simname, "Subhalo", self.snapshot, data_path=self.data_path)
 		Len = TNG100_subhalo.read_subhalo(self.sub_len_name)[:, self.PT]
 		mass_subhalo = TNG100_subhalo.read_subhalo("SubhaloMassType")[:, self.PT]
 		flag = TNG100_subhalo.read_subhalo(self.flag_name)
-		TNG100_SubhaloPT = ReadTNGdata(
+		TNG100_SubhaloPT = ReadData(
 			self.simname, self.subhalo_cat, self.snapshot, sub_group=f"PT{self.PT}/", data_path=self.data_path
 		)
 		off = TNG100_SubhaloPT.read_cat("Offset_Subhalo_all")
@@ -181,7 +194,7 @@ class MeasureSnapshotVariables(SimInfo):
 		the IDs for the original file. Specific to IllustrisTNG simulations.
 		:return:
 		"""
-		TNG100_subhalo = ReadTNGdata(self.simname, "Subhalo_cat", self.snapshot, data_path=self.data_path)
+		TNG100_subhalo = ReadData(self.simname, "Subhalo_cat", self.snapshot, data_path=self.data_path)
 		Len = TNG100_subhalo.read_cat(self.sub_len_name)
 		mass_subhalo = TNG100_subhalo.read_cat(self.mass_name)
 		gn = TNG100_subhalo.read_cat("GroupNumber")
@@ -193,7 +206,7 @@ class MeasureSnapshotVariables(SimInfo):
 		file.close()
 		flag = TNG100_subhalo.read_cat(self.flag_name)
 		mask = (mass_subhalo > 0.0) * (flag == 0)
-		TNG100_SubhaloPT = ReadTNGdata(
+		TNG100_SubhaloPT = ReadData(
 			self.simname, self.subhalo_cat, self.snapshot, sub_group=f"PT{self.PT}/", data_path=self.data_path
 		)
 		off = TNG100_SubhaloPT.read_cat("Offset_Subhalo_cat_all")
@@ -985,16 +998,34 @@ class MeasureSnapshotVariables(SimInfo):
 		except:
 			print("coord fail", sympy.solve([eq1, eq2, eq3, eq4, eq5]), vector)
 			return [[None]]
-
-		v1 = np.array([sol[x1], sol[x2], sol[x3]])
-		v2 = np.array([sol[y1], sol[y2], y3])
-		v3 = np.array([z1, z2, z3])
-		assert np.sum(v1 ** 2) == 1.0, "V1 not unit length."
-		assert np.sum(v2 ** 2) == 1.0, "V2 not unit length."
-		assert np.sum(v3 ** 2) == 1.0, "V3 not unit length."
-		assert np.dot(v1, v2) == 0.0, "V1, V2 not orthogonal."
-		assert np.dot(v1, v3) == 0.0, "V1, V3 not orthogonal."
-		assert np.dot(v3, v2) == 0.0, "V3, V2 not orthogonal."
+		try:
+			v1 = np.array([sol[x1], sol[x2], sol[x3]], dtype=np.float64)
+			v2 = np.array([sol[y1], sol[y2], y3], dtype=np.float64)
+			v3 = np.array([z1, z2, z3], dtype=np.float64)
+		except TypeError:
+			print(sol)
+			print("Solving again with y2=0.0")
+			y2 = 0.0  # another free parameter
+			x1, x2, x3, y1 = sympy.symbols("x1 x2 x3 y1", real=True)
+			eq1 = sympy.Eq(x1 * z1 + x2 * z2 + x3 * z3, 0.0)  # orthogonality
+			eq2 = sympy.Eq(y1 * z1 + y2 * z2 + y3 * z3, 0.0)  # orthogonality
+			eq3 = sympy.Eq(y1 * x1 + y2 * x2 + y3 * x3, 0.0)  # orthogonality
+			eq4 = sympy.Eq(x1 ** 2 + x2 ** 2 + x3 ** 2, 1.0)  # length = 1
+			eq5 = sympy.Eq(y1 ** 2 + y2 ** 2 + y3 ** 2, 1.0)  # length = 1
+			try:
+				sol = sympy.solve([eq1, eq2, eq3, eq4, eq5])[0]  # find solution that satisfies all eqs
+				v1 = np.array([sol[x1], sol[x2], sol[x3]], dtype=np.float64)
+				v2 = np.array([sol[y1], y2, y3], dtype=np.float64)
+				v3 = np.array([z1, z2, z3], dtype=np.float64)
+			except:
+				print("coord fail", sympy.solve([eq1, eq2, eq3, eq4, eq5]), vector)
+				return [[None]]
+		assert np.isclose(np.sum(v1 ** 2), 1.0, atol=1e-5), f"V1 not unit length. {np.sum(v1 ** 2)}"
+		assert np.isclose(np.sum(v2 ** 2), 1.0, atol=1e-5), f"V2 not unit length. {np.sum(v2 ** 2)}"
+		assert np.isclose(np.sum(v3 ** 2), 1.0, atol=1e-5), f"V3 not unit length. {np.sum(v3 ** 2)}"
+		assert np.isclose(np.dot(v1, v2), 0.0, atol=1e-5), f"V1, V2 not orthogonal. {np.dot(v1, v2)}"
+		assert np.isclose(np.dot(v1, v3), 0.0, atol=1e-5), f"V1, V3 not orthogonal. {np.dot(v1, v3)}"
+		assert np.isclose(np.dot(v3, v2), 0.0, atol=1e-5), f"V3, V2 not orthogonal. {np.dot(v3, v2)}"
 
 		return np.array([v1, v2, v3], dtype=np.float64).transpose()  # new orthonormal basis with z=L
 
@@ -1165,7 +1196,7 @@ class MeasureSnapshotVariables(SimInfo):
 		:param only_T: Only triaxality is calculated.
 		:return: Sphericity and triaxality unless output file name is given.
 		"""
-		TNG100_Shapes = ReadTNGdata(
+		TNG100_Shapes = ReadData(
 			self.simname, self.shapes_cat, self.snapshot, sub_group=f"PT{self.PT}/", data_path=self.data_path
 		)
 		axis_lengths = TNG100_Shapes.read_cat("Axis_Lengths")
