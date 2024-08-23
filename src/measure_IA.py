@@ -419,8 +419,8 @@ class MeasureIA(SimInfo):
 		RR_gg = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		variance = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 
-		pos_tree = KDTree(positions, boxsize=self.boxsize)
-		shape_tree = KDTree(positions_shape_sample, boxsize=self.boxsize)
+		pos_tree = KDTree(positions[:, not_LOS], boxsize=self.boxsize)
+		shape_tree = KDTree(positions_shape_sample[:, not_LOS], boxsize=self.boxsize)
 		ind_min = shape_tree.query_ball_tree(pos_tree, self.separation_min)
 		ind_max = shape_tree.query_ball_tree(pos_tree, self.separation_max)
 		ind_rbin = self.setdiff2D(ind_max, ind_min)
