@@ -1294,6 +1294,7 @@ class MeasureIA(SimInfo):
 			rp_cut=None,
 			num_nodes=4,
 			twoD=False,
+			tree=True,
 	):
 		"""
 		Measures the errors in the projected correlation function using the jackknife method, using multiple CPU cores.
@@ -1403,22 +1404,41 @@ class MeasureIA(SimInfo):
 		for chunck in multiproc_chuncks:
 			chunck = np.array(chunck, dtype=int)
 			if corr_type[1] == "multipoles":
-				result = ProcessingPool(nodes=len(chunck)).map(
-					self.measure_projected_correlation_multipoles_tree,
-					args_xi_g_plus[chunck][:, 0],
-					args_xi_g_plus[chunck][:, 1],
-					args_xi_g_plus[chunck][:, 2],
-					args_xi_g_plus[chunck][:, 3],
-					args_xi_g_plus[chunck][:, 4],
-				)
+				if tree:
+					result = ProcessingPool(nodes=len(chunck)).map(
+						self.measure_projected_correlation_multipoles_tree,
+						args_xi_g_plus[chunck][:, 0],
+						args_xi_g_plus[chunck][:, 1],
+						args_xi_g_plus[chunck][:, 2],
+						args_xi_g_plus[chunck][:, 3],
+						args_xi_g_plus[chunck][:, 4],
+					)
+				else:
+					result = ProcessingPool(nodes=len(chunck)).map(
+						self.measure_projected_correlation_multipoles,
+						args_xi_g_plus[chunck][:, 0],
+						args_xi_g_plus[chunck][:, 1],
+						args_xi_g_plus[chunck][:, 2],
+						args_xi_g_plus[chunck][:, 3],
+						args_xi_g_plus[chunck][:, 4],
+					)
 			else:
-				result = ProcessingPool(nodes=len(chunck)).map(
-					self.measure_projected_correlation_tree,
-					args_xi_g_plus[chunck][:, 0],
-					args_xi_g_plus[chunck][:, 1],
-					args_xi_g_plus[chunck][:, 2],
-					args_xi_g_plus[chunck][:, 3],
-				)
+				if tree:
+					result = ProcessingPool(nodes=len(chunck)).map(
+						self.measure_projected_correlation_tree,
+						args_xi_g_plus[chunck][:, 0],
+						args_xi_g_plus[chunck][:, 1],
+						args_xi_g_plus[chunck][:, 2],
+						args_xi_g_plus[chunck][:, 3],
+					)
+				else:
+					result = ProcessingPool(nodes=len(chunck)).map(
+						self.measure_projected_correlation,
+						args_xi_g_plus[chunck][:, 0],
+						args_xi_g_plus[chunck][:, 1],
+						args_xi_g_plus[chunck][:, 2],
+						args_xi_g_plus[chunck][:, 3],
+					)
 			output_file = h5py.File(self.output_file_name, "a")
 			for i in np.arange(0, len(chunck)):
 				for j, data_j in enumerate(data):
