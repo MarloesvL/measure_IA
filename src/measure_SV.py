@@ -68,8 +68,11 @@ class MeasureSnapshotVariables(SimInfo):
 			self.Num_halos = 0
 		self.off = self.TNG100_SubhaloPT.read_cat(self.offset_name)
 		self.Len = self.TNG100_SubhaloPT.read_cat(self.sub_len_name)
-		self.mass = self.TNG100_SubhaloPT.read_cat(
-			self.mass_name)
+		if self.exclude_wind:
+			self.mass = self.TNG100_SubhaloPT.read_cat(
+				self.mass_name)
+		else:
+			self.mass = self.TNG100_SubhaloPT.read_cat("SubhaloMassType")
 		self.TNG100_snapshot = ReadData(
 			self.simname,
 			self.snap_cat,
