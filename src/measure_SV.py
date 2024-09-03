@@ -289,22 +289,14 @@ class MeasureSnapshotVariables(SimInfo):
 
 	def measure_masses_excl_wind_single(self, indices):
 		mass_list = []
-		much_wind = 0
 		for n in indices:
-			off_n = self.off[n]
-			len_n = self.Len[n]
-			wind_or_star = self.TNG100_snapshot.read_cat(self.wind_name, cut=[off_n, off_n + len_n])
+			off_n = self.off_mass[n]
+			len_n = self.Len_mass[n]
+			wind_or_star = self.TNG100_snapshot_mass.read_cat(self.wind_name, cut=[off_n, off_n + len_n])
 			star_mask = wind_or_star > 0
-			masses = self.TNG100_snapshot.read_cat(self.masses_name, cut=[off_n, off_n + len_n])[star_mask]
+			masses = self.TNG100_snapshot_mass.read_cat(self.masses_name, cut=[off_n, off_n + len_n])[star_mask]
 			mass = sum(masses)
 			mass_list.append(mass)
-			num_wind = len_n - sum(star_mask)
-			if mass / self.mass[n] > 1.01:
-				# print(n, num_wind / len_n, self.mass[n], mass, len_n, len_n - sum(star_mask))
-				if len_n == 1.:
-					print(n, len_n, num_wind, self.mass[n], mass, masses)
-				much_wind += 1
-		# print(much_wind, len(indices))
 		return mass_list
 
 	def measure_masses_excl_wind(self):
@@ -319,19 +311,25 @@ class MeasureSnapshotVariables(SimInfo):
 		else:
 			print('Use given mass for this input')
 			exit()
-		try:
-			Len = self.Len
-		except:
-			self.create_self_arguments()
+		TNG100_SubhaloPT = ReadData(
+			self.simname, self.subhalo_cat, self.snapshot, sub_group=f"PT{self.PT}/", data_path=self.data_path
+		)
+		self.off_mass = TNG100_SubhaloPT.read_cat(self.offset_name)
+		self.Len_mass = TNG100_SubhaloPT.read_cat(self.sub_len_name)
+		self.TNG100_snapshot_mass = ReadData(
+			self.simname,
+			self.snap_cat,
+			self.snapshot,
+			data_path=self.data_path_snap,
+		)
 		mass_list = []
-		multiproc_chuncks = np.array_split(np.arange(len(self.off)), self.numnodes)
+		multiproc_chuncks = np.array_split(np.arange(len(self.off_mass)), self.numnodes)
 		result = ProcessingPool(nodes=self.numnodes).map(
 			self.measure_masses_excl_wind_single,
 			multiproc_chuncks,
 		)
 		for i in np.arange(self.numnodes):
 			mass_list.extend(result[i])
-		# print(sum(np.array(mass_list) / self.mass > 1.))
 
 		output_file = h5py.File(self.output_file_name, "a")
 		group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/PT" + str(self.PT))
