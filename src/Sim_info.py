@@ -77,16 +77,16 @@ class SimInfo:
 			self.DM_part_mass = 0.00398342749867548  # 10^10 M_sun/h
 			self.N_files = 600
 		elif self.simname == "EAGLE":
-			self.boxsize = 100000.0 / 0.6777  # ckpc/h
+			self.boxsize = 100000.0 * 0.6777  # ckpc/h
 			self.L_0p5 = self.boxsize / 2.0
 			self.h = 0.6777
-			self.DM_part_mass = 0.000970  # 10^10 M_sun (*h?)
+			self.DM_part_mass = 0.000970 * self.h  # 10^10 M_sun/h
 			self.N_files = 256
 		elif self.simname == "HorizonAGN":
 			self.boxsize = 100000.0  # ckpc/h
 			self.L_0p5 = self.boxsize / 2.0
 			self.h = 0.704
-			self.DM_part_mass = 0.008 / self.h  # 10^10 M_sun/h
+			self.DM_part_mass = 0.008 * self.h  # 10^10 M_sun/h
 			self.N_files = 1.
 		else:
 			raise KeyError("Simulation name not recognised. Choose from [TNG100, TNG300, EAGLE].")
