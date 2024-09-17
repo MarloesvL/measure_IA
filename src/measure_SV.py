@@ -51,6 +51,13 @@ class MeasureSnapshotVariables(SimInfo):
 			self.data_path_snap = snap_data_path
 		else:
 			self.data_path_snap = data_path
+		print(
+			f"MeasureSnapshotVariables object initialised with:\
+			\n simulation {project}, snapshot {snapshot}, parttype {PT} \n \
+			excluding wind is {exclude_wind}\n \
+			Catalogues are named {self.subhalo_cat}, {self.shapes_cat} and found in {data_path}{project}.\n \
+			Snapshot data is in file {self.snap_cat}, found in {snap_data_path}.\n \
+			{numnodes} cores are being used in mulitprocessing.")
 		return
 
 	def create_self_arguments(self):
@@ -66,6 +73,7 @@ class MeasureSnapshotVariables(SimInfo):
 			self.Num_halos = len(Len)
 		except:
 			self.Num_halos = 0
+		print(f"There are {self.Num_halos} galaxies/halos in the sample.")
 		self.off = self.TNG100_SubhaloPT.read_cat(self.offset_name)
 		self.Len = self.TNG100_SubhaloPT.read_cat(self.sub_len_name)
 		if self.exclude_wind:

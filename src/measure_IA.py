@@ -69,8 +69,6 @@ class MeasureIA(SimInfo):
 		try:
 			self.Num_position = len(data["Position"])  # number of halos in position sample
 			self.Num_shape = len(data["Position_shape_sample"])  # number of halos in shape sample
-			print(
-				f"There are {self.Num_shape} galaxies in the shape sample and {self.Num_position} galaxies in the position sample.")
 		except:
 			self.Num_position = 0
 			self.Num_shape = 0
@@ -86,6 +84,13 @@ class MeasureIA(SimInfo):
 			pi_max = LOS_lim
 		self.pi_bins = np.linspace(-pi_max, pi_max, self.num_bins_pi + 1)
 		self.bins_mu_r = np.linspace(-1, 1, self.num_bins_pi + 1)
+		print(f"MeasureIA object initialised with:\n \
+		simulation {simulation} that has a boxsize of {self.boxsize} cMpc. \
+		There are {self.Num_shape} galaxies in the shape sample and {self.Num_position} galaxies in the position sample.\
+		The separation bin edges are given by {self.bin_edges} cMpc. \
+		There are {num_bins_r} r or r_p bins and {num_bins_pi} pi bins. \
+		The maximum pi used for binning is {pi_max}. \
+		The data will be written to {self.output_file_name}")
 		return
 
 	@staticmethod
