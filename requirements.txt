@@ -1,0 +1,8 @@
+h5py~=3.10.0
+numpy~=1.26.2
+sympy~=1.12
+astropy~=6.1.0
+scipy~=1.11.4
+pathos~=0.3.1
+tqdm~=4.66.1
+pytest~=8.3.1
