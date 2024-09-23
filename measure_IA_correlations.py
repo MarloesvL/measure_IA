@@ -31,7 +31,7 @@ LOS_lims = None
 data_path_out = "data path for output data"
 file_name = "name of output file"  # needs to be hdf5
 dataset_name = "specific dataset name"
-corr_type = ['g+', 'w']  # there are multiple choices here
+corr_type = ['g+', 'w']  # there are multiple choices here: [0]: g+, gg or both and [1]: w or multipoles
 L_subboxes = 3  # for jk errors -> 3^3 boxes
 rp_cut = None
 
