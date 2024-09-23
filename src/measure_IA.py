@@ -2,15 +2,10 @@ import math
 import numpy as np
 import h5py
 import time
-from numpy.linalg import eig, inv
 from scipy.special import lpmn
-import sympy
 from pathos.multiprocessing import ProcessingPool
-from tqdm import tqdm
 from scipy.spatial import KDTree
 # from scipy.spatial import cKDTree as KDTree
-from scipy.stats import binned_statistic
-from src.read_data import ReadData
 from src.write_data import write_dataset_hdf5, create_group_hdf5
 from src.Sim_info import SimInfo
 from astropy.table import Table, join, vstack
