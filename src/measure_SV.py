@@ -211,9 +211,10 @@ class MeasureSnapshotVariables(SimInfo):
 		gn = TNG100_subhalo.read_cat("GroupNumber")
 		sn = TNG100_subhalo.read_cat("SubGroupNumber")  # less
 		galaxyIDs = TNG100_subhalo.read_cat("GalaxyID")
-		file = h5py.File(f"{self.data_path}/EAGLE/diff_gnsn.hdf5", 'a')
-		indices_gnsn_in_sub = file['indices_gnsn_in_sub'][:, 0]
-		indices_sub_in_gnsn = file["indices_sub_in_gnsn"][:, 0]  # dees
+		file = h5py.File(f"{self.data_path}/EAGLE/diff_gnsn.hdf5", 'r')
+		group = file[f"Snapshot_{self.snapshot}"]
+		indices_gnsn_in_sub = group['indices_gnsn_in_sub'][:, 0]
+		indices_sub_in_gnsn = group["indices_sub_in_gnsn"][:, 0]  # dees
 		file.close()
 		flag = TNG100_subhalo.read_cat(self.flag_name)
 		mask = (mass_subhalo > 0.0) * (flag == 0)
@@ -439,8 +440,32 @@ class MeasureSnapshotVariables(SimInfo):
 				coordinates_particles[:, 1]) <= self.L_0p5 and max(
 				coordinates_particles[:,
 				2]) <= self.L_0p5, f"Maximum relative coordiantes particles > boxsize/2. {max(coordinates_particles[:, 0])}, {max(coordinates_particles[:, 1])}, {max(coordinates_particles[:, 2])}, boxsize/2: {self.L_0p5}"
-			assert np.isclose(np.sum(mass_particles), mass_n,
-							  rtol=1e-5), f"Sum particle masses unequal to mass. sum: {np.sum(mass_particles)}, mass: {mass_n}"
+			try:
+				assert np.isclose(np.sum(mass_particles), mass_n,
+								  rtol=1e-5), f"Sum particle masses unequal to mass for galaxy {n} with len {len_n}. sum: {np.sum(mass_particles)}, mass: {mass_n}"
+			except AssertionError as ass_err:
+				if "TNG" in self.simname:
+					wind_or_star = self.TNG100_snapshot.read_cat(self.wind_name, cut=[off_n, off_n + len_n])
+					star_mask = wind_or_star > 0
+					mass_particles_nw = self.TNG100_snapshot.read_cat(self.masses_name, cut=[off_n, off_n + len_n])[
+						star_mask]
+					try:
+						assert np.isclose(np.sum(mass_particles_nw), mass_n,
+										  rtol=1e-5), f"Sum particle masses without wind unequal to mass for galaxy {n} with len {len_n}. sum: {np.sum(mass_particles_nw)}, mass: {mass_n}"
+						print(f"Using particles without wind for galaxy {n}.")
+						mass_particles = mass_particles_nw
+						coordinates_particles = \
+							self.TNG100_snapshot.read_cat(self.coordinates_name, cut=[off_n, off_n + len_n])[
+								star_mask
+							]
+						coordinates_particles[coordinates_particles > self.L_0p5] -= self.boxsize
+						coordinates_particles[coordinates_particles < -self.L_0p5] += self.boxsize
+					except AssertionError as exc:
+						print(exc)
+						exit()
+				else:
+					print(ass_err)
+					exit()
 			mass_coord = (coordinates_particles.transpose() * mass_particles).transpose()
 			COM_n = np.sum(mass_coord, axis=0) / mass_n
 			COM_n[COM_n < 0.0] += self.boxsize  # if negative: COM is on other side of box.
