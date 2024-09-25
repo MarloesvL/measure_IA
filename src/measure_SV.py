@@ -427,12 +427,12 @@ class MeasureSnapshotVariables(SimInfo):
 			assert max(coordinates_particles[:, 0]) <= self.boxsize and max(
 				coordinates_particles[:, 1]) <= self.boxsize and max(
 				coordinates_particles[:, 2]) <= self.boxsize, "Maximum coordinates particles larger than boxsize."
+
 			# account for periodicity of the box
-			coordinates_particles[coordinates_particles > self.L_0p5] -= self.boxsize
-			coordinates_particles[coordinates_particles < -self.L_0p5] += self.boxsize
-			# min_coord = np.min(coordinates_particles, axis=0)
-			# coordinates_particles[(coordinates_particles - min_coord) > self.L_0p5] -= self.boxsize
-			# coordinates_particles[(coordinates_particles - min_coord) < -self.L_0p5] += self.boxsize
+			min_coord = np.min(coordinates_particles, axis=0)
+			coordinates_particles[(coordinates_particles - min_coord) > self.L_0p5] -= self.boxsize
+			coordinates_particles[(coordinates_particles - min_coord) < -self.L_0p5] += self.boxsize
+
 			assert min(coordinates_particles[:, 0]) >= -self.L_0p5 and min(
 				coordinates_particles[:, 1]) >= -self.L_0p5 and min(
 				coordinates_particles[:, 2]) >= -self.L_0p5, "Minimum relative coordinates particles < -boxsize/2."
