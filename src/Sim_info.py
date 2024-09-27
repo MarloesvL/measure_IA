@@ -88,8 +88,27 @@ class SimInfo:
 			self.h = 0.704
 			self.DM_part_mass = 0.008 * self.h  # 10^10 M_sun/h
 			self.N_files = 1.
+		elif "FLAMINGO" in self.simname:
+			if "L1" in self.simname:
+				self.boxsize = 1000000.0 * 0.681  # ckpc/h
+			elif "L2p8" in self.simname:
+				self.boxsize = 2800000.0 * 0.681  # ckpc/h
+			else:
+				raise KeyError("Add an L1 or L2p8 suffix to your simname to specify which boxsize is used")
+			self.L_0p5 = self.boxsize / 2.0
+			self.h = 0.681
+			if "m8" in self.simname:
+				self.DM_part_mass = 0.0706  # 10^10 M_sun/h
+			elif "m9" in self.simname:
+				self.DM_part_mass = 0.565  # 10^10 M_sun/h
+			elif "m9" in self.simname:
+				self.DM_part_mass = 4.52  # 10^10 M_sun/h
+			else:
+				raise KeyError("Add an m8, m9 or m10 suffix to your simname to specify the resolution")
+			self.N_files = None
 		else:
-			raise KeyError("Simulation name not recognised. Choose from [TNG100, TNG300, EAGLE].")
+			raise KeyError(
+				"Simulation name not recognised. Choose from [TNG100, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1_m8, FLAMINGO_L1_m9, FLAMINGO_L1_m10, FLAMINGO_L2p8_m9].")
 		return
 
 	def get_variable_names(
@@ -167,8 +186,23 @@ class SimInfo:
 			self.velocities_name = "Velocity"
 			self.masses_name = "Mass"
 			self.coordinates_name = "Coordinates"
+		elif "FLAMINGO" in self.simname:
+			self.mass_name = None
+			self.ID_name = None
+			self.offset_name = None
+			self.sub_len_name = None
+			self.group_len_name = None
+			self.photo_name = None
+			self.SFR_name = None
+			self.flag_name = None
+			self.wind_name = None
+
+			self.velocities_name = None
+			self.masses_name = None
+			self.coordinates_name = None
 		else:
-			raise KeyError("Simulation name not recognised. Choose from [TNG100, TNG300].")
+			raise KeyError(
+				"Simulation name not recognised. Choose from [TNG100, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1_m8, FLAMINGO_L1_m9, FLAMINGO_L1_m10, FLAMINGO_L2p8_m9].")
 		return
 
 	def get_folders(self, fof_folder=None, snap_folder=None, snap_group=None):
@@ -195,8 +229,13 @@ class SimInfo:
 			self.fof_folder = None
 			self.snap_folder = None
 			self.snap_group = f"Snapshot_{self.snapshot}/"
+		elif "FLAMINGO" in self.simname:
+			self.fof_folder = None
+			self.snap_folder = None
+			self.snap_group = f"Snapshot_{self.snapshot}/"
 		else:
-			raise KeyError("Simulation name not recognised. Choose from [TNG100, TNG300].")
+			raise KeyError(
+				"Simulation name not recognised. Choose from [TNG100, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1_m8, FLAMINGO_L1_m9, FLAMINGO_L1_m10, FLAMINGO_L2p8_m9].")
 		return
 
 	def get_scalefactor(self, redshifts=None):
@@ -209,8 +248,11 @@ class SimInfo:
 		elif self.simname == "HorizonAGN":
 			redshifts = {"519": 0.5, "302": 1.2, "248": 1.6, "691": 0.2, "406": 0.8, "638": 0.3, "761": 0.0556,
 						 "213": 1.8, "175": 2.2, "125": 3, "197": 2, "266": 1.5, "343": 1, "154": 2.5}
+		elif "FLAMINGO" in self.simname:
+			redshifts = {"78": 0.0}
 		else:
-			raise KeyError("Simulation name not recognised. Choose from [TNG100, TNG300].")
+			raise KeyError(
+				"Simulation name not recognised. Choose from [TNG100, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1_m8, FLAMINGO_L1_m9, FLAMINGO_L1_m10, FLAMINGO_L2p8_m9].")
 		try:
 			self.scalefactor = 1.0 / (1.0 + redshifts[self.snapshot])
 		except ValueError:
