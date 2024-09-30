@@ -255,6 +255,7 @@ class SimInfo:
 				"Simulation name not recognised. Choose from [TNG100, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1_m8, FLAMINGO_L1_m9, FLAMINGO_L1_m10, FLAMINGO_L2p8_m9].")
 		try:
 			self.scalefactor = 1.0 / (1.0 + redshifts[self.snapshot])
+			self.redshift = redshifts[self.snapshot]
 		except ValueError:
 			raise KeyError(f"Snapshot {self.snapshot} not in redshift directory for {self.simname}.")
 		return
