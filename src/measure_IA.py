@@ -1253,6 +1253,7 @@ class MeasureIA(SimInfo):
 						self.measure_w_g_i(corr_type=corr_type[0], dataset_name=dataset_name + "_" + str(num_box))
 
 					num_box += 1
+		covs, stds = [], []
 		for d in np.arange(0, len(data)):
 			data_file = h5py.File(self.output_file_name, "a")
 			group_multipoles = data_file[f"Snapshot_{self.snapshot}/" + data[d]]
@@ -1281,9 +1282,13 @@ class MeasureIA(SimInfo):
 				write_dataset_hdf5(group_multipoles, dataset_name + "_jackknife_" + str(num_box), data=std)
 				write_dataset_hdf5(group_multipoles, dataset_name + "_jackknife_cov_" + str(num_box), data=cov)
 				output_file.close()
-				return
 			else:
-				return cov, std
+				covs.append(cov)
+				stds.append(std)
+		if self.output_file_name != None:
+			return
+		else:
+			return covs, stds
 
 	def measure_jackknife_errors_multiprocessing(
 			self,
@@ -1459,7 +1464,7 @@ class MeasureIA(SimInfo):
 				self.measure_multipoles(corr_type=args_multipoles[i][0], dataset_name=args_multipoles[i][1])
 			else:
 				self.measure_w_g_i(corr_type=args_multipoles[i][0], dataset_name=args_multipoles[i][1])
-
+		covs, stds = [], []
 		for d in np.arange(0, len(data)):
 			data_file = h5py.File(self.output_file_name, "a")
 			group_multipoles = data_file[f"Snapshot_{self.snapshot}/" + data[d]]
@@ -1488,9 +1493,13 @@ class MeasureIA(SimInfo):
 				write_dataset_hdf5(group_multipoles, dataset_name + "_jackknife_" + str(num_box), data=std)
 				write_dataset_hdf5(group_multipoles, dataset_name + "_jackknife_cov_" + str(num_box), data=cov)
 				output_file.close()
-				return
 			else:
-				return cov, std
+				covs.append(cov)
+				stds.append(std)
+		if self.output_file_name != None:
+			return
+		else:
+			return covs, stds
 
 	def measure_covariance_multiple_datasets(self, corr_type, dataset_names, num_box=3, return_output=False):
 		"""
