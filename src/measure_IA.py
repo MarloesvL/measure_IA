@@ -2,6 +2,7 @@ import math
 import numpy as np
 import h5py
 import time
+import pickle
 from scipy.special import lpmn
 from pathos.multiprocessing import ProcessingPool
 from scipy.spatial import KDTree
@@ -80,11 +81,11 @@ class MeasureIA(SimInfo):
 		self.pi_bins = np.linspace(-pi_max, pi_max, self.num_bins_pi + 1)
 		self.bins_mu_r = np.linspace(-1, 1, self.num_bins_pi + 1)
 		print(f"MeasureIA object initialised with:\n \
-		simulation {simulation} that has a boxsize of {self.boxsize} cMpc. \
-		There are {self.Num_shape} galaxies in the shape sample and {self.Num_position} galaxies in the position sample.\
-		The separation bin edges are given by {self.bin_edges} cMpc. \
-		There are {num_bins_r} r or r_p bins and {num_bins_pi} pi bins. \
-		The maximum pi used for binning is {pi_max}. \
+		simulation {simulation} that has a boxsize of {self.boxsize} cMpc.\n \
+		There are {self.Num_shape} galaxies in the shape sample and {self.Num_position} galaxies in the position sample.\n\
+		The separation bin edges are given by {self.bin_edges} cMpc.\n \
+		There are {num_bins_r} r or r_p bins and {num_bins_pi} pi bins.\n \
+		The maximum pi used for binning is {pi_max}.\n \
 		The data will be written to {self.output_file_name}")
 		return
 
@@ -374,8 +375,16 @@ class MeasureIA(SimInfo):
 			diff.append(np.setdiff1d(a1[i], a2[i]))
 		return diff
 
-	def measure_projected_correlation_tree(self, masks=None, dataset_name="All_galaxies",
-										   return_output=False, print_num=True):
+	@staticmethod
+	def setdiff_omit(a1, a2, incl_ind):
+		diff = []
+		for i in np.arange(0, len(a1)):
+			if np.isin(i, incl_ind):
+				diff.append(np.setdiff1d(a1[i], a2))
+		return diff
+
+	def measure_projected_correlation_tree(self, tree_input=[None], masks=None, dataset_name="All_galaxies",
+										   return_output=False, print_num=True, save_tree=False, file_tree_path=None):
 		"""
 		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
@@ -387,7 +396,16 @@ class MeasureIA(SimInfo):
 		:return: xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
 		"""
 
-		if masks == None:
+		if tree_input[0] != None:
+			positions = self.data["Position"]
+			shape_mask = tree_input[1]
+			positions_shape_sample = self.data["Position_shape_sample"][shape_mask]
+			axis_direction_v = self.data["Axis_Direction"]
+			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
+			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
+			axis_direction = axis_direction[shape_mask]
+			q = self.data["q"][shape_mask]
+		elif masks == None:
 			positions = self.data["Position"]
 			positions_shape_sample = self.data["Position_shape_sample"]
 			axis_direction_v = self.data["Axis_Direction"]
@@ -418,13 +436,22 @@ class MeasureIA(SimInfo):
 		RR_g_plus = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		RR_gg = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		variance = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		if tree_input[0] != None:
+			ind_rbin = tree_input[0]
+		else:
+			pos_tree = KDTree(positions[:, not_LOS], boxsize=self.boxsize)
+			ind_rbin = []
+			for i in np.arange(0, len(positions_shape_sample), 100):
+				shape_tree = KDTree(positions_shape_sample[i:min(len(positions_shape_sample), i + 100), not_LOS],
+									boxsize=self.boxsize)
+				ind_min_i = shape_tree.query_ball_tree(pos_tree, self.separation_min)
+				ind_max_i = shape_tree.query_ball_tree(pos_tree, self.separation_max)
+				ind_rbin_i = self.setdiff2D(ind_max_i, ind_min_i)
+				ind_rbin.extend(ind_rbin_i)
 
-		pos_tree = KDTree(positions[:, not_LOS], boxsize=self.boxsize)
-		shape_tree = KDTree(positions_shape_sample[:, not_LOS], boxsize=self.boxsize)
-		ind_min = shape_tree.query_ball_tree(pos_tree, self.separation_min)
-		ind_max = shape_tree.query_ball_tree(pos_tree, self.separation_max)
-		ind_rbin = self.setdiff2D(ind_max, ind_min)
-		del ind_min, ind_max
+			if save_tree:
+				with open(f"{file_tree_path}/tree_{dataset_name}.pickle", 'wb') as handle:
+					pickle.dump(ind_rbin, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 		for n in np.arange(0, len(positions_shape_sample)):
 			# for Splus_D (calculate ellipticities around position sample)
@@ -542,8 +569,9 @@ class MeasureIA(SimInfo):
 
 		return Splus_D, Scross_D, DD, variance
 
-	def measure_projected_correlation_tree_multiprocessing(self, numnodes=9, masks=None, dataset_name="All_galaxies",
-														   return_output=False, print_num=True):
+	def measure_projected_correlation_tree_multiprocessing(self, num_nodes=9, tree_input=[None], masks=None,
+														   dataset_name="All_galaxies", return_output=False,
+														   print_num=True, save_tree=False, file_tree_path=None):
 		"""
 		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
@@ -555,7 +583,16 @@ class MeasureIA(SimInfo):
 		:return: xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
 		"""
 
-		if masks == None:
+		if tree_input[0] != None:
+			self.positions = self.data["Position"]
+			shape_mask = tree_input[1]
+			self.positions_shape_sample = self.data["Position_shape_sample"][shape_mask]
+			axis_direction_v = self.data["Axis_Direction"]
+			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
+			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
+			self.axis_direction = axis_direction[shape_mask]
+			self.q = self.data["q"][shape_mask]
+		elif masks == None:
 			self.positions = self.data["Position"]
 			self.positions_shape_sample = self.data["Position_shape_sample"]
 			axis_direction_v = self.data["Axis_Direction"]
@@ -587,19 +624,30 @@ class MeasureIA(SimInfo):
 		RR_gg = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		variance = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 
-		pos_tree = KDTree(self.positions[:, self.not_LOS], boxsize=self.boxsize)
-		shape_tree = KDTree(self.positions_shape_sample[:, self.not_LOS], boxsize=self.boxsize)
-		ind_min = shape_tree.query_ball_tree(pos_tree, self.separation_min)
-		ind_max = shape_tree.query_ball_tree(pos_tree, self.separation_max)
-		self.ind_rbin = self.setdiff2D(ind_max, ind_min)
-		del ind_min, ind_max
+		if tree_input[0] != None:
+			self.ind_rbin = tree_input[0]
+		else:
+			pos_tree = KDTree(self.positions[:, self.not_LOS], boxsize=self.boxsize)
+			ind_rbin = []
+			for i in np.arange(0, len(self.positions_shape_sample), 100):
+				shape_tree = KDTree(
+					self.positions_shape_sample[i:min(len(self.positions_shape_sample), i + 100), self.not_LOS],
+					boxsize=self.boxsize)
+				ind_min_i = shape_tree.query_ball_tree(pos_tree, self.separation_min)
+				ind_max_i = shape_tree.query_ball_tree(pos_tree, self.separation_max)
+				ind_rbin_i = self.setdiff2D(ind_max_i, ind_min_i)
+				ind_rbin.extend(ind_rbin_i)
+			self.ind_rbin = ind_rbin
+			if save_tree:
+				with open(f"{file_tree_path}/tree_{dataset_name}.pickle", 'wb') as handle:
+					pickle.dump(ind_rbin, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-		self.multiproc_chuncks = np.array_split(np.arange(len(self.positions_shape_sample)), numnodes)
-		result = ProcessingPool(nodes=numnodes).map(
+		self.multiproc_chuncks = np.array_split(np.arange(len(self.positions_shape_sample)), num_nodes)
+		result = ProcessingPool(nodes=num_nodes).map(
 			self.measure_projected_correlation_tree_single,
 			self.multiproc_chuncks,
 		)
-		for i in np.arange(numnodes):
+		for i in np.arange(num_nodes):
 			Splus_D += result[i][0]
 			Scross_D += result[i][1]
 			DD += result[i][2]
@@ -651,6 +699,7 @@ class MeasureIA(SimInfo):
 			return
 		else:
 			return correlation, DD / RR_gg, separation_bins, pi_bins
+
 	def get_cosmo_points(self, data, cosmology=cosmo):
 		'''convert from astropy table of RA, DEC, and redshift to 3D cartesian coordinates in Mpc/h
 		Assumes col0=RA, col1=DEC, col2=Z'''
@@ -1053,8 +1102,9 @@ class MeasureIA(SimInfo):
 		else:
 			return correlation, DD / RR_gg, separation_bins, mu_r_bins
 
-	def measure_projected_correlation_multipoles_tree(self, masks=None, rp_cut=None, dataset_name="All_galaxies",
-													  return_output=False, print_num=True):
+	def measure_projected_correlation_multipoles_tree(self, tree_input=[None], masks=None, rp_cut=None,
+													  dataset_name="All_galaxies", return_output=False, print_num=True,
+													  save_tree=False, file_tree_path=None):
 		"""
 		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
@@ -1066,7 +1116,16 @@ class MeasureIA(SimInfo):
 		:return: xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
 		"""
 
-		if masks == None:
+		if tree_input[0] != None:
+			positions = self.data["Position"]
+			shape_mask = tree_input[1]
+			positions_shape_sample = self.data["Position_shape_sample"][shape_mask]
+			axis_direction_v = self.data["Axis_Direction"]
+			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
+			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
+			axis_direction = axis_direction[shape_mask]
+			q = self.data["q"][shape_mask]
+		elif masks == None:
 			positions = self.data["Position"]
 			positions_shape_sample = self.data["Position_shape_sample"]
 			axis_direction_v = self.data["Axis_Direction"]
@@ -1098,12 +1157,22 @@ class MeasureIA(SimInfo):
 		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		RR_g_plus = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		RR_gg = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
-		pos_tree = KDTree(positions, boxsize=self.boxsize)
-		shape_tree = KDTree(positions_shape_sample, boxsize=self.boxsize)
-		ind_min = shape_tree.query_ball_tree(pos_tree, self.separation_min)
-		ind_max = shape_tree.query_ball_tree(pos_tree, self.separation_max)
-		ind_rbin = self.setdiff2D(ind_max, ind_min)
-		del ind_min, ind_max
+		if tree_input[0] != None:
+			ind_rbin = tree_input[0]
+		else:
+			pos_tree = KDTree(positions[:], boxsize=self.boxsize)
+			ind_rbin = []
+			for i in np.arange(0, len(positions_shape_sample), 100):
+				shape_tree = KDTree(positions_shape_sample[i:min(len(positions_shape_sample), i + 100)],
+									boxsize=self.boxsize)
+				ind_min_i = shape_tree.query_ball_tree(pos_tree, self.separation_min)
+				ind_max_i = shape_tree.query_ball_tree(pos_tree, self.separation_max)
+				ind_rbin_i = self.setdiff2D(ind_max_i, ind_min_i)
+				ind_rbin.extend(ind_rbin_i)
+
+			if save_tree:
+				with open(f"{file_tree_path}/tree_{dataset_name}.pickle", 'wb') as handle:
+					pickle.dump(ind_rbin, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 		for n in np.arange(0, len(positions_shape_sample)):
 			# for Splus_D (calculate ellipticities around position sample)
@@ -1235,9 +1304,10 @@ class MeasureIA(SimInfo):
 			np.add.at(DD, (ind_r, ind_mu_r), 1.0)
 		return Splus_D, Scross_D, DD
 
-	def measure_projected_correlation_multipoles_tree_multiprocessing(self, numnodes=9, masks=None, rp_cut=None,
-																	  dataset_name="All_galaxies",
-																	  return_output=False, print_num=True):
+	def measure_projected_correlation_multipoles_tree_multiprocessing(self, num_nodes=9, tree_input=[None], masks=None,
+																	  rp_cut=None, dataset_name="All_galaxies",
+																	  return_output=False, print_num=True,
+																	  save_tree=False, file_tree_path=None):
 		"""
 		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
@@ -1249,7 +1319,16 @@ class MeasureIA(SimInfo):
 		:return: xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
 		"""
 
-		if masks == None:
+		if tree_input[0] != None:
+			self.positions = self.data["Position"]
+			shape_mask = tree_input[1]
+			self.positions_shape_sample = self.data["Position_shape_sample"][shape_mask]
+			axis_direction_v = self.data["Axis_Direction"]
+			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
+			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
+			self.axis_direction = axis_direction[shape_mask]
+			self.q = self.data["q"][shape_mask]
+		elif masks == None:
 			self.positions = self.data["Position"]
 			self.positions_shape_sample = self.data["Position_shape_sample"]
 			axis_direction_v = self.data["Axis_Direction"]
@@ -1284,19 +1363,29 @@ class MeasureIA(SimInfo):
 		RR_g_plus = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		RR_gg = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 
-		pos_tree = KDTree(self.positions, boxsize=self.boxsize)
-		shape_tree = KDTree(self.positions_shape_sample, boxsize=self.boxsize)
-		ind_min = shape_tree.query_ball_tree(pos_tree, self.separation_min)
-		ind_max = shape_tree.query_ball_tree(pos_tree, self.separation_max)
-		self.ind_rbin = self.setdiff2D(ind_max, ind_min)
-		del ind_min, ind_max
+		if tree_input[0] != None:
+			self.ind_rbin = tree_input[0]
+		else:
+			pos_tree = KDTree(self.positions[:], boxsize=self.boxsize)
+			ind_rbin = []
+			for i in np.arange(0, len(self.positions_shape_sample), 100):
+				shape_tree = KDTree(self.positions_shape_sample[i:min(len(self.positions_shape_sample), i + 100)],
+									boxsize=self.boxsize)
+				ind_min_i = shape_tree.query_ball_tree(pos_tree, self.separation_min)
+				ind_max_i = shape_tree.query_ball_tree(pos_tree, self.separation_max)
+				ind_rbin_i = self.setdiff2D(ind_max_i, ind_min_i)
+				ind_rbin.extend(ind_rbin_i)
+			self.ind_rbin = ind_rbin
+			if save_tree:
+				with open(f"{file_tree_path}/tree_{dataset_name}.pickle", 'wb') as handle:
+					pickle.dump(ind_rbin, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
-		self.multiproc_chuncks = np.array_split(np.arange(len(self.positions_shape_sample)), numnodes)
-		result = ProcessingPool(nodes=numnodes).map(
+		self.multiproc_chuncks = np.array_split(np.arange(len(self.positions_shape_sample)), num_nodes)
+		result = ProcessingPool(nodes=num_nodes).map(
 			self.measure_projected_correlation_multipoles_tree_single,
 			self.multiproc_chuncks,
 		)
-		for i in np.arange(numnodes):
+		for i in np.arange(num_nodes):
 			Splus_D += result[i][0]
 			Scross_D += result[i][1]
 			DD += result[i][2]
@@ -1345,6 +1434,7 @@ class MeasureIA(SimInfo):
 			return
 		else:
 			return correlation, DD / RR_gg, separation_bins, mu_r_bins
+
 	def measure_w_g_i(self, corr_type="both", dataset_name="All_galaxies", return_output=False):
 		"""
 		Measures w_gi for a given xi_gi dataset that has been calculated with the measure projected correlation
@@ -1478,7 +1568,8 @@ class MeasureIA(SimInfo):
 		return
 
 	def measure_jackknife_errors(
-			self, masks=None, corr_type=["both", "multipoles"], dataset_name="All_galaxies", L_subboxes=3, rp_cut=None
+			self, masks=None, corr_type=["both", "multipoles"], dataset_name="All_galaxies", L_subboxes=3, rp_cut=None,
+			tree_saved=True, file_tree_path=None
 	):
 		"""
 		Measures the errors in the projected correlation function using the jackknife method.
@@ -1498,6 +1589,9 @@ class MeasureIA(SimInfo):
 			data = [corr_type[1] + "_gg"]
 		else:
 			raise KeyError("Unknown value for corr_type. Choose from [g+, gg, both]")
+		if tree_saved:
+			with open(f"{file_tree_path}/tree_{dataset_name}.pickle", 'rb') as handle:
+				ind_rbin = pickle.load(handle)
 		L_sub = self.L_0p5 * 2.0 / L_subboxes
 		num_box = 0
 		for i in np.arange(0, L_subboxes):
@@ -1530,29 +1624,39 @@ class MeasureIA(SimInfo):
 					if masks != None:
 						mask_position = mask_position * masks["Position"]
 						mask_shape = mask_shape * masks["Position_shape_sample"]
+					if tree_saved:
+						indices_shape = np.where(mask_shape)[0]
+						mask_not_position = np.invert(mask_position)
+						indices_not_position = np.where(mask_not_position)[0]
+						ind_r_bin_jk = self.setdiff_omit(ind_rbin, indices_not_position,
+														 indices_shape)
+						masks_total = None
+					else:
+						ind_r_bin_jk = None
+						indices_shape = None
+						masks_total = {
+							"Position": mask_position,
+							"Position_shape_sample": mask_shape,
+							"Axis_Direction": mask_shape,
+							"q": mask_shape,
+						}
 					if corr_type[1] == "multipoles":
 						self.measure_projected_correlation_multipoles_tree(
-							{
-								"Position": mask_position,
-								"Position_shape_sample": mask_shape,
-								"Axis_Direction": mask_shape,
-								"q": mask_shape,
-							},
+							tree_input=[ind_r_bin_jk, indices_shape],
+							masks=masks_total,
 							rp_cut=rp_cut,
-							dataset_name=dataset_name + "_" + str(num_box),
+							dataset_name=dataset_name + "_" + str(
+								num_box),
 							print_num=False,
 						)
 						self.measure_multipoles(corr_type=corr_type[0], dataset_name=dataset_name + "_" + str(num_box))
 					else:
 						self.measure_projected_correlation_tree(
-							{
-								"Position": mask_position,
-								"Position_shape_sample": mask_shape,
-								"Axis_Direction": mask_shape,
-								"q": mask_shape,
-							},
+							tree_input=[ind_r_bin_jk, indices_shape],
+							masks=masks_total,
 							dataset_name=dataset_name + "_" + str(num_box),
 							print_num=False,
+							save_tree=False,
 						)
 						self.measure_w_g_i(corr_type=corr_type[0], dataset_name=dataset_name + "_" + str(num_box))
 
@@ -1595,15 +1699,8 @@ class MeasureIA(SimInfo):
 			return covs, stds
 
 	def measure_jackknife_errors_multiprocessing(
-			self,
-			masks=None,
-			corr_type=["both", "multipoles"],
-			dataset_name="All_galaxies",
-			L_subboxes=3,
-			rp_cut=None,
-			num_nodes=4,
-			twoD=False,
-			tree=True,
+			self,masks=None, corr_type=["both", "multipoles"], dataset_name="All_galaxies", L_subboxes=3, rp_cut=None,
+			num_nodes=4, twoD=False, tree=True, tree_saved=True, file_tree_path=None
 	):
 		"""
 		Measures the errors in the projected correlation function using the jackknife method, using multiple CPU cores.
@@ -1634,14 +1731,16 @@ class MeasureIA(SimInfo):
 			bin_var_names = ["rp", "pi"]
 		else:
 			raise KeyError("Unknown value for second entry of corr_type. Choose from [multipoles, w_g_plus]")
-
+		if tree_saved:
+			with open(f"{file_tree_path}/tree_{dataset_name}.pickle", 'rb') as handle:
+				ind_rbin = pickle.load(handle)
 		L_sub = self.boxsize / L_subboxes
 		if twoD:
 			z_L_sub = 1
 		else:
 			z_L_sub = L_subboxes
 		num_box = 0
-		args_xi_g_plus, args_multipoles = [], []
+		args_xi_g_plus, args_multipoles,tree_args = [], [],[]
 		for i in np.arange(0, L_subboxes):
 			for j in np.arange(0, L_subboxes):
 				for k in np.arange(0, z_L_sub):
@@ -1675,15 +1774,27 @@ class MeasureIA(SimInfo):
 					if masks != None:
 						mask_position = mask_position * masks["Position"]
 						mask_shape = mask_shape * masks["Position_shape_sample"]
+					if tree_saved:
+						indices_shape = np.where(mask_shape)[0]
+						mask_not_position = np.invert(mask_position)
+						indices_not_position = np.where(mask_not_position)[0]
+						ind_r_bin_jk = self.setdiff_omit(ind_rbin, indices_not_position,
+														 indices_shape)
+						masks_total = None
+					else:
+						ind_r_bin_jk = None
+						indices_shape = None
+						masks_total = {
+							"Position": mask_position,
+							"Position_shape_sample": mask_shape,
+							"Axis_Direction": mask_shape,
+							"q": mask_shape,
+						}
 					if corr_type[1] == "multipoles":
+						tree_args.append([ind_r_bin_jk, indices_shape])
 						args_xi_g_plus.append(
 							(
-								{
-									"Position": mask_position,
-									"Position_shape_sample": mask_shape,
-									"Axis_Direction": mask_shape,
-									"q": mask_shape,
-								},
+								masks_total,
 								rp_cut,
 								dataset_name + "_" + str(num_box),
 								True,
@@ -1691,14 +1802,10 @@ class MeasureIA(SimInfo):
 							)
 						)
 					else:
+						tree_args.append([ind_r_bin_jk, indices_shape])
 						args_xi_g_plus.append(
 							(
-								{
-									"Position": mask_position,
-									"Position_shape_sample": mask_shape,
-									"Axis_Direction": mask_shape,
-									"q": mask_shape,
-								},
+								masks_total,
 								dataset_name + "_" + str(num_box),
 								True,
 								False,
@@ -1716,6 +1823,7 @@ class MeasureIA(SimInfo):
 				if tree:
 					result = ProcessingPool(nodes=len(chunck)).map(
 						self.measure_projected_correlation_multipoles_tree,
+						tree_args[min(chunck):max(chunck) + 1],
 						args_xi_g_plus[chunck][:, 0],
 						args_xi_g_plus[chunck][:, 1],
 						args_xi_g_plus[chunck][:, 2],
@@ -1735,6 +1843,7 @@ class MeasureIA(SimInfo):
 				if tree:
 					result = ProcessingPool(nodes=len(chunck)).map(
 						self.measure_projected_correlation_tree,
+						tree_args[min(chunck):max(chunck) + 1],
 						args_xi_g_plus[chunck][:, 0],
 						args_xi_g_plus[chunck][:, 1],
 						args_xi_g_plus[chunck][:, 2],
