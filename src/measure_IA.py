@@ -279,6 +279,7 @@ class MeasureIA(SimInfo):
 		LOS_ind = self.data["LOS"]  # eg 2 for z axis
 		not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], LOS_ind, invert=True)]  # eg 0,1 for x&y
 		e = (1 - q ** 2) / (1 + q ** 2)  # size of ellipticity
+		del q
 		R = 1 - np.mean(e ** 2) / 2.0  # responsitivity factor
 		L3 = self.boxsize ** 3  # box volume
 		sub_box_len_logrp = (np.log10(self.separation_max) - np.log10(self.separation_min)) / self.num_bins_r
@@ -297,10 +298,14 @@ class MeasureIA(SimInfo):
 			separation[separation < -self.L_0p5] += self.boxsize
 			projected_sep = separation[:, not_LOS]
 			LOS = separation[:, LOS_ind]
+			del separation
 			separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
 			separation_dir = (projected_sep.transpose() / separation_len).transpose()  # normalisation of rp
+			del projected_sep
 			phi = np.arccos(self.calculate_dot_product_arrays(separation_dir, axis_direction))  # [0,pi]
+			del separation_dir
 			e_plus, e_cross = self.get_ellipticity(e, phi)
+			del phi
 			# if self.Num_position == self.Num_shape:
 			# 	e_plus[n], e_cross[n] = 0.0, 0.0
 			e_plus[np.isnan(e_plus)] = 0.0
@@ -311,14 +316,17 @@ class MeasureIA(SimInfo):
 			ind_r = np.floor(
 				np.log10(separation_len[mask]) / sub_box_len_logrp - np.log10(self.bin_edges[0]) / sub_box_len_logrp
 			)
+			del separation_len
 			ind_r = np.array(ind_r, dtype=int)
 			ind_pi = np.floor(
 				LOS[mask] / sub_box_len_pi - self.pi_bins[0] / sub_box_len_pi
 			)  # need length of LOS, so only positive values
+			del LOS
 			ind_pi = np.array(ind_pi, dtype=int)
 			np.add.at(Splus_D, (ind_r, ind_pi), e_plus[mask] / (2 * R))
 			np.add.at(Scross_D, (ind_r, ind_pi), e_cross[mask] / (2 * R))
 			np.add.at(variance, (ind_r, ind_pi), (e_plus[mask] / (2 * R)) ** 2)
+			del e_plus, e_cross, mask
 			np.add.at(DD, (ind_r, ind_pi), 1.0)
 
 		if self.Num_position == self.Num_shape:
@@ -435,6 +443,7 @@ class MeasureIA(SimInfo):
 		LOS_ind = self.data["LOS"]  # eg 2 for z axis
 		not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], LOS_ind, invert=True)]  # eg 0,1 for x&y
 		e = (1 - q ** 2) / (1 + q ** 2)  # size of ellipticity
+		del q
 		R = 1 - np.mean(e ** 2) / 2.0  # responsitivity factor
 		L3 = self.boxsize ** 3  # box volume
 		sub_box_len_logrp = (np.log10(self.separation_max) - np.log10(self.separation_min)) / self.num_bins_r
@@ -470,11 +479,15 @@ class MeasureIA(SimInfo):
 				separation[separation < -self.L_0p5] += self.boxsize
 				projected_sep = separation[:, not_LOS]
 				LOS = separation[:, LOS_ind]
+				del separation
 				separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
 				separation_dir = (projected_sep.transpose() / separation_len).transpose()  # normalisation of rp
+				del projected_sep
 				phi = np.arccos(separation_dir[:, 0] * axis_direction[n, 0] + separation_dir[:, 1] * axis_direction[
 					n, 1])  # [0,pi]
+				del separation_dir
 				e_plus, e_cross = self.get_ellipticity(e[n], phi)
+				del phi
 				e_plus[np.isnan(e_plus)] = 0.0
 				e_cross[np.isnan(e_cross)] = 0.0
 
@@ -483,6 +496,7 @@ class MeasureIA(SimInfo):
 				ind_r = np.floor(
 					np.log10(separation_len[mask]) / sub_box_len_logrp - np.log10(self.bin_edges[0]) / sub_box_len_logrp
 				)
+				del separation_len
 				ind_r = np.array(ind_r, dtype=int)
 				ind_pi = np.floor(
 					LOS[mask] / sub_box_len_pi - self.pi_bins[0] / sub_box_len_pi
@@ -491,6 +505,7 @@ class MeasureIA(SimInfo):
 				np.add.at(Splus_D, (ind_r, ind_pi), e_plus[mask] / (2 * R))
 				np.add.at(Scross_D, (ind_r, ind_pi), e_cross[mask] / (2 * R))
 				np.add.at(variance, (ind_r, ind_pi), (e_plus[mask] / (2 * R)) ** 2)
+				del e_plus, e_cross, mask
 				np.add.at(DD, (ind_r, ind_pi), 1.0)
 
 		if self.Num_position == self.Num_shape:
@@ -553,12 +568,16 @@ class MeasureIA(SimInfo):
 				separation[separation < -self.L_0p5] += self.boxsize
 				projected_sep = separation[:, self.not_LOS]
 				LOS = separation[:, self.LOS_ind]
+				del separation
 				separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
 				separation_dir = (projected_sep.transpose() / separation_len).transpose()  # normalisation of rp
+				del projected_sep
 				phi = np.arccos(
 					separation_dir[:, 0] * self.axis_direction[n, 0] + separation_dir[:, 1] * self.axis_direction[
 						n, 1])
+				del separation_dir
 				e_plus, e_cross = self.get_ellipticity(self.e[n], phi)
+				del phi
 				e_plus[np.isnan(e_plus)] = 0.0
 				e_cross[np.isnan(e_cross)] = 0.0
 
@@ -568,14 +587,17 @@ class MeasureIA(SimInfo):
 					np.log10(separation_len[mask]) / self.sub_box_len_logrp - np.log10(
 						self.bin_edges[0]) / self.sub_box_len_logrp
 				)
+				del separation_len
 				ind_r = np.array(ind_r, dtype=int)
 				ind_pi = np.floor(
 					LOS[mask] / self.sub_box_len_pi - self.pi_bins[0] / self.sub_box_len_pi
 				)  # need length of LOS, so only positive values
+				del LOS
 				ind_pi = np.array(ind_pi, dtype=int)
 				np.add.at(Splus_D, (ind_r, ind_pi), e_plus[mask] / (2 * self.R))
 				np.add.at(Scross_D, (ind_r, ind_pi), e_cross[mask] / (2 * self.R))
 				np.add.at(variance, (ind_r, ind_pi), (e_plus[mask] / (2 * self.R)) ** 2)
+				del e_plus, e_cross, mask
 				np.add.at(DD, (ind_r, ind_pi), 1.0)
 
 		return Splus_D, Scross_D, DD, variance
@@ -1028,6 +1050,7 @@ class MeasureIA(SimInfo):
 		LOS_ind = self.data["LOS"]  # eg 2 for z axis
 		not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], LOS_ind, invert=True)]  # eg 0,1 for x&y
 		e = (1 - q ** 2) / (1 + q ** 2)  # size of ellipticity
+		del q
 		R = 1 - np.mean(e ** 2) / 2.0  # responsitivity factor
 		L3 = self.boxsize ** 3  # box volume
 		sub_box_len_logr = (np.log10(self.separation_max) - np.log10(self.separation_min)) / self.num_bins_r
@@ -1047,10 +1070,15 @@ class MeasureIA(SimInfo):
 			LOS = separation[:, LOS_ind]
 			projected_separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
 			separation_dir = (projected_sep.transpose() / projected_separation_len).transpose()  # normalisation of rp
+			del projected_sep
 			separation_len = np.sqrt(np.sum(separation ** 2, axis=1))
+			del separation
 			mu_r = LOS / separation_len
+			del LOS
 			phi = np.arccos(self.calculate_dot_product_arrays(separation_dir, axis_direction))  # [0,pi]
+			del separation_dir
 			e_plus, e_cross = self.get_ellipticity(e, phi)
+			del phi
 			# if self.Num_position == self.Num_shape:
 			# 	e_plus[n], e_cross[n] = 0.0, 0.0
 			# 	mu_r[n] = 0.0
@@ -1064,17 +1092,21 @@ class MeasureIA(SimInfo):
 					* (separation_len >= self.bin_edges[0])
 					* (separation_len < self.bin_edges[-1])
 			)
+			del projected_separation_len
 			ind_r = np.floor(
 				np.log10(separation_len[mask]) / sub_box_len_logr - np.log10(self.bin_edges[0]) / sub_box_len_logr
 			)
+			del separation_len
 			ind_r = np.array(ind_r, dtype=int)
 			ind_mu_r = np.floor(
 				mu_r[mask] / sub_box_len_mu_r - self.bins_mu_r[0] / sub_box_len_mu_r
 			)  # need length of LOS, so only positive values
+			del mu_r
 			ind_mu_r = np.array(ind_mu_r, dtype=int)
 
 			np.add.at(Splus_D, (ind_r, ind_mu_r), e_plus[mask] / (2 * R))
 			np.add.at(Scross_D, (ind_r, ind_mu_r), e_cross[mask] / (2 * R))
+			del e_plus, e_cross, mask
 			np.add.at(DD, (ind_r, ind_mu_r), 1.0)
 
 		if self.Num_position == self.Num_shape:
@@ -1305,11 +1337,15 @@ class MeasureIA(SimInfo):
 				separation_dir = (
 							projected_sep.transpose() / projected_separation_len).transpose()  # normalisation of rp
 				separation_len = np.sqrt(np.sum(separation ** 2, axis=1))
+				del separation, projected_sep
 				mu_r = LOS / separation_len
+				del LOS
 				phi = np.arccos(
 					separation_dir[:, 0] * self.axis_direction[n, 0] + separation_dir[:, 1] * self.axis_direction[
 						n, 1])  # [0,pi]
+				del separation_dir
 				e_plus, e_cross = self.get_ellipticity(self.e[n], phi)
+				del phi
 				# if self.Num_position == self.Num_shape:
 				# 	e_plus[n], e_cross[n] = 0.0, 0.0
 				# 	mu_r[n] = 0.0
@@ -1323,17 +1359,21 @@ class MeasureIA(SimInfo):
 						* (separation_len >= self.bin_edges[0])
 						* (separation_len < self.bin_edges[-1])
 				)
+				del projected_separation_len
 				ind_r = np.floor(
 					np.log10(separation_len[mask]) / self.sub_box_len_logr - np.log10(
 						self.bin_edges[0]) / self.sub_box_len_logr
 				)
+				del separation_len
 				ind_r = np.array(ind_r, dtype=int)
 				ind_mu_r = np.floor(
 					mu_r[mask] / self.sub_box_len_mu_r - self.bins_mu_r[0] / self.sub_box_len_mu_r
 				)  # need length of LOS, so only positive values
+				del mu_r
 				ind_mu_r = np.array(ind_mu_r, dtype=int)
 				np.add.at(Splus_D, (ind_r, ind_mu_r), e_plus[mask] / (2 * self.R))
 				np.add.at(Scross_D, (ind_r, ind_mu_r), e_cross[mask] / (2 * self.R))
+				del e_plus, e_cross, mask
 				np.add.at(DD, (ind_r, ind_mu_r), 1.0)
 		return Splus_D, Scross_D, DD
 
