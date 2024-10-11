@@ -31,6 +31,7 @@ LOS_lims = None
 data_path_out = "data path for output data"
 file_name = "name of output file"  # needs to be hdf5
 dataset_name = "specific dataset name"
+tree_path = "path to where you want to save the tree info where the error method can access it"
 corr_type = ['g+', 'w']  # there are multiple choices here: [0]: g+, gg or both and [1]: w or multipoles
 L_subboxes = 3  # for jk errors -> 3^3 boxes
 rp_cut = None
@@ -46,7 +47,7 @@ IA_Projected = MeasureIA(
 	boxsize=boxsize,
 )
 # wg+,wgg
-IA_Projected.measure_projected_correlation_tree(dataset_name=dataset_name)
+IA_Projected.measure_projected_correlation_tree(dataset_name=dataset_name, save_tree=True, file_tree_path=tree_path)
 IA_Projected.measure_w_g_i(corr_type=corr_type[0], dataset_name=dataset_name)
 # IA_Projected.measure_jackknife_errors(
 # 	corr_type=corr_type,
@@ -60,10 +61,13 @@ IA_Projected.measure_jackknife_errors_multiprocessing(
 	L_subboxes=L_subboxes,
 	num_nodes=9,
 	rp_cut=rp_cut,
+	tree_saved=True,
+	file_tree_path=tree_path
 )
 corr_type = ['g+', 'multipoles']
 # multipoles
-IA_Projected.measure_projected_correlation_multipoles_tree(dataset_name=dataset_name, rp_cut=rp_cut)
+IA_Projected.measure_projected_correlation_multipoles_tree(dataset_name=dataset_name, rp_cut=rp_cut, save_tree=True,
+														   file_tree_path=tree_path)
 IA_Projected.measure_multipoles(dataset_name=dataset_name, corr_type=corr_type[0])
 IA_Projected.measure_jackknife_errors_multiprocessing(
 	corr_type=corr_type,
@@ -71,4 +75,6 @@ IA_Projected.measure_jackknife_errors_multiprocessing(
 	L_subboxes=L_subboxes,
 	num_nodes=9,
 	rp_cut=rp_cut,
+	tree_saved=True,
+	file_tree_path=tree_path
 )
