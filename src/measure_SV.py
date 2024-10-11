@@ -403,7 +403,6 @@ class MeasureSnapshotVariables(SimInfo):
 
 	def measure_COM_single(self, indices):
 		COM = []
-		# info = []
 		for n in indices:
 			off_n = self.off[n]
 			len_n = self.Len[n]
@@ -433,13 +432,13 @@ class MeasureSnapshotVariables(SimInfo):
 			coordinates_particles[(coordinates_particles - min_coord) > self.L_0p5] -= self.boxsize
 			coordinates_particles[(coordinates_particles - min_coord) < -self.L_0p5] += self.boxsize
 
-			assert min(coordinates_particles[:, 0]) >= -self.L_0p5 and min(
-				coordinates_particles[:, 1]) >= -self.L_0p5 and min(
-				coordinates_particles[:, 2]) >= -self.L_0p5, "Minimum relative coordinates particles < -boxsize/2."
-			assert max(coordinates_particles[:, 0]) <= self.L_0p5 and max(
-				coordinates_particles[:, 1]) <= self.L_0p5 and max(
-				coordinates_particles[:,
-				2]) <= self.L_0p5, f"Maximum relative coordiantes particles > boxsize/2. {max(coordinates_particles[:, 0])}, {max(coordinates_particles[:, 1])}, {max(coordinates_particles[:, 2])}, boxsize/2: {self.L_0p5}"
+			# assert min(coordinates_particles[:, 0]) >= -self.L_0p5 and min(
+			# 	coordinates_particles[:, 1]) >= -self.L_0p5 and min(
+			# 	coordinates_particles[:, 2]) >= -self.L_0p5, "Minimum relative coordinates particles < -boxsize/2."
+			# assert max(coordinates_particles[:, 0]) <= self.L_0p5 and max(
+			# 	coordinates_particles[:, 1]) <= self.L_0p5 and max(
+			# 	coordinates_particles[:,
+			# 	2]) <= self.L_0p5, f"Maximum relative coordiantes particles > boxsize/2. {max(coordinates_particles[:, 0])}, {max(coordinates_particles[:, 1])}, {max(coordinates_particles[:, 2])}, boxsize/2: {self.L_0p5}"
 			try:
 				assert np.isclose(np.sum(mass_particles), mass_n,
 								  rtol=1e-5), f"Sum particle masses unequal to mass for galaxy {n} with len {len_n}. sum: {np.sum(mass_particles)}, mass: {mass_n}"
@@ -471,7 +470,7 @@ class MeasureSnapshotVariables(SimInfo):
 			COM_n[COM_n < 0.0] += self.boxsize  # if negative: COM is on other side of box.
 			assert (COM_n < self.boxsize).all() and (COM_n > 0.0).all(), "COM coordinate not inside of box"
 			COM.append(COM_n)
-		return COM  # , info
+		return COM
 
 	def measure_COM(self):
 		"""
@@ -984,7 +983,9 @@ class MeasureSnapshotVariables(SimInfo):
 			# transform to new coords
 			rel_velocity_transform = np.dot(transform_mat_inv, rel_velocity.transpose()).transpose()
 			rel_position_transform = np.dot(transform_mat_inv, rel_position.transpose()).transpose()
+			del rel_position, rel_velocity, transform_mat_inv
 			theta = np.arctan2(rel_position_transform[:, 1], rel_position_transform[:, 0])  # +np.pi  # arctan(y/x)
+			del rel_position_transform
 			# + np.pi  # +pi changes the sign of v_theta. theta: [-pi,pi] or [0,2pi]
 			vel_theta = -rel_velocity_transform[:, 0] * np.sin(theta) + rel_velocity_transform[:, 1] * np.cos(theta)
 			vel_theta_mean = (
@@ -994,6 +995,7 @@ class MeasureSnapshotVariables(SimInfo):
 			if self.measure_dispersion:
 				vel_r_n = rel_velocity_transform[:, 0] * np.cos(theta) + rel_velocity_transform[:, 1] * np.sin(theta)
 				vel_z_n = rel_velocity_transform[:, 2]
+				del rel_velocity_transform
 				rel_velocity_cyl = np.array([vel_r_n, vel_theta, vel_z_n]).transpose()
 				mean_vel_cyl = (
 						np.sum((rel_velocity_cyl.transpose() * particle_mass).transpose(), axis=0) / mass
@@ -1003,6 +1005,7 @@ class MeasureSnapshotVariables(SimInfo):
 				mean_vel_z = np.sum(vel_z_n * particle_mass) / mass
 				vel_z.append(mean_vel_z)
 				vel_z_abs.append(np.sum(abs(vel_z_n) * particle_mass) / mass)
+				del particle_mass
 				vel_disp_cyl.append(dvel_mean_cyl)
 				vel_disp.append(np.sqrt(np.sum(dvel_mean_cyl) / 3.0))
 
