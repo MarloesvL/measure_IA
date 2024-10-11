@@ -396,7 +396,7 @@ class MeasureIA(SimInfo):
 		:return: xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
 		"""
 
-		if tree_input[0] != None:
+		if tree_input[0] != None and masks == None:
 			positions = self.data["Position"]
 			shape_mask = tree_input[1]
 			positions_shape_sample = self.data["Position_shape_sample"][shape_mask]
@@ -405,6 +405,15 @@ class MeasureIA(SimInfo):
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			axis_direction = axis_direction[shape_mask]
 			q = self.data["q"][shape_mask]
+		elif tree_input[0] != None and masks != None:
+			positions = self.data["Position"][masks["Position"]]
+			shape_mask = tree_input[1]
+			positions_shape_sample = self.data["Position_shape_sample"][masks["Position_shape_sample"]][shape_mask]
+			axis_direction_v = self.data["Axis_Direction"][masks["Axis_Direction"]]
+			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
+			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
+			axis_direction = axis_direction[shape_mask]
+			q = self.data["q"][masks["q"]][shape_mask]
 		elif masks == None:
 			positions = self.data["Position"]
 			positions_shape_sample = self.data["Position_shape_sample"]
@@ -454,34 +463,35 @@ class MeasureIA(SimInfo):
 					pickle.dump(ind_rbin, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 		for n in np.arange(0, len(positions_shape_sample)):
-			# for Splus_D (calculate ellipticities around position sample)
-			separation = positions_shape_sample[n] - positions[ind_rbin[n]]
-			separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
-			separation[separation < -self.L_0p5] += self.boxsize
-			projected_sep = separation[:, not_LOS]
-			LOS = separation[:, LOS_ind]
-			separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
-			separation_dir = (projected_sep.transpose() / separation_len).transpose()  # normalisation of rp
-			phi = np.arccos(separation_dir[:, 0] * axis_direction[n, 0] + separation_dir[:, 1] * axis_direction[
-				n, 1])  # [0,pi]
-			e_plus, e_cross = self.get_ellipticity(e[n], phi)
-			e_plus[np.isnan(e_plus)] = 0.0
-			e_cross[np.isnan(e_cross)] = 0.0
+			if len(ind_rbin[n]) > 0:
+				# for Splus_D (calculate ellipticities around position sample)
+				separation = positions_shape_sample[n] - positions[ind_rbin[n]]
+				separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
+				separation[separation < -self.L_0p5] += self.boxsize
+				projected_sep = separation[:, not_LOS]
+				LOS = separation[:, LOS_ind]
+				separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
+				separation_dir = (projected_sep.transpose() / separation_len).transpose()  # normalisation of rp
+				phi = np.arccos(separation_dir[:, 0] * axis_direction[n, 0] + separation_dir[:, 1] * axis_direction[
+					n, 1])  # [0,pi]
+				e_plus, e_cross = self.get_ellipticity(e[n], phi)
+				e_plus[np.isnan(e_plus)] = 0.0
+				e_cross[np.isnan(e_cross)] = 0.0
 
-			# get the indices for the binning
-			mask = (separation_len >= self.bin_edges[0]) * (separation_len < self.bin_edges[-1])
-			ind_r = np.floor(
-				np.log10(separation_len[mask]) / sub_box_len_logrp - np.log10(self.bin_edges[0]) / sub_box_len_logrp
-			)
-			ind_r = np.array(ind_r, dtype=int)
-			ind_pi = np.floor(
-				LOS[mask] / sub_box_len_pi - self.pi_bins[0] / sub_box_len_pi
-			)  # need length of LOS, so only positive values
-			ind_pi = np.array(ind_pi, dtype=int)
-			np.add.at(Splus_D, (ind_r, ind_pi), e_plus[mask] / (2 * R))
-			np.add.at(Scross_D, (ind_r, ind_pi), e_cross[mask] / (2 * R))
-			np.add.at(variance, (ind_r, ind_pi), (e_plus[mask] / (2 * R)) ** 2)
-			np.add.at(DD, (ind_r, ind_pi), 1.0)
+				# get the indices for the binning
+				mask = (separation_len >= self.bin_edges[0]) * (separation_len < self.bin_edges[-1])
+				ind_r = np.floor(
+					np.log10(separation_len[mask]) / sub_box_len_logrp - np.log10(self.bin_edges[0]) / sub_box_len_logrp
+				)
+				ind_r = np.array(ind_r, dtype=int)
+				ind_pi = np.floor(
+					LOS[mask] / sub_box_len_pi - self.pi_bins[0] / sub_box_len_pi
+				)  # need length of LOS, so only positive values
+				ind_pi = np.array(ind_pi, dtype=int)
+				np.add.at(Splus_D, (ind_r, ind_pi), e_plus[mask] / (2 * R))
+				np.add.at(Scross_D, (ind_r, ind_pi), e_cross[mask] / (2 * R))
+				np.add.at(variance, (ind_r, ind_pi), (e_plus[mask] / (2 * R)) ** 2)
+				np.add.at(DD, (ind_r, ind_pi), 1.0)
 
 		if self.Num_position == self.Num_shape:
 			DD = DD / 2.0  # auto correlation, all pairs are double
@@ -536,36 +546,37 @@ class MeasureIA(SimInfo):
 		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		variance = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		for n in indices:
-			# for Splus_D (calculate ellipticities around position sample)
-			separation = self.positions_shape_sample[n] - self.positions[self.ind_rbin[n]]
-			separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
-			separation[separation < -self.L_0p5] += self.boxsize
-			projected_sep = separation[:, self.not_LOS]
-			LOS = separation[:, self.LOS_ind]
-			separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
-			separation_dir = (projected_sep.transpose() / separation_len).transpose()  # normalisation of rp
-			phi = np.arccos(
-				separation_dir[:, 0] * self.axis_direction[n, 0] + separation_dir[:, 1] * self.axis_direction[
-					n, 1])
-			e_plus, e_cross = self.get_ellipticity(self.e[n], phi)
-			e_plus[np.isnan(e_plus)] = 0.0
-			e_cross[np.isnan(e_cross)] = 0.0
+			if len(self.ind_rbin[n]) > 0:
+				# for Splus_D (calculate ellipticities around position sample)
+				separation = self.positions_shape_sample[n] - self.positions[self.ind_rbin[n]]
+				separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
+				separation[separation < -self.L_0p5] += self.boxsize
+				projected_sep = separation[:, self.not_LOS]
+				LOS = separation[:, self.LOS_ind]
+				separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
+				separation_dir = (projected_sep.transpose() / separation_len).transpose()  # normalisation of rp
+				phi = np.arccos(
+					separation_dir[:, 0] * self.axis_direction[n, 0] + separation_dir[:, 1] * self.axis_direction[
+						n, 1])
+				e_plus, e_cross = self.get_ellipticity(self.e[n], phi)
+				e_plus[np.isnan(e_plus)] = 0.0
+				e_cross[np.isnan(e_cross)] = 0.0
 
-			# get the indices for the binning
-			mask = (separation_len >= self.bin_edges[0]) * (separation_len < self.bin_edges[-1])
-			ind_r = np.floor(
-				np.log10(separation_len[mask]) / self.sub_box_len_logrp - np.log10(
-					self.bin_edges[0]) / self.sub_box_len_logrp
-			)
-			ind_r = np.array(ind_r, dtype=int)
-			ind_pi = np.floor(
-				LOS[mask] / self.sub_box_len_pi - self.pi_bins[0] / self.sub_box_len_pi
-			)  # need length of LOS, so only positive values
-			ind_pi = np.array(ind_pi, dtype=int)
-			np.add.at(Splus_D, (ind_r, ind_pi), e_plus[mask] / (2 * self.R))
-			np.add.at(Scross_D, (ind_r, ind_pi), e_cross[mask] / (2 * self.R))
-			np.add.at(variance, (ind_r, ind_pi), (e_plus[mask] / (2 * self.R)) ** 2)
-			np.add.at(DD, (ind_r, ind_pi), 1.0)
+				# get the indices for the binning
+				mask = (separation_len >= self.bin_edges[0]) * (separation_len < self.bin_edges[-1])
+				ind_r = np.floor(
+					np.log10(separation_len[mask]) / self.sub_box_len_logrp - np.log10(
+						self.bin_edges[0]) / self.sub_box_len_logrp
+				)
+				ind_r = np.array(ind_r, dtype=int)
+				ind_pi = np.floor(
+					LOS[mask] / self.sub_box_len_pi - self.pi_bins[0] / self.sub_box_len_pi
+				)  # need length of LOS, so only positive values
+				ind_pi = np.array(ind_pi, dtype=int)
+				np.add.at(Splus_D, (ind_r, ind_pi), e_plus[mask] / (2 * self.R))
+				np.add.at(Scross_D, (ind_r, ind_pi), e_cross[mask] / (2 * self.R))
+				np.add.at(variance, (ind_r, ind_pi), (e_plus[mask] / (2 * self.R)) ** 2)
+				np.add.at(DD, (ind_r, ind_pi), 1.0)
 
 		return Splus_D, Scross_D, DD, variance
 
@@ -583,7 +594,7 @@ class MeasureIA(SimInfo):
 		:return: xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
 		"""
 
-		if tree_input[0] != None:
+		if tree_input[0] != None and masks == None:
 			self.positions = self.data["Position"]
 			shape_mask = tree_input[1]
 			self.positions_shape_sample = self.data["Position_shape_sample"][shape_mask]
@@ -591,7 +602,16 @@ class MeasureIA(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			self.axis_direction = axis_direction[shape_mask]
-			self.q = self.data["q"][shape_mask]
+			q = self.data["q"][shape_mask]
+		elif tree_input[0] != None and masks != None:
+			self.positions = self.data["Position"][masks["Position"]]
+			shape_mask = tree_input[1]
+			self.positions_shape_sample = self.data["Position_shape_sample"][masks["Position_shape_sample"]][shape_mask]
+			axis_direction_v = self.data["Axis_Direction"][masks["Axis_Direction"]]
+			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
+			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
+			self.axis_direction = axis_direction[shape_mask]
+			q = self.data["q"][masks["q"]][shape_mask]
 		elif masks == None:
 			self.positions = self.data["Position"]
 			self.positions_shape_sample = self.data["Position_shape_sample"]
@@ -1116,7 +1136,7 @@ class MeasureIA(SimInfo):
 		:return: xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
 		"""
 
-		if tree_input[0] != None:
+		if tree_input[0] != None and masks == None:
 			positions = self.data["Position"]
 			shape_mask = tree_input[1]
 			positions_shape_sample = self.data["Position_shape_sample"][shape_mask]
@@ -1125,6 +1145,15 @@ class MeasureIA(SimInfo):
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			axis_direction = axis_direction[shape_mask]
 			q = self.data["q"][shape_mask]
+		elif tree_input[0] != None and masks != None:
+			positions = self.data["Position"][masks["Position"]]
+			shape_mask = tree_input[1]
+			positions_shape_sample = self.data["Position_shape_sample"][masks["Position_shape_sample"]][shape_mask]
+			axis_direction_v = self.data["Axis_Direction"][masks["Axis_Direction"]]
+			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
+			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
+			axis_direction = axis_direction[shape_mask]
+			q = self.data["q"][masks["q"]][shape_mask]
 		elif masks == None:
 			positions = self.data["Position"]
 			positions_shape_sample = self.data["Position_shape_sample"]
@@ -1175,43 +1204,45 @@ class MeasureIA(SimInfo):
 					pickle.dump(ind_rbin, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 		for n in np.arange(0, len(positions_shape_sample)):
-			# for Splus_D (calculate ellipticities around position sample)
-			separation = positions_shape_sample[n] - positions[ind_rbin[n]]
-			separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
-			separation[separation < -self.L_0p5] += self.boxsize
-			projected_sep = separation[:, not_LOS]
-			LOS = separation[:, LOS_ind]
-			projected_separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
-			separation_dir = (projected_sep.transpose() / projected_separation_len).transpose()  # normalisation of rp
-			separation_len = np.sqrt(np.sum(separation ** 2, axis=1))
-			mu_r = LOS / separation_len
-			phi = np.arccos(separation_dir[:, 0] * axis_direction[n, 0] + separation_dir[:, 1] * axis_direction[
-				n, 1])  # [0,pi]
-			e_plus, e_cross = self.get_ellipticity(e[n], phi)
-			# if self.Num_position == self.Num_shape:
-			# 	e_plus[n], e_cross[n] = 0.0, 0.0
-			# 	mu_r[n] = 0.0
-			e_plus[np.isnan(e_plus)] = 0.0
-			mu_r[np.isnan(e_plus)] = 0.0
-			e_cross[np.isnan(e_cross)] = 0.0
+			if len(ind_rbin[n]) > 0:
+				# for Splus_D (calculate ellipticities around position sample)
+				separation = positions_shape_sample[n] - positions[ind_rbin[n]]
+				separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
+				separation[separation < -self.L_0p5] += self.boxsize
+				projected_sep = separation[:, not_LOS]
+				LOS = separation[:, LOS_ind]
+				projected_separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
+				separation_dir = (
+							projected_sep.transpose() / projected_separation_len).transpose()  # normalisation of rp
+				separation_len = np.sqrt(np.sum(separation ** 2, axis=1))
+				mu_r = LOS / separation_len
+				phi = np.arccos(separation_dir[:, 0] * axis_direction[n, 0] + separation_dir[:, 1] * axis_direction[
+					n, 1])  # [0,pi]
+				e_plus, e_cross = self.get_ellipticity(e[n], phi)
+				# if self.Num_position == self.Num_shape:
+				# 	e_plus[n], e_cross[n] = 0.0, 0.0
+				# 	mu_r[n] = 0.0
+				e_plus[np.isnan(e_plus)] = 0.0
+				mu_r[np.isnan(e_plus)] = 0.0
+				e_cross[np.isnan(e_cross)] = 0.0
 
-			# get the indices for the binning
-			mask = (
-					(projected_separation_len > rp_cut)
-					* (separation_len >= self.bin_edges[0])
-					* (separation_len < self.bin_edges[-1])
-			)
-			ind_r = np.floor(
-				np.log10(separation_len[mask]) / sub_box_len_logr - np.log10(self.bin_edges[0]) / sub_box_len_logr
-			)
-			ind_r = np.array(ind_r, dtype=int)
-			ind_mu_r = np.floor(
-				mu_r[mask] / sub_box_len_mu_r - self.bins_mu_r[0] / sub_box_len_mu_r
-			)  # need length of LOS, so only positive values
-			ind_mu_r = np.array(ind_mu_r, dtype=int)
-			np.add.at(Splus_D, (ind_r, ind_mu_r), e_plus[mask] / (2 * R))
-			np.add.at(Scross_D, (ind_r, ind_mu_r), e_cross[mask] / (2 * R))
-			np.add.at(DD, (ind_r, ind_mu_r), 1.0)
+				# get the indices for the binning
+				mask = (
+						(projected_separation_len > rp_cut)
+						* (separation_len >= self.bin_edges[0])
+						* (separation_len < self.bin_edges[-1])
+				)
+				ind_r = np.floor(
+					np.log10(separation_len[mask]) / sub_box_len_logr - np.log10(self.bin_edges[0]) / sub_box_len_logr
+				)
+				ind_r = np.array(ind_r, dtype=int)
+				ind_mu_r = np.floor(
+					mu_r[mask] / sub_box_len_mu_r - self.bins_mu_r[0] / sub_box_len_mu_r
+				)  # need length of LOS, so only positive values
+				ind_mu_r = np.array(ind_mu_r, dtype=int)
+				np.add.at(Splus_D, (ind_r, ind_mu_r), e_plus[mask] / (2 * R))
+				np.add.at(Scross_D, (ind_r, ind_mu_r), e_cross[mask] / (2 * R))
+				np.add.at(DD, (ind_r, ind_mu_r), 1.0)
 
 		if self.Num_position == self.Num_shape:
 			DD = DD / 2.0  # auto correlation, all pairs are double
@@ -1263,45 +1294,47 @@ class MeasureIA(SimInfo):
 		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		for n in indices:
-			# for Splus_D (calculate ellipticities around position sample)
-			separation = self.positions_shape_sample[n] - self.positions[self.ind_rbin[n]]
-			separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
-			separation[separation < -self.L_0p5] += self.boxsize
-			projected_sep = separation[:, self.not_LOS]
-			LOS = separation[:, self.LOS_ind]
-			projected_separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
-			separation_dir = (projected_sep.transpose() / projected_separation_len).transpose()  # normalisation of rp
-			separation_len = np.sqrt(np.sum(separation ** 2, axis=1))
-			mu_r = LOS / separation_len
-			phi = np.arccos(
-				separation_dir[:, 0] * self.axis_direction[n, 0] + separation_dir[:, 1] * self.axis_direction[
-					n, 1])  # [0,pi]
-			e_plus, e_cross = self.get_ellipticity(self.e[n], phi)
-			# if self.Num_position == self.Num_shape:
-			# 	e_plus[n], e_cross[n] = 0.0, 0.0
-			# 	mu_r[n] = 0.0
-			e_plus[np.isnan(e_plus)] = 0.0
-			mu_r[np.isnan(e_plus)] = 0.0
-			e_cross[np.isnan(e_cross)] = 0.0
+			if len(self.ind_rbin[n]) > 0:
+				# for Splus_D (calculate ellipticities around position sample)
+				separation = self.positions_shape_sample[n] - self.positions[self.ind_rbin[n]]
+				separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
+				separation[separation < -self.L_0p5] += self.boxsize
+				projected_sep = separation[:, self.not_LOS]
+				LOS = separation[:, self.LOS_ind]
+				projected_separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
+				separation_dir = (
+							projected_sep.transpose() / projected_separation_len).transpose()  # normalisation of rp
+				separation_len = np.sqrt(np.sum(separation ** 2, axis=1))
+				mu_r = LOS / separation_len
+				phi = np.arccos(
+					separation_dir[:, 0] * self.axis_direction[n, 0] + separation_dir[:, 1] * self.axis_direction[
+						n, 1])  # [0,pi]
+				e_plus, e_cross = self.get_ellipticity(self.e[n], phi)
+				# if self.Num_position == self.Num_shape:
+				# 	e_plus[n], e_cross[n] = 0.0, 0.0
+				# 	mu_r[n] = 0.0
+				e_plus[np.isnan(e_plus)] = 0.0
+				mu_r[np.isnan(e_plus)] = 0.0
+				e_cross[np.isnan(e_cross)] = 0.0
 
-			# get the indices for the binning
-			mask = (
-					(projected_separation_len > self.rp_cut)
-					* (separation_len >= self.bin_edges[0])
-					* (separation_len < self.bin_edges[-1])
-			)
-			ind_r = np.floor(
-				np.log10(separation_len[mask]) / self.sub_box_len_logr - np.log10(
-					self.bin_edges[0]) / self.sub_box_len_logr
-			)
-			ind_r = np.array(ind_r, dtype=int)
-			ind_mu_r = np.floor(
-				mu_r[mask] / self.sub_box_len_mu_r - self.bins_mu_r[0] / self.sub_box_len_mu_r
-			)  # need length of LOS, so only positive values
-			ind_mu_r = np.array(ind_mu_r, dtype=int)
-			np.add.at(Splus_D, (ind_r, ind_mu_r), e_plus[mask] / (2 * self.R))
-			np.add.at(Scross_D, (ind_r, ind_mu_r), e_cross[mask] / (2 * self.R))
-			np.add.at(DD, (ind_r, ind_mu_r), 1.0)
+				# get the indices for the binning
+				mask = (
+						(projected_separation_len > self.rp_cut)
+						* (separation_len >= self.bin_edges[0])
+						* (separation_len < self.bin_edges[-1])
+				)
+				ind_r = np.floor(
+					np.log10(separation_len[mask]) / self.sub_box_len_logr - np.log10(
+						self.bin_edges[0]) / self.sub_box_len_logr
+				)
+				ind_r = np.array(ind_r, dtype=int)
+				ind_mu_r = np.floor(
+					mu_r[mask] / self.sub_box_len_mu_r - self.bins_mu_r[0] / self.sub_box_len_mu_r
+				)  # need length of LOS, so only positive values
+				ind_mu_r = np.array(ind_mu_r, dtype=int)
+				np.add.at(Splus_D, (ind_r, ind_mu_r), e_plus[mask] / (2 * self.R))
+				np.add.at(Scross_D, (ind_r, ind_mu_r), e_cross[mask] / (2 * self.R))
+				np.add.at(DD, (ind_r, ind_mu_r), 1.0)
 		return Splus_D, Scross_D, DD
 
 	def measure_projected_correlation_multipoles_tree_multiprocessing(self, num_nodes=9, tree_input=[None], masks=None,
@@ -1319,7 +1352,7 @@ class MeasureIA(SimInfo):
 		:return: xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
 		"""
 
-		if tree_input[0] != None:
+		if tree_input[0] != None and masks == None:
 			self.positions = self.data["Position"]
 			shape_mask = tree_input[1]
 			self.positions_shape_sample = self.data["Position_shape_sample"][shape_mask]
@@ -1327,7 +1360,16 @@ class MeasureIA(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			self.axis_direction = axis_direction[shape_mask]
-			self.q = self.data["q"][shape_mask]
+			q = self.data["q"][shape_mask]
+		elif tree_input[0] != None and masks != None:
+			self.positions = self.data["Position"][masks["Position"]]
+			shape_mask = tree_input[1]
+			self.positions_shape_sample = self.data["Position_shape_sample"][masks["Position_shape_sample"]][shape_mask]
+			axis_direction_v = self.data["Axis_Direction"][masks["Axis_Direction"]]
+			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
+			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
+			self.axis_direction = axis_direction[shape_mask]
+			q = self.data["q"][masks["q"]][shape_mask]
 		elif masks == None:
 			self.positions = self.data["Position"]
 			self.positions_shape_sample = self.data["Position_shape_sample"]
@@ -1621,17 +1663,30 @@ class MeasureIA(SimInfo):
 						mask_shape = np.invert(
 							x_mask * y_mask * z_mask
 						)  # mask that is True for all positions not in the subbox
-					if masks != None:
-						mask_position = mask_position * masks["Position"]
-						mask_shape = mask_shape * masks["Position_shape_sample"]
 					if tree_saved:
-						indices_shape = np.where(mask_shape)[0]
-						mask_not_position = np.invert(mask_position)
-						indices_not_position = np.where(mask_not_position)[0]
-						ind_r_bin_jk = self.setdiff_omit(ind_rbin, indices_not_position,
-														 indices_shape)
-						masks_total = None
+						if masks != None:
+							indices_shape = np.where(mask_shape[masks["Position_shape_sample"]])[0]
+							mask_not_position = np.invert(mask_position[masks["Position"]])
+							indices_not_position = np.where(mask_not_position)[0]
+							ind_r_bin_jk = self.setdiff_omit(ind_rbin, indices_not_position,
+															 indices_shape)
+							masks_total = {
+								"Position": masks["Position"],
+								"Position_shape_sample": masks["Position_shape_sample"],
+								"Axis_Direction": masks["Position_shape_sample"],
+								"q": masks["Position_shape_sample"],
+							}
+						else:
+							indices_shape = np.where(mask_shape)[0]
+							mask_not_position = np.invert(mask_position)
+							indices_not_position = np.where(mask_not_position)[0]
+							ind_r_bin_jk = self.setdiff_omit(ind_rbin, indices_not_position,
+															 indices_shape)
+							masks_total = None
 					else:
+						if masks != None:
+							mask_position = mask_position * masks["Position"]
+							mask_shape = mask_shape * masks["Position_shape_sample"]
 						ind_r_bin_jk = None
 						indices_shape = None
 						masks_total = {
@@ -1771,17 +1826,30 @@ class MeasureIA(SimInfo):
 						mask_shape = np.invert(
 							x_mask * y_mask * z_mask
 						)  # mask that is True for all positions not in the subbox
-					if masks != None:
-						mask_position = mask_position * masks["Position"]
-						mask_shape = mask_shape * masks["Position_shape_sample"]
 					if tree_saved:
-						indices_shape = np.where(mask_shape)[0]
-						mask_not_position = np.invert(mask_position)
-						indices_not_position = np.where(mask_not_position)[0]
-						ind_r_bin_jk = self.setdiff_omit(ind_rbin, indices_not_position,
-														 indices_shape)
-						masks_total = None
+						if masks != None:
+							indices_shape = np.where(mask_shape[masks["Position_shape_sample"]])[0]
+							mask_not_position = np.invert(mask_position[masks["Position"]])
+							indices_not_position = np.where(mask_not_position)[0]
+							ind_r_bin_jk = self.setdiff_omit(ind_rbin, indices_not_position,
+															 indices_shape)
+							masks_total = {
+								"Position": masks["Position"],
+								"Position_shape_sample": masks["Position_shape_sample"],
+								"Axis_Direction": masks["Position_shape_sample"],
+								"q": masks["Position_shape_sample"],
+							}
+						else:
+							indices_shape = np.where(mask_shape)[0]
+							mask_not_position = np.invert(mask_position)
+							indices_not_position = np.where(mask_not_position)[0]
+							ind_r_bin_jk = self.setdiff_omit(ind_rbin, indices_not_position,
+															 indices_shape)
+							masks_total = None
 					else:
+						if masks != None:
+							mask_position = mask_position * masks["Position"]
+							mask_shape = mask_shape * masks["Position_shape_sample"]
 						ind_r_bin_jk = None
 						indices_shape = None
 						masks_total = {
