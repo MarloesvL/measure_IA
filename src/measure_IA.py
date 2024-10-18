@@ -3,6 +3,7 @@ import numpy as np
 import h5py
 import time
 import pickle
+import os
 from scipy.special import lpmn
 from pathos.multiprocessing import ProcessingPool
 from scipy.spatial import KDTree
@@ -164,7 +165,8 @@ class MeasureIA(SimInfo):
 		e_plus, e_cross = e * np.cos(2 * phi), e * np.sin(2 * phi)
 		return e_plus, e_cross
 
-	def get_random_pairs(self, rp_max, rp_min, pi_max, pi_min, L3, corrtype):
+	@staticmethod
+	def get_random_pairs(rp_max, rp_min, pi_max, pi_min, L3, corrtype, Num_position, Num_shape):
 		"""
 		Returns analytical value of the number of pairs expected in an r_p, pi bin for a random uniform distribution.
 		(Singh et al. 2023)
@@ -178,16 +180,16 @@ class MeasureIA(SimInfo):
 		"""
 		if corrtype == "auto":
 			RR = (
-					(self.Num_position - 1.0)
+					(Num_position - 1.0)
 					/ 2.0
-					* self.Num_shape
+					* Num_shape
 					* np.pi
 					* (rp_max ** 2 - rp_min ** 2)
 					* abs(pi_max - pi_min)
 					/ L3
 			)  # volume is cylindrical pi*dr^2 * height
 		elif corrtype == "cross":
-			RR = self.Num_position * self.Num_shape * np.pi * (rp_max ** 2 - rp_min ** 2) * abs(pi_max - pi_min) / L3
+			RR = Num_position * Num_shape * np.pi * (rp_max ** 2 - rp_min ** 2) * abs(pi_max - pi_min) / L3
 		else:
 			raise ValueError("Unknown input for corrtype, choose from auto or cross.")
 		return RR
@@ -202,7 +204,7 @@ class MeasureIA(SimInfo):
 		"""
 		return np.pi / 3.0 * r ** 3 * (2 + mur) * (1 - mur) ** 2
 
-	def get_random_pairs_r_mur(self, r_max, r_min, mur_max, mur_min, L3, corrtype):
+	def get_random_pairs_r_mur(self, r_max, r_min, mur_max, mur_min, L3, corrtype, Num_position, Num_shape):
 		"""
 		Retruns analytical value of the number of pairs expected in an r_p, pi bin for a random uniform distribution.
 		(Singh et al. 2023)
@@ -217,9 +219,9 @@ class MeasureIA(SimInfo):
 
 		if corrtype == "auto":
 			RR = (
-					(self.Num_position - 1.0)
+					(Num_position - 1.0)
 					/ 2.0
-					* self.Num_shape
+					* Num_shape
 					* (
 							self.get_volume_spherical_cap(mur_min, r_max)
 							- self.get_volume_spherical_cap(mur_max, r_max)
@@ -231,8 +233,8 @@ class MeasureIA(SimInfo):
 		# volume is big cap - small cap for large - small radius
 		elif corrtype == "cross":
 			RR = (
-					(self.Num_position - 1.0)
-					* self.Num_shape
+					(Num_position - 1.0)
+					* Num_shape
 					* (
 							self.get_volume_spherical_cap(mur_min, r_max)
 							- self.get_volume_spherical_cap(mur_max, r_max)
@@ -272,9 +274,11 @@ class MeasureIA(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][masks["q"]]
+		Num_position = len(positions)
+		Num_shape = len(positions_shape_sample)
 		if print_num:
 			print(
-				f"There are {len(positions_shape_sample)} galaxies in the shape sample and {len(positions)} galaxies in the position sample.")
+				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
 
 		LOS_ind = self.data["LOS"]  # eg 2 for z axis
 		not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], LOS_ind, invert=True)]  # eg 0,1 for x&y
@@ -306,8 +310,6 @@ class MeasureIA(SimInfo):
 			del separation_dir
 			e_plus, e_cross = self.get_ellipticity(e, phi)
 			del phi
-			# if self.Num_position == self.Num_shape:
-			# 	e_plus[n], e_cross[n] = 0.0, 0.0
 			e_plus[np.isnan(e_plus)] = 0.0
 			e_cross[np.isnan(e_cross)] = 0.0
 
@@ -329,17 +331,17 @@ class MeasureIA(SimInfo):
 			del e_plus, e_cross, mask
 			np.add.at(DD, (ind_r, ind_pi), 1.0)
 
-		if self.Num_position == self.Num_shape:
+		if Num_position == Num_shape:
 			DD = DD / 2.0  # auto correlation, all pairs are double
 
 		for i in np.arange(0, self.num_bins_r):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_g_plus[i, p] = self.get_random_pairs(
-					self.bin_edges[i + 1], self.bin_edges[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "cross"
-				)
+					self.bin_edges[i + 1], self.bin_edges[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "cross",
+					Num_position, Num_shape)
 				RR_gg[i, p] = self.get_random_pairs(
-					self.bin_edges[i + 1], self.bin_edges[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "auto"
-				)
+					self.bin_edges[i + 1], self.bin_edges[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "auto",
+					Num_position, Num_shape)
 		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
 		xi_g_cross = Scross_D / RR_g_plus  # (Scross_D - Scross_R) / RR_g_plus
 		sigsq = variance / RR_g_plus ** 2
@@ -380,7 +382,9 @@ class MeasureIA(SimInfo):
 	def setdiff2D(a1, a2):
 		diff = []
 		for i in np.arange(0, len(a1)):
-			diff.append(np.setdiff1d(a1[i], a2[i]))
+			setdiff = np.setdiff1d(a1[i], a2[i])
+			diff.append(setdiff)
+			del setdiff
 		return diff
 
 	@staticmethod
@@ -388,11 +392,14 @@ class MeasureIA(SimInfo):
 		diff = []
 		for i in np.arange(0, len(a1)):
 			if np.isin(i, incl_ind):
-				diff.append(np.setdiff1d(a1[i], a2))
+				setdiff = np.setdiff1d(a1[i], a2)
+				diff.append(setdiff)
+				del setdiff
 		return diff
 
-	def measure_projected_correlation_tree(self, tree_input=[None], masks=None, dataset_name="All_galaxies",
-										   return_output=False, print_num=True, save_tree=False, file_tree_path=None):
+	def measure_projected_correlation_tree(self, tree_input=None, masks=None, dataset_name="All_galaxies",
+										   return_output=False, print_num=True, dataset_name_tree=None, save_tree=False,
+										   file_tree_path=None):
 		"""
 		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
@@ -404,25 +411,7 @@ class MeasureIA(SimInfo):
 		:return: xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
 		"""
 
-		if tree_input[0] != None and masks == None:
-			positions = self.data["Position"]
-			shape_mask = tree_input[1]
-			positions_shape_sample = self.data["Position_shape_sample"][shape_mask]
-			axis_direction_v = self.data["Axis_Direction"]
-			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
-			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
-			axis_direction = axis_direction[shape_mask]
-			q = self.data["q"][shape_mask]
-		elif tree_input[0] != None and masks != None:
-			positions = self.data["Position"][masks["Position"]]
-			shape_mask = tree_input[1]
-			positions_shape_sample = self.data["Position_shape_sample"][masks["Position_shape_sample"]][shape_mask]
-			axis_direction_v = self.data["Axis_Direction"][masks["Axis_Direction"]]
-			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
-			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
-			axis_direction = axis_direction[shape_mask]
-			q = self.data["q"][masks["q"]][shape_mask]
-		elif masks == None:
+		if masks == None:
 			positions = self.data["Position"]
 			positions_shape_sample = self.data["Position_shape_sample"]
 			axis_direction_v = self.data["Axis_Direction"]
@@ -436,10 +425,9 @@ class MeasureIA(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][masks["q"]]
-		if print_num:
-			print(
-				f"There are {len(positions_shape_sample)} galaxies in the shape sample and {len(positions)} galaxies in the position sample.")
-
+		# masking changes the number of galaxies
+		Num_position = len(positions)  # number of halos in position sample
+		Num_shape = len(positions_shape_sample)  # number of halos in shape sample
 		LOS_ind = self.data["LOS"]  # eg 2 for z axis
 		not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], LOS_ind, invert=True)]  # eg 0,1 for x&y
 		e = (1 - q ** 2) / (1 + q ** 2)  # size of ellipticity
@@ -454,71 +442,83 @@ class MeasureIA(SimInfo):
 		RR_g_plus = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		RR_gg = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		variance = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
-		if tree_input[0] != None:
-			ind_rbin = tree_input[0]
-		else:
-			pos_tree = KDTree(positions[:, not_LOS], boxsize=self.boxsize)
-			ind_rbin = []
-			for i in np.arange(0, len(positions_shape_sample), 100):
-				shape_tree = KDTree(positions_shape_sample[i:min(len(positions_shape_sample), i + 100), not_LOS],
-									boxsize=self.boxsize)
+		if tree_input != None:
+			indices_not_position, indices_shape = tree_input[0], tree_input[1]
+			Num_position -= len(indices_not_position)
+			Num_shape = len(indices_shape)
+			R = 1 - np.mean(e[indices_shape] ** 2) / 2.0
+			tree_file = open(f"{file_tree_path}/{dataset_name_tree}.pickle", 'rb')
+		if print_num:
+			print(
+				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
+		pos_tree = KDTree(positions[:, not_LOS], boxsize=self.boxsize)
+		for i in np.arange(0, len(positions_shape_sample), 100):
+			i2 = min(len(positions_shape_sample), i + 100)
+			positions_shape_sample_i = positions_shape_sample[i:i2]
+			axis_direction_i = axis_direction[i:i2]
+			e_i = e[i:i2]
+			if tree_input != None:
+				ind_rbin = pickle.load(tree_file)
+				indices_shape_i = indices_shape[(indices_shape >= i) * (indices_shape < i2)] - i
+				ind_rbin_i = self.setdiff_omit(ind_rbin, indices_not_position, indices_shape_i)
+				positions_shape_sample_i = positions_shape_sample_i[indices_shape_i]
+				axis_direction_i = axis_direction_i[indices_shape_i]
+				e_i = e_i[indices_shape_i]
+			else:
+				shape_tree = KDTree(positions_shape_sample_i[:, not_LOS], boxsize=self.boxsize)
 				ind_min_i = shape_tree.query_ball_tree(pos_tree, self.separation_min)
 				ind_max_i = shape_tree.query_ball_tree(pos_tree, self.separation_max)
 				ind_rbin_i = self.setdiff2D(ind_max_i, ind_min_i)
-				ind_rbin.extend(ind_rbin_i)
+				if save_tree:
+					with open(f"{file_tree_path}/w_tree_{dataset_name}.pickle", 'ab') as handle:
+						pickle.dump(ind_rbin_i, handle, protocol=pickle.HIGHEST_PROTOCOL)
+			for n in np.arange(0, len(positions_shape_sample_i)):  # CHANGE2: loop now over shapes, not positions
+				if len(ind_rbin_i[n]) > 0:
+					# for Splus_D (calculate ellipticities around position sample)
+					separation = positions_shape_sample_i[n] - positions[ind_rbin_i[n]]  # CHANGE1 & CHANGE2
+					separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
+					separation[separation < -self.L_0p5] += self.boxsize
+					projected_sep = separation[:, not_LOS]
+					LOS = separation[:, LOS_ind]
+					separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
+					separation_dir = (projected_sep.transpose() / separation_len).transpose()  # normalisation of rp
+					del projected_sep, separation
+					phi = np.arccos(
+						separation_dir[:, 0] * axis_direction_i[n, 0] + separation_dir[:, 1] * axis_direction_i[
+							n, 1])  # CHANGE2
+					e_plus, e_cross = self.get_ellipticity(e_i[n], phi)  # CHANGE2
+					del phi, separation_dir
+					e_plus[np.isnan(e_plus)] = 0.0
+					e_cross[np.isnan(e_cross)] = 0.0
 
-			if save_tree:
-				with open(f"{file_tree_path}/tree_{dataset_name}.pickle", 'wb') as handle:
-					pickle.dump(ind_rbin, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-		for n in np.arange(0, len(positions_shape_sample)):
-			if len(ind_rbin[n]) > 0:
-				# for Splus_D (calculate ellipticities around position sample)
-				separation = positions_shape_sample[n] - positions[ind_rbin[n]]
-				separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
-				separation[separation < -self.L_0p5] += self.boxsize
-				projected_sep = separation[:, not_LOS]
-				LOS = separation[:, LOS_ind]
-				del separation
-				separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
-				separation_dir = (projected_sep.transpose() / separation_len).transpose()  # normalisation of rp
-				del projected_sep
-				phi = np.arccos(separation_dir[:, 0] * axis_direction[n, 0] + separation_dir[:, 1] * axis_direction[
-					n, 1])  # [0,pi]
-				del separation_dir
-				e_plus, e_cross = self.get_ellipticity(e[n], phi)
-				del phi
-				e_plus[np.isnan(e_plus)] = 0.0
-				e_cross[np.isnan(e_cross)] = 0.0
-
-				# get the indices for the binning
-				mask = (separation_len >= self.bin_edges[0]) * (separation_len < self.bin_edges[-1])
-				ind_r = np.floor(
-					np.log10(separation_len[mask]) / sub_box_len_logrp - np.log10(self.bin_edges[0]) / sub_box_len_logrp
-				)
-				del separation_len
-				ind_r = np.array(ind_r, dtype=int)
-				ind_pi = np.floor(
-					LOS[mask] / sub_box_len_pi - self.pi_bins[0] / sub_box_len_pi
-				)  # need length of LOS, so only positive values
-				ind_pi = np.array(ind_pi, dtype=int)
-				np.add.at(Splus_D, (ind_r, ind_pi), e_plus[mask] / (2 * R))
-				np.add.at(Scross_D, (ind_r, ind_pi), e_cross[mask] / (2 * R))
-				np.add.at(variance, (ind_r, ind_pi), (e_plus[mask] / (2 * R)) ** 2)
-				del e_plus, e_cross, mask
-				np.add.at(DD, (ind_r, ind_pi), 1.0)
-
-		if self.Num_position == self.Num_shape:
+					# get the indices for the binning
+					mask = (separation_len >= self.bin_edges[0]) * (separation_len < self.bin_edges[-1])
+					ind_r = np.floor(
+						np.log10(separation_len[mask]) / sub_box_len_logrp - np.log10(
+							self.bin_edges[0]) / sub_box_len_logrp
+					)
+					ind_r = np.array(ind_r, dtype=int)
+					ind_pi = np.floor(
+						LOS[mask] / sub_box_len_pi - self.pi_bins[0] / sub_box_len_pi
+					)  # need length of LOS, so only positive values
+					ind_pi = np.array(ind_pi, dtype=int)
+					np.add.at(Splus_D, (ind_r, ind_pi), e_plus[mask] / (2 * R))
+					np.add.at(Scross_D, (ind_r, ind_pi), e_cross[mask] / (2 * R))
+					del e_plus, e_cross, separation_len, mask
+					# np.add.at(variance, (ind_r, ind_pi), (e_plus[mask] / (2 * R)) ** 2)
+					np.add.at(DD, (ind_r, ind_pi), 1.0)
+		if tree_input != None:
+			tree_file.close()
+		if Num_position == Num_shape:
 			DD = DD / 2.0  # auto correlation, all pairs are double
-
 		for i in np.arange(0, self.num_bins_r):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_g_plus[i, p] = self.get_random_pairs(
-					self.bin_edges[i + 1], self.bin_edges[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "cross"
-				)
+					self.bin_edges[i + 1], self.bin_edges[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "cross",
+					Num_position, Num_shape)
 				RR_gg[i, p] = self.get_random_pairs(
-					self.bin_edges[i + 1], self.bin_edges[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "auto"
-				)
+					self.bin_edges[i + 1], self.bin_edges[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "auto",
+					Num_position, Num_shape)
 		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
 		xi_g_cross = Scross_D / RR_g_plus  # (Scross_D - Scross_R) / RR_g_plus
 		sigsq = variance / RR_g_plus ** 2
@@ -560,51 +560,59 @@ class MeasureIA(SimInfo):
 		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		variance = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
-		for n in indices:
-			if len(self.ind_rbin[n]) > 0:
-				# for Splus_D (calculate ellipticities around position sample)
-				separation = self.positions_shape_sample[n] - self.positions[self.ind_rbin[n]]
-				separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
-				separation[separation < -self.L_0p5] += self.boxsize
-				projected_sep = separation[:, self.not_LOS]
-				LOS = separation[:, self.LOS_ind]
-				del separation
-				separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
-				separation_dir = (projected_sep.transpose() / separation_len).transpose()  # normalisation of rp
-				del projected_sep
-				phi = np.arccos(
-					separation_dir[:, 0] * self.axis_direction[n, 0] + separation_dir[:, 1] * self.axis_direction[
-						n, 1])
-				del separation_dir
-				e_plus, e_cross = self.get_ellipticity(self.e[n], phi)
-				del phi
-				e_plus[np.isnan(e_plus)] = 0.0
-				e_cross[np.isnan(e_cross)] = 0.0
 
-				# get the indices for the binning
-				mask = (separation_len >= self.bin_edges[0]) * (separation_len < self.bin_edges[-1])
-				ind_r = np.floor(
-					np.log10(separation_len[mask]) / self.sub_box_len_logrp - np.log10(
-						self.bin_edges[0]) / self.sub_box_len_logrp
-				)
-				del separation_len
-				ind_r = np.array(ind_r, dtype=int)
-				ind_pi = np.floor(
-					LOS[mask] / self.sub_box_len_pi - self.pi_bins[0] / self.sub_box_len_pi
-				)  # need length of LOS, so only positive values
-				del LOS
-				ind_pi = np.array(ind_pi, dtype=int)
-				np.add.at(Splus_D, (ind_r, ind_pi), e_plus[mask] / (2 * self.R))
-				np.add.at(Scross_D, (ind_r, ind_pi), e_cross[mask] / (2 * self.R))
-				np.add.at(variance, (ind_r, ind_pi), (e_plus[mask] / (2 * self.R)) ** 2)
-				del e_plus, e_cross, mask
-				np.add.at(DD, (ind_r, ind_pi), 1.0)
+		for j in np.arange(0, len(indices), 100):
+			i = indices[j]
+			i2 = min(indices[-1], i + 100)
+			positions_shape_sample_i = self.positions_shape_sample[i:i2]
+			axis_direction_i = self.axis_direction[i:i2]
+			e_i = self.e[i:i2]
+
+			shape_tree = KDTree(positions_shape_sample_i[:, self.not_LOS], boxsize=self.boxsize)
+			ind_min_i = shape_tree.query_ball_tree(self.pos_tree, self.separation_min)
+			ind_max_i = shape_tree.query_ball_tree(self.pos_tree, self.separation_max)
+			ind_rbin_i = self.setdiff2D(ind_max_i, ind_min_i)
+			for n in np.arange(0, len(positions_shape_sample_i)):  # CHANGE2: loop now over shapes, not positions
+				if len(ind_rbin_i[n]) > 0:
+					# for Splus_D (calculate ellipticities around position sample)
+					separation = positions_shape_sample_i[n] - self.positions[ind_rbin_i[n]]  # CHANGE1 & CHANGE2
+					separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
+					separation[separation < -self.L_0p5] += self.boxsize
+					projected_sep = separation[:, self.not_LOS]
+					LOS = separation[:, self.LOS_ind]
+					separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
+					separation_dir = (projected_sep.transpose() / separation_len).transpose()  # normalisation of rp
+					del projected_sep, separation
+					phi = np.arccos(
+						separation_dir[:, 0] * axis_direction_i[n, 0] + separation_dir[:, 1] * axis_direction_i[
+							n, 1])  # CHANGE2
+					e_plus, e_cross = self.get_ellipticity(e_i[n], phi)  # CHANGE2
+					del phi, separation_dir
+					e_plus[np.isnan(e_plus)] = 0.0
+					e_cross[np.isnan(e_cross)] = 0.0
+
+					# get the indices for the binning
+					mask = (separation_len >= self.bin_edges[0]) * (separation_len < self.bin_edges[-1])
+					ind_r = np.floor(
+						np.log10(separation_len[mask]) / self.sub_box_len_logrp - np.log10(
+							self.bin_edges[0]) / self.sub_box_len_logrp
+					)
+					ind_r = np.array(ind_r, dtype=int)
+					ind_pi = np.floor(
+						LOS[mask] / self.sub_box_len_pi - self.pi_bins[0] / self.sub_box_len_pi
+					)  # need length of LOS, so only positive values
+					ind_pi = np.array(ind_pi, dtype=int)
+					np.add.at(Splus_D, (ind_r, ind_pi), e_plus[mask] / (2 * self.R))
+					np.add.at(Scross_D, (ind_r, ind_pi), e_cross[mask] / (2 * self.R))
+					del e_plus, e_cross, separation_len, mask
+					# np.add.at(variance, (ind_r, ind_pi), (e_plus[mask] / (2 * R)) ** 2)
+					np.add.at(DD, (ind_r, ind_pi), 1.0)
 
 		return Splus_D, Scross_D, DD, variance
 
-	def measure_projected_correlation_tree_multiprocessing(self, num_nodes=9, tree_input=[None], masks=None,
+	def measure_projected_correlation_tree_multiprocessing(self, num_nodes=9, masks=None,
 														   dataset_name="All_galaxies", return_output=False,
-														   print_num=True, save_tree=False, file_tree_path=None):
+														   print_num=True):
 		"""
 		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
@@ -616,25 +624,7 @@ class MeasureIA(SimInfo):
 		:return: xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
 		"""
 
-		if tree_input[0] != None and masks == None:
-			self.positions = self.data["Position"]
-			shape_mask = tree_input[1]
-			self.positions_shape_sample = self.data["Position_shape_sample"][shape_mask]
-			axis_direction_v = self.data["Axis_Direction"]
-			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
-			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
-			self.axis_direction = axis_direction[shape_mask]
-			q = self.data["q"][shape_mask]
-		elif tree_input[0] != None and masks != None:
-			self.positions = self.data["Position"][masks["Position"]]
-			shape_mask = tree_input[1]
-			self.positions_shape_sample = self.data["Position_shape_sample"][masks["Position_shape_sample"]][shape_mask]
-			axis_direction_v = self.data["Axis_Direction"][masks["Axis_Direction"]]
-			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
-			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
-			self.axis_direction = axis_direction[shape_mask]
-			q = self.data["q"][masks["q"]][shape_mask]
-		elif masks == None:
+		if masks == None:
 			self.positions = self.data["Position"]
 			self.positions_shape_sample = self.data["Position_shape_sample"]
 			axis_direction_v = self.data["Axis_Direction"]
@@ -648,9 +638,12 @@ class MeasureIA(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			self.axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][masks["q"]]
+		# masking changes the number of galaxies
+		Num_position = len(self.positions)  # number of halos in position sample
+		Num_shape = len(self.positions_shape_sample)  # number of halos in shape sample
 		if print_num:
 			print(
-				f"There are {len(self.positions_shape_sample)} galaxies in the shape sample and {len(self.positions)} galaxies in the position sample.")
+				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
 
 		self.LOS_ind = self.data["LOS"]  # eg 2 for z axis
 		self.not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], self.LOS_ind, invert=True)]  # eg 0,1 for x&y
@@ -666,23 +659,7 @@ class MeasureIA(SimInfo):
 		RR_gg = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		variance = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 
-		if tree_input[0] != None:
-			self.ind_rbin = tree_input[0]
-		else:
-			pos_tree = KDTree(self.positions[:, self.not_LOS], boxsize=self.boxsize)
-			ind_rbin = []
-			for i in np.arange(0, len(self.positions_shape_sample), 100):
-				shape_tree = KDTree(
-					self.positions_shape_sample[i:min(len(self.positions_shape_sample), i + 100), self.not_LOS],
-					boxsize=self.boxsize)
-				ind_min_i = shape_tree.query_ball_tree(pos_tree, self.separation_min)
-				ind_max_i = shape_tree.query_ball_tree(pos_tree, self.separation_max)
-				ind_rbin_i = self.setdiff2D(ind_max_i, ind_min_i)
-				ind_rbin.extend(ind_rbin_i)
-			self.ind_rbin = ind_rbin
-			if save_tree:
-				with open(f"{file_tree_path}/tree_{dataset_name}.pickle", 'wb') as handle:
-					pickle.dump(ind_rbin, handle, protocol=pickle.HIGHEST_PROTOCOL)
+		self.pos_tree = KDTree(self.positions[:, self.not_LOS], boxsize=self.boxsize)
 
 		self.multiproc_chuncks = np.array_split(np.arange(len(self.positions_shape_sample)), num_nodes)
 		result = ProcessingPool(nodes=num_nodes).map(
@@ -695,17 +672,17 @@ class MeasureIA(SimInfo):
 			DD += result[i][2]
 			variance += result[i][3]
 
-		if self.Num_position == self.Num_shape:
+		if Num_position == Num_shape:
 			DD = DD / 2.0  # auto correlation, all pairs are double
 
 		for i in np.arange(0, self.num_bins_r):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_g_plus[i, p] = self.get_random_pairs(
-					self.bin_edges[i + 1], self.bin_edges[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "cross"
-				)
+					self.bin_edges[i + 1], self.bin_edges[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "cross",
+					Num_position, Num_shape)
 				RR_gg[i, p] = self.get_random_pairs(
-					self.bin_edges[i + 1], self.bin_edges[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "auto"
-				)
+					self.bin_edges[i + 1], self.bin_edges[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "auto",
+					Num_position, Num_shape)
 		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
 		xi_g_cross = Scross_D / RR_g_plus  # (Scross_D - Scross_R) / RR_g_plus
 		sigsq = variance / RR_g_plus ** 2
@@ -809,9 +786,11 @@ class MeasureIA(SimInfo):
 				q = self.data["q"][masks["q"]]
 			except:
 				e1, e2 = self.data["e1"][masks["e1"]], self.data["e2"][masks["e2"]]
+		Num_position = len(positions)
+		Num_shape = len(positions_shape_sample)
 		if print_num:
 			print(
-				f"There are {len(positions_shape_sample)} galaxies in the shape sample and {len(positions)} galaxies in the position sample.")
+				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
 
 		LOS_ind = 2  # redshift column #self.data["LOS"]  # eg 2 for z axis
 		not_LOS = [0, 1]  # np.array([0, 1, 2])[np.isin([0, 1, 2], LOS_ind, invert=True)]  # eg 0,1 for x&y
@@ -852,8 +831,6 @@ class MeasureIA(SimInfo):
 			phi = np.arccos(separation_dir[:, 0] * axis_direction[n, 0] + separation_dir[:, 1] * axis_direction[
 				n, 1])  # [0,pi]
 			e_plus, e_cross = self.get_ellipticity(e[n], phi)
-			# if self.Num_position == self.Num_shape:
-			# 	e_plus[n], e_cross[n] = 0.0, 0.0
 			e_plus[np.isnan(e_plus)] = 0.0
 			e_cross[np.isnan(e_cross)] = 0.0
 
@@ -872,17 +849,17 @@ class MeasureIA(SimInfo):
 			np.add.at(variance, (ind_r, ind_pi), (e_plus[mask] / (2 * R)) ** 2)
 			np.add.at(DD, (ind_r, ind_pi), 1.0)
 
-		if self.Num_position == self.Num_shape:
+		if Num_position == Num_shape:
 			DD = DD / 2.0  # auto correlation, all pairs are double
 
 		for i in np.arange(0, self.num_bins_r):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_g_plus[i, p] = self.get_random_pairs(
-					self.bin_edges[i + 1], self.bin_edges[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "cross"
-				)
+					self.bin_edges[i + 1], self.bin_edges[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "cross",
+					Num_position, Num_shape)
 				RR_gg[i, p] = self.get_random_pairs(
-					self.bin_edges[i + 1], self.bin_edges[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "auto"
-				)
+					self.bin_edges[i + 1], self.bin_edges[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "auto",
+					Num_position, Num_shape)
 		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
 		xi_g_cross = Scross_D / RR_g_plus  # (Scross_D - Scross_R) / RR_g_plus
 		sigsq = variance / RR_g_plus ** 2
@@ -978,8 +955,6 @@ class MeasureIA(SimInfo):
 			separation_dir = (projected_sep.transpose() / separation_len).transpose()  # normalisation of rp
 			phi = np.arccos(self.calculate_dot_product_arrays(separation_dir, axis_direction))  # [0,pi]
 			e_plus, e_cross = self.get_ellipticity(e, phi)
-			if self.Num_position == self.Num_shape:
-				e_plus[n], e_cross[n] = 0.0, 0.0
 			e_plus[np.isnan(e_plus)] = 0.0
 			e_cross[np.isnan(e_cross)] = 0.0
 
@@ -1041,9 +1016,11 @@ class MeasureIA(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][masks["q"]]
+		Num_position = len(positions)
+		Num_shape = len(positions_shape_sample)
 		if print_num:
 			print(
-				f"There are {len(positions_shape_sample)} galaxies in the shape sample and {len(positions)} galaxies in the position sample.")
+				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
 
 		if rp_cut == None:
 			rp_cut = 0.0
@@ -1070,18 +1047,12 @@ class MeasureIA(SimInfo):
 			LOS = separation[:, LOS_ind]
 			projected_separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
 			separation_dir = (projected_sep.transpose() / projected_separation_len).transpose()  # normalisation of rp
-			del projected_sep
 			separation_len = np.sqrt(np.sum(separation ** 2, axis=1))
-			del separation
 			mu_r = LOS / separation_len
-			del LOS
+			del LOS, projected_sep, separation
 			phi = np.arccos(self.calculate_dot_product_arrays(separation_dir, axis_direction))  # [0,pi]
-			del separation_dir
 			e_plus, e_cross = self.get_ellipticity(e, phi)
-			del phi
-			# if self.Num_position == self.Num_shape:
-			# 	e_plus[n], e_cross[n] = 0.0, 0.0
-			# 	mu_r[n] = 0.0
+			del phi, separation_dir
 			e_plus[np.isnan(e_plus)] = 0.0
 			e_cross[np.isnan(e_cross)] = 0.0
 			mu_r[np.isnan(e_plus)] = 0.0
@@ -1092,35 +1063,33 @@ class MeasureIA(SimInfo):
 					* (separation_len >= self.bin_edges[0])
 					* (separation_len < self.bin_edges[-1])
 			)
-			del projected_separation_len
 			ind_r = np.floor(
 				np.log10(separation_len[mask]) / sub_box_len_logr - np.log10(self.bin_edges[0]) / sub_box_len_logr
 			)
-			del separation_len
+			del separation_len, projected_separation_len
 			ind_r = np.array(ind_r, dtype=int)
 			ind_mu_r = np.floor(
 				mu_r[mask] / sub_box_len_mu_r - self.bins_mu_r[0] / sub_box_len_mu_r
 			)  # need length of LOS, so only positive values
-			del mu_r
 			ind_mu_r = np.array(ind_mu_r, dtype=int)
 
 			np.add.at(Splus_D, (ind_r, ind_mu_r), e_plus[mask] / (2 * R))
 			np.add.at(Scross_D, (ind_r, ind_mu_r), e_cross[mask] / (2 * R))
-			del e_plus, e_cross, mask
+			del e_plus, e_cross, mask, mu_r
 			np.add.at(DD, (ind_r, ind_mu_r), 1.0)
 
-		if self.Num_position == self.Num_shape:
+		if Num_position == Num_shape:
 			DD = DD / 2.0  # auto correlation, all pairs are double
 
 		# analytical calc is much more difficult for (r,mu_r) bins
 		for i in np.arange(0, self.num_bins_r):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_g_plus[i, p] = self.get_random_pairs_r_mur(
-					self.bin_edges[i + 1], self.bin_edges[i], self.bins_mu_r[p + 1], self.bins_mu_r[p], L3, "cross"
-				)
+					self.bin_edges[i + 1], self.bin_edges[i], self.bins_mu_r[p + 1], self.bins_mu_r[p], L3, "cross",
+					Num_position, Num_shape)
 				RR_gg[i, p] = self.get_random_pairs_r_mur(
-					self.bin_edges[i + 1], self.bin_edges[i], self.bins_mu_r[p + 1], self.bins_mu_r[p], L3, "auto"
-				)
+					self.bin_edges[i + 1], self.bin_edges[i], self.bins_mu_r[p + 1], self.bins_mu_r[p], L3, "auto",
+					Num_position, Num_shape)
 
 		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
 		xi_g_cross = Scross_D / RR_g_plus  # (Scross_D - Scross_R) / RR_g_plus
@@ -1154,9 +1123,9 @@ class MeasureIA(SimInfo):
 		else:
 			return correlation, DD / RR_gg, separation_bins, mu_r_bins
 
-	def measure_projected_correlation_multipoles_tree(self, tree_input=[None], masks=None, rp_cut=None,
+	def measure_projected_correlation_multipoles_tree(self, tree_input=None, masks=None, rp_cut=None,
 													  dataset_name="All_galaxies", return_output=False, print_num=True,
-													  save_tree=False, file_tree_path=None):
+													  dataset_name_tree=None, save_tree=False, file_tree_path=None):
 		"""
 		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
@@ -1168,25 +1137,7 @@ class MeasureIA(SimInfo):
 		:return: xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
 		"""
 
-		if tree_input[0] != None and masks == None:
-			positions = self.data["Position"]
-			shape_mask = tree_input[1]
-			positions_shape_sample = self.data["Position_shape_sample"][shape_mask]
-			axis_direction_v = self.data["Axis_Direction"]
-			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
-			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
-			axis_direction = axis_direction[shape_mask]
-			q = self.data["q"][shape_mask]
-		elif tree_input[0] != None and masks != None:
-			positions = self.data["Position"][masks["Position"]]
-			shape_mask = tree_input[1]
-			positions_shape_sample = self.data["Position_shape_sample"][masks["Position_shape_sample"]][shape_mask]
-			axis_direction_v = self.data["Axis_Direction"][masks["Axis_Direction"]]
-			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
-			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
-			axis_direction = axis_direction[shape_mask]
-			q = self.data["q"][masks["q"]][shape_mask]
-		elif masks == None:
+		if masks == None:
 			positions = self.data["Position"]
 			positions_shape_sample = self.data["Position_shape_sample"]
 			axis_direction_v = self.data["Axis_Direction"]
@@ -1200,9 +1151,9 @@ class MeasureIA(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][masks["q"]]
-		if print_num:
-			print(
-				f"There are {len(positions_shape_sample)} galaxies in the shape sample and {len(positions)} galaxies in the position sample.")
+		# masking changes the number of galaxies
+		Num_position = len(positions)  # number of halos in position sample
+		Num_shape = len(positions_shape_sample)  # number of halos in shape sample
 
 		if rp_cut == None:
 			rp_cut = 0.0
@@ -1218,76 +1169,96 @@ class MeasureIA(SimInfo):
 		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		RR_g_plus = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		RR_gg = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
-		if tree_input[0] != None:
-			ind_rbin = tree_input[0]
-		else:
-			pos_tree = KDTree(positions[:], boxsize=self.boxsize)
-			ind_rbin = []
-			for i in np.arange(0, len(positions_shape_sample), 100):
-				shape_tree = KDTree(positions_shape_sample[i:min(len(positions_shape_sample), i + 100)],
-									boxsize=self.boxsize)
+
+		if tree_input != None:
+			indices_not_position, indices_shape = tree_input[0], tree_input[1]
+			Num_position -= len(indices_not_position)
+			Num_shape = len(indices_shape)
+			R = 1 - np.mean(e[indices_shape] ** 2) / 2.0
+			tree_file = open(f"{file_tree_path}/{dataset_name_tree}.pickle", 'rb')
+		if print_num:
+			print(
+				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
+
+		pos_tree = KDTree(positions, boxsize=self.boxsize)
+		for i in np.arange(0, len(positions_shape_sample), 100):
+			i2 = min(len(positions_shape_sample), i + 100)
+			positions_shape_sample_i = positions_shape_sample[i:i2]
+			axis_direction_i = axis_direction[i:i2]
+			e_i = e[i:i2]
+
+			if tree_input != None:
+				ind_rbin = pickle.load(tree_file)
+				indices_shape_i = indices_shape[(indices_shape >= i) * (indices_shape < i2)] - i
+				ind_rbin_i = self.setdiff_omit(ind_rbin, indices_not_position, indices_shape_i)
+				positions_shape_sample_i = positions_shape_sample_i[indices_shape_i]
+				axis_direction_i = axis_direction_i[indices_shape_i]
+				e_i = e_i[indices_shape_i]
+			else:
+				shape_tree = KDTree(positions_shape_sample_i, boxsize=self.boxsize)
 				ind_min_i = shape_tree.query_ball_tree(pos_tree, self.separation_min)
 				ind_max_i = shape_tree.query_ball_tree(pos_tree, self.separation_max)
 				ind_rbin_i = self.setdiff2D(ind_max_i, ind_min_i)
-				ind_rbin.extend(ind_rbin_i)
-
-			if save_tree:
-				with open(f"{file_tree_path}/tree_{dataset_name}.pickle", 'wb') as handle:
-					pickle.dump(ind_rbin, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-		for n in np.arange(0, len(positions_shape_sample)):
-			if len(ind_rbin[n]) > 0:
-				# for Splus_D (calculate ellipticities around position sample)
-				separation = positions_shape_sample[n] - positions[ind_rbin[n]]
-				separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
-				separation[separation < -self.L_0p5] += self.boxsize
-				projected_sep = separation[:, not_LOS]
-				LOS = separation[:, LOS_ind]
-				projected_separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
-				separation_dir = (
+				if save_tree:
+					with open(f"{file_tree_path}/m_tree_{dataset_name}.pickle", 'ab') as handle:
+						pickle.dump(ind_rbin_i, handle, protocol=pickle.HIGHEST_PROTOCOL)
+			for n in np.arange(0, len(positions_shape_sample_i)):
+				if len(ind_rbin_i[n]) > 0:
+					# for Splus_D (calculate ellipticities around position sample)
+					separation = positions_shape_sample_i[n] - positions[ind_rbin_i[n]]
+					separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
+					separation[separation < -self.L_0p5] += self.boxsize
+					projected_sep = separation[:, not_LOS]
+					LOS = separation[:, LOS_ind]
+					projected_separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
+					separation_dir = (
 							projected_sep.transpose() / projected_separation_len).transpose()  # normalisation of rp
-				separation_len = np.sqrt(np.sum(separation ** 2, axis=1))
-				mu_r = LOS / separation_len
-				phi = np.arccos(separation_dir[:, 0] * axis_direction[n, 0] + separation_dir[:, 1] * axis_direction[
-					n, 1])  # [0,pi]
-				e_plus, e_cross = self.get_ellipticity(e[n], phi)
-				# if self.Num_position == self.Num_shape:
-				# 	e_plus[n], e_cross[n] = 0.0, 0.0
-				# 	mu_r[n] = 0.0
-				e_plus[np.isnan(e_plus)] = 0.0
-				mu_r[np.isnan(e_plus)] = 0.0
-				e_cross[np.isnan(e_cross)] = 0.0
+					separation_len = np.sqrt(np.sum(separation ** 2, axis=1))
+					del separation, projected_sep
+					mu_r = LOS / separation_len
+					phi = np.arccos(
+						separation_dir[:, 0] * axis_direction_i[n, 0] + separation_dir[:, 1] * axis_direction_i[
+							n, 1])  # [0,pi]
+					e_plus, e_cross = self.get_ellipticity(e_i[n], phi)
+					del phi, LOS, separation_dir
 
-				# get the indices for the binning
-				mask = (
-						(projected_separation_len > rp_cut)
-						* (separation_len >= self.bin_edges[0])
-						* (separation_len < self.bin_edges[-1])
-				)
-				ind_r = np.floor(
-					np.log10(separation_len[mask]) / sub_box_len_logr - np.log10(self.bin_edges[0]) / sub_box_len_logr
-				)
-				ind_r = np.array(ind_r, dtype=int)
-				ind_mu_r = np.floor(
-					mu_r[mask] / sub_box_len_mu_r - self.bins_mu_r[0] / sub_box_len_mu_r
-				)  # need length of LOS, so only positive values
-				ind_mu_r = np.array(ind_mu_r, dtype=int)
-				np.add.at(Splus_D, (ind_r, ind_mu_r), e_plus[mask] / (2 * R))
-				np.add.at(Scross_D, (ind_r, ind_mu_r), e_cross[mask] / (2 * R))
-				np.add.at(DD, (ind_r, ind_mu_r), 1.0)
+					e_plus[np.isnan(e_plus)] = 0.0
+					mu_r[np.isnan(e_plus)] = 0.0
+					e_cross[np.isnan(e_cross)] = 0.0
 
-		if self.Num_position == self.Num_shape:
+					# get the indices for the binning
+					mask = (
+							(projected_separation_len > rp_cut)
+							* (separation_len >= self.bin_edges[0])
+							* (separation_len < self.bin_edges[-1])
+					)
+					ind_r = np.floor(
+						np.log10(separation_len[mask]) / sub_box_len_logr - np.log10(
+							self.bin_edges[0]) / sub_box_len_logr
+					)
+					ind_r = np.array(ind_r, dtype=int)
+					ind_mu_r = np.floor(
+						mu_r[mask] / sub_box_len_mu_r - self.bins_mu_r[0] / sub_box_len_mu_r
+					)  # need length of LOS, so only positive values
+					ind_mu_r = np.array(ind_mu_r, dtype=int)
+					np.add.at(Splus_D, (ind_r, ind_mu_r), e_plus[mask] / (2 * R))
+					np.add.at(Scross_D, (ind_r, ind_mu_r), e_cross[mask] / (2 * R))
+					np.add.at(DD, (ind_r, ind_mu_r), 1.0)
+					del e_plus, e_cross, mask, separation_len
+		if tree_input != None:
+			tree_file.close()
+		if Num_position == Num_shape:
 			DD = DD / 2.0  # auto correlation, all pairs are double
 
 		# analytical calc is much more difficult for (r,mu_r) bins
 		for i in np.arange(0, self.num_bins_r):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_g_plus[i, p] = self.get_random_pairs_r_mur(
-					self.bin_edges[i + 1], self.bin_edges[i], self.bins_mu_r[p + 1], self.bins_mu_r[p], L3, "cross"
-				)
+					self.bin_edges[i + 1], self.bin_edges[i], self.bins_mu_r[p + 1], self.bins_mu_r[p], L3, "cross",
+					Num_position, Num_shape)
 				RR_gg[i, p] = self.get_random_pairs_r_mur(
-					self.bin_edges[i + 1], self.bin_edges[i], self.bins_mu_r[p + 1], self.bins_mu_r[p], L3, "auto"
-				)
+					self.bin_edges[i + 1], self.bin_edges[i], self.bins_mu_r[p + 1], self.bins_mu_r[p], L3, "auto",
+					Num_position, Num_shape)
 
 		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
 		xi_g_cross = Scross_D / RR_g_plus  # (Scross_D - Scross_R) / RR_g_plus
@@ -1325,62 +1296,65 @@ class MeasureIA(SimInfo):
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
-		for n in indices:
-			if len(self.ind_rbin[n]) > 0:
-				# for Splus_D (calculate ellipticities around position sample)
-				separation = self.positions_shape_sample[n] - self.positions[self.ind_rbin[n]]
-				separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
-				separation[separation < -self.L_0p5] += self.boxsize
-				projected_sep = separation[:, self.not_LOS]
-				LOS = separation[:, self.LOS_ind]
-				projected_separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
-				separation_dir = (
-							projected_sep.transpose() / projected_separation_len).transpose()  # normalisation of rp
-				separation_len = np.sqrt(np.sum(separation ** 2, axis=1))
-				del separation, projected_sep
-				mu_r = LOS / separation_len
-				del LOS
-				phi = np.arccos(
-					separation_dir[:, 0] * self.axis_direction[n, 0] + separation_dir[:, 1] * self.axis_direction[
-						n, 1])  # [0,pi]
-				del separation_dir
-				e_plus, e_cross = self.get_ellipticity(self.e[n], phi)
-				del phi
-				# if self.Num_position == self.Num_shape:
-				# 	e_plus[n], e_cross[n] = 0.0, 0.0
-				# 	mu_r[n] = 0.0
-				e_plus[np.isnan(e_plus)] = 0.0
-				mu_r[np.isnan(e_plus)] = 0.0
-				e_cross[np.isnan(e_cross)] = 0.0
+		for j in np.arange(0, len(indices), 100):
+			i = indices[j]
+			i2 = min(indices[-1], i + 100)
+			positions_shape_sample_i = self.positions_shape_sample[i:i2]
+			axis_direction_i = self.axis_direction[i:i2]
+			e_i = self.e[i:i2]
 
-				# get the indices for the binning
-				mask = (
-						(projected_separation_len > self.rp_cut)
-						* (separation_len >= self.bin_edges[0])
-						* (separation_len < self.bin_edges[-1])
-				)
-				del projected_separation_len
-				ind_r = np.floor(
-					np.log10(separation_len[mask]) / self.sub_box_len_logr - np.log10(
-						self.bin_edges[0]) / self.sub_box_len_logr
-				)
-				del separation_len
-				ind_r = np.array(ind_r, dtype=int)
-				ind_mu_r = np.floor(
-					mu_r[mask] / self.sub_box_len_mu_r - self.bins_mu_r[0] / self.sub_box_len_mu_r
-				)  # need length of LOS, so only positive values
-				del mu_r
-				ind_mu_r = np.array(ind_mu_r, dtype=int)
-				np.add.at(Splus_D, (ind_r, ind_mu_r), e_plus[mask] / (2 * self.R))
-				np.add.at(Scross_D, (ind_r, ind_mu_r), e_cross[mask] / (2 * self.R))
-				del e_plus, e_cross, mask
-				np.add.at(DD, (ind_r, ind_mu_r), 1.0)
+			shape_tree = KDTree(positions_shape_sample_i, boxsize=self.boxsize)
+			ind_min_i = shape_tree.query_ball_tree(self.pos_tree, self.separation_min)
+			ind_max_i = shape_tree.query_ball_tree(self.pos_tree, self.separation_max)
+			ind_rbin_i = self.setdiff2D(ind_max_i, ind_min_i)
+			for n in np.arange(0, len(positions_shape_sample_i)):
+				if len(ind_rbin_i[n]) > 0:
+					# for Splus_D (calculate ellipticities around position sample)
+					separation = positions_shape_sample_i[n] - self.positions[ind_rbin_i[n]]
+					separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
+					separation[separation < -self.L_0p5] += self.boxsize
+					projected_sep = separation[:, self.not_LOS]
+					LOS = separation[:, self.LOS_ind]
+					projected_separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
+					separation_dir = (
+							projected_sep.transpose() / projected_separation_len).transpose()  # normalisation of rp
+					separation_len = np.sqrt(np.sum(separation ** 2, axis=1))
+					del separation, projected_sep
+					mu_r = LOS / separation_len
+					phi = np.arccos(
+						separation_dir[:, 0] * axis_direction_i[n, 0] + separation_dir[:, 1] * axis_direction_i[
+							n, 1])  # [0,pi]
+					e_plus, e_cross = self.get_ellipticity(e_i[n], phi)
+					del phi, LOS, separation_dir
+
+					e_plus[np.isnan(e_plus)] = 0.0
+					mu_r[np.isnan(e_plus)] = 0.0
+					e_cross[np.isnan(e_cross)] = 0.0
+
+					# get the indices for the binning
+					mask = (
+							(projected_separation_len > self.rp_cut)
+							* (separation_len >= self.bin_edges[0])
+							* (separation_len < self.bin_edges[-1])
+					)
+					ind_r = np.floor(
+						np.log10(separation_len[mask]) / self.sub_box_len_logr - np.log10(
+							self.bin_edges[0]) / self.sub_box_len_logr
+					)
+					ind_r = np.array(ind_r, dtype=int)
+					ind_mu_r = np.floor(
+						mu_r[mask] / self.sub_box_len_mu_r - self.bins_mu_r[0] / self.sub_box_len_mu_r
+					)  # need length of LOS, so only positive values
+					ind_mu_r = np.array(ind_mu_r, dtype=int)
+					np.add.at(Splus_D, (ind_r, ind_mu_r), e_plus[mask] / (2 * self.R))
+					np.add.at(Scross_D, (ind_r, ind_mu_r), e_cross[mask] / (2 * self.R))
+					np.add.at(DD, (ind_r, ind_mu_r), 1.0)
+					del e_plus, e_cross, mask, separation_len
 		return Splus_D, Scross_D, DD
 
-	def measure_projected_correlation_multipoles_tree_multiprocessing(self, num_nodes=9, tree_input=[None], masks=None,
+	def measure_projected_correlation_multipoles_tree_multiprocessing(self, num_nodes=9, masks=None,
 																	  rp_cut=None, dataset_name="All_galaxies",
-																	  return_output=False, print_num=True,
-																	  save_tree=False, file_tree_path=None):
+																	  return_output=False, print_num=True):
 		"""
 		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
@@ -1392,25 +1366,7 @@ class MeasureIA(SimInfo):
 		:return: xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
 		"""
 
-		if tree_input[0] != None and masks == None:
-			self.positions = self.data["Position"]
-			shape_mask = tree_input[1]
-			self.positions_shape_sample = self.data["Position_shape_sample"][shape_mask]
-			axis_direction_v = self.data["Axis_Direction"]
-			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
-			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
-			self.axis_direction = axis_direction[shape_mask]
-			q = self.data["q"][shape_mask]
-		elif tree_input[0] != None and masks != None:
-			self.positions = self.data["Position"][masks["Position"]]
-			shape_mask = tree_input[1]
-			self.positions_shape_sample = self.data["Position_shape_sample"][masks["Position_shape_sample"]][shape_mask]
-			axis_direction_v = self.data["Axis_Direction"][masks["Axis_Direction"]]
-			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
-			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
-			self.axis_direction = axis_direction[shape_mask]
-			q = self.data["q"][masks["q"]][shape_mask]
-		elif masks == None:
+		if masks == None:
 			self.positions = self.data["Position"]
 			self.positions_shape_sample = self.data["Position_shape_sample"]
 			axis_direction_v = self.data["Axis_Direction"]
@@ -1424,9 +1380,13 @@ class MeasureIA(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			self.axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][masks["q"]]
+		# masking changes the number of galaxies
+		Num_position = len(self.positions)  # number of halos in position sample
+		Num_shape = len(self.positions_shape_sample)  # number of halos in shape sample
+
 		if print_num:
 			print(
-				f"There are {len(self.positions_shape_sample)} galaxies in the shape sample and {len(self.positions)} galaxies in the position sample.")
+				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
 
 		if rp_cut == None:
 			self.rp_cut = 0.0
@@ -1445,22 +1405,7 @@ class MeasureIA(SimInfo):
 		RR_g_plus = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		RR_gg = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 
-		if tree_input[0] != None:
-			self.ind_rbin = tree_input[0]
-		else:
-			pos_tree = KDTree(self.positions[:], boxsize=self.boxsize)
-			ind_rbin = []
-			for i in np.arange(0, len(self.positions_shape_sample), 100):
-				shape_tree = KDTree(self.positions_shape_sample[i:min(len(self.positions_shape_sample), i + 100)],
-									boxsize=self.boxsize)
-				ind_min_i = shape_tree.query_ball_tree(pos_tree, self.separation_min)
-				ind_max_i = shape_tree.query_ball_tree(pos_tree, self.separation_max)
-				ind_rbin_i = self.setdiff2D(ind_max_i, ind_min_i)
-				ind_rbin.extend(ind_rbin_i)
-			self.ind_rbin = ind_rbin
-			if save_tree:
-				with open(f"{file_tree_path}/tree_{dataset_name}.pickle", 'wb') as handle:
-					pickle.dump(ind_rbin, handle, protocol=pickle.HIGHEST_PROTOCOL)
+		self.pos_tree = KDTree(self.positions, boxsize=self.boxsize)
 
 		self.multiproc_chuncks = np.array_split(np.arange(len(self.positions_shape_sample)), num_nodes)
 		result = ProcessingPool(nodes=num_nodes).map(
@@ -1472,18 +1417,18 @@ class MeasureIA(SimInfo):
 			Scross_D += result[i][1]
 			DD += result[i][2]
 
-		if self.Num_position == self.Num_shape:
+		if Num_position == Num_shape:
 			DD = DD / 2.0  # auto correlation, all pairs are double
 
 		# analytical calc is much more difficult for (r,mu_r) bins
 		for i in np.arange(0, self.num_bins_r):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_g_plus[i, p] = self.get_random_pairs_r_mur(
-					self.bin_edges[i + 1], self.bin_edges[i], self.bins_mu_r[p + 1], self.bins_mu_r[p], L3, "cross"
-				)
+					self.bin_edges[i + 1], self.bin_edges[i], self.bins_mu_r[p + 1], self.bins_mu_r[p], L3, "cross",
+					Num_position, Num_shape)
 				RR_gg[i, p] = self.get_random_pairs_r_mur(
-					self.bin_edges[i + 1], self.bin_edges[i], self.bins_mu_r[p + 1], self.bins_mu_r[p], L3, "auto"
-				)
+					self.bin_edges[i + 1], self.bin_edges[i], self.bins_mu_r[p + 1], self.bins_mu_r[p], L3, "auto",
+					Num_position, Num_shape)
 
 		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
 		xi_g_cross = Scross_D / RR_g_plus  # (Scross_D - Scross_R) / RR_g_plus
@@ -1651,7 +1596,7 @@ class MeasureIA(SimInfo):
 
 	def measure_jackknife_errors(
 			self, masks=None, corr_type=["both", "multipoles"], dataset_name="All_galaxies", L_subboxes=3, rp_cut=None,
-			tree_saved=True, file_tree_path=None
+			tree_saved=True, file_tree_path=None, remove_tree_file=True,
 	):
 		"""
 		Measures the errors in the projected correlation function using the jackknife method.
@@ -1671,9 +1616,7 @@ class MeasureIA(SimInfo):
 			data = [corr_type[1] + "_gg"]
 		else:
 			raise KeyError("Unknown value for corr_type. Choose from [g+, gg, both]")
-		if tree_saved:
-			with open(f"{file_tree_path}/tree_{dataset_name}.pickle", 'rb') as handle:
-				ind_rbin = pickle.load(handle)
+
 		L_sub = self.L_0p5 * 2.0 / L_subboxes
 		num_box = 0
 		for i in np.arange(0, L_subboxes):
@@ -1708,8 +1651,6 @@ class MeasureIA(SimInfo):
 							indices_shape = np.where(mask_shape[masks["Position_shape_sample"]])[0]
 							mask_not_position = np.invert(mask_position[masks["Position"]])
 							indices_not_position = np.where(mask_not_position)[0]
-							ind_r_bin_jk = self.setdiff_omit(ind_rbin, indices_not_position,
-															 indices_shape)
 							masks_total = {
 								"Position": masks["Position"],
 								"Position_shape_sample": masks["Position_shape_sample"],
@@ -1720,15 +1661,14 @@ class MeasureIA(SimInfo):
 							indices_shape = np.where(mask_shape)[0]
 							mask_not_position = np.invert(mask_position)
 							indices_not_position = np.where(mask_not_position)[0]
-							ind_r_bin_jk = self.setdiff_omit(ind_rbin, indices_not_position,
-															 indices_shape)
 							masks_total = None
+						tree_input = [indices_not_position, indices_shape]
+
 					else:
 						if masks != None:
 							mask_position = mask_position * masks["Position"]
 							mask_shape = mask_shape * masks["Position_shape_sample"]
-						ind_r_bin_jk = None
-						indices_shape = None
+						tree_input = None
 						masks_total = {
 							"Position": mask_position,
 							"Position_shape_sample": mask_shape,
@@ -1737,25 +1677,34 @@ class MeasureIA(SimInfo):
 						}
 					if corr_type[1] == "multipoles":
 						self.measure_projected_correlation_multipoles_tree(
-							tree_input=[ind_r_bin_jk, indices_shape],
+							tree_input=tree_input,
 							masks=masks_total,
 							rp_cut=rp_cut,
-							dataset_name=dataset_name + "_" + str(
-								num_box),
+							dataset_name=dataset_name + "_" + str(num_box),
 							print_num=False,
+							save_tree=False,
+							dataset_name_tree=f"m_tree_{dataset_name}",
+							file_tree_path=file_tree_path,
 						)
 						self.measure_multipoles(corr_type=corr_type[0], dataset_name=dataset_name + "_" + str(num_box))
 					else:
 						self.measure_projected_correlation_tree(
-							tree_input=[ind_r_bin_jk, indices_shape],
+							tree_input=tree_input,
 							masks=masks_total,
 							dataset_name=dataset_name + "_" + str(num_box),
 							print_num=False,
 							save_tree=False,
+							dataset_name_tree=f"w_tree_{dataset_name}",
+							file_tree_path=file_tree_path,
 						)
 						self.measure_w_g_i(corr_type=corr_type[0], dataset_name=dataset_name + "_" + str(num_box))
 
 					num_box += 1
+		if remove_tree_file and tree_saved:
+			if corr_type[1] == "multipoles":
+				os.remove(f"{file_tree_path}/m_tree_{dataset_name}.pickle")  # removes temp pickle file
+			else:
+				os.remove(f"{file_tree_path}/w_tree_{dataset_name}.pickle")  # removes temp pickle file
 		covs, stds = [], []
 		for d in np.arange(0, len(data)):
 			data_file = h5py.File(self.output_file_name, "a")
@@ -1794,8 +1743,8 @@ class MeasureIA(SimInfo):
 			return covs, stds
 
 	def measure_jackknife_errors_multiprocessing(
-			self,masks=None, corr_type=["both", "multipoles"], dataset_name="All_galaxies", L_subboxes=3, rp_cut=None,
-			num_nodes=4, twoD=False, tree=True, tree_saved=True, file_tree_path=None
+			self, masks=None, corr_type=["both", "multipoles"], dataset_name="All_galaxies", L_subboxes=3, rp_cut=None,
+			num_nodes=4, twoD=False, tree=True, tree_saved=True, file_tree_path=None, remove_tree_file=True
 	):
 		"""
 		Measures the errors in the projected correlation function using the jackknife method, using multiple CPU cores.
@@ -1826,16 +1775,13 @@ class MeasureIA(SimInfo):
 			bin_var_names = ["rp", "pi"]
 		else:
 			raise KeyError("Unknown value for second entry of corr_type. Choose from [multipoles, w_g_plus]")
-		if tree_saved:
-			with open(f"{file_tree_path}/tree_{dataset_name}.pickle", 'rb') as handle:
-				ind_rbin = pickle.load(handle)
 		L_sub = self.boxsize / L_subboxes
 		if twoD:
 			z_L_sub = 1
 		else:
 			z_L_sub = L_subboxes
 		num_box = 0
-		args_xi_g_plus, args_multipoles,tree_args = [], [],[]
+		args_xi_g_plus, args_multipoles, tree_args = [], [], []
 		for i in np.arange(0, L_subboxes):
 			for j in np.arange(0, L_subboxes):
 				for k in np.arange(0, z_L_sub):
@@ -1871,8 +1817,6 @@ class MeasureIA(SimInfo):
 							indices_shape = np.where(mask_shape[masks["Position_shape_sample"]])[0]
 							mask_not_position = np.invert(mask_position[masks["Position"]])
 							indices_not_position = np.where(mask_not_position)[0]
-							ind_r_bin_jk = self.setdiff_omit(ind_rbin, indices_not_position,
-															 indices_shape)
 							masks_total = {
 								"Position": masks["Position"],
 								"Position_shape_sample": masks["Position_shape_sample"],
@@ -1883,15 +1827,13 @@ class MeasureIA(SimInfo):
 							indices_shape = np.where(mask_shape)[0]
 							mask_not_position = np.invert(mask_position)
 							indices_not_position = np.where(mask_not_position)[0]
-							ind_r_bin_jk = self.setdiff_omit(ind_rbin, indices_not_position,
-															 indices_shape)
 							masks_total = None
+						tree_input = [indices_not_position, indices_shape]
 					else:
 						if masks != None:
 							mask_position = mask_position * masks["Position"]
 							mask_shape = mask_shape * masks["Position_shape_sample"]
-						ind_r_bin_jk = None
-						indices_shape = None
+						tree_input = None
 						masks_total = {
 							"Position": mask_position,
 							"Position_shape_sample": mask_shape,
@@ -1899,7 +1841,7 @@ class MeasureIA(SimInfo):
 							"q": mask_shape,
 						}
 					if corr_type[1] == "multipoles":
-						tree_args.append([ind_r_bin_jk, indices_shape])
+						tree_args.append(tree_input)
 						args_xi_g_plus.append(
 							(
 								masks_total,
@@ -1907,16 +1849,22 @@ class MeasureIA(SimInfo):
 								dataset_name + "_" + str(num_box),
 								True,
 								False,
+								f"m_tree_{dataset_name}",
+								False,
+								file_tree_path,
 							)
 						)
 					else:
-						tree_args.append([ind_r_bin_jk, indices_shape])
+						tree_args.append(tree_input)
 						args_xi_g_plus.append(
 							(
 								masks_total,
 								dataset_name + "_" + str(num_box),
 								True,
 								False,
+								f"w_tree_{dataset_name}",
+								False,
+								file_tree_path,
 							)
 						)
 					args_multipoles.append([corr_type[0], dataset_name + "_" + str(num_box)])
@@ -1937,6 +1885,9 @@ class MeasureIA(SimInfo):
 						args_xi_g_plus[chunck][:, 2],
 						args_xi_g_plus[chunck][:, 3],
 						args_xi_g_plus[chunck][:, 4],
+						args_xi_g_plus[chunck][:, 5],
+						args_xi_g_plus[chunck][:, 6],
+						args_xi_g_plus[chunck][:, 7],
 					)
 				else:
 					result = ProcessingPool(nodes=len(chunck)).map(
@@ -1956,7 +1907,11 @@ class MeasureIA(SimInfo):
 						args_xi_g_plus[chunck][:, 1],
 						args_xi_g_plus[chunck][:, 2],
 						args_xi_g_plus[chunck][:, 3],
+						args_xi_g_plus[chunck][:, 4],
+						args_xi_g_plus[chunck][:, 5],
+						args_xi_g_plus[chunck][:, 6],
 					)
+
 				else:
 					result = ProcessingPool(nodes=len(chunck)).map(
 						self.measure_projected_correlation,
@@ -1965,6 +1920,7 @@ class MeasureIA(SimInfo):
 						args_xi_g_plus[chunck][:, 2],
 						args_xi_g_plus[chunck][:, 3],
 					)
+
 			output_file = h5py.File(self.output_file_name, "a")
 			for i in np.arange(0, len(chunck)):
 				for j, data_j in enumerate(data):
@@ -1980,6 +1936,11 @@ class MeasureIA(SimInfo):
 					)
 					write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i]}_sigmasq", data=result[i][3])
 			output_file.close()
+		if remove_tree_file and tree_saved:
+			if corr_type[1] == "multipoles":
+				os.remove(f"{file_tree_path}/m_tree_{dataset_name}.pickle")  # removes temp pickle file
+			else:
+				os.remove(f"{file_tree_path}/w_tree_{dataset_name}.pickle")  # removes temp pickle file
 		for i in np.arange(0, num_box):
 			if corr_type[1] == "multipoles":
 				self.measure_multipoles(corr_type=args_multipoles[i][0], dataset_name=args_multipoles[i][1])
