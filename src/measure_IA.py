@@ -1596,7 +1596,7 @@ class MeasureIA(SimInfo):
 
 	def measure_jackknife_errors(
 			self, masks=None, corr_type=["both", "multipoles"], dataset_name="All_galaxies", L_subboxes=3, rp_cut=None,
-			tree_saved=True, file_tree_path=None, remove_tree_file=True,
+			tree_saved=True, file_tree_path=None, remove_tree_file=True, num_nodes=None
 	):
 		"""
 		Measures the errors in the projected correlation function using the jackknife method.
@@ -1676,27 +1676,44 @@ class MeasureIA(SimInfo):
 							"q": mask_shape,
 						}
 					if corr_type[1] == "multipoles":
-						self.measure_projected_correlation_multipoles_tree(
-							tree_input=tree_input,
-							masks=masks_total,
-							rp_cut=rp_cut,
-							dataset_name=dataset_name + "_" + str(num_box),
-							print_num=False,
-							save_tree=False,
-							dataset_name_tree=f"m_tree_{dataset_name}",
-							file_tree_path=file_tree_path,
-						)
+						if num_nodes == None:
+							self.measure_projected_correlation_multipoles_tree(
+								tree_input=tree_input,
+								masks=masks_total,
+								rp_cut=rp_cut,
+								dataset_name=dataset_name + "_" + str(num_box),
+								print_num=False,
+								save_tree=False,
+								dataset_name_tree=f"m_tree_{dataset_name}",
+								file_tree_path=file_tree_path,
+							)
+						else:
+							self.measure_projected_correlation_multipoles_tree_multiprocessing(
+								masks=masks_total,
+								rp_cut=rp_cut,
+								dataset_name=dataset_name + "_" + str(num_box),
+								print_num=False,
+								num_nodes=num_nodes
+							)
 						self.measure_multipoles(corr_type=corr_type[0], dataset_name=dataset_name + "_" + str(num_box))
 					else:
-						self.measure_projected_correlation_tree(
-							tree_input=tree_input,
-							masks=masks_total,
-							dataset_name=dataset_name + "_" + str(num_box),
-							print_num=False,
-							save_tree=False,
-							dataset_name_tree=f"w_tree_{dataset_name}",
-							file_tree_path=file_tree_path,
-						)
+						if num_nodes == None:
+							self.measure_projected_correlation_tree(
+								tree_input=tree_input,
+								masks=masks_total,
+								dataset_name=dataset_name + "_" + str(num_box),
+								print_num=False,
+								save_tree=False,
+								dataset_name_tree=f"w_tree_{dataset_name}",
+								file_tree_path=file_tree_path,
+							)
+						else:
+							self.measure_projected_correlation_tree_multiprocessing(
+								masks=masks_total,
+								dataset_name=dataset_name + "_" + str(num_box),
+								print_num=False,
+								num_nodes=num_nodes
+							)
 						self.measure_w_g_i(corr_type=corr_type[0], dataset_name=dataset_name + "_" + str(num_box))
 
 					num_box += 1
