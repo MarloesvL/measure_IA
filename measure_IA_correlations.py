@@ -46,20 +46,54 @@ IA_Projected = MeasureIA(
 	output_file_name=data_path_out + file_name,
 	boxsize=boxsize,
 )
+
+'''
+There are multiple options for calculations. 
+Below, you can find the methods you need to calculate everything using a single core.
+Using the 'save tree' option will speed your results up by about 1.3. If you do not wish to use this,
+set the 'save_tree' input value to False and do not add a file_tree_path.
+'''
+
 # wg+,wgg
 IA_Projected.measure_projected_correlation_tree(dataset_name=dataset_name, save_tree=True, file_tree_path=tree_path)
 IA_Projected.measure_w_g_i(corr_type=corr_type[0], dataset_name=dataset_name)
-# IA_Projected.measure_jackknife_errors(
-# 	corr_type=corr_type,
-# 	dataset_name=dataset_name,
-# 	L_subboxes=L_subboxes,
-# 	rp_cut=rp_cut,
-# )
+IA_Projected.measure_jackknife_errors(
+	corr_type=corr_type,
+	dataset_name=dataset_name,
+	L_subboxes=L_subboxes,
+	rp_cut=rp_cut,
+	tree_saved=True,
+	file_tree_path=tree_path
+)
+corr_type = ['g+', 'multipoles']
+# multipoles
+IA_Projected.measure_projected_correlation_multipoles_tree(dataset_name=dataset_name, rp_cut=rp_cut, save_tree=True,
+														   file_tree_path=tree_path)
+IA_Projected.measure_multipoles(dataset_name=dataset_name, corr_type=corr_type[0])
+IA_Projected.measure_jackknife_errors(
+	corr_type=corr_type,
+	dataset_name=dataset_name,
+	L_subboxes=L_subboxes,
+	rp_cut=rp_cut,
+	tree_saved=True,
+	file_tree_path=tree_path
+)
+
+'''
+If you want to use more than one core in your calculations, you have two options. 
+Which is faster depends on your number of cores available and the number of jackknife regions.
+If your number of available cores is < the number of jackknife regions, or close to it, this method is fastest:
+'''
+num_nodes = 9
+L_subboxes = 3  # 27 jk regions
+# wg+,wgg
+IA_Projected.measure_projected_correlation_tree(dataset_name=dataset_name, save_tree=True, file_tree_path=tree_path)
+IA_Projected.measure_w_g_i(corr_type=corr_type[0], dataset_name=dataset_name)
 IA_Projected.measure_jackknife_errors_multiprocessing(
 	corr_type=corr_type,
 	dataset_name=dataset_name,
 	L_subboxes=L_subboxes,
-	num_nodes=9,
+	num_nodes=num_nodes,
 	rp_cut=rp_cut,
 	tree_saved=True,
 	file_tree_path=tree_path
@@ -73,8 +107,40 @@ IA_Projected.measure_jackknife_errors_multiprocessing(
 	corr_type=corr_type,
 	dataset_name=dataset_name,
 	L_subboxes=L_subboxes,
-	num_nodes=9,
+	num_nodes=num_nodes,
 	rp_cut=rp_cut,
 	tree_saved=True,
 	file_tree_path=tree_path
+)
+
+'''
+If your number of available cores is >> the number of jackknife regions (e.g. a factor of 2 or more), 
+this method becomes faster:
+Due to the nature of the methods, they cannot be combined with the 'save tree' option.
+'''
+num_nodes = 30
+L_subboxes = 2  # 8 jk regions
+# wg+,wgg
+IA_Projected.measure_projected_correlation_tree_multiprocessing(num_nodes=num_nodes, dataset_name=dataset_name)
+IA_Projected.measure_w_g_i(corr_type=corr_type[0], dataset_name=dataset_name)
+IA_Projected.measure_jackknife_errors_multiprocessing(
+	corr_type=corr_type,
+	dataset_name=dataset_name,
+	L_subboxes=L_subboxes,
+	num_nodes=num_nodes,
+	rp_cut=rp_cut,
+	tree_saved=False
+)
+corr_type = ['g+', 'multipoles']
+# multipoles
+IA_Projected.measure_projected_correlation_multipoles_tree_multiprocessing(num_nodes=num_nodes,
+																		   dataset_name=dataset_name, rp_cut=rp_cut)
+IA_Projected.measure_multipoles(dataset_name=dataset_name, corr_type=corr_type[0])
+IA_Projected.measure_jackknife_errors_multiprocessing(
+	corr_type=corr_type,
+	dataset_name=dataset_name,
+	L_subboxes=L_subboxes,
+	num_nodes=num_nodes,
+	rp_cut=rp_cut,
+	tree_saved=False
 )

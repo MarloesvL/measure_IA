@@ -82,9 +82,9 @@ class MeasureIA(SimInfo):
 		self.pi_bins = np.linspace(-pi_max, pi_max, self.num_bins_pi + 1)
 		self.bins_mu_r = np.linspace(-1, 1, self.num_bins_pi + 1)
 		print(f"MeasureIA object initialised with:\n \
-		simulation {simulation} that has a boxsize of {self.boxsize} cMpc.\n \
+		simulation {simulation} that has a boxsize of {self.boxsize} cMpc/h.\n \
 		There are {self.Num_shape} galaxies in the shape sample and {self.Num_position} galaxies in the position sample.\n\
-		The separation bin edges are given by {self.bin_edges} cMpc.\n \
+		The separation bin edges are given by {self.bin_edges} cMpc/h.\n \
 		There are {num_bins_r} r or r_p bins and {num_bins_pi} pi bins.\n \
 		The maximum pi used for binning is {pi_max}.\n \
 		The data will be written to {self.output_file_name}")
