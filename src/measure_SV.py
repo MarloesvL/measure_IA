@@ -56,7 +56,7 @@ class MeasureSnapshotVariables(SimInfo):
 			\n simulation {project}, snapshot {snapshot}, parttype {PT} \n \
 			excluding wind is {exclude_wind}\n \
 			Catalogues are named {self.subhalo_cat}, {self.shapes_cat} and found in {data_path}{project}.\n \
-			Snapshot data is in file {self.snap_cat}, found in {snap_data_path}.\n \
+			Snapshot data is in file {self.snap_cat}, found in {self.snap_data_path}.\n \
 			{numnodes} cores are being used in mulitprocessing.")
 		return
 
@@ -1106,19 +1106,21 @@ class MeasureSnapshotVariables(SimInfo):
 			output_file.close()
 		self.calc_basis = calc_basis
 		self.measure_dispersion = measure_dispersion
-		# print('startup')
-		result = ProcessingPool(nodes=self.numnodes).map(
-			self.measure_rotational_velocity_single,
-			self.multiproc_chuncks,
-		)
-		for i in np.arange(self.numnodes):
-			avg_rot_vel.extend(result[i][0])
-			vel_disp.extend(result[i][1])
-			vel_z.extend(result[i][2])
-			vel_disp_cyl.extend(result[i][3])
-			vel_z_abs.extend(result[i][4])
-			if calc_basis:
-				basis.extend(result[i][5])
+
+		multiproc_chuncks = np.array_split(np.arange(self.Num_halos), self.numnodes * 3)  # high memory usage
+		for j in [0, 3, 6]:
+			result = ProcessingPool(nodes=self.numnodes).map(
+				self.measure_rotational_velocity_single,
+				multiproc_chuncks[j:j + 3],
+			)
+			for i in np.arange(self.numnodes):
+				avg_rot_vel.extend(result[i][0])
+				vel_disp.extend(result[i][1])
+				vel_z.extend(result[i][2])
+				vel_disp_cyl.extend(result[i][3])
+				vel_z_abs.extend(result[i][4])
+				if calc_basis:
+					basis.extend(result[i][5])
 
 		if self.output_file_name != None:
 			output_file = h5py.File(self.output_file_name, "a")
