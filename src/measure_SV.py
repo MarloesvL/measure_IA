@@ -4,7 +4,6 @@ import time
 from numpy.linalg import eig, inv
 import sympy
 import sys
-
 # sys.set_int_max_str_digits(8600)
 from pathos.multiprocessing import ProcessingPool
 from src.read_data import ReadData
@@ -56,7 +55,7 @@ class MeasureSnapshotVariables(SimInfo):
 			\n simulation {project}, snapshot {snapshot}, parttype {PT} \n \
 			excluding wind is {exclude_wind}\n \
 			Catalogues are named {self.subhalo_cat}, {self.shapes_cat} and found in {data_path}{project}.\n \
-			Snapshot data is in file {self.snap_cat}, found in {self.snap_data_path}.\n \
+			Snapshot data is in file {self.snap_cat}, found in {self.data_path_snap}.\n \
 			{numnodes} cores are being used in mulitprocessing.")
 		return
 
@@ -173,6 +172,7 @@ class MeasureSnapshotVariables(SimInfo):
 		TNG100_subhalo = ReadData(self.simname, "Subhalo", self.snapshot, data_path=self.data_path)
 		Len = TNG100_subhalo.read_subhalo(self.sub_len_name)[:, self.PT]
 		mass_subhalo = TNG100_subhalo.read_subhalo("SubhaloMassType")[:, self.PT]
+		subhalo_pos = TNG100_subhalo.read_subhalo("SubhaloPos")
 		flag = TNG100_subhalo.read_subhalo(self.flag_name)
 		TNG100_SubhaloPT = ReadData(
 			self.simname, self.subhalo_cat, self.snapshot, sub_group=f"PT{self.PT}/", data_path=self.data_path
@@ -190,6 +190,7 @@ class MeasureSnapshotVariables(SimInfo):
 		write_dataset_hdf5(group, self.sub_len_name, Len[mask])
 		write_dataset_hdf5(group, self.offset_name, off[mask])
 		write_dataset_hdf5(group, "SubhaloMassType", mass_subhalo[mask])
+		write_dataset_hdf5(group, "SubhaloPos", subhalo_pos[mask])
 		write_dataset_hdf5(group, self.ID_name, IDs)
 		if self.PT == 4:
 			photo_mag = TNG100_subhalo.read_subhalo(self.photo_name)
