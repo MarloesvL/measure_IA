@@ -451,6 +451,11 @@ class MeasureIA(SimInfo):
 		if print_num:
 			print(
 				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
+		figname_dataset_name = dataset_name
+		if "/" in dataset_name:
+			figname_dataset_name = figname_dataset_name.replace("/", "_")
+		if "." in dataset_name:
+			figname_dataset_name = figname_dataset_name.replace(".", "p")
 		pos_tree = KDTree(positions[:, not_LOS], boxsize=self.boxsize)
 		for i in np.arange(0, len(positions_shape_sample), 100):
 			i2 = min(len(positions_shape_sample), i + 100)
@@ -470,7 +475,7 @@ class MeasureIA(SimInfo):
 				ind_max_i = shape_tree.query_ball_tree(pos_tree, self.separation_max)
 				ind_rbin_i = self.setdiff2D(ind_max_i, ind_min_i)
 				if save_tree:
-					with open(f"{file_tree_path}/w_{self.simname}_tree_{dataset_name}.pickle", 'ab') as handle:
+					with open(f"{file_tree_path}/w_{self.simname}_tree_{figname_dataset_name}.pickle", 'ab') as handle:
 						pickle.dump(ind_rbin_i, handle, protocol=pickle.HIGHEST_PROTOCOL)
 			for n in np.arange(0, len(positions_shape_sample_i)):  # CHANGE2: loop now over shapes, not positions
 				if len(ind_rbin_i[n]) > 0:
@@ -1179,7 +1184,11 @@ class MeasureIA(SimInfo):
 		if print_num:
 			print(
 				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
-
+		figname_dataset_name = dataset_name
+		if "/" in dataset_name:
+			figname_dataset_name = figname_dataset_name.replace("/", "_")
+		if "." in dataset_name:
+			figname_dataset_name = figname_dataset_name.replace(".", "p")
 		pos_tree = KDTree(positions, boxsize=self.boxsize)
 		for i in np.arange(0, len(positions_shape_sample), 100):
 			i2 = min(len(positions_shape_sample), i + 100)
@@ -1200,7 +1209,7 @@ class MeasureIA(SimInfo):
 				ind_max_i = shape_tree.query_ball_tree(pos_tree, self.separation_max)
 				ind_rbin_i = self.setdiff2D(ind_max_i, ind_min_i)
 				if save_tree:
-					with open(f"{file_tree_path}/m_{self.simname}_tree_{dataset_name}.pickle", 'ab') as handle:
+					with open(f"{file_tree_path}/m_{self.simname}_tree_{figname_dataset_name}.pickle", 'ab') as handle:
 						pickle.dump(ind_rbin_i, handle, protocol=pickle.HIGHEST_PROTOCOL)
 			for n in np.arange(0, len(positions_shape_sample_i)):
 				if len(ind_rbin_i[n]) > 0:
@@ -1616,7 +1625,11 @@ class MeasureIA(SimInfo):
 			data = [corr_type[1] + "_gg"]
 		else:
 			raise KeyError("Unknown value for corr_type. Choose from [g+, gg, both]")
-
+		figname_dataset_name = dataset_name
+		if "/" in dataset_name:
+			figname_dataset_name = figname_dataset_name.replace("/", "_")
+		if "." in dataset_name:
+			figname_dataset_name = figname_dataset_name.replace(".", "p")
 		L_sub = self.L_0p5 * 2.0 / L_subboxes
 		num_box = 0
 		for i in np.arange(0, L_subboxes):
@@ -1684,7 +1697,7 @@ class MeasureIA(SimInfo):
 								dataset_name=dataset_name + "_" + str(num_box),
 								print_num=False,
 								save_tree=False,
-								dataset_name_tree=f"m_{self.simname}_tree_{dataset_name}",
+								dataset_name_tree=f"m_{self.simname}_tree_{figname_dataset_name}",
 								file_tree_path=file_tree_path,
 							)
 						else:
@@ -1704,7 +1717,7 @@ class MeasureIA(SimInfo):
 								dataset_name=dataset_name + "_" + str(num_box),
 								print_num=False,
 								save_tree=False,
-								dataset_name_tree=f"w_{self.simname}_tree_{dataset_name}",
+								dataset_name_tree=f"w_{self.simname}_tree_{figname_dataset_name}",
 								file_tree_path=file_tree_path,
 							)
 						else:
@@ -1719,9 +1732,11 @@ class MeasureIA(SimInfo):
 					num_box += 1
 		if remove_tree_file and tree_saved:
 			if corr_type[1] == "multipoles":
-				os.remove(f"{file_tree_path}/m_{self.simname}_tree_{dataset_name}.pickle")  # removes temp pickle file
+				os.remove(
+					f"{file_tree_path}/m_{self.simname}_tree_{figname_dataset_name}.pickle")  # removes temp pickle file
 			else:
-				os.remove(f"{file_tree_path}/w_{self.simname}_tree_{dataset_name}.pickle")  # removes temp pickle file
+				os.remove(
+					f"{file_tree_path}/w_{self.simname}_tree_{figname_dataset_name}.pickle")  # removes temp pickle file
 		covs, stds = [], []
 		for d in np.arange(0, len(data)):
 			data_file = h5py.File(self.output_file_name, "a")
@@ -1797,6 +1812,11 @@ class MeasureIA(SimInfo):
 			z_L_sub = 1
 		else:
 			z_L_sub = L_subboxes
+		figname_dataset_name = dataset_name
+		if "/" in dataset_name:
+			figname_dataset_name = figname_dataset_name.replace("/", "_")
+		if "." in dataset_name:
+			figname_dataset_name = figname_dataset_name.replace(".", "p")
 		num_box = 0
 		args_xi_g_plus, args_multipoles, tree_args = [], [], []
 		for i in np.arange(0, L_subboxes):
@@ -1866,7 +1886,7 @@ class MeasureIA(SimInfo):
 								dataset_name + "_" + str(num_box),
 								True,
 								False,
-								f"m_{self.simname}_tree_{dataset_name}",
+								f"m_{self.simname}_tree_{figname_dataset_name}",
 								False,
 								file_tree_path,
 							)
@@ -1879,7 +1899,7 @@ class MeasureIA(SimInfo):
 								dataset_name + "_" + str(num_box),
 								True,
 								False,
-								f"w_{self.simname}_tree_{dataset_name}",
+								f"w_{self.simname}_tree_{figname_dataset_name}",
 								False,
 								file_tree_path,
 							)
@@ -1955,9 +1975,11 @@ class MeasureIA(SimInfo):
 			output_file.close()
 		if remove_tree_file and tree_saved:
 			if corr_type[1] == "multipoles":
-				os.remove(f"{file_tree_path}/m_{self.simname}_tree_{dataset_name}.pickle")  # removes temp pickle file
+				os.remove(
+					f"{file_tree_path}/m_{self.simname}_tree_{figname_dataset_name}.pickle")  # removes temp pickle file
 			else:
-				os.remove(f"{file_tree_path}/w_{self.simname}_tree_{dataset_name}.pickle")  # removes temp pickle file
+				os.remove(
+					f"{file_tree_path}/w_{self.simname}_tree_{figname_dataset_name}.pickle")  # removes temp pickle file
 		for i in np.arange(0, num_box):
 			if corr_type[1] == "multipoles":
 				self.measure_multipoles(corr_type=args_multipoles[i][0], dataset_name=args_multipoles[i][1])
