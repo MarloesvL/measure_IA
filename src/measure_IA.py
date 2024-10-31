@@ -48,6 +48,7 @@ class MeasureIA(SimInfo):
 			LOS_lim=None,
 			output_file_name=None,
 			boxsize=None,
+			periodicity=True,
 	):
 		if type(simulation) == str:  # simulation is a tag that is hardcoded into SimInfo
 			SimInfo.__init__(self, simulation, snapshot, PT)
@@ -63,6 +64,11 @@ class MeasureIA(SimInfo):
 							 snapshot, PT)  # simulation is a SimInfo object created in the file that calls this class
 		self.data = data
 		self.output_file_name = output_file_name
+		self.periodicity = periodicity
+		if periodicity:
+			periodic = "periodic "
+		else:
+			periodic = ""
 		try:
 			self.Num_position = len(data["Position"])  # number of halos in position sample
 			self.Num_shape = len(data["Position_shape_sample"])  # number of halos in shape sample
@@ -82,7 +88,7 @@ class MeasureIA(SimInfo):
 		self.pi_bins = np.linspace(-pi_max, pi_max, self.num_bins_pi + 1)
 		self.bins_mu_r = np.linspace(-1, 1, self.num_bins_pi + 1)
 		print(f"MeasureIA object initialised with:\n \
-		simulation {simulation} that has a boxsize of {self.boxsize} cMpc/h.\n \
+		simulation {simulation} that has a {periodic}boxsize of {self.boxsize} cMpc/h.\n \
 		There are {self.Num_shape} galaxies in the shape sample and {self.Num_position} galaxies in the position sample.\n\
 		The separation bin edges are given by {self.bin_edges} cMpc/h.\n \
 		There are {num_bins_r} r or r_p bins and {num_bins_pi} pi bins.\n \
@@ -298,8 +304,9 @@ class MeasureIA(SimInfo):
 		for n in np.arange(0, len(positions)):
 			# for Splus_D (calculate ellipticities around position sample)
 			separation = positions_shape_sample - positions[n]
-			separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
-			separation[separation < -self.L_0p5] += self.boxsize
+			if self.periodicity:
+				separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
+				separation[separation < -self.L_0p5] += self.boxsize
 			projected_sep = separation[:, not_LOS]
 			LOS = separation[:, LOS_ind]
 			del separation
@@ -481,8 +488,9 @@ class MeasureIA(SimInfo):
 				if len(ind_rbin_i[n]) > 0:
 					# for Splus_D (calculate ellipticities around position sample)
 					separation = positions_shape_sample_i[n] - positions[ind_rbin_i[n]]  # CHANGE1 & CHANGE2
-					separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
-					separation[separation < -self.L_0p5] += self.boxsize
+					if self.periodicity:
+						separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
+						separation[separation < -self.L_0p5] += self.boxsize
 					projected_sep = separation[:, not_LOS]
 					LOS = separation[:, LOS_ind]
 					separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
@@ -581,8 +589,9 @@ class MeasureIA(SimInfo):
 				if len(ind_rbin_i[n]) > 0:
 					# for Splus_D (calculate ellipticities around position sample)
 					separation = positions_shape_sample_i[n] - self.positions[ind_rbin_i[n]]  # CHANGE1 & CHANGE2
-					separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
-					separation[separation < -self.L_0p5] += self.boxsize
+					if self.periodicity:
+						separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
+						separation[separation < -self.L_0p5] += self.boxsize
 					projected_sep = separation[:, self.not_LOS]
 					LOS = separation[:, self.LOS_ind]
 					separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
@@ -952,8 +961,9 @@ class MeasureIA(SimInfo):
 		for n in np.arange(0, len(positions)):
 			# for Splus_D (calculate ellipticities around position sample)
 			separation = positions_shape_sample - positions[n]
-			separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
-			separation[separation < -self.L_0p5] += self.boxsize
+			if self.periodicity:
+				separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
+				separation[separation < -self.L_0p5] += self.boxsize
 			projected_sep = separation[:, not_LOS]
 			LOS = separation[:, LOS_ind]
 			separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
@@ -1046,8 +1056,9 @@ class MeasureIA(SimInfo):
 		for n in np.arange(0, len(positions)):
 			# for Splus_D (calculate ellipticities around position sample)
 			separation = positions_shape_sample - positions[n]
-			separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
-			separation[separation < -self.L_0p5] += self.boxsize
+			if self.periodicity:
+				separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
+				separation[separation < -self.L_0p5] += self.boxsize
 			projected_sep = separation[:, not_LOS]
 			LOS = separation[:, LOS_ind]
 			projected_separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
@@ -1215,8 +1226,9 @@ class MeasureIA(SimInfo):
 				if len(ind_rbin_i[n]) > 0:
 					# for Splus_D (calculate ellipticities around position sample)
 					separation = positions_shape_sample_i[n] - positions[ind_rbin_i[n]]
-					separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
-					separation[separation < -self.L_0p5] += self.boxsize
+					if self.periodicity:
+						separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
+						separation[separation < -self.L_0p5] += self.boxsize
 					projected_sep = separation[:, not_LOS]
 					LOS = separation[:, LOS_ind]
 					projected_separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
@@ -1320,8 +1332,9 @@ class MeasureIA(SimInfo):
 				if len(ind_rbin_i[n]) > 0:
 					# for Splus_D (calculate ellipticities around position sample)
 					separation = positions_shape_sample_i[n] - self.positions[ind_rbin_i[n]]
-					separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
-					separation[separation < -self.L_0p5] += self.boxsize
+					if self.periodicity:
+						separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
+						separation[separation < -self.L_0p5] += self.boxsize
 					projected_sep = separation[:, self.not_LOS]
 					LOS = separation[:, self.LOS_ind]
 					projected_separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
