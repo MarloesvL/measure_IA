@@ -952,10 +952,6 @@ class MeasureIA(SimInfo):
 		group = create_group_hdf5(output_file_pairs, "w_g_plus")
 
 		indices_shape = np.arange(0, len(positions_shape_sample))
-		start_time = time.time()
-		first, second, third, done = int(len(positions / 4)), int(len(positions / 2)), 3 * int(len(positions / 4)), len(
-			positions)
-
 		for n in np.arange(0, len(positions)):
 			# for Splus_D (calculate ellipticities around position sample)
 			separation = positions_shape_sample - positions[n]
@@ -984,8 +980,6 @@ class MeasureIA(SimInfo):
 			else:
 				group[dataset_name].resize((group[dataset_name].shape[0] + write_data.shape[0]), axis=0)
 				group[dataset_name][-write_data.shape[0]:] = write_data
-			if sum(np.isin(n, [first, second, third, done])) > 0:
-				print(n, [first, second, third, done], time.time() - start_time)
 
 		output_file_pairs.close()
 		return
