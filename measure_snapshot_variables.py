@@ -12,7 +12,7 @@ num_nodes = 9  # number of cores to use
 start_time = time.time()
 
 TNG100_Variable_snapshot = MeasureSnapshotVariables(project=simulation,
-													PT=PT, snapshot=snapshot, numnodes=num_nodes,
+													PT=PT, snapshot=snapshot, num_nodes=num_nodes,
 													output_file_name=data_path_raw + f"{simulation}/SubhaloPT_cat.hdf5",
 													data_path=data_path_raw, update=True,
 													snap_data_path=data_path_snap, exclude_wind=True
@@ -34,7 +34,7 @@ print("COM", time.time() - start_time)
 
 Subtime = time.time()
 TNG100_Variable_snapshot_shapes = MeasureSnapshotVariables(project=simulation,
-														   PT=PT, snapshot=snapshot, numnodes=num_nodes,
+														   PT=PT, snapshot=snapshot, num_nodes=num_nodes,
 														   output_file_name=data_path_raw + f"{simulation}/Shapes_cat.hdf5",
 														   data_path=data_path_raw, update=True,
 														   snap_data_path=data_path_snap, exclude_wind=True
@@ -51,7 +51,7 @@ print("shapes done")
 print(time.time() - Subtime)
 
 TNG100_Variable_snapshot = MeasureSnapshotVariables(project=simulation,
-													PT=PT, snapshot=snapshot, numnodes=num_nodes,
+													PT=PT, snapshot=snapshot, num_nodes=num_nodes,
 													output_file_name=data_path_raw + f"{simulation}/SubhaloPT_cat.hdf5",
 													data_path=data_path_raw, update=True,
 													snap_data_path=data_path_snap, exclude_wind=True

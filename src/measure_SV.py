@@ -17,11 +17,11 @@ class MeasureSnapshotVariables(SimInfo):
 	"""
 	Measures different galaxy variables using the particle snapshot data and galaxy catalogues of hydrodynamical simulations.
 	WARNING: Currently set up for TNG and EAGLE only. Should work for other sims, if added to SimInfo.
-	Take care with units. Make sure data files are in the specified format.
+	Take care with units. Make sure data files are in the specified format. Likely need to add a selection function.
 	:param PT: Number indicating particle type
 	:param project: Indicator of simulation. Choose from [TNG100, TNG100_2, TNG300, EAGLE] unless added to SimInfo.
 	:param snapshot: Number of the snapshot in the simulation
-	:param numnodes: Number of nodes to be used in multiprocessing.
+	:param num_nodes: Number of nodes to be used in multiprocessing.
 	:param output_file_name: Name and filepath of the file where the output should be stored.
 	:param data_path: Start path to the raw data files. Assumes next folder to be self.simname (=project).
 	:param snap_data_path: Start path to snapshot data files. If None (default) the data_path will be used.
@@ -29,7 +29,7 @@ class MeasureSnapshotVariables(SimInfo):
 	:param update: If True, any SimInfo variables can be updated by calling the SimInfo methods they are created in.
 	"""
 
-	def __init__(self, PT=4, project=None, snapshot=None, numnodes=30, output_file_name=None, data_path="./data/raw/",
+	def __init__(self, PT=4, project=None, snapshot=None, num_nodes=30, output_file_name=None, data_path="./data/raw/",
 				 snap_data_path=None, exclude_wind=True, update=False):
 		if project == None:
 			raise KeyError("Input project name!")
@@ -43,7 +43,7 @@ class MeasureSnapshotVariables(SimInfo):
 		except:
 			self.Num_halos = 0
 		self.exclude_wind = exclude_wind
-		self.numnodes = numnodes
+		self.num_nodes = num_nodes
 		self.output_file_name = output_file_name
 		self.data_path = data_path
 		if snap_data_path != None:
@@ -56,7 +56,7 @@ class MeasureSnapshotVariables(SimInfo):
 			excluding wind is {exclude_wind}\n \
 			Catalogues are named {self.subhalo_cat}, {self.shapes_cat} and found in {data_path}{project}.\n \
 			Snapshot data is in file {self.snap_cat}, found in {self.data_path_snap}.\n \
-			{numnodes} cores are being used in mulitprocessing.")
+			{num_nodes} cores are being used in mulitprocessing.")
 		return
 
 	def create_self_arguments(self):
@@ -86,7 +86,7 @@ class MeasureSnapshotVariables(SimInfo):
 			self.snapshot,
 			data_path=self.data_path_snap,
 		)
-		self.multiproc_chuncks = np.array_split(np.arange(self.Num_halos), self.numnodes)
+		self.multiproc_chuncks = np.array_split(np.arange(self.Num_halos), self.num_nodes)
 		return
 
 	def measure_offsets(self, type="Subhalo"):
@@ -147,15 +147,15 @@ class MeasureSnapshotVariables(SimInfo):
 		TNG100_subhalo = ReadData(self.simname, "Subhalo", self.snapshot, data_path=self.data_path)
 		Len = TNG100_subhalo.read_subhalo(self.sub_len_name)[:, self.PT]
 		Wind_Flag = []
-		multiproc_chuncks = np.array_split(np.arange(len(off)), self.numnodes)
+		multiproc_chuncks = np.array_split(np.arange(len(off)), self.num_nodes)
 		self.snap_wind = TNG100_snapshot
 		self.off_wind = off
 		self.len_wind = Len
-		result = ProcessingPool(nodes=self.numnodes).map(
+		result = ProcessingPool(nodes=self.num_nodes).map(
 			self.omit_wind_only_single,
 			multiproc_chuncks,
 		)
-		for i in np.arange(self.numnodes):
+		for i in np.arange(self.num_nodes):
 			Wind_Flag.extend(result[i])
 		output_file = h5py.File(self.output_file_name, "a")
 		group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/PT" + str(self.PT))
@@ -165,7 +165,7 @@ class MeasureSnapshotVariables(SimInfo):
 
 	def select_nonzero_subhalos(self):
 		"""
-		Selects the subhalos that have nonzero length and SubhaloFlag. Saves selected data in output file, including
+		Selects the subhalos that have nonzero length, mass and SubhaloFlag. Saves selected data in output file, including
 		the IDs for the original file. Specific to IllustrisTNG simulations.
 		:return:
 		"""
@@ -202,22 +202,24 @@ class MeasureSnapshotVariables(SimInfo):
 
 	def select_nonzero_subhalos_EAGLE(self):
 		"""
-		Selects the subhalos that have nonzero length and SubhaloFlag. Saves selected data in output file, including
-		the IDs for the original file. Specific to IllustrisTNG simulations.
+		Selects the subhalos that have nonzero length, mass and SubhaloFlag. Furthermore, this method sorts the galaxies
+		according to their group number and subgroup number so the offsets and lengths can be used to read the correct
+		particles in the snapshot files.
+		Saves selected data in output file, including the IDs for the original file. Specific to EAGLE simulations.
 		:return:
 		"""
-		TNG100_subhalo = ReadData(self.simname, "Subhalo_cat", self.snapshot, data_path=self.data_path)
-		Len = TNG100_subhalo.read_cat(self.sub_len_name)
-		mass_subhalo = TNG100_subhalo.read_cat(self.mass_name)
-		gn = TNG100_subhalo.read_cat("GroupNumber")
-		sn = TNG100_subhalo.read_cat("SubGroupNumber")  # less
-		galaxyIDs = TNG100_subhalo.read_cat("GalaxyID")
+		EAGLE_subhalo = ReadData(self.simname, "Subhalo_cat", self.snapshot, data_path=self.data_path)
+		Len = EAGLE_subhalo.read_cat(self.sub_len_name)
+		mass_subhalo = EAGLE_subhalo.read_cat(self.mass_name)
+		gn = EAGLE_subhalo.read_cat("GroupNumber")
+		sn = EAGLE_subhalo.read_cat("SubGroupNumber")  # less
+		galaxyIDs = EAGLE_subhalo.read_cat("GalaxyID")
 		file = h5py.File(f"{self.data_path}/EAGLE/diff_gnsn.hdf5", 'r')
 		group = file[f"Snapshot_{self.snapshot}"]
 		indices_gnsn_in_sub = group['indices_gnsn_in_sub'][:, 0]
 		indices_sub_in_gnsn = group["indices_sub_in_gnsn"][:, 0]  # dees
 		file.close()
-		flag = TNG100_subhalo.read_cat(self.flag_name)
+		flag = EAGLE_subhalo.read_cat(self.flag_name)
 		mask = (mass_subhalo > 0.0) * (flag == 0)
 		TNG100_SubhaloPT = ReadData(
 			self.simname, self.subhalo_cat, self.snapshot, sub_group=f"PT{self.PT}/", data_path=self.data_path
@@ -249,16 +251,21 @@ class MeasureSnapshotVariables(SimInfo):
 		write_dataset_hdf5(group, "GroupNumber", gn)
 		write_dataset_hdf5(group, "SubGroupNumber", sn)
 		if self.PT == 4:
-			# photo_mag = TNG100_subhalo.read_subhalo(self.photo_name)
-			SFR = TNG100_subhalo.read_cat(self.SFR_name)
+			SFR = EAGLE_subhalo.read_cat(self.SFR_name)
 			SFR = SFR[mask]
 			SFR = SFR[sorted_indices]
-			# write_dataset_hdf5(group, self.photo_name, photo_mag[mask])
 			write_dataset_hdf5(group, self.SFR_name, SFR)
 		output_file.close()
 		return
 
 	def save_number_of_particles_single(self, indices):
+		'''
+		Saves the number of particles for a chunck of galaxies used in the snapshot calculations.
+		This is usually equal to the 'Len' parameter,
+		except when wind particles are omitted from the stellar particles, as in IllustrisTNG simulations.
+		:param indices: indices for the chunck of galaxies to be calculated.
+		:return:
+		'''
 		number_of_particles_list = []
 		for n in indices:
 			off_n = self.off[n]
@@ -274,8 +281,8 @@ class MeasureSnapshotVariables(SimInfo):
 
 	def save_number_of_particles(self):
 		"""
-		Saves the number of particles used in the snapshot calculations. This is usually equal to the 'Len' parameter,
-		except when wind particles are omitted from the stellar particles.
+		Wrapper function for save_number_of_particles_single method. This function reads the data and creates the
+		multiprocessing pool. Finally, it gathers the results and writes to the output_file.
 		:return:
 		"""
 		try:
@@ -283,12 +290,12 @@ class MeasureSnapshotVariables(SimInfo):
 		except:
 			self.create_self_arguments()
 		number_of_particles_list = []
-		multiproc_chuncks = np.array_split(np.arange(len(self.off)), self.numnodes)
-		result = ProcessingPool(nodes=self.numnodes).map(
+		multiproc_chuncks = np.array_split(np.arange(len(self.off)), self.num_nodes)
+		result = ProcessingPool(nodes=self.num_nodes).map(
 			self.save_number_of_particles_single,
 			multiproc_chuncks,
 		)
-		for i in np.arange(self.numnodes):
+		for i in np.arange(self.num_nodes):
 			number_of_particles_list.extend(result[i])
 
 		output_file = h5py.File(self.output_file_name, "a")
@@ -298,6 +305,13 @@ class MeasureSnapshotVariables(SimInfo):
 		return
 
 	def measure_masses_excl_wind_single(self, indices):
+		'''
+		Measures the stellar masses of a chunck of the galaxies used in the snapshot calculations.
+		This is usually equal to the 'SubhaloMassType' parameter,
+		except when wind particles are omitted from the stellar particles, as in the IllutrisTNG simulations.
+		:param indices: indices for the chunck of galaxies to be calculated.
+		:return:
+		'''
 		mass_list = []
 		for n in indices:
 			off_n = self.off_mass[n]
@@ -311,9 +325,8 @@ class MeasureSnapshotVariables(SimInfo):
 
 	def measure_masses_excl_wind(self):
 		"""
-		Measures the stellar masses of the galaxies used in the snapshot calculations.
-		This is usually equal to the 'SubhaloMassType' parameter,
-		except when wind particles are omitted from the stellar particles.
+		Wrapper function for measure_masses_excl_wind_single method. This function reads the data and creates the
+		multiprocessing pool. Finally, it gathers the results and writes to the output_file.
 		:return:
 		"""
 		if self.PT == 4 and "TNG" in self.simname and self.exclude_wind:
@@ -333,12 +346,12 @@ class MeasureSnapshotVariables(SimInfo):
 			data_path=self.data_path_snap,
 		)
 		mass_list = []
-		multiproc_chuncks = np.array_split(np.arange(len(self.off_mass)), self.numnodes)
-		result = ProcessingPool(nodes=self.numnodes).map(
+		multiproc_chuncks = np.array_split(np.arange(len(self.off_mass)), self.num_nodes)
+		result = ProcessingPool(nodes=self.num_nodes).map(
 			self.measure_masses_excl_wind_single,
 			multiproc_chuncks,
 		)
-		for i in np.arange(self.numnodes):
+		for i in np.arange(self.num_nodes):
 			mass_list.extend(result[i])
 
 		output_file = h5py.File(self.output_file_name, "a")
@@ -348,6 +361,12 @@ class MeasureSnapshotVariables(SimInfo):
 		return
 
 	def measure_velocities_single(self, indices):
+		'''
+		Measures the galaxy velocity (km/s * a) for a chunck of galaxies for the initalised PT, weighted by
+		particle mass.
+		:param indices: indices for the chunck of galaxies to be calculated.
+		:return:
+		'''
 		velocities = []
 		for n in indices:
 			off_n = self.off[n]
@@ -378,8 +397,8 @@ class MeasureSnapshotVariables(SimInfo):
 
 	def measure_velocities(self):
 		"""
-		Measures the velocity (km/s * a) of each subhalo for the initalised PT, weighted by
-		particle mass. Writes data to SubhaloPT file in appropriate PT group.
+		Wrapper function for measure_velocities_single method. This function reads the data and creates the
+		multiprocessing pool. Finally, it gathers the results and writes to the output_file.
 		:return:
 		"""
 		try:
@@ -387,11 +406,11 @@ class MeasureSnapshotVariables(SimInfo):
 		except:
 			self.create_self_arguments()
 		velocities = []
-		result = ProcessingPool(nodes=self.numnodes).map(
+		result = ProcessingPool(nodes=self.num_nodes).map(
 			self.measure_velocities_single,
 			self.multiproc_chuncks,
 		)
-		for i in np.arange(self.numnodes):
+		for i in np.arange(self.num_nodes):
 			velocities.extend(result[i])
 		if self.output_file_name != None:
 			output_file = h5py.File(self.output_file_name, "a")
@@ -403,6 +422,12 @@ class MeasureSnapshotVariables(SimInfo):
 			return np.array(velocities)
 
 	def measure_COM_single(self, indices):
+		'''
+		Measures the centre of mass (ckpc/h) of each galaxy for a chunck of galaxies for the initalised PT.
+		Coordinates weighted by particle mass. Periodicity of the box is accounted for.
+		:param indices: indices for the chunck of galaxies to be calculated.
+		:return:
+		'''
 		COM = []
 		for n in indices:
 			off_n = self.off[n]
@@ -433,13 +458,6 @@ class MeasureSnapshotVariables(SimInfo):
 			coordinates_particles[(coordinates_particles - min_coord) > self.L_0p5] -= self.boxsize
 			coordinates_particles[(coordinates_particles - min_coord) < -self.L_0p5] += self.boxsize
 
-			# assert min(coordinates_particles[:, 0]) >= -self.L_0p5 and min(
-			# 	coordinates_particles[:, 1]) >= -self.L_0p5 and min(
-			# 	coordinates_particles[:, 2]) >= -self.L_0p5, "Minimum relative coordinates particles < -boxsize/2."
-			# assert max(coordinates_particles[:, 0]) <= self.L_0p5 and max(
-			# 	coordinates_particles[:, 1]) <= self.L_0p5 and max(
-			# 	coordinates_particles[:,
-			# 	2]) <= self.L_0p5, f"Maximum relative coordiantes particles > boxsize/2. {max(coordinates_particles[:, 0])}, {max(coordinates_particles[:, 1])}, {max(coordinates_particles[:, 2])}, boxsize/2: {self.L_0p5}"
 			try:
 				assert np.isclose(np.sum(mass_particles), mass_n,
 								  rtol=1e-5), f"Sum particle masses unequal to mass for galaxy {n} with len {len_n}. sum: {np.sum(mass_particles)}, mass: {mass_n}"
@@ -475,8 +493,8 @@ class MeasureSnapshotVariables(SimInfo):
 
 	def measure_COM(self):
 		"""
-		Measures the centre of mass (ckpc/h) of each subhalo for the initalised PT. Coordinates weighted by
-		particle mass. Writes data to SubhaloPT file in appropriate PT group.
+		Wrapper function for measure_COM_single method. This function reads the data and creates the
+		multiprocessing pool. Finally, it gathers the results and writes to the output_file.
 		:return:
 		"""
 		try:
@@ -484,11 +502,11 @@ class MeasureSnapshotVariables(SimInfo):
 		except:
 			self.create_self_arguments()
 		COM = []
-		result = ProcessingPool(nodes=self.numnodes).map(
+		result = ProcessingPool(nodes=self.num_nodes).map(
 			self.measure_COM_single,
 			self.multiproc_chuncks,
 		)
-		for i in np.arange(self.numnodes):
+		for i in np.arange(self.num_nodes):
 			COM.extend(result[i])
 		if self.output_file_name != None:
 			output_file = h5py.File(self.output_file_name, "a")
@@ -500,6 +518,12 @@ class MeasureSnapshotVariables(SimInfo):
 			return np.array(COM)
 
 	def measure_inertia_tensor_single(self, indices):
+		'''
+		Measures the inertia tensor, eigen vectors and eigen values for the galaxies within a given chunck of galaxies.
+		Periodicity of the box is accounted for.
+		:param indices: indices for the chunck of galaxies to be calculated.
+		:return:
+		'''
 		I_list, value_list, v0, v1, v2, vectors_list = [], [], [], [], [], []
 		for n in indices:
 			off_n = self.off[n]
@@ -577,7 +601,9 @@ class MeasureSnapshotVariables(SimInfo):
 
 	def measure_inertia_tensor(self, eigen_v=True, sorted=True, reduced=False):
 		"""
-		Measures the inertia tensor for given dataset. Either saved or returned.
+		Wrapper function for measure_inertia_tensor_single method. This function reads the data and creates the
+		multiprocessing pool. Finally, it gathers the results, sorts the eigenvectors and eigen values and writes
+		to the output_file.
 		:param reduced: Calculate reduced (True) or simple (False) inertia tensor.
 		:param sorted: Sorts eigen values and eigen vectors from lowest to highest if True.
 		:param eigen_v: Also returns eigen values and vectors if True.
@@ -591,11 +617,11 @@ class MeasureSnapshotVariables(SimInfo):
 		self.eigen_v = eigen_v
 		self.COM = self.TNG100_SubhaloPT.read_cat("COM")
 		I_list, value_list, v0, v1, v2, vectors_list = [], [], [], [], [], []
-		result = ProcessingPool(nodes=self.numnodes).map(
+		result = ProcessingPool(nodes=self.num_nodes).map(
 			self.measure_inertia_tensor_single,
 			self.multiproc_chuncks,
 		)
-		for i in np.arange(self.numnodes):
+		for i in np.arange(self.num_nodes):
 			I_list.extend(result[i][0])
 			value_list.extend(result[i][1])
 			v0.extend(result[i][2])
@@ -750,11 +776,11 @@ class MeasureSnapshotVariables(SimInfo):
 		self.not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], LOS_ind, invert=True)]
 		LOS_axis = {0: 'x', 1: 'y', 2: 'z'}
 		I_list, value_list, v0, v1, vectors_list = [], [], [], [], []
-		result = ProcessingPool(nodes=self.numnodes).map(
+		result = ProcessingPool(nodes=self.num_nodes).map(
 			self.measure_projected_inertia_tensor_single,
 			self.multiproc_chuncks,
 		)
-		for i in np.arange(self.numnodes):
+		for i in np.arange(self.num_nodes):
 			I_list.extend(result[i][0])
 			value_list.extend(result[i][1])
 			v0.extend(result[i][2])
@@ -883,11 +909,11 @@ class MeasureSnapshotVariables(SimInfo):
 		self.COM = self.TNG100_SubhaloPT.read_cat("COM")
 		self.velocity = self.TNG100_SubhaloPT.read_cat("Velocity")
 		spin_list = []
-		result = ProcessingPool(nodes=self.numnodes).map(
+		result = ProcessingPool(nodes=self.num_nodes).map(
 			self.measure_spin_single,
 			self.multiproc_chuncks,
 		)
-		for i in np.arange(self.numnodes):
+		for i in np.arange(self.num_nodes):
 			spin_list.extend(result[i])
 		if write_output:
 			write_dataset_hdf5(group, "Spin", data=np.array(spin_list))
@@ -1108,13 +1134,13 @@ class MeasureSnapshotVariables(SimInfo):
 		self.calc_basis = calc_basis
 		self.measure_dispersion = measure_dispersion
 
-		multiproc_chuncks = np.array_split(np.arange(self.Num_halos), self.numnodes * 3)  # high memory usage
+		multiproc_chuncks = np.array_split(np.arange(self.Num_halos), self.num_nodes * 3)  # high memory usage
 		for j in [0, 3, 6]:
-			result = ProcessingPool(nodes=self.numnodes).map(
+			result = ProcessingPool(nodes=self.num_nodes).map(
 				self.measure_rotational_velocity_single,
 				multiproc_chuncks[j:j + 3],
 			)
-			for i in np.arange(self.numnodes):
+			for i in np.arange(self.num_nodes):
 				avg_rot_vel.extend(result[i][0])
 				vel_disp.extend(result[i][1])
 				vel_z.extend(result[i][2])
@@ -1216,11 +1242,11 @@ class MeasureSnapshotVariables(SimInfo):
 		self.velocity = self.TNG100_SubhaloPT.read_cat("Velocity")
 		self.spin = self.TNG100_SubhaloPT.read_cat("Spin")
 		krot = []
-		result = ProcessingPool(nodes=self.numnodes).map(
+		result = ProcessingPool(nodes=self.num_nodes).map(
 			self.measure_krot_single,
 			self.multiproc_chuncks,
 		)
-		for i in np.arange(self.numnodes):
+		for i in np.arange(self.num_nodes):
 			krot.extend(result[i])
 		if write_output:
 			write_dataset_hdf5(group, "Krot", data=np.array(krot))
