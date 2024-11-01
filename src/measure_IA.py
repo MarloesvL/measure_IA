@@ -911,7 +911,7 @@ class MeasureIA(SimInfo):
 			return correlation, DD / RR_gg, separation_bins, pi_bins
 
 	def measure_projected_correlation_save_pairs(self, output_file_pairs="", masks=None, dataset_name="All_galaxies",
-												 return_output=False):
+												 print_num=True):
 		"""
 		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
@@ -937,20 +937,17 @@ class MeasureIA(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][masks["q"]]
+		Num_position = len(positions)
+		Num_shape = len(positions_shape_sample)
+		if print_num:
+			print(
+				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
 
 		LOS_ind = self.data["LOS"]  # eg 2 for z axis
 		not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], LOS_ind, invert=True)]  # eg 0,1 for x&y
 		e = (1 - q ** 2) / (1 + q ** 2)  # size of ellipticity
+		del q
 		R = 1 - np.mean(e ** 2) / 2.0  # responsitivity factor
-		L3 = self.boxsize ** 3  # box volume
-		sub_box_len_logrp = (np.log10(self.separation_max) - np.log10(self.separation_min)) / self.num_bins_r
-		sub_box_len_pi = self.boxsize / self.num_bins_pi
-		# DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
-		# Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
-		# Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
-		# RR_g_plus = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
-		# RR_gg = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
-		# variance = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		output_file_pairs = h5py.File(output_file_pairs, "a")
 		group = create_group_hdf5(output_file_pairs, "w_g_plus")
 
@@ -958,6 +955,7 @@ class MeasureIA(SimInfo):
 		start_time = time.time()
 		first, second, third, done = int(len(positions / 4)), int(len(positions / 2)), 3 * int(len(positions / 4)), len(
 			positions)
+
 		for n in np.arange(0, len(positions)):
 			# for Splus_D (calculate ellipticities around position sample)
 			separation = positions_shape_sample - positions[n]
@@ -966,23 +964,17 @@ class MeasureIA(SimInfo):
 				separation[separation < -self.L_0p5] += self.boxsize
 			projected_sep = separation[:, not_LOS]
 			LOS = separation[:, LOS_ind]
+			del separation
 			separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
 			separation_dir = (projected_sep.transpose() / separation_len).transpose()  # normalisation of rp
+			del projected_sep
 			phi = np.arccos(self.calculate_dot_product_arrays(separation_dir, axis_direction))  # [0,pi]
+			del separation_dir
 			e_plus, e_cross = self.get_ellipticity(e, phi)
+			del phi
 			e_plus[np.isnan(e_plus)] = 0.0
 			e_cross[np.isnan(e_cross)] = 0.0
 
-			# get the indices for the binning
-			# mask = (separation_len >= self.bin_edges[0]) * (separation_len <= self.bin_edges[-1])
-			# ind_r = np.floor(
-			# 	np.log10(separation_len[mask]) / sub_box_len_logrp - np.log10(self.bin_edges[0]) / sub_box_len_logrp
-			# )
-			# ind_r = np.array(ind_r, dtype=int)
-			# ind_pi = np.floor(
-			# 	LOS[mask] / sub_box_len_pi - self.pi_bins[0] / sub_box_len_pi
-			# )  # need length of LOS, so only positive values
-			# ind_pi = np.array(ind_pi, dtype=int)
 			write_data = (np.array(
 				[[n] * len(indices_shape), indices_shape, separation_len, LOS, e_plus / (2 * R)]).transpose())
 			# np.array(
@@ -994,12 +986,7 @@ class MeasureIA(SimInfo):
 				group[dataset_name][-write_data.shape[0]:] = write_data
 			if sum(np.isin(n, [first, second, third, done])) > 0:
 				print(n, [first, second, third, done], time.time() - start_time)
-		# write_dataset_hdf5(group, f"{n}",
-		# 				   np.array([[n]*len(ind_r),indices_shape[mask], ind_r, ind_pi, e_plus[mask] / (2 * R)]).transpose())
-		# np.add.at(Splus_D, (ind_r, ind_pi), e_plus[mask] / (2 * R))
-		# np.add.at(Scross_D, (ind_r, ind_pi), e_cross[mask] / (2 * R))
-		# np.add.at(variance, (ind_r, ind_pi), (e_plus[mask] / (2 * R)) ** 2)
-		# np.add.at(DD, (ind_r, ind_pi), 1.0)
+
 		output_file_pairs.close()
 		return
 
