@@ -293,7 +293,7 @@ class MeasureIA(SimInfo):
 		R = 1 - np.mean(e ** 2) / 2.0  # responsitivity factor
 		L3 = self.boxsize ** 3  # box volume
 		sub_box_len_logrp = (np.log10(self.separation_max) - np.log10(self.separation_min)) / self.num_bins_r
-		sub_box_len_pi = self.boxsize / self.num_bins_pi
+		sub_box_len_pi = (self.pi_bins[-1] - self.pi_bins[0]) / self.num_bins_pi
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
@@ -321,7 +321,8 @@ class MeasureIA(SimInfo):
 			e_cross[np.isnan(e_cross)] = 0.0
 
 			# get the indices for the binning
-			mask = (separation_len >= self.bin_edges[0]) * (separation_len < self.bin_edges[-1])
+			mask = (separation_len >= self.bin_edges[0]) * (separation_len < self.bin_edges[-1]) * (
+						LOS >= self.pi_bins[0]) * (LOS < self.pi_bins[-1])
 			ind_r = np.floor(
 				np.log10(separation_len[mask]) / sub_box_len_logrp - np.log10(self.bin_edges[0]) / sub_box_len_logrp
 			)
@@ -442,7 +443,7 @@ class MeasureIA(SimInfo):
 		R = 1 - np.mean(e ** 2) / 2.0  # responsitivity factor
 		L3 = self.boxsize ** 3  # box volume
 		sub_box_len_logrp = (np.log10(self.separation_max) - np.log10(self.separation_min)) / self.num_bins_r
-		sub_box_len_pi = self.boxsize / self.num_bins_pi
+		sub_box_len_pi = (self.pi_bins[-1] - self.pi_bins[0]) / self.num_bins_pi
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
@@ -505,7 +506,8 @@ class MeasureIA(SimInfo):
 					e_cross[np.isnan(e_cross)] = 0.0
 
 					# get the indices for the binning
-					mask = (separation_len >= self.bin_edges[0]) * (separation_len < self.bin_edges[-1])
+					mask = (separation_len >= self.bin_edges[0]) * (separation_len < self.bin_edges[-1]) * (
+								LOS >= self.pi_bins[0]) * (LOS < self.pi_bins[-1])
 					ind_r = np.floor(
 						np.log10(separation_len[mask]) / sub_box_len_logrp - np.log10(
 							self.bin_edges[0]) / sub_box_len_logrp
@@ -606,7 +608,8 @@ class MeasureIA(SimInfo):
 					e_cross[np.isnan(e_cross)] = 0.0
 
 					# get the indices for the binning
-					mask = (separation_len >= self.bin_edges[0]) * (separation_len < self.bin_edges[-1])
+					mask = (separation_len >= self.bin_edges[0]) * (separation_len < self.bin_edges[-1]) * (
+								LOS >= self.pi_bins[0]) * (LOS < self.pi_bins[-1])
 					ind_r = np.floor(
 						np.log10(separation_len[mask]) / self.sub_box_len_logrp - np.log10(
 							self.bin_edges[0]) / self.sub_box_len_logrp
@@ -665,7 +668,7 @@ class MeasureIA(SimInfo):
 		self.R = 1 - np.mean(self.e ** 2) / 2.0  # responsitivity factor
 		L3 = self.boxsize ** 3  # box volume
 		self.sub_box_len_logrp = (np.log10(self.separation_max) - np.log10(self.separation_min)) / self.num_bins_r
-		self.sub_box_len_pi = self.boxsize / self.num_bins_pi
+		self.sub_box_len_pi = (self.pi_bins[-1] - self.pi_bins[0]) / self.num_bins_pi
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
@@ -816,7 +819,7 @@ class MeasureIA(SimInfo):
 		R = 1 - np.mean(e ** 2) / 2.0  # responsivity factor
 		L3 = self.boxsize ** 3  # box volume
 		sub_box_len_logrp = (np.log10(self.separation_max) - np.log10(self.separation_min)) / self.num_bins_r
-		sub_box_len_pi = self.boxsize / self.num_bins_pi
+		sub_box_len_pi = (self.pi_bins[-1] - self.pi_bins[0]) / self.num_bins_pi
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
@@ -849,7 +852,8 @@ class MeasureIA(SimInfo):
 			e_cross[np.isnan(e_cross)] = 0.0
 
 			# get the indices for the binning
-			mask = (separation_len >= self.bin_edges[0]) * (separation_len < self.bin_edges[-1])
+			mask = (separation_len >= self.bin_edges[0]) * (separation_len < self.bin_edges[-1]) * (
+						LOS >= self.pi_bins[0]) * (LOS < self.pi_bins[-1])
 			ind_r = np.floor(
 				np.log10(separation_len[mask]) / sub_box_len_logrp - np.log10(self.bin_edges[0]) / sub_box_len_logrp
 			)
