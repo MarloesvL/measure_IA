@@ -375,7 +375,7 @@ class MeasureIA(SimInfo):
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
 			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_gg")
-			write_dataset_hdf5(group, dataset_name, data=DD / RR_gg)
+			write_dataset_hdf5(group, dataset_name, data=(DD / RR_gg) - 1)
 			write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
 			write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
 			write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
@@ -384,7 +384,7 @@ class MeasureIA(SimInfo):
 			output_file.close()
 			return
 		else:
-			return correlation, DD / RR_gg, separation_bins, pi_bins
+			return correlation, (DD / RR_gg) - 1, separation_bins, pi_bins
 
 	@staticmethod
 	def setdiff2D(a1, a2):
@@ -559,7 +559,7 @@ class MeasureIA(SimInfo):
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
 			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_gg")
-			write_dataset_hdf5(group, dataset_name, data=DD / RR_gg)
+			write_dataset_hdf5(group, dataset_name, data=(DD / RR_gg) - 1)
 			write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
 			write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
 			write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
@@ -568,7 +568,7 @@ class MeasureIA(SimInfo):
 			output_file.close()
 			return
 		else:
-			return correlation, DD / RR_gg, separation_bins, pi_bins
+			return correlation, (DD / RR_gg) - 1, separation_bins, pi_bins
 
 	def measure_projected_correlation_tree_single(self, indices):
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
@@ -725,7 +725,7 @@ class MeasureIA(SimInfo):
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
 			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_gg")
-			write_dataset_hdf5(group, dataset_name, data=DD / RR_gg)
+			write_dataset_hdf5(group, dataset_name, data=(DD / RR_gg) - 1)
 			write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
 			write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
 			write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
@@ -734,7 +734,7 @@ class MeasureIA(SimInfo):
 			output_file.close()
 			return
 		else:
-			return correlation, DD / RR_gg, separation_bins, pi_bins
+			return correlation, (DD / RR_gg) - 1, separation_bins, pi_bins
 
 	def get_cosmo_points(self, data, cosmology=cosmo):
 		'''convert from astropy table of RA, DEC, and redshift to 3D cartesian coordinates in Mpc/h
@@ -903,7 +903,7 @@ class MeasureIA(SimInfo):
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
 			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_gg")
-			write_dataset_hdf5(group, dataset_name, data=DD / RR_gg)
+			write_dataset_hdf5(group, dataset_name, data=(DD / RR_gg) - 1)
 			write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
 			write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
 			write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
@@ -912,7 +912,7 @@ class MeasureIA(SimInfo):
 			output_file.close()
 			return
 		else:
-			return correlation, DD / RR_gg, separation_bins, pi_bins
+			return correlation, (DD / RR_gg) - 1, separation_bins, pi_bins
 
 	def measure_projected_correlation_save_pairs(self, output_file_pairs="", masks=None, dataset_name="All_galaxies",
 												 print_num=True):
@@ -1114,7 +1114,7 @@ class MeasureIA(SimInfo):
 			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
 			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/multipoles/xi_gg")
-			write_dataset_hdf5(group, dataset_name, data=DD / RR_gg)
+			write_dataset_hdf5(group, dataset_name, data=(DD / RR_gg) - 1)
 			write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
 			write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
 			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
@@ -1122,7 +1122,7 @@ class MeasureIA(SimInfo):
 			output_file.close()
 			return
 		else:
-			return correlation, DD / RR_gg, separation_bins, mu_r_bins
+			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins
 
 	def measure_projected_correlation_multipoles_tree(self, tree_input=None, masks=None, rp_cut=None,
 													  dataset_name="All_galaxies", return_output=False, print_num=True,
@@ -1288,7 +1288,7 @@ class MeasureIA(SimInfo):
 			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
 			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/multipoles/xi_gg")
-			write_dataset_hdf5(group, dataset_name, data=DD / RR_gg)
+			write_dataset_hdf5(group, dataset_name, data=(DD / RR_gg) - 1)
 			write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
 			write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
 			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
@@ -1296,7 +1296,7 @@ class MeasureIA(SimInfo):
 			output_file.close()
 			return
 		else:
-			return correlation, DD / RR_gg, separation_bins, mu_r_bins
+			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins
 
 	def measure_projected_correlation_multipoles_tree_single(self, indices):
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
@@ -1459,7 +1459,7 @@ class MeasureIA(SimInfo):
 			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
 			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/multipoles/xi_gg")
-			write_dataset_hdf5(group, dataset_name, data=DD / RR_gg)
+			write_dataset_hdf5(group, dataset_name, data=(DD / RR_gg) - 1)
 			write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
 			write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
 			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
@@ -1467,7 +1467,7 @@ class MeasureIA(SimInfo):
 			output_file.close()
 			return
 		else:
-			return correlation, DD / RR_gg, separation_bins, mu_r_bins
+			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins
 
 	def measure_w_g_i(self, corr_type="both", dataset_name="All_galaxies", return_output=False):
 		"""
