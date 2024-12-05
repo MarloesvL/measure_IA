@@ -242,7 +242,8 @@ class SimInfo:
 		if self.manual:
 			pass
 		elif "TNG" in self.simname:
-			redshifts = {"40": 1.5, "50": 1.0, "67": 0.5, "78": 0.3, "59": 0.7, "99": 0.0}
+			redshifts = {"39": 1.53, "40": 1.5, "50": 1.0, "67": 0.5, "78": 0.3, "59": 0.7, "84": 0.2, "91": 0.1,
+						 "99": 0.0}
 		elif self.simname == "EAGLE":
 			redshifts = {"28": 0.0, "17": 1.487, "19": 1.004, "21": 0.736, "23": 0.503, "25": 0.271}
 		elif self.simname == "HorizonAGN":
