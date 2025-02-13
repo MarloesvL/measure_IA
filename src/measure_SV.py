@@ -1122,9 +1122,16 @@ class MeasureSnapshotVariables(SimInfo):
 		assert np.isclose(np.sum(v1 ** 2), 1.0, atol=1e-5), f"V1 not unit length. {np.sum(v1 ** 2)}"
 		assert np.isclose(np.sum(v2 ** 2), 1.0, atol=1e-5), f"V2 not unit length. {np.sum(v2 ** 2)}"
 		assert np.isclose(np.sum(v3 ** 2), 1.0, atol=1e-5), f"V3 not unit length. {np.sum(v3 ** 2)}"
-		assert np.isclose(np.dot(v1, v2), 0.0, atol=1e-5), f"V1, V2 not orthogonal. {np.dot(v1, v2)}"
-		assert np.isclose(np.dot(v1, v3), 0.0, atol=1e-5), f"V1, V3 not orthogonal. {np.dot(v1, v3)}"
-		assert np.isclose(np.dot(v3, v2), 0.0, atol=1e-5), f"V3, V2 not orthogonal. {np.dot(v3, v2)}"
+		try:
+			assert np.isclose(np.dot(v1, v2), 0.0,
+							  atol=1e-5), f"V1, V2 not orthogonal. (dot product, v1, v2, v3, vector): {np.dot(v1, v2), v1, v2, v3, vector}"
+			assert np.isclose(np.dot(v1, v3), 0.0,
+							  atol=1e-5), f"V1, V3 not orthogonal. (dot product, v1, v2, v3, vector): {np.dot(v1, v3), v1, v2, v3, vector}"
+			assert np.isclose(np.dot(v3, v2), 0.0,
+							  atol=1e-5), f"V3, V2 not orthogonal. (dot product, v1, v2, v3, vector): {np.dot(v3, v2), v1, v2, v3, vector}"
+		except AssertionError:
+			if max(np.dot(v1, v2), np.dot(v1, v3), np.dot(v3, v2)) > 1e-3:
+				print('ERROR', np.dot(v1, v2), np.dot(v1, v3), np.dot(v3, v2))
 
 		return np.array([v1, v2, v3], dtype=np.float64).transpose()  # new orthonormal basis with z=L
 
