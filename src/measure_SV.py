@@ -163,7 +163,7 @@ class MeasureSnapshotVariables(SimInfo):
 		output_file.close()
 		return
 
-	def select_nonzero_subhalos(self):
+	def select_nonzero_subhalos(self, IDs=None):
 		"""
 		Selects the subhalos that have nonzero length, mass and SubhaloFlag. Saves selected data in output file, including
 		the IDs for the original file. Specific to IllustrisTNG simulations.
@@ -173,31 +173,60 @@ class MeasureSnapshotVariables(SimInfo):
 		Len = TNG100_subhalo.read_subhalo(self.sub_len_name)[:, self.PT]
 		mass_subhalo = TNG100_subhalo.read_subhalo("SubhaloMassType")[:, self.PT]
 		subhalo_pos = TNG100_subhalo.read_subhalo("SubhaloPos")
-		flag = TNG100_subhalo.read_subhalo(self.flag_name)
-		TNG100_SubhaloPT = ReadData(
-			self.simname, self.subhalo_cat, self.snapshot, sub_group=f"PT{self.PT}/", data_path=self.data_path
-		)
-		off = TNG100_SubhaloPT.read_cat("Offset_Subhalo_all")
+		SFR = TNG100_subhalo.read_subhalo(self.SFR_name)
 		if self.PT == 4:
-			wind_flag = TNG100_SubhaloPT.read_cat("Wind_Flag")
-			mask = (Len > 0.0) * (flag == 1) * (wind_flag == 0)
+			flag = TNG100_subhalo.read_subhalo(self.flag_name)
+			TNG100_SubhaloPT = ReadData(
+				self.simname, self.subhalo_cat, self.snapshot, sub_group=f"PT{self.PT}/", data_path=self.data_path
+			)
+			off = TNG100_SubhaloPT.read_cat("Offset_Subhalo_all")
+			if self.PT == 4:
+				wind_flag = TNG100_SubhaloPT.read_cat("Wind_Flag")
+				mask = (Len > 0.0) * (flag == 1) * (wind_flag == 0)
+			else:
+				mask = (Len > 0.0) * (flag == 1)
+			IDs = np.where(mask)[0]
+			self.Num_halos = len(mass_subhalo[mask])
+			output_file = h5py.File(self.output_file_name, "a")
+			group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/PT" + str(self.PT))
+			write_dataset_hdf5(group, self.sub_len_name, Len[mask])
+			write_dataset_hdf5(group, self.offset_name, off[mask])
+			write_dataset_hdf5(group, "SubhaloMassType", mass_subhalo[mask])
+			write_dataset_hdf5(group, "SubhaloPos", subhalo_pos[mask])
+			write_dataset_hdf5(group, self.ID_name, IDs)
+			if self.PT == 4:
+				photo_mag = TNG100_subhalo.read_subhalo(self.photo_name)
+				write_dataset_hdf5(group, self.photo_name, photo_mag[mask])
+				write_dataset_hdf5(group, self.SFR_name, SFR[mask])
+			output_file.close()
+		elif self.PT == 0:
+			if IDs == None:
+				try:
+					TNG100_SubhaloPT4 = ReadData(
+						self.simname, self.subhalo_cat, self.snapshot, sub_group=f"PT4/", data_path=self.data_path
+					)
+					IDs = TNG100_SubhaloPT4.read_cat(self.ID_name)
+				except:
+					print(f"SubhaloIDs not found in {self.subhalo_cat} group PT4, add manually")
+			TNG100_SubhaloPT = ReadData(
+				self.simname, self.subhalo_cat, self.snapshot, sub_group=f"PT{self.PT}/", data_path=self.data_path
+			)
+			off = TNG100_SubhaloPT.read_cat("Offset_Subhalo_all")
+			mask = (Len[IDs] > 0.0)
+			IDs_mask = IDs[mask]
+
+			self.Num_halos = len(mass_subhalo[IDs_mask])
+			output_file = h5py.File(self.output_file_name, "a")
+			group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/PT" + str(self.PT))
+			write_dataset_hdf5(group, self.sub_len_name, Len[IDs_mask])
+			write_dataset_hdf5(group, self.offset_name, off[IDs_mask])
+			write_dataset_hdf5(group, "GasMass", mass_subhalo[IDs_mask])
+			write_dataset_hdf5(group, "SubhaloPos", subhalo_pos[IDs_mask])
+			write_dataset_hdf5(group, self.ID_name, IDs_mask)
+			write_dataset_hdf5(group, self.SFR_name, SFR[IDs_mask])
+			output_file.close()
 		else:
-			mask = (Len > 0.0) * (flag == 1)
-		IDs = np.where(mask)[0]
-		self.Num_halos = len(mass_subhalo[mask])
-		output_file = h5py.File(self.output_file_name, "a")
-		group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/PT" + str(self.PT))
-		write_dataset_hdf5(group, self.sub_len_name, Len[mask])
-		write_dataset_hdf5(group, self.offset_name, off[mask])
-		write_dataset_hdf5(group, "SubhaloMassType", mass_subhalo[mask])
-		write_dataset_hdf5(group, "SubhaloPos", subhalo_pos[mask])
-		write_dataset_hdf5(group, self.ID_name, IDs)
-		if self.PT == 4:
-			photo_mag = TNG100_subhalo.read_subhalo(self.photo_name)
-			SFR = TNG100_subhalo.read_subhalo(self.SFR_name)
-			write_dataset_hdf5(group, self.photo_name, photo_mag[mask])
-			write_dataset_hdf5(group, self.SFR_name, SFR[mask])
-		output_file.close()
+			raise KeyError('No version of select_nonzero_subhalos exists for your chosen PT')
 		return
 
 	def select_nonzero_subhalos_EAGLE(self):
@@ -458,32 +487,33 @@ class MeasureSnapshotVariables(SimInfo):
 			coordinates_particles[(coordinates_particles - min_coord) > self.L_0p5] -= self.boxsize
 			coordinates_particles[(coordinates_particles - min_coord) < -self.L_0p5] += self.boxsize
 
-			try:
-				assert np.isclose(np.sum(mass_particles), mass_n,
-								  rtol=1e-5), f"Sum particle masses unequal to mass for galaxy {n} with len {len_n}. sum: {np.sum(mass_particles)}, mass: {mass_n}"
-			except AssertionError as ass_err:
-				if "TNG" in self.simname:
-					wind_or_star = self.TNG100_snapshot.read_cat(self.wind_name, cut=[off_n, off_n + len_n])
-					star_mask = wind_or_star > 0
-					mass_particles_nw = self.TNG100_snapshot.read_cat(self.masses_name, cut=[off_n, off_n + len_n])[
-						star_mask]
-					try:
-						assert np.isclose(np.sum(mass_particles_nw), mass_n,
-										  rtol=1e-5), f"Sum particle masses without wind unequal to mass for galaxy {n} with len {len_n}. sum: {np.sum(mass_particles_nw)}, mass: {mass_n}"
-						print(f"Using particles without wind for galaxy {n}.")
-						mass_particles = mass_particles_nw
-						coordinates_particles = \
-							self.TNG100_snapshot.read_cat(self.coordinates_name, cut=[off_n, off_n + len_n])[
-								star_mask
-							]
-						coordinates_particles[coordinates_particles > self.L_0p5] -= self.boxsize
-						coordinates_particles[coordinates_particles < -self.L_0p5] += self.boxsize
-					except AssertionError as exc:
-						print(exc)
+			if self.PT == 4:
+				try:
+					assert np.isclose(np.sum(mass_particles), mass_n,
+									  rtol=1e-5), f"Sum particle masses unequal to mass for galaxy {n} with len {len_n}. sum: {np.sum(mass_particles)}, mass: {mass_n}"
+				except AssertionError as ass_err:
+					if "TNG" in self.simname:
+						wind_or_star = self.TNG100_snapshot.read_cat(self.wind_name, cut=[off_n, off_n + len_n])
+						star_mask = wind_or_star > 0
+						mass_particles_nw = self.TNG100_snapshot.read_cat(self.masses_name, cut=[off_n, off_n + len_n])[
+							star_mask]
+						try:
+							assert np.isclose(np.sum(mass_particles_nw), mass_n,
+											  rtol=1e-5), f"Sum particle masses without wind unequal to mass for galaxy {n} with len {len_n}. sum: {np.sum(mass_particles_nw)}, mass: {mass_n}"
+							print(f"Using particles without wind for galaxy {n}.")
+							mass_particles = mass_particles_nw
+							coordinates_particles = \
+								self.TNG100_snapshot.read_cat(self.coordinates_name, cut=[off_n, off_n + len_n])[
+									star_mask
+								]
+							coordinates_particles[coordinates_particles > self.L_0p5] -= self.boxsize
+							coordinates_particles[coordinates_particles < -self.L_0p5] += self.boxsize
+						except AssertionError as exc:
+							print(exc)
+							exit()
+					else:
+						print(ass_err)
 						exit()
-				else:
-					print(ass_err)
-					exit()
 			mass_coord = (coordinates_particles.transpose() * mass_particles).transpose()
 			COM_n = np.sum(mass_coord, axis=0) / mass_n
 			COM_n[COM_n < 0.0] += self.boxsize  # if negative: COM is on other side of box.
