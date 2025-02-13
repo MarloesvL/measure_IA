@@ -583,7 +583,7 @@ class MeasureSnapshotVariables(SimInfo):
 	@staticmethod
 	def measure_inertia_tensor_eq(mass, particle_mass, rel_position, reduced=False):
 		"""
-		Calculates the inertia tensor values for a single galaxy.
+		Calculates the simple or reduced inertia tensor values for a single galaxy.
 		:param mass: Mass of galaxy.
 		:param particle_mass: Mass of particles in galaxy.
 		:param rel_position: Position of particles relative to centre of mass of galaxy.
@@ -602,8 +602,10 @@ class MeasureSnapshotVariables(SimInfo):
 	def measure_inertia_tensor(self, eigen_v=True, sorted=True, reduced=False):
 		"""
 		Wrapper function for measure_inertia_tensor_single method. This function reads the data and creates the
-		multiprocessing pool. Finally, it gathers the results, sorts the eigenvectors and eigen values and writes
-		to the output_file.
+		multiprocessing pool. Finally, it gathers the results, sorts the eigenvectors and eigen values in ascending
+		order and writes to the output_file. Note: this function assumes that the centre of mass was calculated using
+		the method measure_COM. If this is not the case, make sure your galaxy catalogue contains the centre of masses,
+		named 'COM'.
 		:param reduced: Calculate reduced (True) or simple (False) inertia tensor.
 		:param sorted: Sorts eigen values and eigen vectors from lowest to highest if True.
 		:param eigen_v: Also returns eigen values and vectors if True.
@@ -685,6 +687,12 @@ class MeasureSnapshotVariables(SimInfo):
 			return np.array(I_list)
 
 	def measure_projected_inertia_tensor_single(self, indices):
+		'''
+		Measures the projected inertia tensor, eigen vectors and eigen values for the galaxies within a given chunck of
+		galaxies. Periodicity of the box is accounted for.
+		:param indices: indices for the chunck of galaxies to be calculated.
+		:return:
+		'''
 		I_list, value_list, v0, v1, vectors_list = [], [], [], [], []
 		for n in indices:
 			off_n = self.off[n]
@@ -742,7 +750,7 @@ class MeasureSnapshotVariables(SimInfo):
 	@staticmethod
 	def measure_projected_inertia_tensor_eq(mass, particle_mass, rel_position, reduced=False):
 		"""
-		Calculates the projected inertia tensor values for a single galaxy.
+		Calculates the simple or reduced projected inertia tensor values for a single galaxy.
 		:param mass: Mass of galaxy.
 		:param particle_mass: Mass of particles in galaxy.
 		:param rel_position: Position of particles relative to centre of mass of galaxy.
@@ -760,10 +768,15 @@ class MeasureSnapshotVariables(SimInfo):
 
 	def measure_projected_inertia_tensor(self, eigen_v=True, sorted=True, reduced=False, LOS_ind=2):
 		"""
-		Measures the inertia tensor for given dataset. Either saved or returned.
+		Wrapper function for measure_projected_inertia_tensor_single method. This function reads the data and creates the
+		multiprocessing pool. Finally, it gathers the results, sorts the eigenvectors and eigen values in ascending
+		order and writes to the output_file. Note: this function assumes that the centre of mass was calculated using
+		the method measure_COM. If this is not the case, make sure your galaxy catalogue contains the centre of masses,
+		named 'COM'.
 		:param reduced: Calculate reduced (True) or simple (False) inertia tensor.
 		:param sorted: Sorts eigen values and eigen vectors from lowest to highest if True.
 		:param eigen_v: Also returns eigen values and vectors if True.
+		:param LOS_ind: Index of the line of sight coordinate, over which the shape is projected.
 		:return: The inertia tensor, eigen values and vectors if no output file is specified.
 		"""
 		try:
@@ -846,6 +859,12 @@ class MeasureSnapshotVariables(SimInfo):
 			return np.array(I_list)
 
 	def measure_spin_single(self, indices):
+		'''
+		Measures spin (angular momentum) for the galaxies within a given chunck of
+		galaxies in kpc km s^-1 M_sun. Periodicity of the box is accounted for.
+		:param indices: indices for the chunck of galaxies to be calculated.
+		:return:
+		'''
 		spin_list = []
 		for n in indices:
 			off_n = self.off[n]
@@ -893,6 +912,11 @@ class MeasureSnapshotVariables(SimInfo):
 
 	def measure_spin(self):
 		"""
+		Wrapper function for measure_spin_single method. This function reads the data and creates the
+		multiprocessing pool. Finally, it gathers the results, and writes to the output_file.
+		Note: this function assumes that the centre of mass was calculated using
+		the method measure_COM. If this is not the case, make sure your galaxy catalogue contains the centre of masses,
+		named 'COM'. The same goes for the galaxy velocity (method: measure_velocity; name: 'Velocity').
 		Measures spin (angular momentum) of galaxies in kpc km s^-1 M_sun.
 		:return: Spin if no output file name is specified.
 		"""
@@ -923,6 +947,17 @@ class MeasureSnapshotVariables(SimInfo):
 			return np.array(spin_list)
 
 	def measure_rotational_velocity_single(self, indices):
+		"""
+		Measures the average of the rotational component of the velocity in each galaxy for the galaxies within a given
+		chunck of galaxies, and optionally the velocity dispersion.
+		Velocity and positions are transformed to frame of reference with spin as z direction.
+		Velocity is transformed to cylindrical coordinates and the angular component is taken.
+		Velocity dispersion is calculated in cylindrical components (not transformation invariant).
+		See Dubois et al. 2016 for description of procedure. See Lohmann et al. 2023, Pulsoni et al. 2020 for equations
+		for dispersion/ average velocity. [Extrapolated, also using Dubois et al. 2014]
+		:param indices: indices for the chunck of galaxies to be calculated.
+		:return:
+		"""
 		avg_rot_vel, vel_disp, vel_z, vel_disp_cyl, vel_z_abs = [], [], [], [], []
 		if self.calc_basis:
 			basis = []
@@ -1045,7 +1080,7 @@ class MeasureSnapshotVariables(SimInfo):
 		The x- and y-axis orientation is random.
 		:param vector: Direction of z-axis in new system in old coordinates.
 		:return: Matrix of transformation. Invert and multiply with vectors to obtain vector coordinates
-								in the new system.
+		in the new system.
 		"""
 		l1, l2, l3 = vector[0], vector[1], vector[2]
 		L = 1.0 / np.sqrt(l1 ** 2 + l2 ** 2 + l3 ** 2) * np.array([l1, l2, l3])  # normalise vector (z direction)
@@ -1095,13 +1130,8 @@ class MeasureSnapshotVariables(SimInfo):
 
 	def measure_rotational_velocity(self, measure_dispersion=True, calc_basis=True):
 		"""
-		Measures the average of the rotational component of the velocity in each galaxy, and optionally
-		the velocity dispersion.
-		Velocity and positions are transformed to frame of reference with spin as z direction.
-		Velocity is transformed to cylindrical coordinates and the angular component is taken.
-		Velocity dispersion is calculated in cylindrical components (not transformation invariant).
-		See Dubois et al. 2016 for description of procedure. See Lohmann et al. 2023, Pulsoni et al. 2020 for equations
-		for dispersion/ average velocity. [Extrapolated, also using Dubois et al. 2014]
+		Wrapper function for measure_rotational_velocity_single method. This function reads the data and creates the
+		multiprocessing pool. Finally, it gathers the results, and writes to the output_file.
 		:param calc_basis: If basis based on spin is already saved, set this to False to save time.
 		:param measure_dispersion: Measure the dispersion of the velocity. Default is True.
 		:return: average tangential velocity of each galaxy (if no output file name is given)
