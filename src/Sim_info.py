@@ -11,7 +11,10 @@ class SimInfo:
 		if type(sim_name) == str:
 			self.simname = sim_name
 			self.snapshot = str(snapshot)
-			self.PT = PT
+			try:
+				self.PT_first = PT[0]
+			except TypeError:
+				self.PT_first = PT
 			self.manual = manual
 			if not self.manual:
 				self.get_specs()
@@ -22,7 +25,10 @@ class SimInfo:
 		else:
 			self.sim_name = sim_name
 			self.snapshot = str(snapshot)
-			self.PT = PT
+			try:
+				self.PT_first = PT[0]
+			except TypeError:
+				self.PT_first = PT
 			self.manual = manual
 		if update:
 			self.manual = True
@@ -37,7 +43,7 @@ class SimInfo:
 	def get_catalogue_names(self, shapes_cat=None, subhalo_cat=None, snap_cat=None):
 		self.shapes_cat = "Shapes"
 		self.subhalo_cat = "SubhaloPT"
-		self.snap_cat = f"{self.simname}_PT{self.PT}_subhalos_only"
+		self.snap_cat = f"{self.simname}_PT{self.PT_first}_subhalos_only"
 		if self.manual:
 			if shapes_cat != None:
 				self.shapes_cat = shapes_cat
@@ -145,7 +151,10 @@ class SimInfo:
 			self.masses_name = masses_name
 			self.coordinates_name = coordinates_name
 		elif "TNG" in self.simname:
-			self.mass_name = "StellarMass"  # "SubhaloMassType"
+			if self.PT_first == 4:
+				self.mass_name = "StellarMass"  # "SubhaloMassType"
+			else:
+				self.mass_name = "GasMass"
 			self.ID_name = "SubhaloIDs"
 			self.offset_name = "Offset_Subhalo"
 			self.sub_len_name = "SubhaloLenType"
@@ -242,7 +251,8 @@ class SimInfo:
 		if self.manual:
 			pass
 		elif "TNG" in self.simname:
-			redshifts = {"39": 1.53, "40": 1.5, "50": 1.0, "67": 0.5, "78": 0.3, "59": 0.7, "84": 0.2, "91": 0.1,
+			redshifts = {"25": 3.01, "39": 1.53, "40": 1.5, "50": 1.0, "67": 0.5, "78": 0.3, "59": 0.7, "84": 0.2,
+						 "91": 0.1,
 						 "99": 0.0}
 		elif self.simname == "EAGLE":
 			redshifts = {"28": 0.0, "17": 1.487, "19": 1.004, "21": 0.736, "23": 0.503, "25": 0.271}
