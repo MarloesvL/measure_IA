@@ -84,13 +84,13 @@ class MeasureSnapshotVariables(SimInfo):
 			self.Num_halos = 0
 		print(f"There are {self.Num_halos} galaxies/halos in the sample.")
 		if self.numPT == 1:
-			self.off = [self.TNG100_SubhaloPT.read_cat(self.offset_name)]
-			self.Len = [self.TNG100_SubhaloPT.read_cat(self.sub_len_name)]
+			self.off = self.TNG100_SubhaloPT.read_cat(self.offset_name)
+			self.Len = self.TNG100_SubhaloPT.read_cat(self.sub_len_name)
 			if self.exclude_wind:
-				self.mass = [self.TNG100_SubhaloPT.read_cat(
-					self.mass_name)]
+				self.mass = self.TNG100_SubhaloPT.read_cat(
+					self.mass_name)
 			else:
-				self.mass = [self.TNG100_SubhaloPT.read_cat("SubhaloMassType")]
+				self.mass = self.TNG100_SubhaloPT.read_cat("SubhaloMassType")
 			self.TNG100_snapshot = [ReadData(
 				self.simname,
 				self.snap_cat,
@@ -194,7 +194,7 @@ class MeasureSnapshotVariables(SimInfo):
 		output_file.close()
 		return
 
-	def select_nonzero_subhalos(self, IDs=None, wind_flag=None):
+	def select_nonzero_subhalos(self, IDs=[None], wind_flag=None):
 		"""
 		Selects the subhalos that have nonzero length, mass and SubhaloFlag. Saves selected data in output file, including
 		the IDs for the original file. Specific to IllustrisTNG simulations.
@@ -204,21 +204,19 @@ class MeasureSnapshotVariables(SimInfo):
 		Len = TNG100_subhalo.read_subhalo(self.sub_len_name)[:, self.PT]
 		mass_subhalo = TNG100_subhalo.read_subhalo("SubhaloMassType")[:, self.PT]
 		subhalo_pos = TNG100_subhalo.read_subhalo("SubhaloPos")
+		flag = TNG100_subhalo.read_subhalo(self.flag_name)
 		SFR = TNG100_subhalo.read_subhalo(self.SFR_name)
 		photo_mag = TNG100_subhalo.read_subhalo(self.photo_name)
 		if self.numPT == 1:
 			if self.PT[0] == 4:
-				flag = TNG100_subhalo.read_subhalo(self.flag_name)
 				TNG100_SubhaloPT = ReadData(
 					self.simname, self.subhalo_cat, self.snapshot, sub_group=f"PT{self.PT_group}/",
 					data_path=self.data_path
 				)
 				off = TNG100_SubhaloPT.read_cat("Offset_Subhalo_all")
-				if self.PT == 4:
-					wind_flag = TNG100_SubhaloPT.read_cat("Wind_Flag")
-					mask = (Len > 0.0) * (flag == 1) * (wind_flag == 0)
-				else:
-					mask = (Len > 0.0) * (flag == 1)
+				wind_flag = TNG100_SubhaloPT.read_cat("Wind_Flag")
+				mask = (Len[:, 0] > 0.0) * (flag == 1) * (wind_flag == 0)
+
 				IDs = np.where(mask)[0]
 				self.Num_halos = len(mass_subhalo[mask])
 				output_file = h5py.File(self.output_file_name, "a")
@@ -233,7 +231,7 @@ class MeasureSnapshotVariables(SimInfo):
 				write_dataset_hdf5(group, self.SFR_name, SFR[mask])
 				output_file.close()
 			elif self.PT[0] == 0:
-				if IDs == None:
+				if IDs[0] == None:
 					try:
 						TNG100_SubhaloPT4 = ReadData(
 							self.simname, self.subhalo_cat, self.snapshot, sub_group=f"PT4/", data_path=self.data_path
@@ -246,7 +244,7 @@ class MeasureSnapshotVariables(SimInfo):
 					data_path=self.data_path
 				)
 				off = TNG100_SubhaloPT.read_cat("Offset_Subhalo_all")
-				mask = (Len[IDs] > 0.0)
+				mask = (Len[IDs, 0] > 0.0) * (flag[IDs] == 1)
 				IDs_mask = IDs[mask]
 
 				self.Num_halos = len(mass_subhalo[IDs_mask])
