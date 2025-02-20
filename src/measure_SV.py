@@ -207,7 +207,7 @@ class MeasureSnapshotVariables(SimInfo):
 		SFR = TNG100_subhalo.read_subhalo(self.SFR_name)
 		photo_mag = TNG100_subhalo.read_subhalo(self.photo_name)
 		if self.numPT == 1:
-			if self.PT == 4:
+			if self.PT[0] == 4:
 				flag = TNG100_subhalo.read_subhalo(self.flag_name)
 				TNG100_SubhaloPT = ReadData(
 					self.simname, self.subhalo_cat, self.snapshot, sub_group=f"PT{self.PT_group}/",
@@ -228,12 +228,11 @@ class MeasureSnapshotVariables(SimInfo):
 				write_dataset_hdf5(group, "SubhaloMassType", mass_subhalo[mask])
 				write_dataset_hdf5(group, "SubhaloPos", subhalo_pos[mask])
 				write_dataset_hdf5(group, self.ID_name, IDs)
-				if self.PT == 4:
-					photo_mag = TNG100_subhalo.read_subhalo(self.photo_name)
-					write_dataset_hdf5(group, self.photo_name, photo_mag[mask])
-					write_dataset_hdf5(group, self.SFR_name, SFR[mask])
+				photo_mag = TNG100_subhalo.read_subhalo(self.photo_name)
+				write_dataset_hdf5(group, self.photo_name, photo_mag[mask])
+				write_dataset_hdf5(group, self.SFR_name, SFR[mask])
 				output_file.close()
-			elif self.PT == 0:
+			elif self.PT[0] == 0:
 				if IDs == None:
 					try:
 						TNG100_SubhaloPT4 = ReadData(
