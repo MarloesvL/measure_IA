@@ -1234,6 +1234,8 @@ class MeasureSnapshotVariables(SimInfo):
 
 			if self.numPT == 1:
 				vel_theta_mean = vel_theta_mean[0]
+				mean_vel_z = mean_vel_z[0]
+				abs_vel_z = abs_vel_z[0]
 			mean_vel_cyl = np.sum((rel_velocity_cyl * particle_mass_n), axis=1) / mass
 			dvel_cyl = (rel_velocity_cyl.transpose() - mean_vel_cyl) ** 2
 			dvel_mean_cyl = np.sum((dvel_cyl.transpose() * particle_mass_n), axis=1) / mass
