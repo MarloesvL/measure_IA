@@ -252,7 +252,7 @@ class MeasureSnapshotVariables(SimInfo):
 				group = create_group_hdf5(output_file, "Snapshot_" + self.snapshot + "/PT" + str(self.PT_group))
 				write_dataset_hdf5(group, self.sub_len_name, Len[IDs_mask])
 				write_dataset_hdf5(group, self.offset_name, off[IDs_mask])
-				write_dataset_hdf5(group, "GasMass", mass_subhalo[IDs_mask])
+				write_dataset_hdf5(group, "GasMass", mass_subhalo[IDs_mask][:, 0])
 				write_dataset_hdf5(group, "SubhaloPos", subhalo_pos[IDs_mask])
 				write_dataset_hdf5(group, self.ID_name, IDs_mask)
 				write_dataset_hdf5(group, self.SFR_name, SFR[IDs_mask])
@@ -708,25 +708,25 @@ class MeasureSnapshotVariables(SimInfo):
 					v1.append([0.0, 0.0, 0.0])
 					v2.append([0.0, 0.0, 0.0])
 				else:
-					I = self.measure_inertia_tensor_eq(mass, particle_mass, rel_position, self.reduced, I)
-					if sum(np.isnan(I.flatten())) > 0 or sum(np.isinf(I.flatten())) > 0:
-						print(
-							f"NaN or inf found in galaxy {n}, I is {I}, mass {mass}, len {len_n}. Appending zeros.")
-						I_list.append([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-						value_list.append([0.0, 0.0, 0.0])
-						vectors_list.append(np.array([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]))
-						v0.append([0.0, 0.0, 0.0])
-						v1.append([0.0, 0.0, 0.0])
-						v2.append([0.0, 0.0, 0.0])
-					else:
-						if self.eigen_v:
-							values, vectors = eig(I)
-							value_list.append(values)
-							vectors_list.append(vectors)
-							v0.append(vectors[:, 0])
-							v1.append(vectors[:, 1])
-							v2.append(vectors[:, 2])
-						I_list.append(I.reshape(9))
+					I += self.measure_inertia_tensor_eq(mass, particle_mass, rel_position, self.reduced, I)
+			if sum(np.isnan(I.flatten())) > 0 or sum(np.isinf(I.flatten())) > 0:
+				print(
+					f"NaN or inf found in galaxy {n}, I is {I}, mass {mass}, len {len_n}. Appending zeros.")
+				I_list.append([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+				value_list.append([0.0, 0.0, 0.0])
+				vectors_list.append(np.array([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]))
+				v0.append([0.0, 0.0, 0.0])
+				v1.append([0.0, 0.0, 0.0])
+				v2.append([0.0, 0.0, 0.0])
+			else:
+				if self.eigen_v:
+					values, vectors = eig(I)
+					value_list.append(values)
+					vectors_list.append(vectors)
+					v0.append(vectors[:, 0])
+					v1.append(vectors[:, 1])
+					v2.append(vectors[:, 2])
+				I_list.append(I.reshape(9))
 		return I_list, value_list, v0, v1, v2, vectors_list
 
 	@staticmethod
@@ -881,23 +881,23 @@ class MeasureSnapshotVariables(SimInfo):
 					v0.append([0.0, 0.0])
 					v1.append([0.0, 0.0])
 				else:
-					I = self.measure_projected_inertia_tensor_eq(mass, particle_mass, rel_position, self.reduced, I)
-					if sum(np.isnan(I.flatten())) > 0 or sum(np.isinf(I.flatten())) > 0:
-						print(
-							f"NaN or inf found in galaxy {n}, I is {I}, mass {mass}, len {len_n}. Appending zeros.")
-						I_list.append([0.0, 0.0, 0.0, 0.0])
-						value_list.append([0.0, 0.0])
-						vectors_list.append(np.array([[0.0, 0.0], [0.0, 0.0]]))
-						v0.append([0.0, 0.0])
-						v1.append([0.0, 0.0])
-					else:
-						if self.eigen_v:
-							values, vectors = eig(I)
-							value_list.append(values)
-							vectors_list.append(vectors)
-							v0.append(vectors[:, 0])
-							v1.append(vectors[:, 1])
-						I_list.append(I.reshape(4))
+					I += self.measure_projected_inertia_tensor_eq(mass, particle_mass, rel_position, self.reduced, I)
+			if sum(np.isnan(I.flatten())) > 0 or sum(np.isinf(I.flatten())) > 0:
+				print(
+					f"NaN or inf found in galaxy {n}, I is {I}, mass {mass}, len {len_n}. Appending zeros.")
+				I_list.append([0.0, 0.0, 0.0, 0.0])
+				value_list.append([0.0, 0.0])
+				vectors_list.append(np.array([[0.0, 0.0], [0.0, 0.0]]))
+				v0.append([0.0, 0.0])
+				v1.append([0.0, 0.0])
+			else:
+				if self.eigen_v:
+					values, vectors = eig(I)
+					value_list.append(values)
+					vectors_list.append(vectors)
+					v0.append(vectors[:, 0])
+					v1.append(vectors[:, 1])
+				I_list.append(I.reshape(4))
 		return I_list, value_list, v0, v1, vectors_list
 
 	@staticmethod
