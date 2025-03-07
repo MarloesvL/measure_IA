@@ -874,14 +874,14 @@ class MeasureSnapshotVariables(SimInfo):
 				rel_position = rel_position[:, self.not_LOS]
 				if mass == 0.0:
 					raise AssertionError("Mass is 0. Something went wrong in pre-selection.")
-				if len_n == 1.0:
-					I_list.append([0.0, 0.0, 0.0, 0.0])
-					value_list.append([0.0, 0.0])
-					vectors_list.append(np.array([[0.0, 0.0], [0.0, 0.0]]))
-					v0.append([0.0, 0.0])
-					v1.append([0.0, 0.0])
-				else:
-					I += self.measure_projected_inertia_tensor_eq(mass, particle_mass, rel_position, self.reduced, I)
+				# if len_n == 1.0:
+				# 	I_list.append([0.0, 0.0, 0.0, 0.0])
+				# 	value_list.append([0.0, 0.0])
+				# 	vectors_list.append(np.array([[0.0, 0.0], [0.0, 0.0]]))
+				# 	v0.append([0.0, 0.0])
+				# 	v1.append([0.0, 0.0])
+				# else:
+				I += self.measure_projected_inertia_tensor_eq(mass, particle_mass, rel_position, self.reduced, I)
 			if sum(np.isnan(I.flatten())) > 0 or sum(np.isinf(I.flatten())) > 0:
 				print(
 					f"NaN or inf found in galaxy {n}, I is {I}, mass {mass}, len {len_n}. Appending zeros.")
