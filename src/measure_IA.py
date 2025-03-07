@@ -1495,17 +1495,17 @@ class MeasureIA(SimInfo):
 			correlation_data = group[dataset_name][:]
 			pi = group[dataset_name + "_pi"]
 			rp = group[dataset_name + "_rp"]
-			dpi = (self.pi_bins[1:] - self.pi_bins[:-1]) / 2.0
-			pi_bins = self.pi_bins[:-1] + abs(dpi)  # middle of bins
-			variance = group[dataset_name + "_sigmasq"][:]
+			dpi = (self.pi_bins[1:] - self.pi_bins[:-1])
+			pi_bins = self.pi_bins[:-1] + abs(dpi) / 2.0  # middle of bins
+			# variance = group[dataset_name + "_sigmasq"][:]
 			if sum(np.isin(pi, pi_bins)) == len(pi):
 				dpi = np.array([dpi] * len(correlation_data[:, 0]))
 				correlation_data = correlation_data * abs(dpi)
-				sigsq_el = variance * dpi ** 2
+			# sigsq_el = variance * dpi ** 2
 			else:
 				raise ValueError("Update pi bins in initialisation of object to match xi_g_plus dataset.")
 			w_g_i = np.sum(correlation_data, axis=1)  # sum over pi values
-			sigsq = np.sum(sigsq_el, axis=1)
+			# sigsq = np.sum(sigsq_el, axis=1)
 			if return_output:
 				output_data = np.array([rp, w_g_i]).transpose()
 				correlation_data_file.close()
@@ -1514,7 +1514,7 @@ class MeasureIA(SimInfo):
 				group_out = create_group_hdf5(correlation_data_file, f"Snapshot_{self.snapshot}/" + wg_data[i])
 				write_dataset_hdf5(group_out, dataset_name + "_rp", data=rp)
 				write_dataset_hdf5(group_out, dataset_name, data=w_g_i)
-				write_dataset_hdf5(group_out, dataset_name + "_sigma", data=np.sqrt(sigsq))
+				# write_dataset_hdf5(group_out, dataset_name + "_sigma", data=np.sqrt(sigsq))
 				correlation_data_file.close()
 		return
 
@@ -1575,7 +1575,7 @@ class MeasureIA(SimInfo):
 				for m in np.arange(0, len(mu_r[0])):
 					L_m, dL = lpmn(l, sab, mu_r[n, m])  # make associated Legendre polynomial grid
 					L[n, m] = L_m[-1, -1]  # grid ranges from 0 to sab and 0 to l, so last element is what we seek
-			dmur = (self.bins_mu_r[1:] - self.bins_mu_r[:-1]) / 2.0
+			dmur = (self.bins_mu_r[1:] - self.bins_mu_r[:-1])
 			dmu_r_array = np.array(list(dmur) * len(r)).reshape((len(r), len(dmur)))
 			multipoles = (
 					(2 * l + 1)
