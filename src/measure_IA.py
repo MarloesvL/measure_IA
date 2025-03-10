@@ -4,7 +4,7 @@ import h5py
 import time
 import pickle
 import os
-import pyccl as ccl
+# import pyccl as ccl
 from scipy.special import lpmn
 from pathos.multiprocessing import ProcessingPool
 from scipy.spatial import KDTree
