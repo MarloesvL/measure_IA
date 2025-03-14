@@ -240,9 +240,9 @@ labels = [r"$\lambda\leq28, \\ 0.08<z\leq0.16$", r"$28<\lambda\leq40.5, \\ 0.08<
 		  r"$\lambda>40.5, \\ 0.35<z\leq0.6$"]
 for i, ax in enumerate(axes):
 	data = multipole_group[dataset_names[i]][:] * h
-	randoms = wg_group[dataset_names[i] + "_randoms"][:] * h
+	randoms = multipole_group[dataset_names[i] + "_randoms"][:] * h
 	r = multipole_group[dataset_names[i] + "_r"][:] * h
-	err = wg_group[dataset_names[i] + "_jackknife_45"][:] * h * r
+	err = multipole_group[dataset_names[i] + "_jackknife_45"][:] * h * r
 	ax.errorbar(r, -(data - randoms) * r, yerr=err, fmt='o')
 	ax.set_xlim(2, 200)
 	if i in [0, 1, 2]:
