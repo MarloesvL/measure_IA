@@ -4,7 +4,7 @@ import h5py
 import time
 import pickle
 import os
-# import pyccl as ccl
+import pyccl as ccl
 from scipy.special import lpmn
 from pathos.multiprocessing import ProcessingPool
 from scipy.spatial import KDTree
@@ -933,25 +933,6 @@ class MeasureIA(SimInfo):
 		else:
 			return correlation, (DD / RR_gg) - 1, separation_bins, pi_bins
 
-	@staticmethod
-	def get_q_e_theta_semi_major_from_e1_e2(e1, e2):
-		'''
-		Recalculate observational e1 and e2 to axis ratio q, semi-major axis direction and angle between semi-major
-		axis direction and separation vector theta.
-		:param e1: array with all e1 values
-		:param e2: array with all e2 values
-		:return:
-		'''
-		theta = 1. / 2 * np.arctan2(e2, e1)  # e1 = |e| cos(2theta), e2 = |e| sin(2theta)
-		# z = np.cos(theta)
-		# y = np.sin(theta)
-		Semimajor_Axis_Direction = np.array([np.cos(theta), np.sin(theta)]).transpose()
-		e = e1 + 1j * e2
-		q = (np.exp(2j * theta) - e) / (e + np.exp(2j * theta))
-		q = q.real
-		e = np.sqrt(e1 ** 2 + e2 ** 2)
-		return q, e, theta, Semimajor_Axis_Direction
-
 	def measure_projected_correlation_obs_clusters(self, masks=None, dataset_name="All_galaxies", return_output=False,
 												   print_num=True, over_h=True, cosmology=None
 												   ):
@@ -975,9 +956,6 @@ class MeasureIA(SimInfo):
 			DEC_shape_sample = self.data["DEC_shape_sample"]
 			e1 = self.data["e1"]
 			e2 = self.data["e2"]
-		# q, e, theta, axis_direction_v = self.get_q_e_theta_semi_major_from_e1_e2(e1, e2)
-		# axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
-		# axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 		else:
 			redshift = self.data["Redshift"][masks["Redshift"]]
 			redshift_shape_sample = self.data["Redshift_shape_sample"][masks["Redshift_shape_sample"]]
@@ -987,18 +965,12 @@ class MeasureIA(SimInfo):
 			DEC_shape_sample = self.data["DEC_shape_sample"][masks["DEC_shape_sample"]]
 			e1 = self.data["e1"][masks["e1"]]
 			e2 = self.data["e2"][masks["e2"]]
-		# q, e, theta, axis_direction_v = self.get_q_e_theta_semi_major_from_e1_e2(e1, e2)
-		# axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
-		# axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 		Num_position = len(RA)
 		Num_shape = len(RA_shape_sample)
 		if print_num:
 			print(
 				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
 
-		# e = (1 - q ** 2) / (1 + q ** 2)  # size of ellipticity
-		# del q
-		# R = 1 - np.mean(e ** 2) / 2.0  # responsitivity factor
 		sub_box_len_logrp = (np.log10(self.separation_max) - np.log10(self.separation_min)) / self.num_bins_r
 		sub_box_len_pi = (self.pi_bins[-1] - self.pi_bins[0]) / self.num_bins_pi
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
@@ -1038,7 +1010,6 @@ class MeasureIA(SimInfo):
 			del projected_sep
 			phi_sep_dir = np.arctan2(separation_dir[1], separation_dir[0])
 			phi = phi_axis_dir - phi_sep_dir
-			# np.arccos(self.calculate_dot_product_arrays(separation_dir, axis_direction))  # [0,pi]
 			del separation_dir
 			e_plus, e_cross = self.get_ellipticity(-e, phi)
 			del phi
@@ -1092,7 +1063,7 @@ class MeasureIA(SimInfo):
 			output_file.close()
 			return
 		else:
-			return Splus_D, Scross_D, DD, separation_bins, pi_bins
+			return correlation, DD, separation_bins, pi_bins
 
 	def measure_projected_correlation_save_pairs(self, output_file_pairs="", masks=None, dataset_name="All_galaxies",
 												 print_num=True):
@@ -1649,6 +1620,147 @@ class MeasureIA(SimInfo):
 		else:
 			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins
 
+	def measure_projected_correlation_multipoles_obs_clusters(self, masks=None, dataset_name="All_galaxies",
+															  return_output=False,
+															  print_num=True, over_h=True, cosmology=None, rp_cut=None
+															  ):
+		"""
+		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
+		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
+		axes, q=b/a (q) and the index of the direction of the line of sight (LOS=2 for z axis).
+		Positions are assumed to be given in cMpc/h.
+		:param masks: the masks for the data to select only part of the data
+		:param dataset_name: the dataset name given in the hdf5 file.
+		:param return_output: Output is returned if True, saved to file if False.
+		:return: xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
+		"""
+
+		if masks == None:
+			redshift = self.data["Redshift"]
+			redshift_shape_sample = self.data["Redshift_shape_sample"]
+			RA = self.data["RA"]
+			RA_shape_sample = self.data["RA_shape_sample"]
+			DEC = self.data["DEC"]
+			DEC_shape_sample = self.data["DEC_shape_sample"]
+			e1 = self.data["e1"]
+			e2 = self.data["e2"]
+		else:
+			redshift = self.data["Redshift"][masks["Redshift"]]
+			redshift_shape_sample = self.data["Redshift_shape_sample"][masks["Redshift_shape_sample"]]
+			RA = self.data["RA"][masks["RA"]]
+			RA_shape_sample = self.data["RA_shape_sample"][masks["RA_shape_sample"]]
+			DEC = self.data["DEC"][masks["DEC"]]
+			DEC_shape_sample = self.data["DEC_shape_sample"][masks["DEC_shape_sample"]]
+			e1 = self.data["e1"][masks["e1"]]
+			e2 = self.data["e2"][masks["e2"]]
+		Num_position = len(RA)
+		Num_shape = len(RA_shape_sample)
+		if print_num:
+			print(
+				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
+		if rp_cut == None:
+			rp_cut = 0.0
+		sub_box_len_logr = (np.log10(self.separation_max) - np.log10(self.separation_min)) / self.num_bins_r
+		sub_box_len_mu_r = 2.0 / self.num_bins_pi
+		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		if cosmology == None:
+			print("No cosmology given, using Omega_m=0.27, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.")
+			cosmology = ccl.Cosmology(Omega_c=0.225, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.0)
+		h = cosmology["h"]
+
+		LOS_all = ccl.comoving_radial_distance(cosmology, 1 / (1 + redshift))
+		LOS_all_shape_sample = ccl.comoving_radial_distance(cosmology, 1 / (1 + redshift_shape_sample))
+		if over_h:
+			LOS_all *= h
+			LOS_all_shape_sample *= h
+
+		theta = 1. / 2 * np.arctan2(e2, e1)  # e1 = |e| cos(2theta), e2 = |e| sin(2theta)
+		Semimajor_Axis_Direction = np.array([np.cos(theta), np.sin(theta)])
+		axis_direction_len = np.sqrt(np.sum(Semimajor_Axis_Direction ** 2, axis=0))
+		axis_direction = Semimajor_Axis_Direction / axis_direction_len
+		e = np.sqrt(e1 ** 2 + e2 ** 2)
+		phi_axis_dir = np.arctan2(axis_direction[1], axis_direction[0])
+
+		for n in np.arange(0, len(RA)):
+			# for Splus_D (calculate ellipticities around position sample)
+			LOS = LOS_all_shape_sample - LOS_all[n]
+			dra = (RA_shape_sample - RA[n]) / 180 * np.pi
+			ddec = (DEC_shape_sample - DEC[n]) / 180 * np.pi
+			dx = dra * LOS_all[n] * np.cos(DEC[n] / 180 * np.pi)
+			dy = ddec * LOS_all[n]
+			projected_sep = np.array([dx, dy])
+			separation = np.array([dx, dy, LOS])
+			if over_h:
+				projected_sep *= h
+			projected_separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=0))
+			separation_len = np.sqrt(np.sum(separation ** 2, axis=0))
+			separation_dir = (projected_sep / projected_separation_len)  # normalisation of rp
+			mu_r = LOS / separation_len
+			del projected_sep
+			phi_sep_dir = np.arctan2(separation_dir[1], separation_dir[0])
+			phi = phi_axis_dir - phi_sep_dir
+			# np.arccos(self.calculate_dot_product_arrays(separation_dir, axis_direction))  # [0,pi]
+			del separation_dir
+			e_plus, e_cross = self.get_ellipticity(-e, phi)
+			del phi
+			e_plus[np.isnan(e_plus)] = 0.0
+			e_cross[np.isnan(e_cross)] = 0.0
+			mu_r[np.isnan(e_plus)] = 0.0
+
+			# get the indices for the binning
+			mask = (
+					(projected_separation_len > rp_cut)
+					* (separation_len >= self.bin_edges[0])
+					* (separation_len < self.bin_edges[-1])
+			)
+			ind_r = np.floor(
+				np.log10(separation_len[mask]) / sub_box_len_logr - np.log10(self.bin_edges[0]) / sub_box_len_logr
+			)
+			del separation_len, projected_separation_len
+			ind_r = np.array(ind_r, dtype=int)
+			ind_mu_r = np.floor(
+				mu_r[mask] / sub_box_len_mu_r - self.bins_mu_r[0] / sub_box_len_mu_r
+			)  # need length of LOS, so only positive values
+			ind_mu_r = np.array(ind_mu_r, dtype=int)
+			del LOS
+			np.add.at(Splus_D, (ind_r, ind_mu_r), e_plus[mask])
+			np.add.at(Scross_D, (ind_r, ind_mu_r), e_cross[mask])
+			del e_plus, e_cross, mask
+			np.add.at(DD, (ind_r, ind_mu_r), 1.0)
+
+		# if Num_position == Num_shape:
+		# 	DD = DD / 2.0  # auto correlation, all pairs are double
+
+		DD[np.where(DD == 0)] = 1
+
+		correlation = Splus_D / DD
+		dsep = (self.bin_edges[1:] - self.bin_edges[:-1]) / 2.0
+		separation_bins = self.bin_edges[:-1] + abs(dsep)  # middle of bins
+		dmur = (self.bins_mu_r[1:] - self.bins_mu_r[:-1]) / 2.0
+		mu_r_bins = self.bins_mu_r[:-1] + abs(dmur)  # middle of bins
+
+		if (self.output_file_name != None) and (return_output == False):
+			output_file = h5py.File(self.output_file_name, "a")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/multipoles/xi_g_plus")
+			write_dataset_hdf5(group, dataset_name, data=correlation)
+			write_dataset_hdf5(group, dataset_name + "_SplusD", data=Splus_D)
+			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
+			write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/multipoles/xi_g_cross")
+			write_dataset_hdf5(group, dataset_name + "_ScrossD", data=Scross_D)
+			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
+			write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/multipoles/xi_gg")
+			write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
+			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
+			write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
+			output_file.close()
+			return
+		else:
+			return correlation, DD, separation_bins, mu_r_bins
+
 	def measure_w_g_i(self, corr_type="both", dataset_name="All_galaxies", return_output=False):
 		"""
 		Measures w_gi for a given xi_gi dataset that has been calculated with the measure projected correlation
@@ -2199,6 +2311,288 @@ class MeasureIA(SimInfo):
 			return
 		else:
 			return covs, stds
+
+	def measure_jackknife_realisations_obs(
+			self, patches_pos, patches_shape, masks=None, corr_type=["both", "multipoles"], dataset_name="All_galaxies",
+			rp_cut=None, over_h=False, cosmology=None,
+	):
+		"""
+		Measures the errors in the projected correlation function using the jackknife method.
+		The box is divided into L_subboxes^3 subboxes; the correlation function is calculated omitting one box at a time.
+		Then the standard deviation is taken for wg+ and the covariance matrix is calculated for the multipoles.
+		:param rp_cut: Limit for minimum r_p value for pairs to be included. (Needed for measure_projected_correlation_multipoles)
+		:param corr_type: Array with two entries. For first choose from [gg, g+, both], for second from [w, multipoles]
+		:param dataset_name: Name of the dataset
+		:param L_subboxes: Integer by which the length of the side of the mox should be divided.
+		:return:
+		"""
+		if corr_type[0] == "both":
+			data = [corr_type[1] + "_g_plus", corr_type[1] + "_gg"]
+		elif corr_type[0] == "g+":
+			data = [corr_type[1] + "_g_plus"]
+		elif corr_type[0] == "gg":
+			data = [corr_type[1] + "_gg"]
+		else:
+			raise KeyError("Unknown value for corr_type. Choose from [g+, gg, both]")
+		figname_dataset_name = dataset_name
+		if "/" in dataset_name:
+			figname_dataset_name = figname_dataset_name.replace("/", "_")
+		if "." in dataset_name:
+			figname_dataset_name = figname_dataset_name.replace(".", "p")
+
+		min_patch, max_patch = int(min(patches_pos)), int(max(patches_pos))
+		if min(patches_shape) != min_patch:
+			print(
+				"Warning! Minimum patch number of shape sample is not equal to minimum patch number of position sample.")
+		if max(patches_shape) != max_patch:
+			print(
+				"Warning! Maximum patch number of shape sample is not equal to maximum patch number of position sample.")
+		print(
+			f"Calculating jackknife realisations for {max_patch} patches for {dataset_name}.")
+
+		for i in np.arange(min_patch, max_patch + 1):
+			mask_position = (patches_pos != i)
+			mask_shape = (patches_shape != i)
+			if masks != None:
+				mask_position = mask_position * masks["Redshift"]
+				mask_shape = mask_shape * masks["Redshift_shape_sample"]
+			masks_total = {
+				"Redshift": mask_position,
+				"Redshift_shape_sample": mask_shape,
+				"RA": mask_position,
+				"RA_shape_sample": mask_shape,
+				"DEC": mask_position,
+				"DEC_shape_sample": mask_shape,
+				"e1": mask_shape,
+				"e2": mask_shape,
+			}
+			if corr_type[1] == "multipoles":
+				self.measure_projected_correlation_multipoles_obs_clusters(
+					masks=masks_total,
+					rp_cut=rp_cut,
+					dataset_name=dataset_name + "_" + str(i),
+					print_num=False,
+					over_h=over_h,
+					cosmology=cosmology,
+				)
+
+				self.measure_multipoles(corr_type=corr_type[0], dataset_name=dataset_name + "_" + str(i))
+			else:
+				self.measure_projected_correlation_obs_clusters(
+					masks=masks_total,
+					dataset_name=dataset_name + "_" + str(i),
+					print_num=False,
+					over_h=over_h,
+					cosmology=cosmology,
+				)
+				self.measure_w_g_i(corr_type=corr_type[0], dataset_name=dataset_name + "_" + str(i))
+
+		return
+
+	def measure_jackknife_errors_obs(
+			self, max_patch, min_patch=1, corr_type=["both", "multipoles"], dataset_name="All_galaxies",
+			randoms_suf="_randoms"
+	):
+		"""
+		Measures the errors in the projected correlation function using the jackknife method.
+		The box is divided into L_subboxes^3 subboxes; the correlation function is calculated omitting one box at a time.
+		Then the standard deviation is taken for wg+ and the covariance matrix is calculated for the multipoles.
+		:param rp_cut: Limit for minimum r_p value for pairs to be included. (Needed for measure_projected_correlation_multipoles)
+		:param corr_type: Array with two entries. For first choose from [gg, g+, both], for second from [w, multipoles]
+		:param dataset_name: Name of the dataset
+		:param L_subboxes: Integer by which the length of the side of the mox should be divided.
+		:return:
+		"""
+		if corr_type[0] == "both":
+			data = [corr_type[1] + "_g_plus", corr_type[1] + "_gg"]
+		elif corr_type[0] == "g+":
+			data = [corr_type[1] + "_g_plus"]
+		elif corr_type[0] == "gg":
+			data = [corr_type[1] + "_gg"]
+		else:
+			raise KeyError("Unknown value for corr_type. Choose from [g+, gg, both]")
+		figname_dataset_name = dataset_name
+		if "/" in dataset_name:
+			figname_dataset_name = figname_dataset_name.replace("/", "_")
+		if "." in dataset_name:
+			figname_dataset_name = figname_dataset_name.replace(".", "p")
+		num_patches = max_patch - min_patch + 1
+		print(
+			f"Calculating jackknife errors for {num_patches} patches for {dataset_name} with {dataset_name}{randoms_suf} as randoms.")
+
+		covs, stds = [], []
+		for d in np.arange(0, len(data)):
+			data_file = h5py.File(self.output_file_name, "a")
+			group_multipoles = data_file[f"Snapshot_{self.snapshot}/" + data[d]]
+			# calculating mean of the datavectors
+			mean_multipoles = np.zeros(self.num_bins_r)
+			for b in np.arange(min_patch, max_patch + 1):
+				mean_multipoles += (group_multipoles[f"{dataset_name}_{b}"][:] - group_multipoles[
+																					 f"{dataset_name}{randoms_suf}_{b}"][
+																				 :])
+			mean_multipoles /= num_patches
+
+			# calculation the covariance matrix (multipoles) and the standard deviation (sqrt of diag of cov)
+			cov = np.zeros((self.num_bins_r, self.num_bins_r))
+			std = np.zeros(self.num_bins_r)
+			for b in np.arange(min_patch, max_patch + 1):
+				correlation = group_multipoles[f"{dataset_name}_{b}"][:] - group_multipoles[
+																			   f"{dataset_name}{randoms_suf}_{b}"][:]
+				std += (correlation - mean_multipoles) ** 2
+				for i in np.arange(self.num_bins_r):
+					cov[:, i] += (correlation - mean_multipoles) * (correlation[i] - mean_multipoles[i])
+
+			std *= (num_patches - 1) / num_patches  # see Singh 2023
+			std = np.sqrt(std)  # size of errorbars
+			cov *= (num_patches - 1) / num_patches  # cov not sqrt so to get std, sqrt of diag would need to be taken
+			data_file.close()
+			if self.output_file_name != None:
+				output_file = h5py.File(self.output_file_name, "a")
+				group_multipoles = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/" + data[d])
+				write_dataset_hdf5(group_multipoles, dataset_name + "_mean_" + str(num_patches), data=mean_multipoles)
+				write_dataset_hdf5(group_multipoles, dataset_name + "_jackknife_" + str(num_patches), data=std)
+				write_dataset_hdf5(group_multipoles, dataset_name + "_jackknife_cov_" + str(num_patches), data=cov)
+				output_file.close()
+			else:
+				covs.append(cov)
+				stds.append(std)
+		if self.output_file_name != None:
+			return
+		else:
+			return covs, stds
+
+	def measure_jackknife_realisations_obs_multiprocessing(
+			self, patches_pos, patches_shape, masks=None, corr_type=["both", "multipoles"], dataset_name="All_galaxies",
+			rp_cut=None, over_h=False, num_nodes=4, cosmology=None
+	):
+		"""
+		Measures the errors in the projected correlation function using the jackknife method, using multiple CPU cores.
+		The box is divided into L_subboxes^3 subboxes; the correlation function is calculated omitting one box at a time.
+		Then the standard deviation is taken for wg+ and the covariance matrix is calculated for the multipoles.
+		:param twoD: Divide box into L_subboxes^2, no division in z-direction.
+		:param num_nodes: Number of CPU nodes to use in multiprocessing.
+		:param dataset_name: Name of the dataset
+		:param L_subboxes: Integer by which the length of the side of the mox should be divided.
+		:param rp_cut: Limit for minimum r_p value for pairs to be included. (Needed for measure_projected_correlation_multipoles)
+		:param corr_type: Array with two entries. For first choose from [gg, g+, both], for second from [w, multipoles]
+		:return:
+		"""
+		if corr_type[0] == "both":
+			data = [corr_type[1] + "_g_plus", corr_type[1] + "_gg"]
+			corr_type_suff = ["_g_plus", "_gg"]
+		elif corr_type[0] == "g+":
+			data = [corr_type[1] + "_g_plus"]
+			corr_type_suff = ["_g_plus"]
+		elif corr_type[0] == "gg":
+			data = [corr_type[1] + "_gg"]
+			corr_type_suff = ["_gg"]
+		else:
+			raise KeyError("Unknown value for first entry of corr_type. Choose from [g+, gg, both]")
+		if corr_type[1] == "multipoles":
+			bin_var_names = ["r", "mu_r"]
+		elif corr_type[1] == "w":
+			bin_var_names = ["rp", "pi"]
+		else:
+			raise KeyError("Unknown value for second entry of corr_type. Choose from [multipoles, w_g_plus]")
+		min_patch, max_patch = int(min(patches_pos)), int(max(patches_pos))
+		num_patches = max_patch - min_patch + 1
+		if min(patches_shape) != min_patch:
+			print(
+				"Warning! Minimum patch number of shape sample is not equal to minimum patch number of position sample.")
+		if max(patches_shape) != max_patch:
+			print(
+				"Warning! Maximum patch number of shape sample is not equal to maximum patch number of position sample.")
+		args_xi_g_plus, args_multipoles, tree_args = [], [], []
+		for i in np.arange(min_patch, max_patch + 1):
+			mask_position = (patches_pos != i)
+			mask_shape = (patches_shape != i)
+			if masks != None:
+				mask_position = mask_position * masks["Redshift"]
+				mask_shape = mask_shape * masks["Redshift_shape_sample"]
+			masks_total = {
+				"Redshift": mask_position,
+				"Redshift_shape_sample": mask_shape,
+				"RA": mask_position,
+				"RA_shape_sample": mask_shape,
+				"DEC": mask_position,
+				"DEC_shape_sample": mask_shape,
+				"e1": mask_shape,
+				"e2": mask_shape,
+			}
+			if corr_type[1] == "multipoles":
+				args_xi_g_plus.append(
+					(
+						masks_total,
+						dataset_name + "_" + str(i),
+						True,
+						False,
+						over_h,
+						cosmology,
+						rp_cut,
+					)
+				)
+			else:
+				args_xi_g_plus.append(
+					(
+						masks_total,
+						dataset_name + "_" + str(i),
+						True,
+						False,
+						over_h,
+						cosmology,
+					)
+				)
+			args_multipoles.append([corr_type[0], dataset_name + "_" + str(i)])
+
+		args_xi_g_plus = np.array(args_xi_g_plus)
+		args_multipoles = np.array(args_multipoles)
+		multiproc_chuncks = np.array_split(np.arange(num_patches), np.ceil(num_patches / num_nodes))
+		for chunck in multiproc_chuncks:
+			chunck = np.array(chunck, dtype=int)
+			if corr_type[1] == "multipoles":
+				result = ProcessingPool(nodes=len(chunck)).map(
+					self.measure_projected_correlation_multipoles_obs_clusters,
+					args_xi_g_plus[chunck][:, 0],
+					args_xi_g_plus[chunck][:, 1],
+					args_xi_g_plus[chunck][:, 2],
+					args_xi_g_plus[chunck][:, 3],
+					args_xi_g_plus[chunck][:, 4],
+					args_xi_g_plus[chunck][:, 5],
+					args_xi_g_plus[chunck][:, 4],
+				)
+			else:
+				result = ProcessingPool(nodes=len(chunck)).map(
+					self.measure_projected_correlation_obs_clusters,
+					args_xi_g_plus[chunck][:, 0],
+					args_xi_g_plus[chunck][:, 1],
+					args_xi_g_plus[chunck][:, 2],
+					args_xi_g_plus[chunck][:, 3],
+					args_xi_g_plus[chunck][:, 4],
+					args_xi_g_plus[chunck][:, 5],
+				)
+
+			output_file = h5py.File(self.output_file_name, "a")
+			for i in np.arange(0, len(chunck)):
+				for j, data_j in enumerate(data):
+					group_xigplus = create_group_hdf5(
+						output_file, f"Snapshot_{self.snapshot}/" + corr_type[1] + "/xi" + corr_type_suff[j]
+					)
+					write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i] + min_patch}", data=result[i][j])
+					write_dataset_hdf5(
+						group_xigplus, f"{dataset_name}_{chunck[i] + min_patch}_{bin_var_names[0]}", data=result[i][2]
+					)
+					write_dataset_hdf5(
+						group_xigplus, f"{dataset_name}_{chunck[i] + min_patch}_{bin_var_names[1]}", data=result[i][3]
+					)
+			# write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i]}_sigmasq", data=result[i][3])
+			output_file.close()
+
+		for i in np.arange(0, num_patches):
+			if corr_type[1] == "multipoles":
+				self.measure_multipoles(corr_type=args_multipoles[i, 0], dataset_name=args_multipoles[i, 1])
+			else:
+				self.measure_w_g_i(corr_type=args_multipoles[i, 0], dataset_name=args_multipoles[i, 1])
+		return
 
 	def measure_covariance_multiple_datasets(self, corr_type, dataset_names, num_box=3, return_output=False):
 		"""
