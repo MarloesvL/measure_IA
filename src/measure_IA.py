@@ -205,9 +205,7 @@ class MeasureIA(SimInfo):
 		"""
 		if corrtype == "auto":
 			RR = (
-					(Num_position - 1.0)
-					/ 2.0
-					* Num_shape
+					(Num_position - 1.0) * Num_shape / 2.0
 					* np.pi
 					* (rp_max ** 2 - rp_min ** 2)
 					* abs(pi_max - pi_min)
@@ -359,7 +357,10 @@ class MeasureIA(SimInfo):
 			np.add.at(DD, (ind_r, ind_pi), 1.0)
 
 		if Num_position == Num_shape:
+			corrtype = "auto"
 			DD = DD / 2.0  # auto correlation, all pairs are double
+		else:
+			corrtype = "cross"
 
 		for i in np.arange(0, self.num_bins_r):
 			for p in np.arange(0, self.num_bins_pi):
@@ -367,7 +368,7 @@ class MeasureIA(SimInfo):
 					self.bin_edges[i + 1], self.bin_edges[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "cross",
 					Num_position, Num_shape)
 				RR_gg[i, p] = self.get_random_pairs(
-					self.bin_edges[i + 1], self.bin_edges[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "auto",
+					self.bin_edges[i + 1], self.bin_edges[i], self.pi_bins[p + 1], self.pi_bins[p], L3, corrtype,
 					Num_position, Num_shape)
 		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
 		xi_g_cross = Scross_D / RR_g_plus  # (Scross_D - Scross_R) / RR_g_plus
@@ -544,14 +545,17 @@ class MeasureIA(SimInfo):
 		if tree_input != None:
 			tree_file.close()
 		if Num_position == Num_shape:
+			corrtype = "auto"
 			DD = DD / 2.0  # auto correlation, all pairs are double
+		else:
+			corrtype = "cross"
 		for i in np.arange(0, self.num_bins_r):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_g_plus[i, p] = self.get_random_pairs(
 					self.bin_edges[i + 1], self.bin_edges[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "cross",
 					Num_position, Num_shape)
 				RR_gg[i, p] = self.get_random_pairs(
-					self.bin_edges[i + 1], self.bin_edges[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "auto",
+					self.bin_edges[i + 1], self.bin_edges[i], self.pi_bins[p + 1], self.pi_bins[p], L3, corrtype,
 					Num_position, Num_shape)
 		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
 		xi_g_cross = Scross_D / RR_g_plus  # (Scross_D - Scross_R) / RR_g_plus
@@ -709,7 +713,10 @@ class MeasureIA(SimInfo):
 			variance += result[i][3]
 
 		if Num_position == Num_shape:
+			corrtype = "auto"
 			DD = DD / 2.0  # auto correlation, all pairs are double
+		else:
+			corrtype = "cross"
 
 		for i in np.arange(0, self.num_bins_r):
 			for p in np.arange(0, self.num_bins_pi):
@@ -717,7 +724,7 @@ class MeasureIA(SimInfo):
 					self.bin_edges[i + 1], self.bin_edges[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "cross",
 					Num_position, Num_shape)
 				RR_gg[i, p] = self.get_random_pairs(
-					self.bin_edges[i + 1], self.bin_edges[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "auto",
+					self.bin_edges[i + 1], self.bin_edges[i], self.pi_bins[p + 1], self.pi_bins[p], L3, corrtype,
 					Num_position, Num_shape)
 		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
 		xi_g_cross = Scross_D / RR_g_plus  # (Scross_D - Scross_R) / RR_g_plus
@@ -1231,7 +1238,10 @@ class MeasureIA(SimInfo):
 			np.add.at(DD, (ind_r, ind_mu_r), 1.0)
 
 		if Num_position == Num_shape:
+			corrtype = "auto"
 			DD = DD / 2.0  # auto correlation, all pairs are double
+		else:
+			corrtype = "cross"
 
 		# analytical calc is much more difficult for (r,mu_r) bins
 		for i in np.arange(0, self.num_bins_r):
@@ -1240,7 +1250,7 @@ class MeasureIA(SimInfo):
 					self.bin_edges[i + 1], self.bin_edges[i], self.bins_mu_r[p + 1], self.bins_mu_r[p], L3, "cross",
 					Num_position, Num_shape)
 				RR_gg[i, p] = self.get_random_pairs_r_mur(
-					self.bin_edges[i + 1], self.bin_edges[i], self.bins_mu_r[p + 1], self.bins_mu_r[p], L3, "auto",
+					self.bin_edges[i + 1], self.bin_edges[i], self.bins_mu_r[p + 1], self.bins_mu_r[p], L3, corrtype,
 					Num_position, Num_shape)
 
 		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
@@ -1405,7 +1415,10 @@ class MeasureIA(SimInfo):
 		if tree_input != None:
 			tree_file.close()
 		if Num_position == Num_shape:
+			corrtype = "auto"
 			DD = DD / 2.0  # auto correlation, all pairs are double
+		else:
+			corrtype = "cross"
 
 		# analytical calc is much more difficult for (r,mu_r) bins
 		for i in np.arange(0, self.num_bins_r):
@@ -1414,7 +1427,7 @@ class MeasureIA(SimInfo):
 					self.bin_edges[i + 1], self.bin_edges[i], self.bins_mu_r[p + 1], self.bins_mu_r[p], L3, "cross",
 					Num_position, Num_shape)
 				RR_gg[i, p] = self.get_random_pairs_r_mur(
-					self.bin_edges[i + 1], self.bin_edges[i], self.bins_mu_r[p + 1], self.bins_mu_r[p], L3, "auto",
+					self.bin_edges[i + 1], self.bin_edges[i], self.bins_mu_r[p + 1], self.bins_mu_r[p], L3, corrtype,
 					Num_position, Num_shape)
 
 		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
@@ -1576,7 +1589,10 @@ class MeasureIA(SimInfo):
 			DD += result[i][2]
 
 		if Num_position == Num_shape:
+			corrtype = "auto"
 			DD = DD / 2.0  # auto correlation, all pairs are double
+		else:
+			corrtype = "cross"
 
 		# analytical calc is much more difficult for (r,mu_r) bins
 		for i in np.arange(0, self.num_bins_r):
@@ -1585,7 +1601,7 @@ class MeasureIA(SimInfo):
 					self.bin_edges[i + 1], self.bin_edges[i], self.bins_mu_r[p + 1], self.bins_mu_r[p], L3, "cross",
 					Num_position, Num_shape)
 				RR_gg[i, p] = self.get_random_pairs_r_mur(
-					self.bin_edges[i + 1], self.bin_edges[i], self.bins_mu_r[p + 1], self.bins_mu_r[p], L3, "auto",
+					self.bin_edges[i + 1], self.bin_edges[i], self.bins_mu_r[p + 1], self.bins_mu_r[p], L3, corrtype,
 					Num_position, Num_shape)
 
 		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
