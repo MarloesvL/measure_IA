@@ -246,14 +246,14 @@ for i, ax in enumerate(axes):
 	ax.errorbar(r, -(data - randoms) * r, yerr=err, fmt='o')
 	ax.set_xlim(2, 200)
 	if i in [0, 1, 2]:
-		ax.set_ylim(-150, 150)
-		ax.text(4, 100, labels[i])
+		ax.set_ylim(-0.3, 0.4)
+		ax.text(4, 0.3, labels[i])
 	elif i in [3, 4, 5]:
-		ax.set_ylim(-40, 40)
-		ax.text(4, 30, labels[i])
+		ax.set_ylim(-0.1, 0.2)
+		ax.text(4, 0.15, labels[i])
 	else:
-		ax.set_ylim(-30, 30)
-		ax.text(4, 20, labels[i])
+		ax.set_ylim(-0.06, 0.1)
+		ax.text(4, 0.08, labels[i])
 	ax.set_xscale('log')
 	ax.set_ylabel(r"$r \tilde{\xi}_{g+,2}$")
 	ax.set_xlabel(r"$r$ [Mpc/h]")
