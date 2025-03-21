@@ -2069,6 +2069,7 @@ class MeasureIA(SimInfo):
 			if self.output_file_name != None:
 				output_file = h5py.File(self.output_file_name, "a")
 				group_multipoles = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/" + data[d])
+				write_dataset_hdf5(group_multipoles, dataset_name + "_mean_" + str(num_box), data=mean_multipoles)
 				write_dataset_hdf5(group_multipoles, dataset_name + "_jackknife_" + str(num_box), data=std)
 				write_dataset_hdf5(group_multipoles, dataset_name + "_jackknife_cov_" + str(num_box), data=cov)
 				output_file.close()
@@ -2317,6 +2318,7 @@ class MeasureIA(SimInfo):
 			if self.output_file_name != None:
 				output_file = h5py.File(self.output_file_name, "a")
 				group_multipoles = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/" + data[d])
+				write_dataset_hdf5(group_multipoles, dataset_name + "_mean_" + str(num_box), data=mean_multipoles)
 				write_dataset_hdf5(group_multipoles, dataset_name + "_jackknife_" + str(num_box), data=std)
 				write_dataset_hdf5(group_multipoles, dataset_name + "_jackknife_cov_" + str(num_box), data=cov)
 				output_file.close()
