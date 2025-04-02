@@ -985,8 +985,9 @@ class MeasureIA(SimInfo):
 		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		variance = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		if cosmology == None:
-			print("No cosmology given, using Omega_m=0.27, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.")
 			cosmology = ccl.Cosmology(Omega_c=0.225, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.0)
+			if print_num:
+				print("No cosmology given, using Omega_m=0.27, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.")
 		h = cosmology["h"]
 
 		LOS_all = ccl.comoving_radial_distance(cosmology, 1 / (1 + redshift))
@@ -1682,8 +1683,9 @@ class MeasureIA(SimInfo):
 		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		if cosmology == None:
-			print("No cosmology given, using Omega_m=0.27, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.")
 			cosmology = ccl.Cosmology(Omega_c=0.225, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.0)
+			if print_num:
+				print("No cosmology given, using Omega_m=0.27, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.")
 		h = cosmology["h"]
 
 		LOS_all = ccl.comoving_radial_distance(cosmology, 1 / (1 + redshift))
