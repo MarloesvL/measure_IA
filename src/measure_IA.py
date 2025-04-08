@@ -1524,9 +1524,9 @@ class MeasureIA(SimInfo):
 					del e_plus, e_cross, mask, separation_len
 		return Splus_D, Scross_D, DD
 
-	def measure_projected_correlation_multipoles_tree_multiprocessing(self, num_nodes=9, masks=None,
-																	  rp_cut=None, dataset_name="All_galaxies",
-																	  return_output=False, print_num=True):
+	def measure_projected_correlation_multipoles_multiprocessing(self, num_nodes=9, masks=None,
+																 rp_cut=None, dataset_name="All_galaxies",
+																 return_output=False, print_num=True):
 		"""
 		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
