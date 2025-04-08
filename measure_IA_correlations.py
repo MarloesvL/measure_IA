@@ -121,7 +121,7 @@ Due to the nature of the methods, they cannot be combined with the 'save tree' o
 num_nodes = 30
 L_subboxes = 2  # 8 jk regions
 # wg+,wgg
-IA_Projected.measure_projected_correlation_tree_multiprocessing(num_nodes=num_nodes, dataset_name=dataset_name)
+IA_Projected.measure_projected_correlation_multiprocessing(num_nodes=num_nodes, dataset_name=dataset_name)
 IA_Projected.measure_w_g_i(corr_type=corr_type[0], dataset_name=dataset_name)
 IA_Projected.measure_jackknife_errors_multiprocessing(
 	corr_type=corr_type,
@@ -133,8 +133,8 @@ IA_Projected.measure_jackknife_errors_multiprocessing(
 )
 corr_type = ['g+', 'multipoles']
 # multipoles
-IA_Projected.measure_projected_correlation_multipoles_tree_multiprocessing(num_nodes=num_nodes,
-																		   dataset_name=dataset_name, rp_cut=rp_cut)
+IA_Projected.measure_projected_correlation_multipoles_multiprocessing(num_nodes=num_nodes,
+																	  dataset_name=dataset_name, rp_cut=rp_cut)
 IA_Projected.measure_multipoles(dataset_name=dataset_name, corr_type=corr_type[0])
 IA_Projected.measure_jackknife_errors_multiprocessing(
 	corr_type=corr_type,
