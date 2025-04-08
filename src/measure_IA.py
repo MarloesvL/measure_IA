@@ -593,7 +593,7 @@ class MeasureIA(SimInfo):
 		else:
 			return correlation, (DD / RR_gg) - 1, separation_bins, pi_bins
 
-	def measure_projected_correlation_tree_single(self, indices):
+	def measure_projected_correlation_single(self, indices):
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
@@ -650,9 +650,9 @@ class MeasureIA(SimInfo):
 
 		return Splus_D, Scross_D, DD, variance
 
-	def measure_projected_correlation_tree_multiprocessing(self, num_nodes=9, masks=None,
-														   dataset_name="All_galaxies", return_output=False,
-														   print_num=True):
+	def measure_projected_correlation_multiprocessing(self, num_nodes=9, masks=None,
+													  dataset_name="All_galaxies", return_output=False,
+													  print_num=True):
 		"""
 		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
@@ -703,7 +703,7 @@ class MeasureIA(SimInfo):
 
 		self.multiproc_chuncks = np.array_split(np.arange(len(self.positions_shape_sample)), num_nodes)
 		result = ProcessingPool(nodes=num_nodes).map(
-			self.measure_projected_correlation_tree_single,
+			self.measure_projected_correlation_single,
 			self.multiproc_chuncks,
 		)
 		for i in np.arange(num_nodes):
@@ -1463,7 +1463,7 @@ class MeasureIA(SimInfo):
 		else:
 			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins
 
-	def measure_projected_correlation_multipoles_tree_single(self, indices):
+	def measure_projected_correlation_multipoles_single(self, indices):
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
@@ -1581,7 +1581,7 @@ class MeasureIA(SimInfo):
 
 		self.multiproc_chuncks = np.array_split(np.arange(len(self.positions_shape_sample)), num_nodes)
 		result = ProcessingPool(nodes=num_nodes).map(
-			self.measure_projected_correlation_multipoles_tree_single,
+			self.measure_projected_correlation_multipoles_single,
 			self.multiproc_chuncks,
 		)
 		for i in np.arange(num_nodes):
@@ -2009,7 +2009,7 @@ class MeasureIA(SimInfo):
 								file_tree_path=file_tree_path,
 							)
 						else:
-							self.measure_projected_correlation_multipoles_tree_multiprocessing(
+							self.measure_projected_correlation_multipoles_multiprocessing(
 								masks=masks_total,
 								rp_cut=rp_cut,
 								dataset_name=dataset_name + "_" + str(num_box),
@@ -2029,7 +2029,7 @@ class MeasureIA(SimInfo):
 								file_tree_path=file_tree_path,
 							)
 						else:
-							self.measure_projected_correlation_tree_multiprocessing(
+							self.measure_projected_correlation_multiprocessing(
 								masks=masks_total,
 								dataset_name=dataset_name + "_" + str(num_box),
 								print_num=False,
