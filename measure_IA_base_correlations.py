@@ -1,5 +1,5 @@
 import numpy as np
-from src.measure_IA import MeasureIA
+from src.measure_IA_base import MeasureIABase
 
 # creating random sample data
 positions = np.random.rand(100, 3) * 100  # in cMpc, so boxlength is 100 cMpc here
@@ -36,7 +36,7 @@ corr_type = ['g+', 'w']  # there are multiple choices here: [0]: g+, gg or both 
 L_subboxes = 3  # for jk errors -> 3^3 boxes
 rp_cut = None
 
-IA_Projected = MeasureIA(
+IA_Projected = MeasureIABase(
 	data_IA_projected,
 	simulation="TNG100",
 	num_bins_r=num_bins_r,

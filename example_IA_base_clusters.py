@@ -3,12 +3,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits
 from astropy.table import Table
-from src.measure_IA import MeasureIA
+from src.measure_IA_base import MeasureIABase
 from src.read_data import ReadData
 from src.plotting import *
 
 file_path_randoms = ""
-file_path_clusters = ""
+file_path_clusters = "/shared-scratch/Kasper/"
 file_path_jk = ""
 fig_path = ""
 
@@ -106,7 +106,7 @@ for i, zsel in enumerate([selection_z1, selection_z2, selection_z3]):
 						"e2": e2[selection_shape]}
 			print(
 				f"Dataset name: {dataset_name}, with {sum(selection_shape)} clusters in the shape sample and {sum(selection_pos)} clusters in the position sample.")
-			IA_Projected = MeasureIA(
+			IA_Projected = MeasureIABase(
 				data,
 				simulation=False,
 				num_bins_r=num_bins_r,
@@ -158,7 +158,7 @@ for i, zsel in enumerate([selection_z1, selection_z2, selection_z3]):
 		dataset_name = f"{z_names[i]}_{lam_names[j]}"  # name of output
 		dataset_names.append(dataset_name)
 
-		IA_Projected = MeasureIA(
+		IA_Projected = MeasureIABase(
 			None,
 			simulation=False,
 			num_bins_r=num_bins_r,
@@ -203,8 +203,8 @@ labels = [r"$\lambda\leq28, \\ 0.08<z\leq0.16$", r"$28<\lambda\leq40.5, \\ 0.08<
 		  r"$\lambda\leq28, \\ 0.35<z\leq0.6$", r"$28<\lambda\leq40.5, \\ 0.35<z\leq0.6$",
 		  r"$\lambda>40.5, \\ 0.35<z\leq0.6$"]
 for i, ax in enumerate(axes):
-	data = wg_group[dataset_names[i]][:] * h
-	randoms = wg_group[dataset_names[i] + "_randoms"][:] * h
+	data = wg_group[dataset_names[i]][:] * h  # S+D/DD
+	randoms = wg_group[dataset_names[i] + "_randoms"][:] * h  # S+R/DR
 	rp = wg_group[dataset_names[i] + "_rp"][:] * h
 	err = wg_group[dataset_names[i] + "_jackknife_45"][:] * h * rp
 	ax.errorbar(rp, -(data - randoms) * rp, yerr=err, fmt='o')
