@@ -281,16 +281,33 @@ class MeasureIA(MeasureIABase):
 		data = self.data  # temporary save so it can be restored at the end of the calculation
 		self.randoms_data = randoms_data
 		self.data_dir = self.data
+
 		dataset_names = [dataset_name, f"{dataset_name}_randoms"]
 		jk_names = ["position", "randoms"]
 
 		# more elaborate to include other types of estimators. Compute all elements, then overwrite the correlation with the correct combination
 		for i, self.data in enumerate([self.data_dir, self.randoms_data]):
+			try:
+				weight = self.data["weight"]
+			except:
+				self.data["weight"] = np.ones(len(self.data["RA"]))
+			try:
+				weight = self.data["weight_shape_sample"]
+			except:
+				self.data["weight_shape_sample"] = np.ones(len(self.data["RA_shape_sample"]))
 			self.measure_projected_correlation_obs_clusters(masks=masks, dataset_name=dataset_names[i], over_h=over_h,
 															cosmology=cosmology)
 			self.measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
 		if calc_errors:
 			for i, self.data in enumerate([self.data_dir, self.randoms_data]):
+				try:
+					weight = self.data["weight"]
+				except:
+					self.data["weight"] = np.ones(len(self.data["RA"]))
+				try:
+					weight = self.data["weight_shape_sample"]
+				except:
+					self.data["weight_shape_sample"] = np.ones(len(self.data["RA_shape_sample"]))
 				if self.num_nodes == 1:
 					self.measure_jackknife_realisations_obs(patches_pos=jk_patches[jk_names[i]],
 															patches_shape=jk_patches["shape"],

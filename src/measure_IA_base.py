@@ -86,6 +86,15 @@ class MeasureIABase(SimInfo):
 				self.Num_position = 0
 				self.Num_shape = 0
 				print("Warning: no Postion or Position_shape_sample given.")
+		if self.Num_position > 0:
+			try:
+				weight = self.data["weight"]
+			except:
+				self.data["weight"] = np.ones(self.Num_position)
+			try:
+				weight = self.data["weight_shape_sample"]
+			except:
+				self.data["weight_shape_sample"] = np.ones(self.Num_shape)
 		self.separation_min = separation_limits[0]  # cMpc/h
 		self.separation_max = separation_limits[1]  # cMpc/h
 		self.num_bins_r = num_bins_r
@@ -290,6 +299,8 @@ class MeasureIABase(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"]
+			weight = self.data["weight"]
+			weight_shape = self.data["weight_shape_sample"]
 		else:
 			positions = self.data["Position"][masks["Position"]]
 			positions_shape_sample = self.data["Position_shape_sample"][masks["Position_shape_sample"]]
@@ -297,6 +308,8 @@ class MeasureIABase(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][masks["q"]]
+			weight = self.data["weight"][masks["weight"]]
+			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		Num_position = len(positions)
 		Num_shape = len(positions_shape_sample)
 		if print_num:
@@ -350,9 +363,9 @@ class MeasureIABase(SimInfo):
 			)  # need length of LOS, so only positive values
 			del LOS
 			ind_pi = np.array(ind_pi, dtype=int)
-			np.add.at(Splus_D, (ind_r, ind_pi), e_plus[mask] / (2 * R))
-			np.add.at(Scross_D, (ind_r, ind_pi), e_cross[mask] / (2 * R))
-			np.add.at(variance, (ind_r, ind_pi), (e_plus[mask] / (2 * R)) ** 2)
+			np.add.at(Splus_D, (ind_r, ind_pi), (weight[n] * weight_shape[mask] * e_plus[mask]) / (2 * R))
+			np.add.at(Scross_D, (ind_r, ind_pi), (weight[n] * weight_shape[mask] * e_cross[mask]) / (2 * R))
+			np.add.at(variance, (ind_r, ind_pi), ((weight[n] * weight_shape[mask] * e_plus[mask]) / (2 * R)) ** 2)
 			del e_plus, e_cross, mask
 			np.add.at(DD, (ind_r, ind_pi), 1.0)
 
@@ -446,6 +459,8 @@ class MeasureIABase(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"]
+			weight = self.data["weight"]
+			weight_shape = self.data["weight_shape_sample"]
 		else:
 			positions = self.data["Position"][masks["Position"]]
 			positions_shape_sample = self.data["Position_shape_sample"][masks["Position_shape_sample"]]
@@ -453,6 +468,8 @@ class MeasureIABase(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][masks["q"]]
+			weight = self.data["weight"][masks["weight"]]
+			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		# masking changes the number of galaxies
 		Num_position = len(positions)  # number of halos in position sample
 		Num_shape = len(positions_shape_sample)  # number of halos in shape sample
@@ -490,6 +507,7 @@ class MeasureIABase(SimInfo):
 			positions_shape_sample_i = positions_shape_sample[i:i2]
 			axis_direction_i = axis_direction[i:i2]
 			e_i = e[i:i2]
+			weight_shape_i = weight_shape[i:i2]
 			if tree_input != None:
 				ind_rbin = pickle.load(tree_file)
 				indices_shape_i = indices_shape[(indices_shape >= i) * (indices_shape < i2)] - i
@@ -497,6 +515,7 @@ class MeasureIABase(SimInfo):
 				positions_shape_sample_i = positions_shape_sample_i[indices_shape_i]
 				axis_direction_i = axis_direction_i[indices_shape_i]
 				e_i = e_i[indices_shape_i]
+				weight_shape_i = weight_shape_i[indices_shape_i]
 			else:
 				shape_tree = KDTree(positions_shape_sample_i[:, not_LOS], boxsize=self.boxsize)
 				ind_min_i = shape_tree.query_ball_tree(pos_tree, self.separation_min)
@@ -537,10 +556,11 @@ class MeasureIABase(SimInfo):
 						LOS[mask] / sub_box_len_pi - self.pi_bins[0] / sub_box_len_pi
 					)  # need length of LOS, so only positive values
 					ind_pi = np.array(ind_pi, dtype=int)
-					np.add.at(Splus_D, (ind_r, ind_pi), e_plus[mask] / (2 * R))
-					np.add.at(Scross_D, (ind_r, ind_pi), e_cross[mask] / (2 * R))
+					np.add.at(Splus_D, (ind_r, ind_pi),
+							  (weight[ind_rbin_i[n]][mask] * weight_shape_i[n] * e_plus[mask]) / (2 * R))
+					np.add.at(Scross_D, (ind_r, ind_pi),
+							  (weight[ind_rbin_i[n]][mask] * weight_shape_i[n] * e_cross[mask]) / (2 * R))
 					del e_plus, e_cross, separation_len, mask
-					# np.add.at(variance, (ind_r, ind_pi), (e_plus[mask] / (2 * R)) ** 2)
 					np.add.at(DD, (ind_r, ind_pi), 1.0)
 		if tree_input != None:
 			tree_file.close()
@@ -605,6 +625,7 @@ class MeasureIABase(SimInfo):
 			positions_shape_sample_i = self.positions_shape_sample[i:i2]
 			axis_direction_i = self.axis_direction[i:i2]
 			e_i = self.e[i:i2]
+			weight_shape_i = self.weight_shape[i:i2]
 
 			shape_tree = KDTree(positions_shape_sample_i[:, self.not_LOS], boxsize=self.boxsize)
 			ind_min_i = shape_tree.query_ball_tree(self.pos_tree, self.separation_min)
@@ -642,8 +663,10 @@ class MeasureIABase(SimInfo):
 						LOS[mask] / self.sub_box_len_pi - self.pi_bins[0] / self.sub_box_len_pi
 					)  # need length of LOS, so only positive values
 					ind_pi = np.array(ind_pi, dtype=int)
-					np.add.at(Splus_D, (ind_r, ind_pi), e_plus[mask] / (2 * self.R))
-					np.add.at(Scross_D, (ind_r, ind_pi), e_cross[mask] / (2 * self.R))
+					np.add.at(Splus_D, (ind_r, ind_pi),
+							  (self.weight[ind_rbin_i[n]][mask] * weight_shape_i[n] * e_plus[mask]) / (2 * self.R))
+					np.add.at(Scross_D, (ind_r, ind_pi),
+							  (self.weight[ind_rbin_i[n]][mask] * weight_shape_i[n] * e_cross[mask]) / (2 * self.R))
 					del e_plus, e_cross, separation_len, mask
 					# np.add.at(variance, (ind_r, ind_pi), (e_plus[mask] / (2 * R)) ** 2)
 					np.add.at(DD, (ind_r, ind_pi), 1.0)
@@ -671,6 +694,8 @@ class MeasureIABase(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			self.axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"]
+			self.weight = self.data["weight"]
+			self.weight_shape = self.data["weight_shape_sample"]
 		else:
 			self.positions = self.data["Position"][masks["Position"]]
 			self.positions_shape_sample = self.data["Position_shape_sample"][masks["Position_shape_sample"]]
@@ -678,6 +703,8 @@ class MeasureIABase(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			self.axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][masks["q"]]
+			self.weight = self.data["weight"][masks["weight"]]
+			self.weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		# masking changes the number of galaxies
 		Num_position = len(self.positions)  # number of halos in position sample
 		Num_shape = len(self.positions_shape_sample)  # number of halos in shape sample
@@ -819,6 +846,8 @@ class MeasureIABase(SimInfo):
 				q = self.data["q"]
 			except:
 				e1, e2 = self.data["e1"], self.data["e2"]
+			weight = self.data["weight"]
+			weight_shape = self.data["weight_shape_sample"]
 		else:
 			positions = self.data["Position"][masks["Position"]]
 			positions_shape_sample = self.data["Position_shape_sample"][masks["Position_shape_sample"]]
@@ -829,6 +858,8 @@ class MeasureIABase(SimInfo):
 				q = self.data["q"][masks["q"]]
 			except:
 				e1, e2 = self.data["e1"][masks["e1"]], self.data["e2"][masks["e2"]]
+			weight = self.data["weight"][masks["weight"]]
+			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		Num_position = len(positions)
 		Num_shape = len(positions_shape_sample)
 		if print_num:
@@ -963,6 +994,8 @@ class MeasureIABase(SimInfo):
 			DEC_shape_sample = self.data["DEC_shape_sample"]
 			e1 = self.data["e1"]
 			e2 = self.data["e2"]
+			weight = self.data["weight"]
+			weight_shape = self.data["weight_shape_sample"]
 		else:
 			redshift = self.data["Redshift"][masks["Redshift"]]
 			redshift_shape_sample = self.data["Redshift_shape_sample"][masks["Redshift_shape_sample"]]
@@ -972,6 +1005,8 @@ class MeasureIABase(SimInfo):
 			DEC_shape_sample = self.data["DEC_shape_sample"][masks["DEC_shape_sample"]]
 			e1 = self.data["e1"][masks["e1"]]
 			e2 = self.data["e2"][masks["e2"]]
+			weight = self.data["weight"][masks["weight"]]
+			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		Num_position = len(RA)
 		Num_shape = len(RA_shape_sample)
 		if print_num:
@@ -1037,8 +1072,8 @@ class MeasureIABase(SimInfo):
 			)  # need length of LOS, so only positive values
 			del LOS
 			ind_pi = np.array(ind_pi, dtype=int)
-			np.add.at(Splus_D, (ind_r, ind_pi), e_plus[mask])
-			np.add.at(Scross_D, (ind_r, ind_pi), e_cross[mask])
+			np.add.at(Splus_D, (ind_r, ind_pi), (weight[n] * weight_shape[mask] * e_plus[mask]) / (2 * R))
+			np.add.at(Scross_D, (ind_r, ind_pi), (weight[n] * weight_shape[mask] * e_cross[mask]) / (2 * R))
 			del e_plus, e_cross, mask
 			np.add.at(DD, (ind_r, ind_pi), 1.0)
 
@@ -1168,6 +1203,8 @@ class MeasureIABase(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"]
+			weight = self.data["weight"]
+			weight_shape = self.data["weight_shape_sample"]
 		else:
 			positions = self.data["Position"][masks["Position"]]
 			positions_shape_sample = self.data["Position_shape_sample"][masks["Position_shape_sample"]]
@@ -1175,6 +1212,8 @@ class MeasureIABase(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][masks["q"]]
+			weight = self.data["weight"][masks["weight"]]
+			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		Num_position = len(positions)
 		Num_shape = len(positions_shape_sample)
 		if print_num:
@@ -1233,8 +1272,8 @@ class MeasureIABase(SimInfo):
 			)  # need length of LOS, so only positive values
 			ind_mu_r = np.array(ind_mu_r, dtype=int)
 
-			np.add.at(Splus_D, (ind_r, ind_mu_r), e_plus[mask] / (2 * R))
-			np.add.at(Scross_D, (ind_r, ind_mu_r), e_cross[mask] / (2 * R))
+			np.add.at(Splus_D, (ind_r, ind_mu_r), (weight[n] * weight_shape[mask] * e_plus[mask]) / (2 * R))
+			np.add.at(Scross_D, (ind_r, ind_mu_r), (weight[n] * weight_shape[mask] * e_cross[mask]) / (2 * R))
 			del e_plus, e_cross, mask, mu_r
 			np.add.at(DD, (ind_r, ind_mu_r), 1.0)
 
@@ -1307,6 +1346,8 @@ class MeasureIABase(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"]
+			weight = self.data["weight"]
+			weight_shape = self.data["weight_shape_sample"]
 		else:
 			positions = self.data["Position"][masks["Position"]]
 			positions_shape_sample = self.data["Position_shape_sample"][masks["Position_shape_sample"]]
@@ -1314,6 +1355,8 @@ class MeasureIABase(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][masks["q"]]
+			weight = self.data["weight"][masks["weight"]]
+			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		# masking changes the number of galaxies
 		Num_position = len(positions)  # number of halos in position sample
 		Num_shape = len(positions_shape_sample)  # number of halos in shape sample
@@ -1353,6 +1396,7 @@ class MeasureIABase(SimInfo):
 			positions_shape_sample_i = positions_shape_sample[i:i2]
 			axis_direction_i = axis_direction[i:i2]
 			e_i = e[i:i2]
+			weight_shape_i = weight_shape[i:i2]
 
 			if tree_input != None:
 				ind_rbin = pickle.load(tree_file)
@@ -1361,6 +1405,7 @@ class MeasureIABase(SimInfo):
 				positions_shape_sample_i = positions_shape_sample_i[indices_shape_i]
 				axis_direction_i = axis_direction_i[indices_shape_i]
 				e_i = e_i[indices_shape_i]
+				weight_shape_i = weight_shape_i[indices_shape_i]
 			else:
 				shape_tree = KDTree(positions_shape_sample_i, boxsize=self.boxsize)
 				ind_min_i = shape_tree.query_ball_tree(pos_tree, self.separation_min)
@@ -1409,8 +1454,10 @@ class MeasureIABase(SimInfo):
 						mu_r[mask] / sub_box_len_mu_r - self.bins_mu_r[0] / sub_box_len_mu_r
 					)  # need length of LOS, so only positive values
 					ind_mu_r = np.array(ind_mu_r, dtype=int)
-					np.add.at(Splus_D, (ind_r, ind_mu_r), e_plus[mask] / (2 * R))
-					np.add.at(Scross_D, (ind_r, ind_mu_r), e_cross[mask] / (2 * R))
+					np.add.at(Splus_D, (ind_r, ind_mu_r),
+							  (weight[ind_rbin_i[n]][mask] * weight_shape_i[n] * e_plus[mask]) / (2 * R))
+					np.add.at(Scross_D, (ind_r, ind_mu_r),
+							  (weight[ind_rbin_i[n]][mask] * weight_shape_i[n] * e_cross[mask]) / (2 * R))
 					np.add.at(DD, (ind_r, ind_mu_r), 1.0)
 					del e_plus, e_cross, mask, separation_len
 		if tree_input != None:
@@ -1473,6 +1520,7 @@ class MeasureIABase(SimInfo):
 			positions_shape_sample_i = self.positions_shape_sample[i:i2]
 			axis_direction_i = self.axis_direction[i:i2]
 			e_i = self.e[i:i2]
+			weight_shape_i = self.weight_shape[i:i2]
 
 			shape_tree = KDTree(positions_shape_sample_i, boxsize=self.boxsize)
 			ind_min_i = shape_tree.query_ball_tree(self.pos_tree, self.separation_min)
@@ -1518,8 +1566,10 @@ class MeasureIABase(SimInfo):
 						mu_r[mask] / self.sub_box_len_mu_r - self.bins_mu_r[0] / self.sub_box_len_mu_r
 					)  # need length of LOS, so only positive values
 					ind_mu_r = np.array(ind_mu_r, dtype=int)
-					np.add.at(Splus_D, (ind_r, ind_mu_r), e_plus[mask] / (2 * self.R))
-					np.add.at(Scross_D, (ind_r, ind_mu_r), e_cross[mask] / (2 * self.R))
+					np.add.at(Splus_D, (ind_r, ind_mu_r),
+							  (self.weight[ind_rbin_i[n]][mask] * weight_shape_i[n] * e_plus[mask]) / (2 * self.R))
+					np.add.at(Scross_D, (ind_r, ind_mu_r),
+							  (self.weight[ind_rbin_i[n]][mask] * weight_shape_i[n] * e_cross[mask]) / (2 * self.R))
 					np.add.at(DD, (ind_r, ind_mu_r), 1.0)
 					del e_plus, e_cross, mask, separation_len
 		return Splus_D, Scross_D, DD
@@ -1545,6 +1595,8 @@ class MeasureIABase(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			self.axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"]
+			self.weight = self.data["weight"]
+			self.weight_shape = self.data["weight_shape_sample"]
 		else:
 			self.positions = self.data["Position"][masks["Position"]]
 			self.positions_shape_sample = self.data["Position_shape_sample"][masks["Position_shape_sample"]]
@@ -1552,6 +1604,8 @@ class MeasureIABase(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			self.axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][masks["q"]]
+			weight = self.data["weight"][masks["weight"]]
+			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		# masking changes the number of galaxies
 		Num_position = len(self.positions)  # number of halos in position sample
 		Num_shape = len(self.positions_shape_sample)  # number of halos in shape sample
@@ -1661,6 +1715,8 @@ class MeasureIABase(SimInfo):
 			DEC_shape_sample = self.data["DEC_shape_sample"]
 			e1 = self.data["e1"]
 			e2 = self.data["e2"]
+			weight = self.data["weight"]
+			weight_shape = self.data["weight_shape_sample"]
 		else:
 			redshift = self.data["Redshift"][masks["Redshift"]]
 			redshift_shape_sample = self.data["Redshift_shape_sample"][masks["Redshift_shape_sample"]]
@@ -1670,6 +1726,8 @@ class MeasureIABase(SimInfo):
 			DEC_shape_sample = self.data["DEC_shape_sample"][masks["DEC_shape_sample"]]
 			e1 = self.data["e1"][masks["e1"]]
 			e2 = self.data["e2"][masks["e2"]]
+			weight = self.data["weight"][masks["weight"]]
+			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		Num_position = len(RA)
 		Num_shape = len(RA_shape_sample)
 		if print_num:
@@ -1743,8 +1801,8 @@ class MeasureIABase(SimInfo):
 			)  # need length of LOS, so only positive values
 			ind_mu_r = np.array(ind_mu_r, dtype=int)
 			del LOS
-			np.add.at(Splus_D, (ind_r, ind_mu_r), e_plus[mask])
-			np.add.at(Scross_D, (ind_r, ind_mu_r), e_cross[mask])
+			np.add.at(Splus_D, (ind_r, ind_mu_r), (weight[n] * weight_shape[mask] * e_plus[mask]) / (2 * R))
+			np.add.at(Scross_D, (ind_r, ind_mu_r), (weight[n] * weight_shape[mask] * e_cross[mask]) / (2 * R))
 			del e_plus, e_cross, mask
 			np.add.at(DD, (ind_r, ind_mu_r), 1.0)
 
@@ -1977,6 +2035,8 @@ class MeasureIABase(SimInfo):
 								"Position_shape_sample": masks["Position_shape_sample"],
 								"Axis_Direction": masks["Position_shape_sample"],
 								"q": masks["Position_shape_sample"],
+								"weight": masks["Position"],
+								"weight_shape_sample": masks["Position_shape_sample"],
 							}
 						else:
 							indices_shape = np.where(mask_shape)[0]
@@ -1995,6 +2055,8 @@ class MeasureIABase(SimInfo):
 							"Position_shape_sample": mask_shape,
 							"Axis_Direction": mask_shape,
 							"q": mask_shape,
+							"weight": mask_position,
+							"weight_shape_sample": mask_shape,
 						}
 					if corr_type[1] == "multipoles":
 						if num_nodes == None:
@@ -2168,6 +2230,8 @@ class MeasureIABase(SimInfo):
 								"Position_shape_sample": masks["Position_shape_sample"],
 								"Axis_Direction": masks["Position_shape_sample"],
 								"q": masks["Position_shape_sample"],
+								"weight": masks["Position"],
+								"weight_shape_sample": masks["Position_shape_sample"],
 							}
 						else:
 							indices_shape = np.where(mask_shape)[0]
@@ -2185,6 +2249,8 @@ class MeasureIABase(SimInfo):
 							"Position_shape_sample": mask_shape,
 							"Axis_Direction": mask_shape,
 							"q": mask_shape,
+							"weight": mask_position,
+							"weight_shape_sample": mask_shape,
 						}
 					if corr_type[1] == "multipoles":
 						tree_args.append(tree_input)
@@ -2385,6 +2451,8 @@ class MeasureIABase(SimInfo):
 				"DEC_shape_sample": mask_shape,
 				"e1": mask_shape,
 				"e2": mask_shape,
+				"weight": mask_position,
+				"weight_shape_sample": mask_shape,
 			}
 			if corr_type[1] == "multipoles":
 				self.measure_projected_correlation_multipoles_obs_clusters(
@@ -2538,6 +2606,8 @@ class MeasureIABase(SimInfo):
 				"DEC_shape_sample": mask_shape,
 				"e1": mask_shape,
 				"e2": mask_shape,
+				"weight": mask_position,
+				"weight_shape_sample": mask_shape,
 			}
 			if corr_type[1] == "multipoles":
 				args_xi_g_plus.append(
