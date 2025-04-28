@@ -116,7 +116,7 @@ class MeasureIA(MeasureIABase):
 				self.measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
 				if calc_errors:
 					self.measure_jackknife_errors(masks=masks, corr_type=[corr_type, "w"],
-												  dataset_name=dataset_name, L_subboxes=L, rp_cut=None, tree=True,
+												  dataset_name=dataset_name, L_subboxes=L, rp_cut=None,
 												  tree_saved=True, file_tree_path=file_tree_path,
 												  remove_tree_file=remove_tree_file)
 			else:
@@ -211,7 +211,7 @@ class MeasureIA(MeasureIABase):
 				self.measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
 				if calc_errors:
 					self.measure_jackknife_errors(masks=masks, corr_type=[corr_type, "multipoles"],
-												  dataset_name=dataset_name, L_subboxes=L, rp_cut=rp_cut, tree=True,
+												  dataset_name=dataset_name, L_subboxes=L, rp_cut=rp_cut,
 												  tree_saved=True, file_tree_path=file_tree_path,
 												  remove_tree_file=remove_tree_file)
 			else:
