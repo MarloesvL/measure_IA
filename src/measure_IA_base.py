@@ -1108,6 +1108,102 @@ class MeasureIABase(SimInfo):
 		else:
 			return Splus_D, DD, separation_bins, pi_bins
 
+	def count_pairs_xi_grid_w(self, masks=None, dataset_name="All_galaxies", return_output=False,
+							  print_num=True, over_h=True, cosmology=None, data_suffix="_DD"
+							  ):
+		"""
+		Measures the projected clustering (xi_gg) for given coordinates of the position and shape sample
+		(Position, Position_shape_sample) and the index of the direction of the line of sight (LOS=2 for z axis).
+		Positions are assumed to be given in cMpc/h.
+		:param masks: the masks for the data to select only part of the data
+		:param dataset_name: the dataset name given in the hdf5 file.
+		:param return_output: Output is returned if True, saved to file if False.
+		:return: xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
+		"""
+
+		if masks == None:
+			redshift = self.data["Redshift"]
+			redshift_shape_sample = self.data["Redshift_shape_sample"]
+			RA = self.data["RA"]
+			RA_shape_sample = self.data["RA_shape_sample"]
+			DEC = self.data["DEC"]
+			DEC_shape_sample = self.data["DEC_shape_sample"]
+		else:
+			redshift = self.data["Redshift"][masks["Redshift"]]
+			redshift_shape_sample = self.data["Redshift_shape_sample"][masks["Redshift_shape_sample"]]
+			RA = self.data["RA"][masks["RA"]]
+			RA_shape_sample = self.data["RA_shape_sample"][masks["RA_shape_sample"]]
+			DEC = self.data["DEC"][masks["DEC"]]
+			DEC_shape_sample = self.data["DEC_shape_sample"][masks["DEC_shape_sample"]]
+		Num_position = len(RA)
+		Num_shape = len(RA_shape_sample)
+		if print_num:
+			print(
+				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
+
+		sub_box_len_logrp = (np.log10(self.separation_max) - np.log10(self.separation_min)) / self.num_bins_r
+		sub_box_len_pi = (self.pi_bins[-1] - self.pi_bins[0]) / self.num_bins_pi
+		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		if cosmology == None:
+			cosmology = ccl.Cosmology(Omega_c=0.225, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.0)
+			if print_num:
+				print("No cosmology given, using Omega_m=0.27, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.")
+		h = cosmology["h"]
+
+		LOS_all = ccl.comoving_radial_distance(cosmology, 1 / (1 + redshift))
+		LOS_all_shape_sample = ccl.comoving_radial_distance(cosmology, 1 / (1 + redshift_shape_sample))
+		if over_h:
+			LOS_all *= h
+			LOS_all_shape_sample *= h
+
+		for n in np.arange(0, len(RA)):
+			# for Splus_D (calculate ellipticities around position sample)
+			LOS = LOS_all_shape_sample - LOS_all[n]
+			dra = (RA_shape_sample - RA[n]) / 180 * np.pi
+			ddec = (DEC_shape_sample - DEC[n]) / 180 * np.pi
+			dx = dra * LOS_all[n] * np.cos(DEC[n] / 180 * np.pi)
+			dy = ddec * LOS_all[n]
+			projected_sep = np.array([dx, dy])
+			if over_h:
+				projected_sep *= h
+			separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=0))
+
+			# get the indices for the binning
+			mask = (separation_len >= self.bin_edges[0]) * (separation_len < self.bin_edges[-1]) * (
+					LOS >= self.pi_bins[0]) * (LOS < self.pi_bins[-1])
+			ind_r = np.floor(
+				np.log10(separation_len[mask]) / sub_box_len_logrp - np.log10(self.bin_edges[0]) / sub_box_len_logrp
+			)
+			del separation_len
+			ind_r = np.array(ind_r, dtype=int)
+			ind_pi = np.floor(
+				LOS[mask] / sub_box_len_pi - self.pi_bins[0] / sub_box_len_pi
+			)  # need length of LOS, so only positive values
+			del LOS
+			ind_pi = np.array(ind_pi, dtype=int)
+			np.add.at(DD, (ind_r, ind_pi), 1.0)
+
+		# if Num_position == Num_shape:
+		# 	DD = DD / 2.0  # auto correlation, all pairs are double
+
+		DD[np.where(DD == 0)] = 1
+
+		dsep = (self.bin_edges[1:] - self.bin_edges[:-1]) / 2.0
+		separation_bins = self.bin_edges[:-1] + abs(dsep)  # middle of bins
+		dpi = (self.pi_bins[1:] - self.pi_bins[:-1]) / 2.0
+		pi_bins = self.pi_bins[:-1] + abs(dpi)  # middle of bins
+
+		if (self.output_file_name != None) and (return_output == False):
+			output_file = h5py.File(self.output_file_name, "a")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_gg")
+			write_dataset_hdf5(group, dataset_name + data_suffix, data=DD)
+			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
+			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
+			output_file.close()
+			return
+		else:
+			return DD, separation_bins, pi_bins
+
 	def measure_projected_correlation_save_pairs(self, output_file_pairs="", masks=None, dataset_name="All_galaxies",
 												 print_num=True):
 		"""
@@ -1837,6 +1933,112 @@ class MeasureIABase(SimInfo):
 		else:
 			return Splus_D, DD, separation_bins, mu_r_bins
 
+	def count_pairs_xi_grid_multipoles(self, masks=None, dataset_name="All_galaxies",
+									   return_output=False,
+									   print_num=True, over_h=True, cosmology=None, rp_cut=None,
+									   data_suffix="_DD"
+									   ):
+		"""
+		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
+		(Position, Position_shape_sample) and the index of the direction of the line of sight (LOS=2 for z axis).
+		Positions are assumed to be given in cMpc/h.
+		:param masks: the masks for the data to select only part of the data
+		:param dataset_name: the dataset name given in the hdf5 file.
+		:param return_output: Output is returned if True, saved to file if False.
+		:return: xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
+		"""
+
+		if masks == None:
+			redshift = self.data["Redshift"]
+			redshift_shape_sample = self.data["Redshift_shape_sample"]
+			RA = self.data["RA"]
+			RA_shape_sample = self.data["RA_shape_sample"]
+			DEC = self.data["DEC"]
+			DEC_shape_sample = self.data["DEC_shape_sample"]
+		else:
+			redshift = self.data["Redshift"][masks["Redshift"]]
+			redshift_shape_sample = self.data["Redshift_shape_sample"][masks["Redshift_shape_sample"]]
+			RA = self.data["RA"][masks["RA"]]
+			RA_shape_sample = self.data["RA_shape_sample"][masks["RA_shape_sample"]]
+			DEC = self.data["DEC"][masks["DEC"]]
+			DEC_shape_sample = self.data["DEC_shape_sample"][masks["DEC_shape_sample"]]
+		Num_position = len(RA)
+		Num_shape = len(RA_shape_sample)
+		if print_num:
+			print(
+				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
+		if rp_cut == None:
+			rp_cut = 0.0
+		sub_box_len_logr = (np.log10(self.separation_max) - np.log10(self.separation_min)) / self.num_bins_r
+		sub_box_len_mu_r = 2.0 / self.num_bins_pi
+		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		if cosmology == None:
+			cosmology = ccl.Cosmology(Omega_c=0.225, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.0)
+			if print_num:
+				print("No cosmology given, using Omega_m=0.27, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.")
+		h = cosmology["h"]
+
+		LOS_all = ccl.comoving_radial_distance(cosmology, 1 / (1 + redshift))
+		LOS_all_shape_sample = ccl.comoving_radial_distance(cosmology, 1 / (1 + redshift_shape_sample))
+		if over_h:
+			LOS_all *= h
+			LOS_all_shape_sample *= h
+
+		for n in np.arange(0, len(RA)):
+			# for Splus_D (calculate ellipticities around position sample)
+			LOS = LOS_all_shape_sample - LOS_all[n]
+			dra = (RA_shape_sample - RA[n]) / 180 * np.pi
+			ddec = (DEC_shape_sample - DEC[n]) / 180 * np.pi
+			dx = dra * LOS_all[n] * np.cos(DEC[n] / 180 * np.pi)
+			dy = ddec * LOS_all[n]
+			projected_sep = np.array([dx, dy])
+			separation = np.array([dx, dy, LOS])
+			if over_h:
+				projected_sep *= h
+			projected_separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=0))
+			separation_len = np.sqrt(np.sum(separation ** 2, axis=0))
+			separation_dir = (projected_sep / projected_separation_len)  # normalisation of rp
+			mu_r = LOS / separation_len
+
+			# get the indices for the binning
+			mask = (
+					(projected_separation_len > rp_cut)
+					* (separation_len >= self.bin_edges[0])
+					* (separation_len < self.bin_edges[-1])
+			)
+			ind_r = np.floor(
+				np.log10(separation_len[mask]) / sub_box_len_logr - np.log10(self.bin_edges[0]) / sub_box_len_logr
+			)
+			del separation_len, projected_separation_len
+			ind_r = np.array(ind_r, dtype=int)
+			ind_mu_r = np.floor(
+				mu_r[mask] / sub_box_len_mu_r - self.bins_mu_r[0] / sub_box_len_mu_r
+			)  # need length of LOS, so only positive values
+			ind_mu_r = np.array(ind_mu_r, dtype=int)
+			del LOS
+			np.add.at(DD, (ind_r, ind_mu_r), 1.0)
+
+		# if Num_position == Num_shape:
+		# 	DD = DD / 2.0  # auto correlation, all pairs are double
+
+		DD[np.where(DD == 0)] = 1
+
+		dsep = (self.bin_edges[1:] - self.bin_edges[:-1]) / 2.0
+		separation_bins = self.bin_edges[:-1] + abs(dsep)  # middle of bins
+		dmur = (self.bins_mu_r[1:] - self.bins_mu_r[:-1]) / 2.0
+		mu_r_bins = self.bins_mu_r[:-1] + abs(dmur)  # middle of bins
+
+		if (self.output_file_name != None) and (return_output == False):
+			output_file = h5py.File(self.output_file_name, "a")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/multipoles/xi_gg")
+			write_dataset_hdf5(group, dataset_name + data_suffix, data=DD)
+			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
+			write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
+			output_file.close()
+			return
+		else:
+			return DD, separation_bins, mu_r_bins
+
 	def measure_w_g_i(self, corr_type="both", dataset_name="All_galaxies", return_output=False):
 		"""
 		Measures w_gi for a given xi_gi dataset that has been calculated with the measure projected correlation
@@ -2479,6 +2681,14 @@ class MeasureIABase(SimInfo):
 		return
 
 	def obs_estimator(self, corr_type, IA_estimator, dataset_name, dataset_name_randoms):
+		'''
+		Reads various components of xi and combines into correct estimator for cluster or galaxy observational alignments
+		:param corr_type: w or multipoles
+		:param IA_estimator: clusters or galaxies
+		:param dataset_name: Name of the dataset
+		:param dataset_name_randoms: Name of the dataset for data with randoms as positions
+		:return:
+		'''
 		output_file = h5py.File(self.output_file_name, "a")
 		group = output_file[f"Snapshot_{self.snapshot}/{corr_type}/xi_g_plus"]  # /w/xi_g_plus/
 		SpD = group[f"{dataset_name}_SplusD"][:]
