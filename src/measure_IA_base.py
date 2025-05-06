@@ -1106,7 +1106,7 @@ class MeasureIABase(SimInfo):
 			output_file.close()
 			return
 		else:
-			return correlation, DD, separation_bins, pi_bins
+			return Splus_D, DD, separation_bins, pi_bins
 
 	def measure_projected_correlation_save_pairs(self, output_file_pairs="", masks=None, dataset_name="All_galaxies",
 												 print_num=True):
@@ -1835,7 +1835,7 @@ class MeasureIABase(SimInfo):
 			output_file.close()
 			return
 		else:
-			return correlation, DD, separation_bins, mu_r_bins
+			return Splus_D, DD, separation_bins, mu_r_bins
 
 	def measure_w_g_i(self, corr_type="both", dataset_name="All_galaxies", return_output=False):
 		"""
@@ -2427,6 +2427,7 @@ class MeasureIABase(SimInfo):
 			figname_dataset_name = figname_dataset_name.replace(".", "p")
 
 		min_patch, max_patch = int(min(patches_pos)), int(max(patches_pos))
+		num_patches = max_patch - min_patch + 1
 		if min(patches_shape) != min_patch:
 			print(
 				"Warning! Minimum patch number of shape sample is not equal to minimum patch number of position sample.")
@@ -2434,7 +2435,7 @@ class MeasureIABase(SimInfo):
 			print(
 				"Warning! Maximum patch number of shape sample is not equal to maximum patch number of position sample.")
 		print(
-			f"Calculating jackknife realisations for {max_patch} patches for {dataset_name}.")
+			f"Calculating jackknife realisations for {num_patches} patches for {dataset_name}.")
 
 		for i in np.arange(min_patch, max_patch + 1):
 			mask_position = (patches_pos != i)
@@ -2464,7 +2465,7 @@ class MeasureIABase(SimInfo):
 					cosmology=cosmology,
 				)
 
-				self.measure_multipoles(corr_type=corr_type[0], dataset_name=dataset_name + "_" + str(i))
+			# self.measure_multipoles(corr_type=corr_type[0], dataset_name=dataset_name + "_" + str(i))
 			else:
 				self.measure_projected_correlation_obs_clusters(
 					masks=masks_total,
@@ -2473,12 +2474,35 @@ class MeasureIABase(SimInfo):
 					over_h=over_h,
 					cosmology=cosmology,
 				)
-				self.measure_w_g_i(corr_type=corr_type[0], dataset_name=dataset_name + "_" + str(i))
+		# self.measure_w_g_i(corr_type=corr_type[0], dataset_name=dataset_name + "_" + str(i))
 
 		return
 
+	def obs_estimator(self, corr_type, IA_estimator, dataset_name, dataset_name_randoms):
+		output_file = h5py.File(self.output_file_name, "a")
+		group = output_file[f"Snapshot_{self.snapshot}/{corr_type}/xi_g_plus"]  # /w/xi_g_plus/
+		SpD = group[f"{dataset_name}_SplusD"][:]
+		SpR = group[f"{dataset_name_randoms}_SplusD"][:]
+		group = output_file[f"Snapshot_{self.snapshot}/{corr_type}/xi_gg"]
+		DD = group[f"{dataset_name}_DD"][:]
+		SR = group[f"{dataset_name_randoms}_DD"][:]
+
+		if IA_estimator == "clusters":
+			correlation_gp = SpD / DD - SpR / SR
+			# correlation_gg = (DS - DR - SR)/RR - 1
+			group = output_file[f"Snapshot_{self.snapshot}/{corr_type}/xi_g_plus"]
+			write_dataset_hdf5(group, dataset_name, correlation_gp)
+		elif IA_estimator == "galaxies":
+			RR = []
+			correlation_gp = (SpD - SpR) / RR
+		# correlation_gg = (DS - DR - SR) / RR - 1
+		else:
+			raise ValueError("Unknown input for IA_estimator, choose from [clusters, galaxies].")
+		output_file.close()
+		return
+
 	def measure_jackknife_errors_obs(
-			self, max_patch, min_patch=1, corr_type=["both", "multipoles"], dataset_name="All_galaxies",
+			self, IA_estimator, max_patch, min_patch=1, corr_type=["both", "multipoles"], dataset_name="All_galaxies",
 			randoms_suf="_randoms"
 	):
 		"""
@@ -2510,22 +2534,27 @@ class MeasureIABase(SimInfo):
 
 		covs, stds = [], []
 		for d in np.arange(0, len(data)):
+			for b in np.arange(min_patch, max_patch + 1):
+				self.obs_estimator(corr_type[1], IA_estimator, f"{dataset_name}_{b}",
+								   f"{dataset_name}{randoms_suf}_{b}")
+				if "w" in data[d]:
+					self.measure_w_g_i(corr_type=corr_type[0], dataset_name=f"{dataset_name}_{b}")
+				else:
+					self.measure_multipoles(corr_type=corr_type[0], dataset_name=f"{dataset_name}_{b}")
+
 			data_file = h5py.File(self.output_file_name, "a")
 			group_multipoles = data_file[f"Snapshot_{self.snapshot}/" + data[d]]
 			# calculating mean of the datavectors
 			mean_multipoles = np.zeros(self.num_bins_r)
 			for b in np.arange(min_patch, max_patch + 1):
-				mean_multipoles += (group_multipoles[f"{dataset_name}_{b}"][:] - group_multipoles[
-																					 f"{dataset_name}{randoms_suf}_{b}"][
-																				 :])
+				mean_multipoles += group_multipoles[f"{dataset_name}_{b}"][:]
 			mean_multipoles /= num_patches
 
 			# calculation the covariance matrix (multipoles) and the standard deviation (sqrt of diag of cov)
 			cov = np.zeros((self.num_bins_r, self.num_bins_r))
 			std = np.zeros(self.num_bins_r)
 			for b in np.arange(min_patch, max_patch + 1):
-				correlation = group_multipoles[f"{dataset_name}_{b}"][:] - group_multipoles[
-																			   f"{dataset_name}{randoms_suf}_{b}"][:]
+				correlation = group_multipoles[f"{dataset_name}_{b}"][:]
 				std += (correlation - mean_multipoles) ** 2
 				for i in np.arange(self.num_bins_r):
 					cov[:, i] += (correlation - mean_multipoles) * (correlation[i] - mean_multipoles[i])
@@ -2565,15 +2594,19 @@ class MeasureIABase(SimInfo):
 		:param corr_type: Array with two entries. For first choose from [gg, g+, both], for second from [w, multipoles]
 		:return:
 		"""
+		corr_type[0] = "both"
 		if corr_type[0] == "both":
 			data = [corr_type[1] + "_g_plus", corr_type[1] + "_gg"]
 			corr_type_suff = ["_g_plus", "_gg"]
+			xi_suff = ["SplusD", "DD"]
 		elif corr_type[0] == "g+":
 			data = [corr_type[1] + "_g_plus"]
 			corr_type_suff = ["_g_plus"]
+			xi_suff = ["SplusD"]
 		elif corr_type[0] == "gg":
 			data = [corr_type[1] + "_gg"]
 			corr_type_suff = ["_gg"]
+			xi_suff = ["DD"]
 		else:
 			raise KeyError("Unknown value for first entry of corr_type. Choose from [g+, gg, both]")
 		if corr_type[1] == "multipoles":
@@ -2632,10 +2665,10 @@ class MeasureIABase(SimInfo):
 						cosmology,
 					)
 				)
-			args_multipoles.append([corr_type[0], dataset_name + "_" + str(i)])
+		# args_multipoles.append([corr_type[0], dataset_name + "_" + str(i)])
 
 		args_xi_g_plus = np.array(args_xi_g_plus)
-		args_multipoles = np.array(args_multipoles)
+		# args_multipoles = np.array(args_multipoles)
 		multiproc_chuncks = np.array_split(np.arange(num_patches), np.ceil(num_patches / num_nodes))
 		for chunck in multiproc_chuncks:
 			chunck = np.array(chunck, dtype=int)
@@ -2667,7 +2700,8 @@ class MeasureIABase(SimInfo):
 					group_xigplus = create_group_hdf5(
 						output_file, f"Snapshot_{self.snapshot}/" + corr_type[1] + "/xi" + corr_type_suff[j]
 					)
-					write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i] + min_patch}", data=result[i][j])
+					write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i] + min_patch}_{xi_suff[j]}",
+									   data=result[i][j])
 					write_dataset_hdf5(
 						group_xigplus, f"{dataset_name}_{chunck[i] + min_patch}_{bin_var_names[0]}", data=result[i][2]
 					)
@@ -2677,11 +2711,11 @@ class MeasureIABase(SimInfo):
 			# write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i]}_sigmasq", data=result[i][3])
 			output_file.close()
 
-		for i in np.arange(0, num_patches):
-			if corr_type[1] == "multipoles":
-				self.measure_multipoles(corr_type=args_multipoles[i, 0], dataset_name=args_multipoles[i, 1])
-			else:
-				self.measure_w_g_i(corr_type=args_multipoles[i, 0], dataset_name=args_multipoles[i, 1])
+		# for i in np.arange(0, num_patches):
+		# 	if corr_type[1] == "multipoles":
+		# 		self.measure_multipoles(corr_type=args_multipoles[i, 0], dataset_name=args_multipoles[i, 1])
+		# 	else:
+		# 		self.measure_w_g_i(corr_type=args_multipoles[i, 0], dataset_name=args_multipoles[i, 1])
 		return
 
 	def measure_covariance_multiple_datasets(self, corr_type, dataset_names, num_box=3, return_output=False):

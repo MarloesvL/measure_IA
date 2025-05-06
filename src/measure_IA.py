@@ -1,4 +1,5 @@
 import sympy
+import numpy as np
 from src.measure_IA_base import MeasureIABase
 
 KPC_TO_KM = 3.086e16  # 1 kpc is 3.086e16 km
@@ -297,7 +298,10 @@ class MeasureIA(MeasureIABase):
 				self.data["weight_shape_sample"] = np.ones(len(self.data["RA_shape_sample"]))
 			self.measure_projected_correlation_obs_clusters(masks=masks, dataset_name=dataset_names[i], over_h=over_h,
 															cosmology=cosmology)
-			self.measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
+
+		self.obs_estimator("w", IA_estimator, dataset_name, f"{dataset_name}_randoms")
+		self.measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
+
 		if calc_errors:
 			for i, self.data in enumerate([self.data_dir, self.randoms_data]):
 				try:
@@ -322,7 +326,7 @@ class MeasureIA(MeasureIABase):
 																			num_nodes=self.num_nodes, over_h=over_h,
 																			cosmology=cosmology)
 			# rewrite method to be adaptable to all types of estimators
-			self.measure_jackknife_errors_obs(max_patch=max(jk_patches['shape']),
+			self.measure_jackknife_errors_obs(IA_estimator=IA_estimator, max_patch=max(jk_patches['shape']),
 											  min_patch=min(jk_patches["shape"]), corr_type=[corr_type, "w"],
 											  dataset_name=dataset_name, randoms_suf="_randoms")
 		self.data = data
@@ -382,7 +386,8 @@ class MeasureIA(MeasureIABase):
 			self.measure_projected_correlation_multipoles_obs_clusters(masks=masks, dataset_name=dataset_names[i],
 																	   over_h=over_h, rp_cut=rp_cut,
 																	   cosmology=cosmology)
-			self.measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
+		self.obs_estimator("multipoles", IA_estimator, dataset_name, f"{dataset_name}_randoms")
+		self.measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
 		if calc_errors:
 			for i, self.data in enumerate([self.data_dir, self.randoms_data]):
 				if self.num_nodes == 1:
@@ -400,7 +405,7 @@ class MeasureIA(MeasureIABase):
 																			rp_cut=rp_cut,
 																			cosmology=cosmology)
 		# rewrite method to be adaptable to all types of estimators
-		self.measure_jackknife_errors_obs(max_patch=max(jk_patches['shape']),
+		self.measure_jackknife_errors_obs(IA_estimator=IA_estimator, max_patch=max(jk_patches['shape']),
 										  min_patch=min(jk_patches["shape"]),
 										  corr_type=[corr_type, "multipoles"],
 										  dataset_name=dataset_name, randoms_suf="_randoms")
