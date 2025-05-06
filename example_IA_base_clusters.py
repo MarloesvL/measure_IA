@@ -168,11 +168,13 @@ for i, zsel in enumerate([selection_z1, selection_z2, selection_z3]):
 			output_file_name=data_path_out + file_name,
 		)
 		# wg+
-		IA_Projected.measure_jackknife_errors_obs(max_patch=max(jk_patches_shape), min_patch=min(jk_patches_shape),
+		IA_Projected.measure_jackknife_errors_obs("clusters", max_patch=max(jk_patches_shape),
+												  min_patch=min(jk_patches_shape),
 												  randoms_suf="_randoms", dataset_name=dataset_name,
 												  corr_type=["g+", "w"])
 		# multipoles
-		IA_Projected.measure_jackknife_errors_obs(max_patch=max(jk_patches_shape), min_patch=min(jk_patches_shape),
+		IA_Projected.measure_jackknife_errors_obs("clusters", max_patch=max(jk_patches_shape),
+												  min_patch=min(jk_patches_shape),
 												  randoms_suf="_randoms", dataset_name=dataset_name,
 												  corr_type=["g+", "multipoles"])
 
