@@ -1072,8 +1072,8 @@ class MeasureIABase(SimInfo):
 			)  # need length of LOS, so only positive values
 			del LOS
 			ind_pi = np.array(ind_pi, dtype=int)
-			np.add.at(Splus_D, (ind_r, ind_pi), (weight[n] * weight_shape[mask] * e_plus[mask]) / (2 * R))
-			np.add.at(Scross_D, (ind_r, ind_pi), (weight[n] * weight_shape[mask] * e_cross[mask]) / (2 * R))
+			np.add.at(Splus_D, (ind_r, ind_pi), (weight[n] * weight_shape[mask] * e_plus[mask]))
+			np.add.at(Scross_D, (ind_r, ind_pi), (weight[n] * weight_shape[mask] * e_cross[mask]))
 			del e_plus, e_cross, mask
 			np.add.at(DD, (ind_r, ind_pi), 1.0)
 
@@ -1801,8 +1801,8 @@ class MeasureIABase(SimInfo):
 			)  # need length of LOS, so only positive values
 			ind_mu_r = np.array(ind_mu_r, dtype=int)
 			del LOS
-			np.add.at(Splus_D, (ind_r, ind_mu_r), (weight[n] * weight_shape[mask] * e_plus[mask]) / (2 * R))
-			np.add.at(Scross_D, (ind_r, ind_mu_r), (weight[n] * weight_shape[mask] * e_cross[mask]) / (2 * R))
+			np.add.at(Splus_D, (ind_r, ind_mu_r), (weight[n] * weight_shape[mask] * e_plus[mask]))
+			np.add.at(Scross_D, (ind_r, ind_mu_r), (weight[n] * weight_shape[mask] * e_cross[mask]))
 			del e_plus, e_cross, mask
 			np.add.at(DD, (ind_r, ind_mu_r), 1.0)
 
