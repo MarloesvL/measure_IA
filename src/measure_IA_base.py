@@ -2690,22 +2690,31 @@ class MeasureIABase(SimInfo):
 		:return:
 		'''
 		output_file = h5py.File(self.output_file_name, "a")
-		group = output_file[f"Snapshot_{self.snapshot}/{corr_type}/xi_g_plus"]  # /w/xi_g_plus/
-		SpD = group[f"{dataset_name}_SplusD"][:]
-		SpR = group[f"{dataset_name_randoms}_SplusD"][:]
-		group = output_file[f"Snapshot_{self.snapshot}/{corr_type}/xi_gg"]
-		DD = group[f"{dataset_name}_DD"][:]
-		SR = group[f"{dataset_name_randoms}_DD"][:]
+		group_gp = output_file[f"Snapshot_{self.snapshot}/{corr_type[1]}/xi_g_plus"]  # /w/xi_g_plus/
+		SpD = group_gp[f"{dataset_name}_SplusD"][:]
+		SpR = group_gp[f"{dataset_name_randoms}_SplusD"][:]
+		group_gg = output_file[f"Snapshot_{self.snapshot}/{corr_type[1]}/xi_gg"]
+		DD = group_gg[f"{dataset_name}_DD"][:]
+		SR = group_gg[f"{dataset_name_randoms}_DD"][:]
 
 		if IA_estimator == "clusters":
-			correlation_gp = SpD / DD - SpR / SR
-			# correlation_gg = (DS - DR - SR)/RR - 1
-			group = output_file[f"Snapshot_{self.snapshot}/{corr_type}/xi_g_plus"]
-			write_dataset_hdf5(group, dataset_name, correlation_gp)
+			if corr_type == "g+" or corr_type == "both":
+				correlation_gp = SpD / DD - SpR / SR
+				write_dataset_hdf5(group_gp, dataset_name, correlation_gp)
+			if corr_type == "gg" or corr_type == "both":
+				DR = group_gg[f"{dataset_name}_DR"]
+				RR = group_gg[f"{dataset_name}_RR"]
+				correlation_gg = (DD - DR - SR) / RR - 1
+				write_dataset_hdf5(group_gg, dataset_name, correlation_gg)
 		elif IA_estimator == "galaxies":
-			RR = []
-			correlation_gp = (SpD - SpR) / RR
-		# correlation_gg = (DS - DR - SR) / RR - 1
+			RR = group_gg[f"{dataset_name}_RR"]
+			if corr_type == "g+" or corr_type == "both":
+				correlation_gp = (SpD - SpR) / RR
+				write_dataset_hdf5(group_gp, dataset_name, correlation_gp)
+			if corr_type == "gg" or corr_type == "both":
+				DR = group_gg[f"{dataset_name}_DR"]
+				correlation_gg = (DD - DR - SR) / RR - 1
+				write_dataset_hdf5(group_gg, dataset_name, correlation_gg)
 		else:
 			raise ValueError("Unknown input for IA_estimator, choose from [clusters, galaxies].")
 		output_file.close()
@@ -2745,7 +2754,7 @@ class MeasureIABase(SimInfo):
 		covs, stds = [], []
 		for d in np.arange(0, len(data)):
 			for b in np.arange(min_patch, max_patch + 1):
-				self.obs_estimator(corr_type[1], IA_estimator, f"{dataset_name}_{b}",
+				self.obs_estimator(corr_type, IA_estimator, f"{dataset_name}_{b}",
 								   f"{dataset_name}{randoms_suf}_{b}")
 				if "w" in data[d]:
 					self.measure_w_g_i(corr_type=corr_type[0], dataset_name=f"{dataset_name}_{b}")
