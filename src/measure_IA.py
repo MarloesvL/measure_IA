@@ -268,8 +268,6 @@ class MeasureIA(MeasureIABase):
 				exit()
 			else:
 				print("xi_g+ defined as (S+D - S+R)/RR, xi_gg as (SD - DR - SR)/RR - 1")
-				print("This method is not available yet.")
-				exit()
 				if masks != None and masks_randoms == None:
 					print("Warning, masks given for data vector but not for randoms.")
 		else:
@@ -281,7 +279,16 @@ class MeasureIA(MeasureIABase):
 		# expand to include methods with trees and internal multiproc
 		data = self.data  # temporary save so it can be restored at the end of the calculation
 		self.randoms_data = randoms_data
-		self.data_dir = self.data
+		self.randoms_data["RA_shape_sample"] = data["RA_shape_sample"]
+		self.randoms_data["DEC_shape_sample"] = data["DEC_shape_sample"]
+		self.randoms_data["Redshift_shape_sample"] = data["Redshift_shape_sample"]
+		self.randoms_data["e1"] = data["e1"]
+		self.randoms_data["e2"] = data["e2"]
+		try:
+			weight = self.randoms_data["weight_shape_sample"]
+		except:
+			self.randoms_data["weight_shape_sample"] = np.ones(len(self.randoms_data["RA_shape_sample"]))
+		self.data_dir = data
 
 		dataset_names = [dataset_name, f"{dataset_name}_randoms"]
 		jk_names = ["position", "randoms"]
@@ -298,8 +305,32 @@ class MeasureIA(MeasureIABase):
 				self.data["weight_shape_sample"] = np.ones(len(self.data["RA_shape_sample"]))
 			self.measure_projected_correlation_obs_clusters(masks=masks, dataset_name=dataset_names[i], over_h=over_h,
 															cosmology=cosmology)
+		if corr_type == "both" or corr_type == "gg":
+			# 	get DR
+			self.data = {
+				"Redshift": self.data_dir["Redshift"],
+				"Redshift_shape_sample": self.randoms_data["Redshift"],
+				"RA": self.data_dir["RA"],
+				"RA_shape_sample": self.randoms_data["RA"],
+				"DEC": self.data_dir["DEC"],
+				"DEC_shape_sample": self.randoms_data["DEC"],
+			}
+			self.count_pairs_xi_grid_w(masks=masks, dataset_name=dataset_name, over_h=over_h, cosmology=cosmology,
+									   data_suffix="_DR")
+		if IA_estimator == "galaxies" or corr_type == "both" or corr_type == "gg":
+			# 	get RR
+			self.data = {
+				"Redshift": self.randoms_data["Redshift"],
+				"Redshift_shape_sample": self.randoms_data["Redshift"],
+				"RA": self.randoms_data["RA"],
+				"RA_shape_sample": self.randoms_data["RA"],
+				"DEC": self.randoms_data["DEC"],
+				"DEC_shape_sample": self.randoms_data["DEC"],
+			}
+			self.count_pairs_xi_grid_w(masks=masks, dataset_name=dataset_name, over_h=over_h, cosmology=cosmology,
+									   data_suffix="_RR")
 
-		self.obs_estimator("w", IA_estimator, dataset_name, f"{dataset_name}_randoms")
+		self.obs_estimator([corr_type, "w"], IA_estimator, dataset_name, f"{dataset_name}_randoms")
 		self.measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
 
 		if calc_errors:
@@ -325,6 +356,54 @@ class MeasureIA(MeasureIABase):
 																			dataset_name=dataset_names[i],
 																			num_nodes=self.num_nodes, over_h=over_h,
 																			cosmology=cosmology)
+			if corr_type == "both" or corr_type == "gg":
+				# 	get DR
+				self.data = {
+					"Redshift": self.data_dir["Redshift"],
+					"Redshift_shape_sample": self.randoms_data["Redshift"],
+					"RA": self.data_dir["RA"],
+					"RA_shape_sample": self.randoms_data["RA"],
+					"DEC": self.data_dir["DEC"],
+					"DEC_shape_sample": self.randoms_data["DEC"],
+				}
+				if self.num_nodes == 1:
+					self.measure_jackknife_realisations_obs(patches_pos=jk_patches["position"],
+															patches_shape=jk_patches["randoms"],
+															corr_type=["gg", "w"],
+															dataset_name=dataset_name, over_h=over_h,
+															cosmology=cosmology, count_pairs=True, data_suffix="_DR")
+				else:
+					self.measure_jackknife_realisations_obs_multiprocessing(patches_pos=jk_patches["position"],
+																			patches_shape=jk_patches["randoms"],
+																			corr_type=["gg", "w"],
+																			dataset_name=dataset_name,
+																			num_nodes=self.num_nodes, over_h=over_h,
+																			cosmology=cosmology, count_pairs=True,
+																			data_suffix="_DR")
+			if IA_estimator == "galaxies" or corr_type == "both" or corr_type == "gg":
+				# 	get RR
+				self.data = {
+					"Redshift": self.randoms_data["Redshift"],
+					"Redshift_shape_sample": self.randoms_data["Redshift"],
+					"RA": self.randoms_data["RA"],
+					"RA_shape_sample": self.randoms_data["RA"],
+					"DEC": self.randoms_data["DEC"],
+					"DEC_shape_sample": self.randoms_data["DEC"],
+				}
+				if self.num_nodes == 1:
+					self.measure_jackknife_realisations_obs(patches_pos=jk_patches["randoms"],
+															patches_shape=jk_patches["randoms"],
+															corr_type=["gg", "w"],
+															dataset_name=dataset_name, over_h=over_h,
+															cosmology=cosmology, count_pairs=True, data_suffix="_RR")
+				else:
+					self.measure_jackknife_realisations_obs_multiprocessing(patches_pos=jk_patches["randoms"],
+																			patches_shape=jk_patches["randoms"],
+																			corr_type=["gg", "w"],
+																			dataset_name=dataset_name,
+																			num_nodes=self.num_nodes, over_h=over_h,
+																			cosmology=cosmology, count_pairs=True,
+																			data_suffix="_RR")
 			# rewrite method to be adaptable to all types of estimators
 			self.measure_jackknife_errors_obs(IA_estimator=IA_estimator, max_patch=max(jk_patches['shape']),
 											  min_patch=min(jk_patches["shape"]), corr_type=[corr_type, "w"],
@@ -377,16 +456,60 @@ class MeasureIA(MeasureIABase):
 		# expand to include methods with trees and internal multiproc
 		data = self.data  # temporary save so it can be restored at the end of the calculation
 		self.randoms_data = randoms_data
+		self.randoms_data["RA_shape_sample"] = data["RA_shape_sample"]
+		self.randoms_data["DEC_shape_sample"] = data["DEC_shape_sample"]
+		self.randoms_data["Redshift_shape_sample"] = data["Redshift_shape_sample"]
+		self.randoms_data["e1"] = data["e1"]
+		self.randoms_data["e2"] = data["e2"]
+		try:
+			weight = self.randoms_data["weight_shape_sample"]
+		except:
+			self.randoms_data["weight_shape_sample"] = np.ones(len(self.randoms_data["RA_shape_sample"]))
 		self.data_dir = self.data
 		dataset_names = [dataset_name, f"{dataset_name}_randoms"]
 		jk_names = ["position", "randoms"]
 
 		# more elaborate to include other types of estimators. Compute all elements, then overwrite the correlation with the correct combination
 		for i, self.data in enumerate([self.data_dir, self.randoms_data]):
+			try:
+				weight = self.data["weight"]
+			except:
+				self.data["weight"] = np.ones(len(self.data["RA"]))
+			try:
+				weight = self.data["weight_shape_sample"]
+			except:
+				self.data["weight_shape_sample"] = np.ones(len(self.data["RA_shape_sample"]))
 			self.measure_projected_correlation_multipoles_obs_clusters(masks=masks, dataset_name=dataset_names[i],
 																	   over_h=over_h, rp_cut=rp_cut,
 																	   cosmology=cosmology)
-		self.obs_estimator("multipoles", IA_estimator, dataset_name, f"{dataset_name}_randoms")
+		if corr_type == "both" or corr_type == "gg":
+			# 	get DR
+			self.data = {
+				"Redshift": self.data_dir["Redshift"],
+				"Redshift_shape_sample": self.randoms_data["Redshift"],
+				"RA": self.data_dir["RA"],
+				"RA_shape_sample": self.randoms_data["RA"],
+				"DEC": self.data_dir["DEC"],
+				"DEC_shape_sample": self.randoms_data["DEC"],
+			}
+			self.count_pairs_xi_grid_multipoles(masks=masks, dataset_name=dataset_name, over_h=over_h,
+												cosmology=cosmology,
+												data_suffix="_DR", rp_cut=rp_cut)
+		if IA_estimator == "galaxies" or corr_type == "both" or corr_type == "gg":
+			# 	get RR
+			self.data = {
+				"Redshift": self.randoms_data["Redshift"],
+				"Redshift_shape_sample": self.randoms_data["Redshift"],
+				"RA": self.randoms_data["RA"],
+				"RA_shape_sample": self.randoms_data["RA"],
+				"DEC": self.randoms_data["DEC"],
+				"DEC_shape_sample": self.randoms_data["DEC"],
+			}
+			self.count_pairs_xi_grid_multipoles(masks=masks, dataset_name=dataset_name, over_h=over_h,
+												cosmology=cosmology,
+												data_suffix="_RR", rp_cut=rp_cut)
+
+		self.obs_estimator([corr_type, "multipoles"], IA_estimator, dataset_name, f"{dataset_name}_randoms")
 		self.measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
 		if calc_errors:
 			for i, self.data in enumerate([self.data_dir, self.randoms_data]):
@@ -404,11 +527,62 @@ class MeasureIA(MeasureIABase):
 																			num_nodes=self.num_nodes, over_h=over_h,
 																			rp_cut=rp_cut,
 																			cosmology=cosmology)
-		# rewrite method to be adaptable to all types of estimators
-		self.measure_jackknife_errors_obs(IA_estimator=IA_estimator, max_patch=max(jk_patches['shape']),
-										  min_patch=min(jk_patches["shape"]),
-										  corr_type=[corr_type, "multipoles"],
-										  dataset_name=dataset_name, randoms_suf="_randoms")
+
+			if corr_type == "both" or corr_type == "gg":
+				# 	get DR
+				self.data = {
+					"Redshift": self.data_dir["Redshift"],
+					"Redshift_shape_sample": self.randoms_data["Redshift"],
+					"RA": self.data_dir["RA"],
+					"RA_shape_sample": self.randoms_data["RA"],
+					"DEC": self.data_dir["DEC"],
+					"DEC_shape_sample": self.randoms_data["DEC"],
+				}
+				if self.num_nodes == 1:
+					self.measure_jackknife_realisations_obs(patches_pos=jk_patches["position"],
+															patches_shape=jk_patches["randoms"],
+															corr_type=["gg", "multipoles"],
+															dataset_name=dataset_name, over_h=over_h, rp_cut=rp_cut,
+															cosmology=cosmology, count_pairs=True, data_suffix="_DR")
+				else:
+					self.measure_jackknife_realisations_obs_multiprocessing(patches_pos=jk_patches["position"],
+																			patches_shape=jk_patches["randoms"],
+																			corr_type=["gg", "multipoles"],
+																			dataset_name=dataset_name,
+																			num_nodes=self.num_nodes, over_h=over_h,
+																			rp_cut=rp_cut,
+																			cosmology=cosmology, count_pairs=True,
+																			data_suffix="_DR")
+			if IA_estimator == "galaxies" or corr_type == "both" or corr_type == "gg":
+				# 	get RR
+				self.data = {
+					"Redshift": self.randoms_data["Redshift"],
+					"Redshift_shape_sample": self.randoms_data["Redshift"],
+					"RA": self.randoms_data["RA"],
+					"RA_shape_sample": self.randoms_data["RA"],
+					"DEC": self.randoms_data["DEC"],
+					"DEC_shape_sample": self.randoms_data["DEC"],
+				}
+				if self.num_nodes == 1:
+					self.measure_jackknife_realisations_obs(patches_pos=jk_patches["randoms"],
+															patches_shape=jk_patches["randoms"],
+															corr_type=["gg", "multipoles"],
+															dataset_name=dataset_name, over_h=over_h, rp_cut=rp_cut,
+															cosmology=cosmology, count_pairs=True, data_suffix="_RR")
+				else:
+					self.measure_jackknife_realisations_obs_multiprocessing(patches_pos=jk_patches["randoms"],
+																			patches_shape=jk_patches["randoms"],
+																			corr_type=["gg", "multipoles"],
+																			dataset_name=dataset_name,
+																			num_nodes=self.num_nodes, over_h=over_h,
+																			rp_cut=rp_cut,
+																			cosmology=cosmology, count_pairs=True,
+																			data_suffix="_RR")
+			# rewrite method to be adaptable to all types of estimators
+			self.measure_jackknife_errors_obs(IA_estimator=IA_estimator, max_patch=max(jk_patches['shape']),
+											  min_patch=min(jk_patches["shape"]),
+											  corr_type=[corr_type, "multipoles"],
+											  dataset_name=dataset_name, randoms_suf="_randoms")
 		self.data = data
 
 		return

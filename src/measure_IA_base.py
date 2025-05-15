@@ -972,7 +972,7 @@ class MeasureIABase(SimInfo):
 			return correlation, (DD / RR_gg) - 1, separation_bins, pi_bins
 
 	def measure_projected_correlation_obs_clusters(self, masks=None, dataset_name="All_galaxies", return_output=False,
-												   print_num=True, over_h=True, cosmology=None
+												   print_num=True, over_h=False, cosmology=None
 												   ):
 		"""
 		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
@@ -1018,7 +1018,6 @@ class MeasureIABase(SimInfo):
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
-		variance = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		if cosmology == None:
 			cosmology = ccl.Cosmology(Omega_c=0.225, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.0)
 			if print_num:
@@ -1109,7 +1108,7 @@ class MeasureIABase(SimInfo):
 			return Splus_D, DD, separation_bins, pi_bins
 
 	def count_pairs_xi_grid_w(self, masks=None, dataset_name="All_galaxies", return_output=False,
-							  print_num=True, over_h=True, cosmology=None, data_suffix="_DD"
+							  print_num=True, over_h=False, cosmology=None, data_suffix="_DD"
 							  ):
 		"""
 		Measures the projected clustering (xi_gg) for given coordinates of the position and shape sample
@@ -1935,7 +1934,7 @@ class MeasureIABase(SimInfo):
 
 	def count_pairs_xi_grid_multipoles(self, masks=None, dataset_name="All_galaxies",
 									   return_output=False,
-									   print_num=True, over_h=True, cosmology=None, rp_cut=None,
+									   print_num=True, over_h=False, cosmology=None, rp_cut=None,
 									   data_suffix="_DD"
 									   ):
 		"""
@@ -2602,7 +2601,7 @@ class MeasureIABase(SimInfo):
 
 	def measure_jackknife_realisations_obs(
 			self, patches_pos, patches_shape, masks=None, corr_type=["both", "multipoles"], dataset_name="All_galaxies",
-			rp_cut=None, over_h=False, cosmology=None,
+			rp_cut=None, over_h=False, cosmology=None, count_pairs=False, data_suffix="",
 	):
 		"""
 		Measures the errors in the projected correlation function using the jackknife method.
@@ -2614,14 +2613,8 @@ class MeasureIABase(SimInfo):
 		:param L_subboxes: Integer by which the length of the side of the mox should be divided.
 		:return:
 		"""
-		if corr_type[0] == "both":
-			data = [corr_type[1] + "_g_plus", corr_type[1] + "_gg"]
-		elif corr_type[0] == "g+":
-			data = [corr_type[1] + "_g_plus"]
-		elif corr_type[0] == "gg":
-			data = [corr_type[1] + "_gg"]
-		else:
-			raise KeyError("Unknown value for corr_type. Choose from [g+, gg, both]")
+		if count_pairs and data_suffix == "":
+			raise ValueError("Enter a data suffix (like _DD) for your pair count.")
 		figname_dataset_name = dataset_name
 		if "/" in dataset_name:
 			figname_dataset_name = figname_dataset_name.replace("/", "_")
@@ -2658,24 +2651,34 @@ class MeasureIABase(SimInfo):
 				"weight_shape_sample": mask_shape,
 			}
 			if corr_type[1] == "multipoles":
-				self.measure_projected_correlation_multipoles_obs_clusters(
-					masks=masks_total,
-					rp_cut=rp_cut,
-					dataset_name=dataset_name + "_" + str(i),
-					print_num=False,
-					over_h=over_h,
-					cosmology=cosmology,
-				)
+				if count_pairs:
+					self.count_pairs_xi_grid_multipoles(masks=masks_total, dataset_name=dataset_name + "_" + str(i),
+														over_h=over_h, cosmology=cosmology, print_num=False,
+														data_suffix=data_suffix, rp_cut=rp_cut)
+				else:
+					self.measure_projected_correlation_multipoles_obs_clusters(
+						masks=masks_total,
+						rp_cut=rp_cut,
+						dataset_name=dataset_name + "_" + str(i),
+						print_num=False,
+						over_h=over_h,
+						cosmology=cosmology,
+					)
 
 			# self.measure_multipoles(corr_type=corr_type[0], dataset_name=dataset_name + "_" + str(i))
 			else:
-				self.measure_projected_correlation_obs_clusters(
-					masks=masks_total,
-					dataset_name=dataset_name + "_" + str(i),
-					print_num=False,
-					over_h=over_h,
-					cosmology=cosmology,
-				)
+				if count_pairs:
+					self.count_pairs_xi_grid_w(masks=masks_total, dataset_name=dataset_name + "_" + str(i),
+											   over_h=over_h, cosmology=cosmology, print_num=False,
+											   data_suffix=data_suffix)
+				else:
+					self.measure_projected_correlation_obs_clusters(
+						masks=masks_total,
+						dataset_name=dataset_name + "_" + str(i),
+						print_num=False,
+						over_h=over_h,
+						cosmology=cosmology,
+					)
 		# self.measure_w_g_i(corr_type=corr_type[0], dataset_name=dataset_name + "_" + str(i))
 
 		return
@@ -2698,21 +2701,21 @@ class MeasureIABase(SimInfo):
 		SR = group_gg[f"{dataset_name_randoms}_DD"][:]
 
 		if IA_estimator == "clusters":
-			if corr_type == "g+" or corr_type == "both":
+			if corr_type[0] == "g+" or corr_type[0] == "both":
 				correlation_gp = SpD / DD - SpR / SR
 				write_dataset_hdf5(group_gp, dataset_name, correlation_gp)
-			if corr_type == "gg" or corr_type == "both":
-				DR = group_gg[f"{dataset_name}_DR"]
-				RR = group_gg[f"{dataset_name}_RR"]
+			if corr_type[0] == "gg" or corr_type[0] == "both":
+				DR = group_gg[f"{dataset_name}_DR"][:]
+				RR = group_gg[f"{dataset_name}_RR"][:]
 				correlation_gg = (DD - DR - SR) / RR - 1
 				write_dataset_hdf5(group_gg, dataset_name, correlation_gg)
 		elif IA_estimator == "galaxies":
-			RR = group_gg[f"{dataset_name}_RR"]
-			if corr_type == "g+" or corr_type == "both":
+			RR = group_gg[f"{dataset_name}_RR"][:]
+			if corr_type[0] == "g+" or corr_type[0] == "both":
 				correlation_gp = (SpD - SpR) / RR
 				write_dataset_hdf5(group_gp, dataset_name, correlation_gp)
-			if corr_type == "gg" or corr_type == "both":
-				DR = group_gg[f"{dataset_name}_DR"]
+			if corr_type[0] == "gg" or corr_type[0] == "both":
+				DR = group_gg[f"{dataset_name}_DR"][:]
 				correlation_gg = (DD - DR - SR) / RR - 1
 				write_dataset_hdf5(group_gg, dataset_name, correlation_gg)
 		else:
@@ -2799,7 +2802,7 @@ class MeasureIABase(SimInfo):
 
 	def measure_jackknife_realisations_obs_multiprocessing(
 			self, patches_pos, patches_shape, masks=None, corr_type=["both", "multipoles"], dataset_name="All_galaxies",
-			rp_cut=None, over_h=False, num_nodes=4, cosmology=None
+			rp_cut=None, over_h=False, num_nodes=4, cosmology=None, count_pairs=False, data_suffix="",
 	):
 		"""
 		Measures the errors in the projected correlation function using the jackknife method, using multiple CPU cores.
@@ -2813,7 +2816,8 @@ class MeasureIABase(SimInfo):
 		:param corr_type: Array with two entries. For first choose from [gg, g+, both], for second from [w, multipoles]
 		:return:
 		"""
-		corr_type[0] = "both"
+		if count_pairs == False:
+			corr_type[0] = "both"
 		if corr_type[0] == "both":
 			data = [corr_type[1] + "_g_plus", corr_type[1] + "_gg"]
 			corr_type_suff = ["_g_plus", "_gg"]
@@ -2871,6 +2875,7 @@ class MeasureIABase(SimInfo):
 						over_h,
 						cosmology,
 						rp_cut,
+						data_suffix
 					)
 				)
 			else:
@@ -2882,6 +2887,7 @@ class MeasureIABase(SimInfo):
 						False,
 						over_h,
 						cosmology,
+						data_suffix
 					)
 				)
 		# args_multipoles.append([corr_type[0], dataset_name + "_" + str(i)])
@@ -2892,41 +2898,77 @@ class MeasureIABase(SimInfo):
 		for chunck in multiproc_chuncks:
 			chunck = np.array(chunck, dtype=int)
 			if corr_type[1] == "multipoles":
-				result = ProcessingPool(nodes=len(chunck)).map(
-					self.measure_projected_correlation_multipoles_obs_clusters,
-					args_xi_g_plus[chunck][:, 0],
-					args_xi_g_plus[chunck][:, 1],
-					args_xi_g_plus[chunck][:, 2],
-					args_xi_g_plus[chunck][:, 3],
-					args_xi_g_plus[chunck][:, 4],
-					args_xi_g_plus[chunck][:, 5],
-					args_xi_g_plus[chunck][:, 4],
-				)
+				if count_pairs:
+					result = ProcessingPool(nodes=len(chunck)).map(
+						self.count_pairs_xi_grid_multipoles,
+						args_xi_g_plus[chunck][:, 0],
+						args_xi_g_plus[chunck][:, 1],
+						args_xi_g_plus[chunck][:, 2],
+						args_xi_g_plus[chunck][:, 3],
+						args_xi_g_plus[chunck][:, 4],
+						args_xi_g_plus[chunck][:, 5],
+						args_xi_g_plus[chunck][:, 6],
+						args_xi_g_plus[chunck][:, 7],
+					)
+				else:
+					result = ProcessingPool(nodes=len(chunck)).map(
+						self.measure_projected_correlation_multipoles_obs_clusters,
+						args_xi_g_plus[chunck][:, 0],
+						args_xi_g_plus[chunck][:, 1],
+						args_xi_g_plus[chunck][:, 2],
+						args_xi_g_plus[chunck][:, 3],
+						args_xi_g_plus[chunck][:, 4],
+						args_xi_g_plus[chunck][:, 5],
+						args_xi_g_plus[chunck][:, 6],
+					)
 			else:
-				result = ProcessingPool(nodes=len(chunck)).map(
-					self.measure_projected_correlation_obs_clusters,
-					args_xi_g_plus[chunck][:, 0],
-					args_xi_g_plus[chunck][:, 1],
-					args_xi_g_plus[chunck][:, 2],
-					args_xi_g_plus[chunck][:, 3],
-					args_xi_g_plus[chunck][:, 4],
-					args_xi_g_plus[chunck][:, 5],
-				)
+				if count_pairs:
+					result = ProcessingPool(nodes=len(chunck)).map(
+						self.count_pairs_xi_grid_w,
+						args_xi_g_plus[chunck][:, 0],
+						args_xi_g_plus[chunck][:, 1],
+						args_xi_g_plus[chunck][:, 2],
+						args_xi_g_plus[chunck][:, 3],
+						args_xi_g_plus[chunck][:, 4],
+						args_xi_g_plus[chunck][:, 5],
+						args_xi_g_plus[chunck][:, 6],
+					)
+				else:
+					result = ProcessingPool(nodes=len(chunck)).map(
+						self.measure_projected_correlation_obs_clusters,
+						args_xi_g_plus[chunck][:, 0],
+						args_xi_g_plus[chunck][:, 1],
+						args_xi_g_plus[chunck][:, 2],
+						args_xi_g_plus[chunck][:, 3],
+						args_xi_g_plus[chunck][:, 4],
+						args_xi_g_plus[chunck][:, 5],
+					)
 
 			output_file = h5py.File(self.output_file_name, "a")
-			for i in np.arange(0, len(chunck)):
-				for j, data_j in enumerate(data):
-					group_xigplus = create_group_hdf5(
-						output_file, f"Snapshot_{self.snapshot}/" + corr_type[1] + "/xi" + corr_type_suff[j]
-					)
-					write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i] + min_patch}_{xi_suff[j]}",
-									   data=result[i][j])
-					write_dataset_hdf5(
-						group_xigplus, f"{dataset_name}_{chunck[i] + min_patch}_{bin_var_names[0]}", data=result[i][2]
-					)
-					write_dataset_hdf5(
-						group_xigplus, f"{dataset_name}_{chunck[i] + min_patch}_{bin_var_names[1]}", data=result[i][3]
-					)
+			if count_pairs:
+				for i in np.arange(0, len(chunck)):
+					for j, data_j in enumerate(data):
+						group_xigplus = create_group_hdf5(
+							output_file, f"Snapshot_{self.snapshot}/" + corr_type[1] + "/xi_gg"
+						)
+						write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i] + min_patch}{data_suffix}",
+										   data=result[i][j])
+			else:
+				for i in np.arange(0, len(chunck)):
+					for j, data_j in enumerate(data):
+						group_xigplus = create_group_hdf5(
+							output_file, f"Snapshot_{self.snapshot}/" + corr_type[1] + "/xi" + corr_type_suff[j]
+						)
+						write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i] + min_patch}_{xi_suff[j]}",
+										   data=result[i][j])
+						write_dataset_hdf5(
+							group_xigplus, f"{dataset_name}_{chunck[i] + min_patch}_{bin_var_names[0]}",
+							data=result[i][2]
+						)
+						write_dataset_hdf5(
+							group_xigplus, f"{dataset_name}_{chunck[i] + min_patch}_{bin_var_names[1]}",
+							data=result[i][3]
+						)
 			# write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i]}_sigmasq", data=result[i][3])
 			output_file.close()
 
