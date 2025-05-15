@@ -308,6 +308,14 @@ class MeasureIABase(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][masks["q"]]
+			try:
+				weight_mask = masks["weight"]
+			except:
+				masks["weight"] = np.ones(len(positions))
+			try:
+				weight_mask = masks["weight_shape_sample"]
+			except:
+				masks["weight_shape_sample"] = np.ones(len(positions_shape_sample))
 			weight = self.data["weight"][masks["weight"]]
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		Num_position = len(positions)
@@ -468,6 +476,14 @@ class MeasureIABase(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][masks["q"]]
+			try:
+				weight_mask = masks["weight"]
+			except:
+				masks["weight"] = np.ones(len(positions))
+			try:
+				weight_mask = masks["weight_shape_sample"]
+			except:
+				masks["weight_shape_sample"] = np.ones(len(positions_shape_sample))
 			weight = self.data["weight"][masks["weight"]]
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		# masking changes the number of galaxies
@@ -703,6 +719,14 @@ class MeasureIABase(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			self.axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][masks["q"]]
+			try:
+				weight_mask = masks["weight"]
+			except:
+				masks["weight"] = np.ones(len(positions))
+			try:
+				weight_mask = masks["weight_shape_sample"]
+			except:
+				masks["weight_shape_sample"] = np.ones(len(positions_shape_sample))
 			self.weight = self.data["weight"][masks["weight"]]
 			self.weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		# masking changes the number of galaxies
@@ -1005,6 +1029,14 @@ class MeasureIABase(SimInfo):
 			DEC_shape_sample = self.data["DEC_shape_sample"][masks["DEC_shape_sample"]]
 			e1 = self.data["e1"][masks["e1"]]
 			e2 = self.data["e2"][masks["e2"]]
+			try:
+				weight_mask = masks["weight"]
+			except:
+				masks["weight"] = np.ones(len(positions))
+			try:
+				weight_mask = masks["weight_shape_sample"]
+			except:
+				masks["weight_shape_sample"] = np.ones(len(positions_shape_sample))
 			weight = self.data["weight"][masks["weight"]]
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		Num_position = len(RA)
@@ -1307,6 +1339,14 @@ class MeasureIABase(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][masks["q"]]
+			try:
+				weight_mask = masks["weight"]
+			except:
+				masks["weight"] = np.ones(len(positions))
+			try:
+				weight_mask = masks["weight_shape_sample"]
+			except:
+				masks["weight_shape_sample"] = np.ones(len(positions_shape_sample))
 			weight = self.data["weight"][masks["weight"]]
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		Num_position = len(positions)
@@ -1450,6 +1490,14 @@ class MeasureIABase(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][masks["q"]]
+			try:
+				weight_mask = masks["weight"]
+			except:
+				masks["weight"] = np.ones(len(positions))
+			try:
+				weight_mask = masks["weight_shape_sample"]
+			except:
+				masks["weight_shape_sample"] = np.ones(len(positions_shape_sample))
 			weight = self.data["weight"][masks["weight"]]
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		# masking changes the number of galaxies
@@ -1699,8 +1747,16 @@ class MeasureIABase(SimInfo):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			self.axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][masks["q"]]
-			weight = self.data["weight"][masks["weight"]]
-			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
+			try:
+				weight_mask = masks["weight"]
+			except:
+				masks["weight"] = np.ones(len(positions))
+			try:
+				weight_mask = masks["weight_shape_sample"]
+			except:
+				masks["weight_shape_sample"] = np.ones(len(positions_shape_sample))
+			self.weight = self.data["weight"][masks["weight"]]
+			self.weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		# masking changes the number of galaxies
 		Num_position = len(self.positions)  # number of halos in position sample
 		Num_shape = len(self.positions_shape_sample)  # number of halos in shape sample
@@ -1821,6 +1877,14 @@ class MeasureIABase(SimInfo):
 			DEC_shape_sample = self.data["DEC_shape_sample"][masks["DEC_shape_sample"]]
 			e1 = self.data["e1"][masks["e1"]]
 			e2 = self.data["e2"][masks["e2"]]
+			try:
+				weight_mask = masks["weight"]
+			except:
+				masks["weight"] = np.ones(len(positions))
+			try:
+				weight_mask = masks["weight_shape_sample"]
+			except:
+				masks["weight_shape_sample"] = np.ones(len(positions_shape_sample))
 			weight = self.data["weight"][masks["weight"]]
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		Num_position = len(RA)
