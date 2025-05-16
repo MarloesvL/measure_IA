@@ -311,11 +311,11 @@ class MeasureIABase(SimInfo):
 			try:
 				weight_mask = masks["weight"]
 			except:
-				masks["weight"] = np.ones(len(positions), dtype=bool)
+				masks["weight"] = np.ones(self.Num_position, dtype=bool)
 			try:
 				weight_mask = masks["weight_shape_sample"]
 			except:
-				masks["weight_shape_sample"] = np.ones(len(positions_shape_sample), dtype=bool)
+				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
 			weight = self.data["weight"][masks["weight"]]
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		Num_position = len(positions)
@@ -479,11 +479,11 @@ class MeasureIABase(SimInfo):
 			try:
 				weight_mask = masks["weight"]
 			except:
-				masks["weight"] = np.ones(len(positions), dtype=bool)
+				masks["weight"] = np.ones(self.Num_position, dtype=bool)
 			try:
 				weight_mask = masks["weight_shape_sample"]
 			except:
-				masks["weight_shape_sample"] = np.ones(len(positions_shape_sample), dtype=bool)
+				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
 			weight = self.data["weight"][masks["weight"]]
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		# masking changes the number of galaxies
@@ -722,11 +722,11 @@ class MeasureIABase(SimInfo):
 			try:
 				weight_mask = masks["weight"]
 			except:
-				masks["weight"] = np.ones(len(positions), dtype=bool)
+				masks["weight"] = np.ones(self.Num_position, dtype=bool)
 			try:
 				weight_mask = masks["weight_shape_sample"]
 			except:
-				masks["weight_shape_sample"] = np.ones(len(positions_shape_sample), dtype=bool)
+				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
 			self.weight = self.data["weight"][masks["weight"]]
 			self.weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		# masking changes the number of galaxies
@@ -1032,11 +1032,11 @@ class MeasureIABase(SimInfo):
 			try:
 				weight_mask = masks["weight"]
 			except:
-				masks["weight"] = np.ones(len(positions), dtype=bool)
+				masks["weight"] = np.ones(self.Num_position, dtype=bool)
 			try:
 				weight_mask = masks["weight_shape_sample"]
 			except:
-				masks["weight_shape_sample"] = np.ones(len(positions_shape_sample), dtype=bool)
+				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
 			weight = self.data["weight"][masks["weight"]]
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		Num_position = len(RA)
@@ -1342,11 +1342,11 @@ class MeasureIABase(SimInfo):
 			try:
 				weight_mask = masks["weight"]
 			except:
-				masks["weight"] = np.ones(len(positions), dtype=bool)
+				masks["weight"] = np.ones(self.Num_position, dtype=bool)
 			try:
 				weight_mask = masks["weight_shape_sample"]
 			except:
-				masks["weight_shape_sample"] = np.ones(len(positions_shape_sample), dtype=bool)
+				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
 			weight = self.data["weight"][masks["weight"]]
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		Num_position = len(positions)
@@ -1493,11 +1493,11 @@ class MeasureIABase(SimInfo):
 			try:
 				weight_mask = masks["weight"]
 			except:
-				masks["weight"] = np.ones(len(positions), dtype=bool)
+				masks["weight"] = np.ones(self.Num_position, dtype=bool)
 			try:
 				weight_mask = masks["weight_shape_sample"]
 			except:
-				masks["weight_shape_sample"] = np.ones(len(positions_shape_sample), dtype=bool)
+				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
 			weight = self.data["weight"][masks["weight"]]
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		# masking changes the number of galaxies
@@ -1750,11 +1750,11 @@ class MeasureIABase(SimInfo):
 			try:
 				weight_mask = masks["weight"]
 			except:
-				masks["weight"] = np.ones(len(positions), dtype=bool)
+				masks["weight"] = np.ones(self.Num_position, dtype=bool)
 			try:
 				weight_mask = masks["weight_shape_sample"]
 			except:
-				masks["weight_shape_sample"] = np.ones(len(positions_shape_sample), dtype=bool)
+				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
 			self.weight = self.data["weight"][masks["weight"]]
 			self.weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		# masking changes the number of galaxies
@@ -1880,11 +1880,11 @@ class MeasureIABase(SimInfo):
 			try:
 				weight_mask = masks["weight"]
 			except:
-				masks["weight"] = np.ones(len(positions), dtype=bool)
+				masks["weight"] = np.ones(self.Num_position, dtype=bool)
 			try:
 				weight_mask = masks["weight_shape_sample"]
 			except:
-				masks["weight_shape_sample"] = np.ones(len(positions_shape_sample), dtype=bool)
+				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
 			weight = self.data["weight"][masks["weight"]]
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		Num_position = len(RA)
