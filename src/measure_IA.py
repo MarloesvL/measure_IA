@@ -1,11 +1,11 @@
 import sympy
 import numpy as np
-from src.measure_IA_base import MeasureIABase
+from src.measure_jackknife import MeasureJackknife
 
 KPC_TO_KM = 3.086e16  # 1 kpc is 3.086e16 km
 
 
-class MeasureIA(MeasureIABase):
+class MeasureIA(MeasureJackknife):
 	"""
 	Manages the methods used in the MeasureIA class based on speed and input.
 	:param data: Dictionary with data needed for calculations. See specifications for keywords.
@@ -38,9 +38,8 @@ class MeasureIA(MeasureIABase):
 			periodicity=True,
 			num_nodes=1,
 	):
-		MeasureIABase.__init__(self, data, simulation, snapshot, separation_limits, num_bins_r, num_bins_pi, PT,
-							   LOS_lim,
-							   output_file_name, boxsize, periodicity)
+		super().__init__(data, simulation, snapshot, separation_limits, num_bins_r, num_bins_pi, PT,
+						 LOS_lim, output_file_name, boxsize, periodicity)
 		self.num_nodes = num_nodes
 
 		return
