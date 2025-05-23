@@ -532,7 +532,6 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 						cosmology=cosmology,
 					)
 
-			# self.measure_multipoles(corr_type=corr_type[0], dataset_name=dataset_name + "_" + str(i))
 			else:
 				if count_pairs:
 					self.count_pairs_xi_grid_w(masks=masks_total, dataset_name=dataset_name + "_" + str(i),
@@ -546,8 +545,6 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 						over_h=over_h,
 						cosmology=cosmology,
 					)
-		# self.measure_w_g_i(corr_type=corr_type[0], dataset_name=dataset_name + "_" + str(i))
-
 		return
 
 	def measure_jackknife_errors_obs(
@@ -644,6 +641,12 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 		:param corr_type: Array with two entries. For first choose from [gg, g+, both], for second from [w, multipoles]
 		:return:
 		"""
+		if num_nodes == 1:
+			self.measure_jackknife_realisations_obs(patches_pos, patches_shape, masks, corr_type, dataset_name,
+													rp_cut, over_h, cosmology, count_pairs, data_suffix,
+													num_sample_names)
+			return
+
 		if count_pairs == False:
 			corr_type[0] = "both"
 		if corr_type[0] == "both":
