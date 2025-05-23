@@ -723,10 +723,8 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 						data_suffix
 					)
 				)
-		# args_multipoles.append([corr_type[0], dataset_name + "_" + str(i)])
 
 		args_xi_g_plus = np.array(args_xi_g_plus)
-		# args_multipoles = np.array(args_multipoles)
 		multiproc_chuncks = np.array_split(np.arange(num_patches), np.ceil(num_patches / num_nodes))
 		for chunck in multiproc_chuncks:
 			chunck = np.array(chunck, dtype=int)
@@ -786,6 +784,14 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 						)
 						write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i] + min_patch}{data_suffix}",
 										   data=result[i][j])
+						write_dataset_hdf5(
+							group_xigplus, f"{dataset_name}_{chunck[i] + min_patch}_{bin_var_names[0]}",
+							data=result[i][1]
+						)
+						write_dataset_hdf5(
+							group_xigplus, f"{dataset_name}_{chunck[i] + min_patch}_{bin_var_names[1]}",
+							data=result[i][2]
+						)
 			else:
 				for i in np.arange(0, len(chunck)):
 					for j, data_j in enumerate(data):
