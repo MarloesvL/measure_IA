@@ -267,7 +267,6 @@ class MeasureIABase(SimInfo):
 			raise ValueError("Unknown input for corrtype, choose from auto or cross.")
 		return abs(RR)
 
-
 	@staticmethod
 	def setdiff2D(a1, a2):
 		diff = []
@@ -675,8 +674,7 @@ class MeasureIABase(SimInfo):
 		correlation_data_file.close()
 		return
 
-
-	def obs_estimator(self, corr_type, IA_estimator, dataset_name, dataset_name_randoms):
+	def obs_estimator(self, corr_type, IA_estimator, dataset_name, dataset_name_randoms, num_samples):
 		'''
 		Reads various components of xi and combines into correct estimator for cluster or galaxy observational alignments
 		:param corr_type: w or multipoles
@@ -686,36 +684,51 @@ class MeasureIABase(SimInfo):
 		:return:
 		'''
 		output_file = h5py.File(self.output_file_name, "a")
-		group_gp = output_file[f"Snapshot_{self.snapshot}/{corr_type[1]}/xi_g_plus"]  # /w/xi_g_plus/
-		SpD = group_gp[f"{dataset_name}_SplusD"][:]
-		SpR = group_gp[f"{dataset_name_randoms}_SplusD"][:]
+		if corr_type[0] == "g+" or corr_type[0] == "both":
+			group_gp = output_file[f"Snapshot_{self.snapshot}/{corr_type[1]}/xi_g_plus"]  # /w/xi_g_plus/
+			SpD = group_gp[f"{dataset_name}_SplusD"][:]
+			SpR = group_gp[f"{dataset_name_randoms}_SplusD"][:]
 		group_gg = output_file[f"Snapshot_{self.snapshot}/{corr_type[1]}/xi_gg"]
 		DD = group_gg[f"{dataset_name}_DD"][:]
-		SR = group_gg[f"{dataset_name_randoms}_DD"][:]
 
 		if IA_estimator == "clusters":
+			if corr_type[0] == "gg":
+				SR = group_gg[f"{dataset_name}_SR"][:]
+			else:
+				SR = group_gg[f"{dataset_name_randoms}_DD"][:]
+			SR *= num_samples["D"] / num_samples["R_D"]
 			if corr_type[0] == "g+" or corr_type[0] == "both":
+				SpR *= num_samples["D"] / num_samples["R_D"]
 				correlation_gp = SpD / DD - SpR / SR
 				write_dataset_hdf5(group_gp, dataset_name, correlation_gp)
 			if corr_type[0] == "gg" or corr_type[0] == "both":
-				DR = group_gg[f"{dataset_name}_DR"][:]
+				RD = group_gg[f"{dataset_name}_RD"][:]
 				RR = group_gg[f"{dataset_name}_RR"][:]
-				correlation_gg = (DD - DR - SR) / RR - 1
+				RD *= num_samples["S"] / num_samples["R_S"]
+				RR *= (num_samples["S"] / num_samples["R_S"]) * (num_samples["D"] / num_samples["R_D"])
+				correlation_gg = (DD - RD - SR) / RR - 1
 				write_dataset_hdf5(group_gg, dataset_name, correlation_gg)
 		elif IA_estimator == "galaxies":
 			RR = group_gg[f"{dataset_name}_RR"][:]
+			RR *= (num_samples["S"] / num_samples["R_S"]) * (num_samples["D"] / num_samples["R_D"])
 			if corr_type[0] == "g+" or corr_type[0] == "both":
+				SpR *= num_samples["D"] / num_samples["R_D"]
 				correlation_gp = (SpD - SpR) / RR
 				write_dataset_hdf5(group_gp, dataset_name, correlation_gp)
 			if corr_type[0] == "gg" or corr_type[0] == "both":
-				DR = group_gg[f"{dataset_name}_DR"][:]
-				correlation_gg = (DD - DR - SR) / RR - 1
+				RD = group_gg[f"{dataset_name}_RD"][:]
+				if corr_type[0] == "gg":
+					SR = group_gg[f"{dataset_name}_SR"][:]
+				else:
+					SR = group_gg[f"{dataset_name_randoms}_DD"][:]
+				RD *= num_samples["S"] / num_samples["R_S"]
+				SR *= num_samples["D"] / num_samples["R_D"]
+				correlation_gg = (DD - RD - SR) / RR - 1
 				write_dataset_hdf5(group_gg, dataset_name, correlation_gg)
 		else:
 			raise ValueError("Unknown input for IA_estimator, choose from [clusters, galaxies].")
 		output_file.close()
 		return
-
 
 	def measure_misalignment_angle(self, vector1_name, vector2_name, normalise=False):
 		"""

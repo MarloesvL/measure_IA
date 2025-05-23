@@ -466,7 +466,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 
 	def measure_jackknife_realisations_obs(
 			self, patches_pos, patches_shape, masks=None, corr_type=["both", "multipoles"], dataset_name="All_galaxies",
-			rp_cut=None, over_h=False, cosmology=None, count_pairs=False, data_suffix="",
+			rp_cut=None, over_h=False, cosmology=None, count_pairs=False, data_suffix="", num_sample_names=["S", "D"]
 	):
 		"""
 		Measures the errors in the projected correlation function using the jackknife method.
@@ -503,6 +503,8 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 			if masks != None:
 				mask_position = mask_position * masks["Redshift"]
 				mask_shape = mask_shape * masks["Redshift_shape_sample"]
+			self.num_samples[f"{i}"][num_sample_names[0]] = sum(mask_shape)
+			self.num_samples[f"{i}"][num_sample_names[1]] = sum(mask_position)
 			masks_total = {
 				"Redshift": mask_position,
 				"Redshift_shape_sample": mask_shape,
@@ -583,7 +585,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 		for d in np.arange(0, len(data)):
 			for b in np.arange(min_patch, max_patch + 1):
 				self.obs_estimator(corr_type, IA_estimator, f"{dataset_name}_{b}",
-								   f"{dataset_name}{randoms_suf}_{b}")
+								   f"{dataset_name}{randoms_suf}_{b}", self.num_samples[f"{b}"])
 				if "w" in data[d]:
 					self.measure_w_g_i(corr_type=corr_type[0], dataset_name=f"{dataset_name}_{b}")
 				else:
@@ -628,6 +630,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 	def measure_jackknife_realisations_obs_multiprocessing(
 			self, patches_pos, patches_shape, masks=None, corr_type=["both", "multipoles"], dataset_name="All_galaxies",
 			rp_cut=None, over_h=False, num_nodes=4, cosmology=None, count_pairs=False, data_suffix="",
+			num_sample_names=["S", "D"]
 	):
 		"""
 		Measures the errors in the projected correlation function using the jackknife method, using multiple CPU cores.
@@ -678,6 +681,8 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 			if masks != None:
 				mask_position = mask_position * masks["Redshift"]
 				mask_shape = mask_shape * masks["Redshift_shape_sample"]
+			self.num_samples[f"{i}"][num_sample_names[0]] = sum(mask_shape)
+			self.num_samples[f"{i}"][num_sample_names[1]] = sum(mask_position)
 			masks_total = {
 				"Redshift": mask_position,
 				"Redshift_shape_sample": mask_shape,
