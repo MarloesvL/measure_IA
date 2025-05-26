@@ -116,9 +116,12 @@ class MeasureMultipolesSimulations(MeasureIABase):
 			projected_sep = separation[:, not_LOS]
 			LOS = separation[:, LOS_ind]
 			projected_separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
-			separation_dir = (projected_sep.transpose() / projected_separation_len).transpose()  # normalisation of rp
+			with np.errstate(invalid='ignore'):
+				separation_dir = (
+							projected_sep.transpose() / projected_separation_len).transpose()  # normalisation of rp
 			separation_len = np.sqrt(np.sum(separation ** 2, axis=1))
-			mu_r = LOS / separation_len
+			with np.errstate(invalid='ignore'):
+				mu_r = LOS / separation_len
 			del LOS, projected_sep, separation
 			phi = np.arccos(self.calculate_dot_product_arrays(separation_dir, axis_direction))  # [0,pi]
 			e_plus, e_cross = self.get_ellipticity(e, phi)
@@ -303,11 +306,13 @@ class MeasureMultipolesSimulations(MeasureIABase):
 					projected_sep = separation[:, not_LOS]
 					LOS = separation[:, LOS_ind]
 					projected_separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
-					separation_dir = (
+					with np.errstate(invalid='ignore'):
+						separation_dir = (
 							projected_sep.transpose() / projected_separation_len).transpose()  # normalisation of rp
 					separation_len = np.sqrt(np.sum(separation ** 2, axis=1))
 					del separation, projected_sep
-					mu_r = LOS / separation_len
+					with np.errstate(invalid='ignore'):
+						mu_r = LOS / separation_len
 					phi = np.arccos(
 						separation_dir[:, 0] * axis_direction_i[n, 0] + separation_dir[:, 1] * axis_direction_i[
 							n, 1])  # [0,pi]
@@ -415,11 +420,13 @@ class MeasureMultipolesSimulations(MeasureIABase):
 					projected_sep = separation[:, self.not_LOS]
 					LOS = separation[:, self.LOS_ind]
 					projected_separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
-					separation_dir = (
+					with np.errstate(invalid='ignore'):
+						separation_dir = (
 							projected_sep.transpose() / projected_separation_len).transpose()  # normalisation of rp
 					separation_len = np.sqrt(np.sum(separation ** 2, axis=1))
 					del separation, projected_sep
-					mu_r = LOS / separation_len
+					with np.errstate(invalid='ignore'):
+						mu_r = LOS / separation_len
 					phi = np.arccos(
 						separation_dir[:, 0] * axis_direction_i[n, 0] + separation_dir[:, 1] * axis_direction_i[
 							n, 1])  # [0,pi]

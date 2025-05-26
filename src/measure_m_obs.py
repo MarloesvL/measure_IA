@@ -132,8 +132,9 @@ class MeasureMultipolesObservations(MeasureIABase):
 				projected_sep *= h
 			projected_separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=0))
 			separation_len = np.sqrt(np.sum(separation ** 2, axis=0))
-			separation_dir = (projected_sep / projected_separation_len)  # normalisation of rp
-			mu_r = LOS / separation_len
+			with np.errstate(invalid='ignore'):
+				separation_dir = (projected_sep / projected_separation_len)  # normalisation of rp
+				mu_r = LOS / separation_len
 			del projected_sep
 			phi_sep_dir = np.arctan2(separation_dir[1], separation_dir[0])
 			phi = phi_axis_dir - phi_sep_dir

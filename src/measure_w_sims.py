@@ -114,7 +114,8 @@ class MeasureWSimulations(MeasureIABase):
 			LOS = separation[:, LOS_ind]
 			del separation
 			separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
-			separation_dir = (projected_sep.transpose() / separation_len).transpose()  # normalisation of rp
+			with np.errstate(invalid='ignore'):
+				separation_dir = (projected_sep.transpose() / separation_len).transpose()  # normalisation of rp
 			del projected_sep
 			phi = np.arccos(self.calculate_dot_product_arrays(separation_dir, axis_direction))  # [0,pi]
 			del separation_dir
