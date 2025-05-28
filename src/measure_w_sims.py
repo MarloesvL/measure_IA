@@ -93,7 +93,8 @@ class MeasureWSimulations(MeasureIABase):
 		not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], LOS_ind, invert=True)]  # eg 0,1 for x&y
 		e = (1 - q ** 2) / (1 + q ** 2)  # size of ellipticity
 		del q
-		R = 1 - np.mean(e ** 2) / 2.0  # responsitivity factor
+		R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape)
+		# R = 1 - np.mean(e ** 2) / 2.0  # responsitivity factor
 		L3 = self.boxsize ** 3  # box volume
 		sub_box_len_logrp = (np.log10(self.separation_max) - np.log10(self.separation_min)) / self.num_bins_r
 		sub_box_len_pi = (self.pi_bins[-1] - self.pi_bins[0]) / self.num_bins_pi
@@ -240,7 +241,8 @@ class MeasureWSimulations(MeasureIABase):
 		not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], LOS_ind, invert=True)]  # eg 0,1 for x&y
 		e = (1 - q ** 2) / (1 + q ** 2)  # size of ellipticity
 		del q
-		R = 1 - np.mean(e ** 2) / 2.0  # responsitivity factor
+		R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape)
+		# R = 1 - np.mean(e ** 2) / 2.0  # responsitivity factor
 		L3 = self.boxsize ** 3  # box volume
 		sub_box_len_logrp = (np.log10(self.separation_max) - np.log10(self.separation_min)) / self.num_bins_r
 		sub_box_len_pi = (self.pi_bins[-1] - self.pi_bins[0]) / self.num_bins_pi
@@ -486,7 +488,8 @@ class MeasureWSimulations(MeasureIABase):
 		self.LOS_ind = self.data["LOS"]  # eg 2 for z axis
 		self.not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], self.LOS_ind, invert=True)]  # eg 0,1 for x&y
 		self.e = (1 - q ** 2) / (1 + q ** 2)  # size of ellipticity
-		self.R = 1 - np.mean(self.e ** 2) / 2.0  # responsitivity factor
+		self.R = sum(self.weight_shape * (1 - self.e ** 2 / 2.0)) / sum(self.weight_shape)
+		# self.R = 1 - np.mean(self.e ** 2) / 2.0  # responsitivity factor
 		L3 = self.boxsize ** 3  # box volume
 		self.sub_box_len_logrp = (np.log10(self.separation_max) - np.log10(self.separation_min)) / self.num_bins_r
 		self.sub_box_len_pi = (self.pi_bins[-1] - self.pi_bins[0]) / self.num_bins_pi

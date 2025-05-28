@@ -97,7 +97,8 @@ class MeasureMultipolesSimulations(MeasureIABase):
 		not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], LOS_ind, invert=True)]  # eg 0,1 for x&y
 		e = (1 - q ** 2) / (1 + q ** 2)  # size of ellipticity
 		del q
-		R = 1 - np.mean(e ** 2) / 2.0  # responsitivity factor
+		R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape)
+		# R = 1 - np.mean(e ** 2) / 2.0  # responsivity factor
 		L3 = self.boxsize ** 3  # box volume
 		sub_box_len_logr = (np.log10(self.separation_max) - np.log10(self.separation_min)) / self.num_bins_r
 		sub_box_len_mu_r = 2.0 / self.num_bins_pi  # mu_r ranges from -1 to 1. Same number of bins as pi
@@ -248,7 +249,8 @@ class MeasureMultipolesSimulations(MeasureIABase):
 		LOS_ind = self.data["LOS"]  # eg 2 for z axis
 		not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], LOS_ind, invert=True)]  # eg 0,1 for x&y
 		e = (1 - q ** 2) / (1 + q ** 2)  # size of ellipticity
-		R = 1 - np.mean(e ** 2) / 2.0  # responsivity factor
+		R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape)
+		# R = 1 - np.mean(e ** 2) / 2.0  # responsivity factor
 		L3 = self.boxsize ** 3  # box volume
 		sub_box_len_logr = (np.log10(self.separation_max) - np.log10(self.separation_min)) / self.num_bins_r
 		sub_box_len_mu_r = 2.0 / self.num_bins_pi  # mu_r ranges from -1 to 1. Same number of bins as pi
@@ -515,7 +517,8 @@ class MeasureMultipolesSimulations(MeasureIABase):
 		self.LOS_ind = self.data["LOS"]  # eg 2 for z axis
 		self.not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], self.LOS_ind, invert=True)]  # eg 0,1 for x&y
 		self.e = (1 - q ** 2) / (1 + q ** 2)  # size of ellipticity
-		self.R = 1 - np.mean(self.e ** 2) / 2.0  # responsivity factor
+		self.R = sum(self.weight_shape * (1 - self.e ** 2 / 2.0)) / sum(self.weight_shape)
+		# self.R = 1 - np.mean(self.e ** 2) / 2.0  # responsivity factor
 		L3 = self.boxsize ** 3  # box volume
 		self.sub_box_len_logr = (np.log10(self.separation_max) - np.log10(self.separation_min)) / self.num_bins_r
 		self.sub_box_len_mu_r = 2.0 / self.num_bins_pi  # mu_r ranges from -1 to 1. Same number of bins as pi
