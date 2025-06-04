@@ -125,8 +125,8 @@ class MeasureMultipolesSimulations(MeasureIABase):
 			separation_len = np.sqrt(np.sum(separation ** 2, axis=1))
 			with np.errstate(invalid='ignore'):
 				mu_r = LOS / separation_len
-			del LOS, projected_sep, separation
-			phi = np.arccos(self.calculate_dot_product_arrays(separation_dir, axis_direction))  # [0,pi]
+				del LOS, projected_sep, separation
+				phi = np.arccos(self.calculate_dot_product_arrays(separation_dir, axis_direction))  # [0,pi]
 			e_plus, e_cross = self.get_ellipticity(e, phi)
 			del phi, separation_dir
 			e_plus[np.isnan(e_plus)] = 0.0
@@ -319,9 +319,9 @@ class MeasureMultipolesSimulations(MeasureIABase):
 					del separation, projected_sep
 					with np.errstate(invalid='ignore'):
 						mu_r = LOS / separation_len
-					phi = np.arccos(
-						separation_dir[:, 0] * axis_direction_i[n, 0] + separation_dir[:, 1] * axis_direction_i[
-							n, 1])  # [0,pi]
+						phi = np.arccos(
+							separation_dir[:, 0] * axis_direction_i[n, 0] + separation_dir[:, 1] * axis_direction_i[
+								n, 1])  # [0,pi]
 					e_plus, e_cross = self.get_ellipticity(e_i[n], phi)
 					del phi, LOS, separation_dir
 
@@ -433,9 +433,9 @@ class MeasureMultipolesSimulations(MeasureIABase):
 					del separation, projected_sep
 					with np.errstate(invalid='ignore'):
 						mu_r = LOS / separation_len
-					phi = np.arccos(
-						separation_dir[:, 0] * axis_direction_i[n, 0] + separation_dir[:, 1] * axis_direction_i[
-							n, 1])  # [0,pi]
+						phi = np.arccos(
+							separation_dir[:, 0] * axis_direction_i[n, 0] + separation_dir[:, 1] * axis_direction_i[
+								n, 1])  # [0,pi]
 					e_plus, e_cross = self.get_ellipticity(e_i[n], phi)
 					del phi, LOS, separation_dir
 

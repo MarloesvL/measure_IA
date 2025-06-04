@@ -119,8 +119,8 @@ class MeasureWSimulations(MeasureIABase):
 			separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
 			with np.errstate(invalid='ignore'):
 				separation_dir = (projected_sep.transpose() / separation_len).transpose()  # normalisation of rp
-			del projected_sep
-			phi = np.arccos(self.calculate_dot_product_arrays(separation_dir, axis_direction))  # [0,pi]
+				del projected_sep
+				phi = np.arccos(self.calculate_dot_product_arrays(separation_dir, axis_direction))  # [0,pi]
 			del separation_dir
 			e_plus, e_cross = self.get_ellipticity(e, phi)
 			del phi
@@ -304,11 +304,12 @@ class MeasureWSimulations(MeasureIABase):
 					projected_sep = separation[:, not_LOS]
 					LOS = separation[:, LOS_ind]
 					separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
-					separation_dir = (projected_sep.transpose() / separation_len).transpose()  # normalisation of rp
-					del projected_sep, separation
-					phi = np.arccos(
-						separation_dir[:, 0] * axis_direction_i[n, 0] + separation_dir[:, 1] * axis_direction_i[
-							n, 1])  # CHANGE2
+					with np.errstate(invalid='ignore'):
+						separation_dir = (projected_sep.transpose() / separation_len).transpose()  # normalisation of rp
+						del projected_sep, separation
+						phi = np.arccos(
+							separation_dir[:, 0] * axis_direction_i[n, 0] + separation_dir[:, 1] * axis_direction_i[
+								n, 1])  # CHANGE2
 					e_plus, e_cross = self.get_ellipticity(e_i[n], phi)  # CHANGE2
 					del phi, separation_dir
 					e_plus[np.isnan(e_plus)] = 0.0
@@ -411,11 +412,12 @@ class MeasureWSimulations(MeasureIABase):
 					projected_sep = separation[:, self.not_LOS]
 					LOS = separation[:, self.LOS_ind]
 					separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
-					separation_dir = (projected_sep.transpose() / separation_len).transpose()  # normalisation of rp
-					del projected_sep, separation
-					phi = np.arccos(
-						separation_dir[:, 0] * axis_direction_i[n, 0] + separation_dir[:, 1] * axis_direction_i[
-							n, 1])  # CHANGE2
+					with np.errstate(invalid='ignore'):
+						separation_dir = (projected_sep.transpose() / separation_len).transpose()  # normalisation of rp
+						del projected_sep, separation
+						phi = np.arccos(
+							separation_dir[:, 0] * axis_direction_i[n, 0] + separation_dir[:, 1] * axis_direction_i[
+								n, 1])  # CHANGE2
 					e_plus, e_cross = self.get_ellipticity(e_i[n], phi)  # CHANGE2
 					del phi, separation_dir
 					e_plus[np.isnan(e_plus)] = 0.0
