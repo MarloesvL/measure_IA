@@ -152,11 +152,11 @@ class MeasureMultipolesSimulations(MeasureIABase):
 			del e_plus, e_cross, mask, mu_r
 			np.add.at(DD, (ind_r, ind_mu_r), 1.0)
 
-		if Num_position == Num_shape:
-			corrtype = "auto"
-			DD = DD / 2.0  # auto correlation, all pairs are double
-		else:
-			corrtype = "cross"
+		# if Num_position == Num_shape:
+		# 	corrtype = "auto"
+		# 	DD = DD / 2.0  # auto correlation, all pairs are double
+		# else:
+		corrtype = "cross"
 
 		# analytical calc is much more difficult for (r,mu_r) bins
 		for i in np.arange(0, self.num_bins_r):
@@ -348,11 +348,11 @@ class MeasureMultipolesSimulations(MeasureIABase):
 					del e_plus, e_cross, mask, separation_len
 		if tree_input != None:
 			tree_file.close()
-		if Num_position == Num_shape:
-			corrtype = "auto"
-			DD = DD / 2.0  # auto correlation, all pairs are double
-		else:
-			corrtype = "cross"
+		# if Num_position == Num_shape:
+		# 	corrtype = "auto"
+		# 	DD = DD / 2.0  # auto correlation, all pairs are double
+		# else:
+		corrtype = "cross"
 
 		# analytical calc is much more difficult for (r,mu_r) bins
 		for i in np.arange(0, self.num_bins_r):
@@ -540,11 +540,11 @@ class MeasureMultipolesSimulations(MeasureIABase):
 			Scross_D += result[i][1]
 			DD += result[i][2]
 
-		if Num_position == Num_shape:
-			corrtype = "auto"
-			DD = DD / 2.0  # auto correlation, all pairs are double
-		else:
-			corrtype = "cross"
+		# if Num_position == Num_shape:
+		# 	corrtype = "auto"
+		# 	DD = DD / 2.0  # auto correlation, all pairs are double
+		# else:
+		corrtype = "cross"
 
 		# analytical calc is much more difficult for (r,mu_r) bins
 		for i in np.arange(0, self.num_bins_r):

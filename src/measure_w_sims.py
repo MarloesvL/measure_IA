@@ -144,11 +144,12 @@ class MeasureWSimulations(MeasureIABase):
 			del e_plus, e_cross, mask
 			np.add.at(DD, (ind_r, ind_pi), 1.0)
 
-		if Num_position == Num_shape:
-			corrtype = "auto"
-			DD = DD / 2.0  # auto correlation, all pairs are double
-		else:
-			corrtype = "cross"
+		# if Num_position == Num_shape:
+		# 	corrtype = "auto"
+		# 	DD = DD / 2.0  # auto correlation, all pairs are double
+		# else:
+
+		corrtype = "cross"
 
 		for i in np.arange(0, self.num_bins_r):
 			for p in np.arange(0, self.num_bins_pi):
@@ -329,11 +330,11 @@ class MeasureWSimulations(MeasureIABase):
 					np.add.at(DD, (ind_r, ind_pi), 1.0)
 		if tree_input != None:
 			tree_file.close()
-		if Num_position == Num_shape:
-			corrtype = "auto"
-			DD = DD / 2.0  # auto correlation, all pairs are double
-		else:
-			corrtype = "cross"
+		# if Num_position == Num_shape:
+		# 	corrtype = "auto"
+		# 	DD = DD / 2.0  # auto correlation, all pairs are double
+		# else:
+		corrtype = "cross"
 		for i in np.arange(0, self.num_bins_r):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_g_plus[i, p] = self.get_random_pairs(
@@ -513,11 +514,11 @@ class MeasureWSimulations(MeasureIABase):
 			DD += result[i][2]
 			variance += result[i][3]
 
-		if Num_position == Num_shape:
-			corrtype = "auto"
-			DD = DD / 2.0  # auto correlation, all pairs are double
-		else:
-			corrtype = "cross"
+		# if Num_position == Num_shape:
+		# 	corrtype = "auto"
+		# 	DD = DD / 2.0  # auto correlation, all pairs are double
+		# else:
+		corrtype = "cross"
 
 		for i in np.arange(0, self.num_bins_r):
 			for p in np.arange(0, self.num_bins_pi):
