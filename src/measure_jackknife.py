@@ -234,10 +234,15 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 			data = [corr_type[1] + "_g_plus"]
 			corr_type_suff = ["_g_plus"]
 		elif corr_type[0] == "gg":
-			data = [corr_type[1] + "_gg"]
-			corr_type_suff = ["_gg"]
+			data = [corr_type[1] + "_g_plus", corr_type[1] + "_gg"]
+			corr_type_suff = ["_g_plus", "_gg"]
+			corr_type[0] = 'both'  # will write away wrong data at the end (j,data_j loop) if gg only
+		# todo: update this to only do gg (count pairs methods) if asked
+		# data = [corr_type[1] + "_gg"]
+		# corr_type_suff = ["_gg"]
 		else:
 			raise KeyError("Unknown value for first entry of corr_type. Choose from [g+, gg, both]")
+
 		if corr_type[1] == "multipoles":
 			bin_var_names = ["r", "mu_r"]
 		elif corr_type[1] == "w":
