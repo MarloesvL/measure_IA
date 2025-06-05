@@ -5,7 +5,6 @@ from src.write_data import write_dataset_hdf5, create_group_hdf5
 from src.measure_IA_base import MeasureIABase
 from astropy.cosmology import LambdaCDM, z_at_value
 
-
 cosmo = LambdaCDM(H0=69.6, Om0=0.286, Ode0=0.714)
 KPC_TO_KM = 3.086e16  # 1 kpc is 3.086e16 km
 
@@ -130,9 +129,9 @@ class MeasureWObservations(MeasureIABase):
 			separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=0))
 			with np.errstate(invalid='ignore'):
 				separation_dir = (projected_sep / separation_len)  # normalisation of rp
-			del projected_sep
-			phi_sep_dir = np.arctan2(separation_dir[1], separation_dir[0])
-			phi = phi_axis_dir - phi_sep_dir
+				del projected_sep
+				phi_sep_dir = np.arctan2(separation_dir[1], separation_dir[0])
+				phi = phi_axis_dir - phi_sep_dir
 			del separation_dir
 			e_plus, e_cross = self.get_ellipticity(-e, phi)
 			del phi

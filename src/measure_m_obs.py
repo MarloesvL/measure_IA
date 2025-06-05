@@ -135,9 +135,9 @@ class MeasureMultipolesObservations(MeasureIABase):
 			with np.errstate(invalid='ignore'):
 				separation_dir = (projected_sep / projected_separation_len)  # normalisation of rp
 				mu_r = LOS / separation_len
-			del projected_sep
-			phi_sep_dir = np.arctan2(separation_dir[1], separation_dir[0])
-			phi = phi_axis_dir - phi_sep_dir
+				del projected_sep
+				phi_sep_dir = np.arctan2(separation_dir[1], separation_dir[0])
+				phi = phi_axis_dir - phi_sep_dir
 			# np.arccos(self.calculate_dot_product_arrays(separation_dir, axis_direction))  # [0,pi]
 			del separation_dir
 			e_plus, e_cross = self.get_ellipticity(-e, phi)
