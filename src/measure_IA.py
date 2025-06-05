@@ -84,12 +84,12 @@ class MeasureIA(MeasureJackknife):
 			else:
 				multiproc_bool = True
 				save_tree = True
-		if save_tree and file_tree_path == None:
-			raise ValueError(
-				"Input file_tree_path for faster computation. Do not want to use trees? Input file_path_tree=False.")
-		elif save_tree and file_tree_path == False:
+		if save_tree and file_tree_path == False:
 			save_tree = False
 			file_tree_path = None
+		elif save_tree and file_tree_path == None:
+			raise ValueError(
+				"Input file_tree_path for faster computation. Do not want to use trees? Input file_path_tree=False.")
 		try:
 			RA = self.data["RA"]
 			sim_bool = False
@@ -119,10 +119,18 @@ class MeasureIA(MeasureJackknife):
 												  dataset_name=dataset_name, L_subboxes=L, rp_cut=None,
 												  tree_saved=True, file_tree_path=file_tree_path,
 												  remove_tree_file=remove_tree_file)
-			else:
+			elif multiproc_bool and not save_tree:
 				self.measure_projected_correlation_multiprocessing(num_nodes=self.num_nodes, masks=masks,
 																   dataset_name=dataset_name, return_output=False,
 																   print_num=True)
+				self.measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
+				if calc_errors:
+					self.measure_jackknife_errors(masks=masks, corr_type=[corr_type, "w"],
+												  dataset_name=dataset_name, L_subboxes=L, rp_cut=None,
+												  num_nodes=self.num_nodes, tree_saved=False)
+			else:
+				self.measure_projected_correlation(masks=masks, dataset_name=dataset_name,
+												   return_output=False, print_num=True)
 				self.measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
 				if calc_errors:
 					self.measure_jackknife_errors(masks=masks, corr_type=[corr_type, "w"],
@@ -213,12 +221,23 @@ class MeasureIA(MeasureJackknife):
 												  dataset_name=dataset_name, L_subboxes=L, rp_cut=rp_cut,
 												  tree_saved=True, file_tree_path=file_tree_path,
 												  remove_tree_file=remove_tree_file)
-			else:
+			elif multiproc_bool and not save_tree:
 				self.measure_projected_correlation_multipoles_multiprocessing(num_nodes=self.num_nodes,
 																			  masks=masks,
 																			  dataset_name=dataset_name,
 																			  return_output=False, rp_cut=rp_cut,
 																			  print_num=True)
+				self.measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
+				if calc_errors:
+					self.measure_jackknife_errors(masks=masks, corr_type=[corr_type, "multipoles"],
+												  dataset_name=dataset_name, L_subboxes=L,
+												  rp_cut=rp_cut, num_nodes=self.num_nodes,
+												  tree_saved=False)
+			else:
+				self.measure_projected_correlation_multipoles(masks=masks,
+															  dataset_name=dataset_name,
+															  return_output=False, print_num=True,
+															  rp_cut=rp_cut)
 				self.measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
 				if calc_errors:
 					self.measure_jackknife_errors(masks=masks, corr_type=[corr_type, "multipoles"],
