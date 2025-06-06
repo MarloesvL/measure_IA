@@ -151,10 +151,18 @@ class MeasureWObservations(MeasureIABase):
 			)  # need length of LOS, so only positive values
 			del LOS
 			ind_pi = np.array(ind_pi, dtype=int)
-			np.add.at(Splus_D, (ind_r, ind_pi), (weight[n] * weight_shape[mask] * e_plus[mask]))
+			if np.any(ind_r == np.shape(Splus_D)[0]):
+				ind_r[np.where(ind_r == np.shape(Splus_D)[0])] = np.shape(Splus_D)[0] - 1
+			if np.any(ind_pi == np.shape(Splus_D)[1]):
+				ind_pi[np.where(ind_pi == np.shape(Splus_D)[1])] = np.shape(Splus_D)[1] - 1
+			try:
+				np.add.at(Splus_D, (ind_r, ind_pi), (weight[n] * weight_shape[mask] * e_plus[mask]))
+			except:
+				print(ind_r, np.shape(Splus_D)[0], ind_r == 10, np.sum(ind_r == int(np.shape(Splus_D)[0])) > 0,
+					  ind_r == int(np.shape(Splus_D)[0]))
 			np.add.at(Scross_D, (ind_r, ind_pi), (weight[n] * weight_shape[mask] * e_cross[mask]))
-			del e_plus, e_cross, mask
-			np.add.at(DD, (ind_r, ind_pi), 1.0)
+			del e_plus, e_cross
+			np.add.at(DD, (ind_r, ind_pi), weight[n] * weight_shape[mask])
 
 		# if Num_position == Num_shape:
 		# 	DD = DD / 2.0  # auto correlation, all pairs are double
@@ -207,6 +215,8 @@ class MeasureWObservations(MeasureIABase):
 			RA_shape_sample = self.data["RA_shape_sample"]
 			DEC = self.data["DEC"]
 			DEC_shape_sample = self.data["DEC_shape_sample"]
+			weight = self.data["weight"]
+			weight_shape = self.data["weight_shape_sample"]
 		else:
 			redshift = self.data["Redshift"][masks["Redshift"]]
 			redshift_shape_sample = self.data["Redshift_shape_sample"][masks["Redshift_shape_sample"]]
@@ -214,6 +224,16 @@ class MeasureWObservations(MeasureIABase):
 			RA_shape_sample = self.data["RA_shape_sample"][masks["RA_shape_sample"]]
 			DEC = self.data["DEC"][masks["DEC"]]
 			DEC_shape_sample = self.data["DEC_shape_sample"][masks["DEC_shape_sample"]]
+			try:
+				weight_mask = masks["weight"]
+			except:
+				masks["weight"] = np.ones(self.Num_position, dtype=bool)
+			try:
+				weight_mask = masks["weight_shape_sample"]
+			except:
+				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
+			weight = self.data["weight"][masks["weight"]]
+			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		Num_position = len(RA)
 		Num_shape = len(RA_shape_sample)
 		if print_num:
@@ -260,7 +280,7 @@ class MeasureWObservations(MeasureIABase):
 			)  # need length of LOS, so only positive values
 			del LOS
 			ind_pi = np.array(ind_pi, dtype=int)
-			np.add.at(DD, (ind_r, ind_pi), 1.0)
+			np.add.at(DD, (ind_r, ind_pi), weight[n] * weight_shape[mask])
 
 		# if Num_position == Num_shape:
 		# 	DD = DD / 2.0  # auto correlation, all pairs are double

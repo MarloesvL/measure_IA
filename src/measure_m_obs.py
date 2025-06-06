@@ -164,8 +164,8 @@ class MeasureMultipolesObservations(MeasureIABase):
 			del LOS
 			np.add.at(Splus_D, (ind_r, ind_mu_r), (weight[n] * weight_shape[mask] * e_plus[mask]))
 			np.add.at(Scross_D, (ind_r, ind_mu_r), (weight[n] * weight_shape[mask] * e_cross[mask]))
-			del e_plus, e_cross, mask
-			np.add.at(DD, (ind_r, ind_mu_r), 1.0)
+			del e_plus, e_cross
+			np.add.at(DD, (ind_r, ind_mu_r), weight[n] * weight_shape[mask])
 
 		# if Num_position == Num_shape:
 		# 	DD = DD / 2.0  # auto correlation, all pairs are double
@@ -220,6 +220,8 @@ class MeasureMultipolesObservations(MeasureIABase):
 			RA_shape_sample = self.data["RA_shape_sample"]
 			DEC = self.data["DEC"]
 			DEC_shape_sample = self.data["DEC_shape_sample"]
+			weight = self.data["weight"]
+			weight_shape = self.data["weight_shape_sample"]
 		else:
 			redshift = self.data["Redshift"][masks["Redshift"]]
 			redshift_shape_sample = self.data["Redshift_shape_sample"][masks["Redshift_shape_sample"]]
@@ -227,6 +229,16 @@ class MeasureMultipolesObservations(MeasureIABase):
 			RA_shape_sample = self.data["RA_shape_sample"][masks["RA_shape_sample"]]
 			DEC = self.data["DEC"][masks["DEC"]]
 			DEC_shape_sample = self.data["DEC_shape_sample"][masks["DEC_shape_sample"]]
+			try:
+				weight_mask = masks["weight"]
+			except:
+				masks["weight"] = np.ones(self.Num_position, dtype=bool)
+			try:
+				weight_mask = masks["weight_shape_sample"]
+			except:
+				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
+			weight = self.data["weight"][masks["weight"]]
+			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		Num_position = len(RA)
 		Num_shape = len(RA_shape_sample)
 		if print_num:
@@ -281,7 +293,7 @@ class MeasureMultipolesObservations(MeasureIABase):
 			)  # need length of LOS, so only positive values
 			ind_mu_r = np.array(ind_mu_r, dtype=int)
 			del LOS
-			np.add.at(DD, (ind_r, ind_mu_r), 1.0)
+			np.add.at(DD, (ind_r, ind_mu_r), weight[n] * weight_shape[mask])
 
 		# if Num_position == Num_shape:
 		# 	DD = DD / 2.0  # auto correlation, all pairs are double

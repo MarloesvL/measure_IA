@@ -143,8 +143,8 @@ class MeasureWSimulations(MeasureIABase):
 			np.add.at(Splus_D, (ind_r, ind_pi), (weight[n] * weight_shape[mask] * e_plus[mask]) / (2 * R))
 			np.add.at(Scross_D, (ind_r, ind_pi), (weight[n] * weight_shape[mask] * e_cross[mask]) / (2 * R))
 			np.add.at(variance, (ind_r, ind_pi), ((weight[n] * weight_shape[mask] * e_plus[mask]) / (2 * R)) ** 2)
-			del e_plus, e_cross, mask
-			np.add.at(DD, (ind_r, ind_pi), 1.0)
+			del e_plus, e_cross
+			np.add.at(DD, (ind_r, ind_pi), weight[n] * weight_shape[mask])
 
 		# if Num_position == Num_shape:
 		# 	corrtype = "auto"
@@ -331,8 +331,8 @@ class MeasureWSimulations(MeasureIABase):
 							  (weight[ind_rbin_i[n]][mask] * weight_shape_i[n] * e_plus[mask]) / (2 * R))
 					np.add.at(Scross_D, (ind_r, ind_pi),
 							  (weight[ind_rbin_i[n]][mask] * weight_shape_i[n] * e_cross[mask]) / (2 * R))
-					del e_plus, e_cross, separation_len, mask
-					np.add.at(DD, (ind_r, ind_pi), 1.0)
+					del e_plus, e_cross, separation_len
+					np.add.at(DD, (ind_r, ind_pi), weight[ind_rbin_i[n]][mask] * weight_shape_i[n])
 		if tree_input != None:
 			tree_file.close()
 		# if Num_position == Num_shape:
@@ -439,9 +439,9 @@ class MeasureWSimulations(MeasureIABase):
 							  (self.weight[ind_rbin_i[n]][mask] * weight_shape_i[n] * e_plus[mask]) / (2 * self.R))
 					np.add.at(Scross_D, (ind_r, ind_pi),
 							  (self.weight[ind_rbin_i[n]][mask] * weight_shape_i[n] * e_cross[mask]) / (2 * self.R))
-					del e_plus, e_cross, separation_len, mask
+					del e_plus, e_cross, separation_len
 					# np.add.at(variance, (ind_r, ind_pi), (e_plus[mask] / (2 * R)) ** 2)
-					np.add.at(DD, (ind_r, ind_pi), 1.0)
+					np.add.at(DD, (ind_r, ind_pi), self.weight[ind_rbin_i[n]][mask] * weight_shape_i[n])
 
 		return Splus_D, Scross_D, DD, variance
 

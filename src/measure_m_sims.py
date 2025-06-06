@@ -151,8 +151,8 @@ class MeasureMultipolesSimulations(MeasureIABase):
 
 			np.add.at(Splus_D, (ind_r, ind_mu_r), (weight[n] * weight_shape[mask] * e_plus[mask]) / (2 * R))
 			np.add.at(Scross_D, (ind_r, ind_mu_r), (weight[n] * weight_shape[mask] * e_cross[mask]) / (2 * R))
-			del e_plus, e_cross, mask, mu_r
-			np.add.at(DD, (ind_r, ind_mu_r), 1.0)
+			del e_plus, e_cross, mu_r
+			np.add.at(DD, (ind_r, ind_mu_r), weight[n] * weight_shape[mask])
 
 		# if Num_position == Num_shape:
 		# 	corrtype = "auto"
@@ -348,7 +348,7 @@ class MeasureMultipolesSimulations(MeasureIABase):
 							  (weight[ind_rbin_i[n]][mask] * weight_shape_i[n] * e_plus[mask]) / (2 * R))
 					np.add.at(Scross_D, (ind_r, ind_mu_r),
 							  (weight[ind_rbin_i[n]][mask] * weight_shape_i[n] * e_cross[mask]) / (2 * R))
-					np.add.at(DD, (ind_r, ind_mu_r), 1.0)
+					np.add.at(DD, (ind_r, ind_mu_r), weight[ind_rbin_i[n]][mask] * weight_shape_i[n])
 					del e_plus, e_cross, mask, separation_len
 		if tree_input != None:
 			tree_file.close()
@@ -462,7 +462,7 @@ class MeasureMultipolesSimulations(MeasureIABase):
 							  (self.weight[ind_rbin_i[n]][mask] * weight_shape_i[n] * e_plus[mask]) / (2 * self.R))
 					np.add.at(Scross_D, (ind_r, ind_mu_r),
 							  (self.weight[ind_rbin_i[n]][mask] * weight_shape_i[n] * e_cross[mask]) / (2 * self.R))
-					np.add.at(DD, (ind_r, ind_mu_r), 1.0)
+					np.add.at(DD, (ind_r, ind_mu_r), self.weight[ind_rbin_i[n]][mask] * weight_shape_i[n])
 					del e_plus, e_cross, mask, separation_len
 		return Splus_D, Scross_D, DD
 
