@@ -641,7 +641,9 @@ class MeasureIA(MeasureJackknife):
 				self.randoms_data["weight_shape_sample"] = self.randoms_data["weight"]  # in case weights are given
 			else:
 				self.randoms_data["weight_shape_sample"] = np.ones(len(self.randoms_data["RA_shape_sample"]))
-
+		if one_random_sample:
+			jk_patches["randoms_position"] = jk_patches["randoms"]
+			jk_patches["randoms_shape"] = jk_patches["randoms"]
 		self.data_dir = data
 		try:
 			weight = self.data_dir["weight"]
@@ -651,8 +653,6 @@ class MeasureIA(MeasureJackknife):
 			weight = self.data_dir["weight_shape_sample"]
 		except:
 			self.data_dir["weight_shape_sample"] = np.ones(len(self.data_dir["RA_shape_sample"]))
-
-		dataset_names = [dataset_name, f"{dataset_name}_randoms"]
 
 		num_samples = {}  # Needed to correct for different number of randoms and galaxies/clusters in data
 		if masks == None:
@@ -804,7 +804,7 @@ class MeasureIA(MeasureJackknife):
 					"weight": self.randoms_data["weight"],
 					"weight_shape_sample": self.data_dir["weight_shape_sample"]
 				}
-				self.measure_jackknife_realisations_obs_multiprocessing(patches_pos=jk_patches["randoms"],
+				self.measure_jackknife_realisations_obs_multiprocessing(patches_pos=jk_patches["randoms_position"],
 																		patches_shape=jk_patches["shape"],
 																		corr_type=[corr_type, "multipoles"],
 																		masks=masks,
@@ -852,7 +852,7 @@ class MeasureIA(MeasureJackknife):
 					"weight": self.randoms_data["weight"],
 					"weight_shape_sample": self.data_dir["weight_shape_sample"]
 				}
-				self.measure_jackknife_realisations_obs_multiprocessing(patches_pos=jk_patches["randoms"],
+				self.measure_jackknife_realisations_obs_multiprocessing(patches_pos=jk_patches["randoms_position"],
 																		patches_shape=jk_patches["shape"],
 																		corr_type=["gg", "multipoles"],
 																		dataset_name=dataset_name,
@@ -875,7 +875,7 @@ class MeasureIA(MeasureJackknife):
 					"weight_shape_sample": self.randoms_data["weight_shape_sample"]
 				}
 				self.measure_jackknife_realisations_obs_multiprocessing(patches_pos=jk_patches["position"],
-																		patches_shape=jk_patches["randoms"],
+																		patches_shape=jk_patches["randoms_shape"],
 																		corr_type=["gg", "multipoles"],
 																		dataset_name=dataset_name,
 																		num_nodes=self.num_nodes, over_h=over_h,
@@ -896,8 +896,8 @@ class MeasureIA(MeasureJackknife):
 					"weight": self.randoms_data["weight"],
 					"weight_shape_sample": self.randoms_data["weight_shape_sample"]
 				}
-				self.measure_jackknife_realisations_obs_multiprocessing(patches_pos=jk_patches["randoms"],
-																		patches_shape=jk_patches["randoms"],
+				self.measure_jackknife_realisations_obs_multiprocessing(patches_pos=jk_patches["randoms_position"],
+																		patches_shape=jk_patches["randoms_shape"],
 																		corr_type=["gg", "multipoles"],
 																		dataset_name=dataset_name,
 																		num_nodes=self.num_nodes, over_h=over_h,
