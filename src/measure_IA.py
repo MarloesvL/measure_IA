@@ -247,7 +247,7 @@ class MeasureIA(MeasureJackknife):
 
 		return
 
-	def measure_xi_w_obs(self, IA_estimator, dataset_name, corr_type, jk_patches=None, randoms_data=None,
+	def measure_xi_w_obs(self, IA_estimator, dataset_name, corr_type, jk_patches=None, num_jk=None, randoms_data=None,
 						 calc_errors=True,
 						 masks=None, masks_randoms=None, cosmology=None, over_h=False):
 		"""
@@ -314,9 +314,18 @@ class MeasureIA(MeasureJackknife):
 				self.randoms_data["weight_shape_sample"] = self.randoms_data["weight"]  # in case weights are given
 			else:
 				self.randoms_data["weight_shape_sample"] = np.ones(len(self.randoms_data["RA_shape_sample"]))
-		if one_random_sample:
-			jk_patches["randoms_position"] = jk_patches["randoms"]
-			jk_patches["randoms_shape"] = jk_patches["randoms"]
+
+		if calc_errors:
+			if jk_patches == None:
+				if num_jk != None:
+					self.assign_jackknife_patches(data, randoms_data, num_jk)
+				else:
+					raise ValueError("Set calc_errors to False, or provide either jk_patches or num_jk input.")
+			else:
+				if one_random_sample:
+					jk_patches["randoms_position"] = jk_patches["randoms"]
+					jk_patches["randoms_shape"] = jk_patches["randoms"]
+
 		self.data_dir = data
 		try:
 			weight = self.data_dir["weight"]
@@ -326,8 +335,6 @@ class MeasureIA(MeasureJackknife):
 			weight = self.data_dir["weight_shape_sample"]
 		except:
 			self.data_dir["weight_shape_sample"] = np.ones(len(self.data_dir["RA_shape_sample"]))
-
-		dataset_names = [dataset_name, f"{dataset_name}_randoms"]
 
 		num_samples = {}  # Needed to correct for different number of randoms and galaxies/clusters in data
 		if masks == None:
@@ -574,7 +581,8 @@ class MeasureIA(MeasureJackknife):
 		self.data = data
 		return
 
-	def measure_xi_multipoles_obs(self, IA_estimator, dataset_name, corr_type, jk_patches=None, randoms_data=None,
+	def measure_xi_multipoles_obs(self, IA_estimator, dataset_name, corr_type, jk_patches=None, num_jk=None,
+								  randoms_data=None,
 								  calc_errors=True, rp_cut=None,
 								  masks=None, masks_randoms=None, cosmology=None, over_h=False):
 		"""
@@ -641,9 +649,18 @@ class MeasureIA(MeasureJackknife):
 				self.randoms_data["weight_shape_sample"] = self.randoms_data["weight"]  # in case weights are given
 			else:
 				self.randoms_data["weight_shape_sample"] = np.ones(len(self.randoms_data["RA_shape_sample"]))
-		if one_random_sample:
-			jk_patches["randoms_position"] = jk_patches["randoms"]
-			jk_patches["randoms_shape"] = jk_patches["randoms"]
+
+		if calc_errors:
+			if jk_patches == None:
+				if num_jk != None:
+					self.assign_jackknife_patches(data, randoms_data, num_jk)
+				else:
+					raise ValueError("Set calc_errors to False, or provide either jk_patches or num_jk input.")
+			else:
+				if one_random_sample:
+					jk_patches["randoms_position"] = jk_patches["randoms"]
+					jk_patches["randoms_shape"] = jk_patches["randoms"]
+
 		self.data_dir = data
 		try:
 			weight = self.data_dir["weight"]

@@ -1,6 +1,8 @@
 import math
 import numpy as np
 import h5py
+import kmeans_radec
+from kmeans_radec import KMeans, kmeans_sample
 from scipy.special import lpmn
 from src.write_data import write_dataset_hdf5, create_group_hdf5
 from src.Sim_info import SimInfo
@@ -729,6 +731,51 @@ class MeasureIABase(SimInfo):
 			raise ValueError("Unknown input for IA_estimator, choose from [clusters, galaxies].")
 		output_file.close()
 		return
+
+	def assign_jackknife_patches(self, data, randoms_data, num_jk):
+		'''
+		Assigns jackknife patches to data and randoms given a number of patches.
+		:param data: directory containing position and shape sample data
+		:param randoms_data: directory containing position and shape sample data of randoms
+		:param num_jk: number of jackknife patches
+		:return: directory with patch numbers for each sample
+		'''
+
+		jk_patches = {}
+
+		# Read the randoms file from which the jackknife regions will be created
+		RA = randoms_data['RA']
+		DEC = randoms_data['DEC']
+
+		# Define a number of jaccknife regions and find their centres using kmans
+		X = np.column_stack((RA, DEC))
+		km = kmeans_sample(X, num_jk, maxiter=100, tol=1.0e-5)
+		jk_labels = km.labels
+
+		jk_patches['randoms_position'] = jk_labels
+
+		RA = randoms_data['RA_shape_sample']
+		DEC = randoms_data['DEC_shape_sample']
+		X2 = np.column_stack((RA, DEC))
+		jk_labels = km.find_nearest(X2)
+
+		jk_patches['randoms_shape'] = jk_labels
+
+		RA = data['RA']
+		DEC = data['DEC']
+		X2 = np.column_stack((RA, DEC))
+		jk_labels = km.find_nearest(X2)
+
+		jk_patches['position'] = jk_labels
+
+		RA = data['RA_shape_sample']
+		DEC = data['DEC_shape_sample']
+		X2 = np.column_stack((RA, DEC))
+		jk_labels = km.find_nearest(X2)
+
+		jk_patches['shape'] = jk_labels
+
+		return jk_patches
 
 	def measure_misalignment_angle(self, vector1_name, vector2_name, normalise=False):
 		"""
