@@ -136,7 +136,8 @@ class MeasureIABase(SimInfo):
 		:param dataset_name: Name of the dataset in the hdf5 file specified in output file name.
 		:return: correlation, separation bin means (log) if output file name not specified.
 		"""
-
+		print("WARNING: this method has not been tested and is likely not correct.")
+		exit()
 		if masks == None:
 			positions = self.data["Position"]
 			positions_shape_sample = self.data["Position_shape_sample"]
