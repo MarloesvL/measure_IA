@@ -44,7 +44,7 @@ class ReadData(SimInfo):
 			data = file[self.snap_group + self.sub_group + variable][cut[0]: cut[1]]
 		return data
 
-	def read_subhalo(self, variable):
+	def read_subhalo(self, variable, Nfiles=0):
 		"""
 		Read the data from the subhalo files for a specified shapshot.
 		:param variable: the variable name for the requested data
@@ -61,8 +61,10 @@ class ReadData(SimInfo):
 		else:
 			stack = False
 		subhalo_file.close()
+		if Nfiles == 0:
+			Nfiles = self.N_files
 
-		for n in np.arange(1, self.N_files):
+		for n in np.arange(1, Nfiles):
 			subhalo_file = h5py.File(f"{self.data_path}{self.fof_folder}.{n}.hdf5", "r")
 			try:
 				Subhalo = subhalo_file[self.catalogue]
