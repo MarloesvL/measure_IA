@@ -287,8 +287,6 @@ class MeasureIA(MeasureJackknife):
 		else:
 			raise ValueError("Unknown input for IA_estimator, choose from [clusters, galaxies].")
 
-		if calc_errors and jk_patches == None:
-			raise ValueError("No jackknife patches are given, but calc_errors is set to True.")
 
 		# todo: Expand to include methods with trees and internal multiproc
 		# todo: Checks to see if data directories include everything they need
@@ -318,7 +316,7 @@ class MeasureIA(MeasureJackknife):
 		if calc_errors:
 			if jk_patches == None:
 				if num_jk != None:
-					self.assign_jackknife_patches(data, randoms_data, num_jk)
+					jk_patches = self.assign_jackknife_patches(data, randoms_data, num_jk)
 				else:
 					raise ValueError("Set calc_errors to False, or provide either jk_patches or num_jk input.")
 			else:
@@ -622,9 +620,6 @@ class MeasureIA(MeasureJackknife):
 		else:
 			raise ValueError("Unknown input for IA_estimator, choose from [clusters, galaxies].")
 
-		if calc_errors and jk_patches == None:
-			raise ValueError("No jackknife patches are given, but calc_errors is set to True.")
-
 		# todo: Expand to include methods with trees and internal multiproc
 		# todo: Checks to see if data directories include everything they need
 		data = self.data  # temporary save so it can be restored at the end of the calculation
@@ -653,7 +648,7 @@ class MeasureIA(MeasureJackknife):
 		if calc_errors:
 			if jk_patches == None:
 				if num_jk != None:
-					self.assign_jackknife_patches(data, randoms_data, num_jk)
+					jk_patches = self.assign_jackknife_patches(data, randoms_data, num_jk)
 				else:
 					raise ValueError("Set calc_errors to False, or provide either jk_patches or num_jk input.")
 			else:
