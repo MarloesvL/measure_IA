@@ -28,6 +28,9 @@ data_path_out = "./"  # file path to output data
 file_name = "test_IA.hdf5"  # datafile name (must be hdf5)
 num_nodes = 5  # number of CPU cores available for calculation
 
+IA_estimator = "clusters"  # type of estimator to be used. Choose "clusters" or "galaxies"
+# Definition of the estimator will be printed when a method is called
+
 # parameters for methods
 cosmology = None  # pyccl cosmology to be used. WMAP9 is default if None
 over_h = False  # if True, units are changed from Mpc -> Mpc/h
@@ -39,14 +42,14 @@ masks_randoms = None  # same as masks, but for the randoms
 rp_cut = None  # optional minimum cut on rp for multipoles calculation
 
 #  directory of randoms position data and cluster shape data (for S+R term)
-data_r = {"Redshift": z_rand,  # redshift of R sample
-		  "Redshift_shape_sample": z,  # redshift of S sample
-		  "RA": RA_rand,  # RA of R sample
-		  "RA_shape_sample": RA,  # RA of S sample
-		  "DEC": DEC_rand,  # DEC of R sample
-		  "DEC_shape_sample": DEC,  # DEC of S sample
-		  "e1": e1,  # e1 of S sample
-		  "e2": e2}  # e2 of S sample
+data_r = {"Redshift": z_rand,  # redshift of R_D sample
+		  "Redshift_shape_sample": z,  # redshift of R_S sample (optional)
+		  "RA": RA_rand,  # RA of R_D sample
+		  "RA_shape_sample": RA,  # RA of R_S sample (optional)
+		  "DEC": DEC_rand,  # DEC of R_D sample
+		  "DEC_shape_sample": DEC,  # DEC of R_S sample (optional)
+		  }
+# If only the Redshift, RA and DEC are provided, the code will use this random sample for both positions and shape clustering
 
 # directory of cluster data (for S+D term)
 data = {"Redshift": z,  # redshift of D sample
