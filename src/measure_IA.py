@@ -284,6 +284,7 @@ class MeasureIA(MeasureJackknife):
 				print("xi_g+ defined as (S+D - S+R)/RR, xi_gg as (SD - RD - SR)/RR - 1")
 				if masks != None and masks_randoms == None:
 					print("Warning, masks given for data vector but not for randoms.")
+				print("WARNING: this version of the code has not been fully validated. Proceed with caution.")
 		else:
 			raise ValueError("Unknown input for IA_estimator, choose from [clusters, galaxies].")
 
@@ -617,6 +618,7 @@ class MeasureIA(MeasureJackknife):
 				print("xi_g+ defined as (S+D - S+R)/RR, xi_gg as (SD - RD - SR)/RR - 1")
 				if masks != None and masks_randoms == None:
 					print("Warning, masks given for data vector but not for randoms.")
+				print("WARNING: this version of the code has not been fully validated. Proceed with caution.")
 		else:
 			raise ValueError("Unknown input for IA_estimator, choose from [clusters, galaxies].")
 
