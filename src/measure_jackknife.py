@@ -213,7 +213,8 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 
 	def measure_jackknife_errors_multiprocessing(
 			self, masks=None, corr_type=["both", "multipoles"], dataset_name="All_galaxies", L_subboxes=3, rp_cut=None,
-			num_nodes=4, twoD=False, tree=True, tree_saved=True, file_tree_path=None, remove_tree_file=True
+			num_nodes=4, twoD=False, tree=True, tree_saved=True, file_tree_path=None, remove_tree_file=True,
+			save_jk_terms=False
 	):
 		"""
 		Measures the errors in the projected correlation function using the jackknife method, using multiple CPU cores.
@@ -230,12 +231,15 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 		if corr_type[0] == "both":
 			data = [corr_type[1] + "_g_plus", corr_type[1] + "_gg"]
 			corr_type_suff = ["_g_plus", "_gg"]
+			jk_terms = ["Splus_D", "DD"]
 		elif corr_type[0] == "g+":
 			data = [corr_type[1] + "_g_plus"]
 			corr_type_suff = ["_g_plus"]
+			jk_terms = ["Splus_D"]
 		elif corr_type[0] == "gg":
 			data = [corr_type[1] + "_g_plus", corr_type[1] + "_gg"]
 			corr_type_suff = ["_g_plus", "_gg"]
+			jk_terms = ["Splus_D", "DD"]
 			corr_type[0] = 'both'  # will write away wrong data at the end (j,data_j loop) if gg only
 		# todo: update this to only do gg (count pairs methods) if asked
 		# data = [corr_type[1] + "_gg"]
@@ -410,6 +414,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 					group_xigplus = create_group_hdf5(
 						output_file, f"Snapshot_{self.snapshot}/" + corr_type[1] + "/xi" + corr_type_suff[j]
 					)
+					# correlation, (DD / RR_gg) - 1, separation_bins, pi_bins, Splus_D, DD, RR_g_plus
 					write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i]}", data=result[i][j])
 					write_dataset_hdf5(
 						group_xigplus, f"{dataset_name}_{chunck[i]}_{bin_var_names[0]}", data=result[i][2]
@@ -417,7 +422,12 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 					write_dataset_hdf5(
 						group_xigplus, f"{dataset_name}_{chunck[i]}_{bin_var_names[1]}", data=result[i][3]
 					)
-					write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i]}_sigmasq", data=result[i][3])
+					if save_jk_terms:
+						write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i]}_{jk_terms[j]}",
+										   data=result[i][4 + j])
+						write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i]}_RR_{corr_type_suff[j]}",
+										   data=result[i][6])
+					# write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i]}_sigmasq", data=result[i][3])
 			output_file.close()
 		if remove_tree_file and tree_saved:
 			if corr_type[1] == "multipoles":

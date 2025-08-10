@@ -736,6 +736,7 @@ class MeasureIABase(SimInfo):
 	def assign_jackknife_patches(self, data, randoms_data, num_jk):
 		'''
 		Assigns jackknife patches to data and randoms given a number of patches.
+		Based on https://github.com/esheldon/kmeans_radec
 		:param data: directory containing position and shape sample data
 		:param randoms_data: directory containing position and shape sample data of randoms
 		:param num_jk: number of jackknife patches

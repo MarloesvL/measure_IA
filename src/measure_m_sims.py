@@ -201,7 +201,7 @@ class MeasureMultipolesSimulations(MeasureIABase):
 			output_file.close()
 			return
 		else:
-			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins
+			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus
 
 	def measure_projected_correlation_multipoles(
 			self, masks=None, rp_cut=None, dataset_name="All_galaxies", return_output=False, print_num=True
@@ -358,7 +358,7 @@ class MeasureMultipolesSimulations(MeasureIABase):
 			output_file.close()
 			return
 		else:
-			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins
+			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus
 
 	def measure_projected_correlation_multipoles_tree(self, tree_input=None, masks=None, rp_cut=None,
 													  dataset_name="All_galaxies", return_output=False, print_num=True,
@@ -556,7 +556,7 @@ class MeasureMultipolesSimulations(MeasureIABase):
 			output_file.close()
 			return
 		else:
-			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins
+			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus
 
 	def measure_projected_correlation_multipoles_single(self, indices):
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
@@ -750,4 +750,4 @@ class MeasureMultipolesSimulations(MeasureIABase):
 			output_file.close()
 			return
 		else:
-			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins
+			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus

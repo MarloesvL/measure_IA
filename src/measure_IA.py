@@ -45,7 +45,7 @@ class MeasureIA(MeasureJackknife):
 		return
 
 	def measure_xi_w(self, dataset_name, corr_type, num_jk=0, calc_errors=True, file_tree_path=None, masks=None,
-					 remove_tree_file=True):
+					 remove_tree_file=True, save_jk_terms=False):
 		"""
 		Manages the various measure_projected_correlation options in MeasureIABase.
 		:param dataset_name: Name of the dataset in the output file.
@@ -108,7 +108,8 @@ class MeasureIA(MeasureJackknife):
 																  dataset_name=dataset_name, L_subboxes=L, rp_cut=None,
 																  num_nodes=self.num_nodes, twoD=False, tree=True,
 																  tree_saved=True, file_tree_path=file_tree_path,
-																  remove_tree_file=remove_tree_file)
+																  remove_tree_file=remove_tree_file,
+																  save_jk_terms=save_jk_terms)
 			elif not multiproc_bool and save_tree:
 				self.measure_projected_correlation_tree(tree_input=None, masks=masks, dataset_name=dataset_name,
 														return_output=False, print_num=True, dataset_name_tree=None,

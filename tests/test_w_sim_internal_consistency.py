@@ -92,7 +92,7 @@ def test_multiprocessing_versions(IA_mock_TNG300_n1_large, IA_mock_TNG300_n8_lar
 	np.testing.assert_array_equal(rp_n1, rp_n17)
 
 	np.testing.assert_array_equal(wgp_n1, wgp_n8)
-	np.testing.assert_allclose(wgp_n1, wgp_n17, 1e-1)  # numerical differences
+	np.testing.assert_allclose(wgp_n1, wgp_n17, 1e-1)  # numerical differences (?)
 
 	np.testing.assert_array_equal(cov_n1, cov_n8)
 

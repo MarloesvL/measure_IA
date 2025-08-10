@@ -195,7 +195,7 @@ class MeasureWSimulations(MeasureIABase):
 			output_file.close()
 			return
 		else:
-			return correlation, (DD / RR_gg) - 1, separation_bins, pi_bins
+			return correlation, (DD / RR_gg) - 1, separation_bins, pi_bins, Splus_D, DD, RR_g_plus
 
 	def measure_projected_correlation_tree(self, tree_input=None, masks=None, dataset_name="All_galaxies",
 										   return_output=False, print_num=True, dataset_name_tree=None, save_tree=False,
@@ -333,6 +333,7 @@ class MeasureWSimulations(MeasureIABase):
 							  (weight[ind_rbin_i[n]][mask] * weight_shape_i[n] * e_cross[mask]) / (2 * R))
 					del e_plus, e_cross, separation_len
 					np.add.at(DD, (ind_r, ind_pi), weight[ind_rbin_i[n]][mask] * weight_shape_i[n])
+
 		if tree_input != None:
 			tree_file.close()
 		# if Num_position == Num_shape:
@@ -382,7 +383,7 @@ class MeasureWSimulations(MeasureIABase):
 			output_file.close()
 			return
 		else:
-			return correlation, (DD / RR_gg) - 1, separation_bins, pi_bins
+			return correlation, (DD / RR_gg) - 1, separation_bins, pi_bins, Splus_D, DD, RR_g_plus
 
 	def measure_projected_correlation_single(self, indices):
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
@@ -570,4 +571,4 @@ class MeasureWSimulations(MeasureIABase):
 			output_file.close()
 			return
 		else:
-			return correlation, (DD / RR_gg) - 1, separation_bins, pi_bins
+			return correlation, (DD / RR_gg) - 1, separation_bins, pi_bins, Splus_D, DD, RR_g_plus
