@@ -43,11 +43,11 @@ class MeasureMultipolesObservations(MeasureIABase):
 						 LOS_lim, output_file_name, boxsize, periodicity)
 		return
 
-	def measure_projected_correlation_multipoles_obs_clusters(self, masks=None, dataset_name="All_galaxies",
-															  return_output=False,
-															  print_num=True, over_h=True, cosmology=None, rp_cut=None,
-															  jk_group_name=""
-															  ):
+	def _measure_xi_rp_pi_obs_brute(self, masks=None, dataset_name="All_galaxies",
+									return_output=False,
+									print_num=True, over_h=True, cosmology=None, rp_cut=None,
+									jk_group_name=""
+									):
 		"""
 		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
@@ -199,11 +199,11 @@ class MeasureMultipolesObservations(MeasureIABase):
 		else:
 			return Splus_D, DD, separation_bins, mu_r_bins
 
-	def count_pairs_xi_grid_multipoles(self, masks=None, dataset_name="All_galaxies",
-									   return_output=False,
-									   print_num=True, over_h=False, cosmology=None, rp_cut=None,
-									   data_suffix="_DD", jk_group_name=""
-									   ):
+	def _count_pairs_xi_rp_pi_obs_brute(self, masks=None, dataset_name="All_galaxies",
+										return_output=False,
+										print_num=True, over_h=False, cosmology=None, rp_cut=None,
+										data_suffix="_DD", jk_group_name=""
+										):
 		"""
 		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample) and the index of the direction of the line of sight (LOS=2 for z axis).

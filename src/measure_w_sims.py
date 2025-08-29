@@ -44,9 +44,9 @@ class MeasureWSimulations(MeasureIABase):
 						 LOS_lim, output_file_name, boxsize, periodicity)
 		return
 
-	def measure_projected_correlation(self, masks=None, dataset_name="All_galaxies", return_output=False,
-									  print_num=True,
-									  jk_group_name=""):
+	def _measure_xi_rp_pi_sims_brute(self, masks=None, dataset_name="All_galaxies", return_output=False,
+									 print_num=True,
+									 jk_group_name=""):
 		"""
 		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
@@ -198,9 +198,9 @@ class MeasureWSimulations(MeasureIABase):
 		else:
 			return correlation, (DD / RR_gg) - 1, separation_bins, pi_bins, Splus_D, DD, RR_g_plus
 
-	def measure_projected_correlation_tree(self, tree_input=None, masks=None, dataset_name="All_galaxies",
-										   return_output=False, print_num=True, dataset_name_tree=None, save_tree=False,
-										   file_tree_path=None, jk_group_name=""):
+	def _measure_xi_rp_pi_sims_tree(self, tree_input=None, masks=None, dataset_name="All_galaxies",
+									return_output=False, print_num=True, dataset_name_tree=None, save_tree=False,
+									file_tree_path=None, jk_group_name=""):
 		"""
 		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
@@ -386,7 +386,7 @@ class MeasureWSimulations(MeasureIABase):
 		else:
 			return correlation, (DD / RR_gg) - 1, separation_bins, pi_bins, Splus_D, DD, RR_g_plus
 
-	def measure_projected_correlation_single(self, indices):
+	def _measure_xi_rp_pi_sims_batch(self, indices):
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
@@ -447,9 +447,9 @@ class MeasureWSimulations(MeasureIABase):
 
 		return Splus_D, Scross_D, DD, variance
 
-	def measure_projected_correlation_multiprocessing(self, num_nodes=9, masks=None,
-													  dataset_name="All_galaxies", return_output=False,
-													  print_num=True, jk_group_name=""):
+	def _measure_xi_rp_pi_sims_multiprocessing(self, num_nodes=9, masks=None,
+											   dataset_name="All_galaxies", return_output=False,
+											   print_num=True, jk_group_name=""):
 		"""
 		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
@@ -515,7 +515,7 @@ class MeasureWSimulations(MeasureIABase):
 
 		self.multiproc_chuncks = np.array_split(np.arange(len(self.positions_shape_sample)), num_nodes)
 		result = ProcessingPool(nodes=num_nodes).map(
-			self.measure_projected_correlation_single,
+			self._measure_xi_rp_pi_sims_batch,
 			self.multiproc_chuncks,
 		)
 		for i in np.arange(num_nodes):

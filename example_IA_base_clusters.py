@@ -119,7 +119,7 @@ for i, zsel in enumerate([selection_z1, selection_z2, selection_z3]):
 			IA_Projected.measure_projected_correlation_obs_clusters(dataset_name=dataset_name, over_h=False)
 			# measure w_g+
 			corr_type = ['g+', 'w']  # there are multiple choices here: [0]: g+, gg or both and [1]: w or multipoles
-			IA_Projected.measure_w_g_i(corr_type=corr_type[0], dataset_name=dataset_name)
+			IA_Projected._measure_w_g_i(corr_type=corr_type[0], dataset_name=dataset_name)
 			# jackknife error realisations
 			if num_nodes == 1:
 				IA_Projected.measure_jackknife_realisations_obs(jk_patches_pos[selection_pos],
@@ -137,7 +137,7 @@ for i, zsel in enumerate([selection_z1, selection_z2, selection_z3]):
 			# measure multipoles
 			corr_type = ['g+',
 						 'multipoles']  # there are multiple choices here: [0]: g+, gg or both and [1]: w or multipoles
-			IA_Projected.measure_multipoles(corr_type=corr_type[0], dataset_name=dataset_name)
+			IA_Projected._measure_multipoles(corr_type=corr_type[0], dataset_name=dataset_name)
 			# jackknife error realisations
 			if num_nodes == 1:
 				IA_Projected.measure_jackknife_realisations_obs(jk_patches_pos[selection_pos],

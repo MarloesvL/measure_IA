@@ -35,7 +35,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 						 LOS_lim, output_file_name, boxsize, periodicity)
 		return
 
-	def measure_jackknife_errors(
+	def _measure_jackknife_covariance_sims(
 			self, masks=None, corr_type=["both", "multipoles"], dataset_name="All_galaxies", L_subboxes=3, rp_cut=None,
 			tree_saved=True, file_tree_path=None, remove_tree_file=True, num_nodes=None
 	):
@@ -126,7 +126,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 						}
 					if corr_type[1] == "multipoles":
 						if num_nodes == None:
-							self.measure_projected_correlation_multipoles_tree(
+							self._measure_xi_r_mur_sims_tree(
 								tree_input=tree_input,
 								masks=masks_total,
 								rp_cut=rp_cut,
@@ -138,7 +138,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 								jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}",
 							)
 						else:
-							self.measure_projected_correlation_multipoles_multiprocessing(
+							self._measure_xi_r_mur_sims_multiprocessing(
 								masks=masks_total,
 								rp_cut=rp_cut,
 								dataset_name=dataset_name + "_" + str(num_box),
@@ -146,11 +146,11 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 								num_nodes=num_nodes,
 								jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}",
 							)
-						self.measure_multipoles(corr_type=corr_type[0], dataset_name=dataset_name + "_" + str(num_box),
-												jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}")
+						self._measure_multipoles(corr_type=corr_type[0], dataset_name=dataset_name + "_" + str(num_box),
+												 jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}")
 					else:
 						if num_nodes == None:
-							self.measure_projected_correlation_tree(
+							self._measure_xi_rp_pi_sims_tree(
 								tree_input=tree_input,
 								masks=masks_total,
 								dataset_name=dataset_name + "_" + str(num_box),
@@ -161,15 +161,15 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 								jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}",
 							)
 						else:
-							self.measure_projected_correlation_multiprocessing(
+							self._measure_xi_rp_pi_sims_multiprocessing(
 								masks=masks_total,
 								dataset_name=dataset_name + "_" + str(num_box),
 								print_num=False,
 								num_nodes=num_nodes,
 								jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}",
 							)
-						self.measure_w_g_i(corr_type=corr_type[0], dataset_name=dataset_name + "_" + str(num_box),
-										   jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}")
+						self._measure_w_g_i(corr_type=corr_type[0], dataset_name=dataset_name + "_" + str(num_box),
+											jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}")
 
 					num_box += 1
 		if remove_tree_file and tree_saved:
@@ -217,7 +217,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 		else:
 			return covs, stds
 
-	def measure_jackknife_errors_multiprocessing(
+	def _measure_jackknife_covariance_sims_multiprocessing(
 			self, masks=None, corr_type=["both", "multipoles"], dataset_name="All_galaxies", L_subboxes=3, rp_cut=None,
 			num_nodes=4, twoD=False, tree=True, tree_saved=True, file_tree_path=None, remove_tree_file=True,
 			save_jk_terms=False
@@ -371,7 +371,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 			if corr_type[1] == "multipoles":
 				if tree:
 					result = ProcessingPool(nodes=len(chunck)).map(
-						self.measure_projected_correlation_multipoles_tree,
+						self._measure_xi_r_mur_sims_tree,
 						tree_args[min(chunck):max(chunck) + 1],
 						args_xi_g_plus[chunck][:, 0],
 						args_xi_g_plus[chunck][:, 1],
@@ -384,7 +384,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 					)
 				else:
 					result = ProcessingPool(nodes=len(chunck)).map(
-						self.measure_projected_correlation_multipoles,
+						self._measure_xi_r_mur_sims_brute,
 						args_xi_g_plus[chunck][:, 0],
 						args_xi_g_plus[chunck][:, 1],
 						args_xi_g_plus[chunck][:, 2],
@@ -394,7 +394,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 			else:
 				if tree:
 					result = ProcessingPool(nodes=len(chunck)).map(
-						self.measure_projected_correlation_tree,
+						self._measure_xi_rp_pi_sims_tree,
 						tree_args[min(chunck):max(chunck) + 1],
 						args_xi_g_plus[chunck][:, 0],
 						args_xi_g_plus[chunck][:, 1],
@@ -407,7 +407,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 
 				else:
 					result = ProcessingPool(nodes=len(chunck)).map(
-						self.measure_projected_correlation,
+						self._measure_xi_rp_pi_sims_brute,
 						args_xi_g_plus[chunck][:, 0],
 						args_xi_g_plus[chunck][:, 1],
 						args_xi_g_plus[chunck][:, 2],
@@ -445,11 +445,11 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 					f"{file_tree_path}/w_{self.simname}_tree_{figname_dataset_name}.pickle")  # removes temp pickle file
 		for i in np.arange(0, num_box):
 			if corr_type[1] == "multipoles":
-				self.measure_multipoles(corr_type=args_multipoles[i][0], dataset_name=args_multipoles[i][1],
-										jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}")
+				self._measure_multipoles(corr_type=args_multipoles[i][0], dataset_name=args_multipoles[i][1],
+										 jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}")
 			else:
-				self.measure_w_g_i(corr_type=args_multipoles[i][0], dataset_name=args_multipoles[i][1],
-								   jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}")
+				self._measure_w_g_i(corr_type=args_multipoles[i][0], dataset_name=args_multipoles[i][1],
+									jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}")
 		covs, stds = [], []
 		for d in np.arange(0, len(data)):
 			data_file = h5py.File(self.output_file_name, "a")
@@ -488,7 +488,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 		else:
 			return covs, stds
 
-	def measure_jackknife_realisations_obs(
+	def _measure_jackknife_realisations_obs(
 			self, patches_pos, patches_shape, masks=None, corr_type=["both", "multipoles"], dataset_name="All_galaxies",
 			rp_cut=None, over_h=False, cosmology=None, count_pairs=False, data_suffix="", num_sample_names=["S", "D"]
 	):
@@ -543,12 +543,12 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 			}
 			if corr_type[1] == "multipoles":
 				if count_pairs:
-					self.count_pairs_xi_grid_multipoles(masks=masks_total, dataset_name=dataset_name + "_" + str(i),
-														over_h=over_h, cosmology=cosmology, print_num=False,
-														data_suffix=data_suffix, rp_cut=rp_cut,
-														jk_group_name=f"{dataset_name}_jk{num_patches}")
+					self._count_pairs_xi_rp_pi_obs_brute(masks=masks_total, dataset_name=dataset_name + "_" + str(i),
+														 over_h=over_h, cosmology=cosmology, print_num=False,
+														 data_suffix=data_suffix, rp_cut=rp_cut,
+														 jk_group_name=f"{dataset_name}_jk{num_patches}")
 				else:
-					self.measure_projected_correlation_multipoles_obs_clusters(
+					self._measure_xi_rp_pi_obs_brute(
 						masks=masks_total,
 						rp_cut=rp_cut,
 						dataset_name=dataset_name + "_" + str(i),
@@ -560,11 +560,11 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 
 			else:
 				if count_pairs:
-					self.count_pairs_xi_grid_w(masks=masks_total, dataset_name=dataset_name + "_" + str(i),
-											   over_h=over_h, cosmology=cosmology, print_num=False,
-											   data_suffix=data_suffix, jk_group_name=f"{dataset_name}_jk{num_patches}")
+					self._count_pairs_xi_rp_pi_obs_brute(masks=masks_total, dataset_name=dataset_name + "_" + str(i),
+														 over_h=over_h, cosmology=cosmology, print_num=False,
+														 data_suffix=data_suffix, jk_group_name=f"{dataset_name}_jk{num_patches}")
 				else:
-					self.measure_projected_correlation_obs_clusters(
+					self._measure_xi_rp_pi_obs_brute(
 						masks=masks_total,
 						dataset_name=dataset_name + "_" + str(i),
 						print_num=False,
@@ -574,7 +574,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 					)
 		return
 
-	def measure_jackknife_errors_obs(
+	def _measure_jackknife_covariance_obs(
 			self, IA_estimator, max_patch, min_patch=1, corr_type=["both", "multipoles"], dataset_name="All_galaxies",
 			randoms_suf="_randoms"
 	):
@@ -608,15 +608,15 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 		covs, stds = [], []
 		for d in np.arange(0, len(data)):
 			for b in np.arange(min_patch, max_patch + 1):
-				self.obs_estimator(corr_type, IA_estimator, f"{dataset_name}_{b}",
+				self._obs_estimator(corr_type, IA_estimator, f"{dataset_name}_{b}",
 								   f"{dataset_name}{randoms_suf}_{b}", self.num_samples[f"{b}"],
-								   jk_group_name=f"{dataset_name}_jk{num_patches}")
+									jk_group_name=f"{dataset_name}_jk{num_patches}")
 				if "w" in data[d]:
-					self.measure_w_g_i(corr_type=corr_type[0], dataset_name=f"{dataset_name}_{b}",
-									   jk_group_name=f"{dataset_name}_jk{num_patches}")
+					self._measure_w_g_i(corr_type=corr_type[0], dataset_name=f"{dataset_name}_{b}",
+										jk_group_name=f"{dataset_name}_jk{num_patches}")
 				else:
-					self.measure_multipoles(corr_type=corr_type[0], dataset_name=f"{dataset_name}_{b}",
-											jk_group_name=f"{dataset_name}_jk{num_patches}")
+					self._measure_multipoles(corr_type=corr_type[0], dataset_name=f"{dataset_name}_{b}",
+											 jk_group_name=f"{dataset_name}_jk{num_patches}")
 
 			data_file = h5py.File(self.output_file_name, "a")
 			group_multipoles = data_file[f"Snapshot_{self.snapshot}/{data[d]}/{dataset_name}_jk{num_patches}"]
@@ -654,7 +654,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 		else:
 			return covs, stds
 
-	def measure_jackknife_realisations_obs_multiprocessing(
+	def _measure_jackknife_realisations_obs_multiprocessing(
 			self, patches_pos, patches_shape, masks=None, corr_type=["both", "multipoles"], dataset_name="All_galaxies",
 			rp_cut=None, over_h=False, num_nodes=4, cosmology=None, count_pairs=False, data_suffix="",
 			num_sample_names=["S", "D"]
@@ -672,9 +672,9 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 		:return:
 		"""
 		if num_nodes == 1:
-			self.measure_jackknife_realisations_obs(patches_pos, patches_shape, masks, corr_type, dataset_name,
-													rp_cut, over_h, cosmology, count_pairs, data_suffix,
-													num_sample_names)
+			self._measure_jackknife_realisations_obs(patches_pos, patches_shape, masks, corr_type, dataset_name,
+													 rp_cut, over_h, cosmology, count_pairs, data_suffix,
+													 num_sample_names)
 			return
 
 		if count_pairs == False:
@@ -761,7 +761,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 			if corr_type[1] == "multipoles":
 				if count_pairs:
 					result = ProcessingPool(nodes=len(chunck)).map(
-						self.count_pairs_xi_grid_multipoles,
+						self._count_pairs_xi_rp_pi_obs_brute,
 						args_xi_g_plus[chunck][:, 0],
 						args_xi_g_plus[chunck][:, 1],
 						args_xi_g_plus[chunck][:, 2],
@@ -773,7 +773,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 					)
 				else:
 					result = ProcessingPool(nodes=len(chunck)).map(
-						self.measure_projected_correlation_multipoles_obs_clusters,
+						self._measure_xi_rp_pi_obs_brute,
 						args_xi_g_plus[chunck][:, 0],
 						args_xi_g_plus[chunck][:, 1],
 						args_xi_g_plus[chunck][:, 2],
@@ -785,7 +785,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 			else:
 				if count_pairs:
 					result = ProcessingPool(nodes=len(chunck)).map(
-						self.count_pairs_xi_grid_w,
+						self._count_pairs_xi_rp_pi_obs_brute,
 						args_xi_g_plus[chunck][:, 0],
 						args_xi_g_plus[chunck][:, 1],
 						args_xi_g_plus[chunck][:, 2],
@@ -796,7 +796,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 					)
 				else:
 					result = ProcessingPool(nodes=len(chunck)).map(
-						self.measure_projected_correlation_obs_clusters,
+						self._measure_xi_rp_pi_obs_brute,
 						args_xi_g_plus[chunck][:, 0],
 						args_xi_g_plus[chunck][:, 1],
 						args_xi_g_plus[chunck][:, 2],

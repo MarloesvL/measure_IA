@@ -545,7 +545,7 @@ class MeasureIABase(SimInfo):
 		output_file_pairs.close()
 		return
 
-	def measure_w_g_i(self, corr_type="both", dataset_name="All_galaxies", return_output=False, jk_group_name=""):
+	def _measure_w_g_i(self, corr_type="both", dataset_name="All_galaxies", return_output=False, jk_group_name=""):
 		"""
 		Measures w_gi for a given xi_gi dataset that has been calculated with the measure projected correlation
 		method. Sums over pi values. Stores [rp, w_gi]. i can be + or g
@@ -595,7 +595,7 @@ class MeasureIABase(SimInfo):
 				correlation_data_file.close()
 		return
 
-	def measure_multipoles(self, corr_type="both", dataset_name="All_galaxies", return_output=False, jk_group_name=""):
+	def _measure_multipoles(self, corr_type="both", dataset_name="All_galaxies", return_output=False, jk_group_name=""):
 		"""
 		Measures multipoles for a given xi_g+ calculated by measure projected correlation.
 		The data assumes xi_g+ to be measured in bins of rp and pi. It measures mu_r and r
@@ -678,7 +678,7 @@ class MeasureIABase(SimInfo):
 		correlation_data_file.close()
 		return
 
-	def obs_estimator(self, corr_type, IA_estimator, dataset_name, dataset_name_randoms, num_samples, jk_group_name=""):
+	def _obs_estimator(self, corr_type, IA_estimator, dataset_name, dataset_name_randoms, num_samples, jk_group_name=""):
 		'''
 		Reads various components of xi and combines into correct estimator for cluster or galaxy observational alignments
 		:param corr_type: w or multipoles
