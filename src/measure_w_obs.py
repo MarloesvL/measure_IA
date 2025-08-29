@@ -47,7 +47,7 @@ class MeasureWObservations(MeasureIABase):
 		return
 
 	def measure_projected_correlation_obs_clusters(self, masks=None, dataset_name="All_galaxies", return_output=False,
-												   print_num=True, over_h=False, cosmology=None
+												   print_num=True, over_h=False, cosmology=None, jk_group_name=""
 												   ):
 		"""
 		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
@@ -181,16 +181,16 @@ class MeasureWObservations(MeasureIABase):
 
 		if (self.output_file_name != None) and (return_output == False):
 			output_file = h5py.File(self.output_file_name, "a")
-			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_g_plus")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_g_plus/{jk_group_name}")
 			write_dataset_hdf5(group, dataset_name, data=correlation)
 			write_dataset_hdf5(group, dataset_name + "_SplusD", data=Splus_D)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
-			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_g_cross")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_g_cross/{jk_group_name}")
 			write_dataset_hdf5(group, dataset_name + "_ScrossD", data=Scross_D)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
-			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_gg")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_gg/{jk_group_name}")
 			write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
@@ -200,7 +200,7 @@ class MeasureWObservations(MeasureIABase):
 			return Splus_D, DD, separation_bins, pi_bins
 
 	def count_pairs_xi_grid_w(self, masks=None, dataset_name="All_galaxies", return_output=False,
-							  print_num=True, over_h=False, cosmology=None, data_suffix="_DD"
+							  print_num=True, over_h=False, cosmology=None, data_suffix="_DD", jk_group_name=""
 							  ):
 		"""
 		Measures the projected clustering (xi_gg) for given coordinates of the position and shape sample
@@ -298,7 +298,7 @@ class MeasureWObservations(MeasureIABase):
 
 		if (self.output_file_name != None) and (return_output == False):
 			output_file = h5py.File(self.output_file_name, "a")
-			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_gg")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_gg/{jk_group_name}")
 			write_dataset_hdf5(group, dataset_name + data_suffix, data=DD)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
@@ -343,7 +343,7 @@ class MeasureWObservations(MeasureIABase):
 		return cartesian_coords  # in Mpc/h
 
 	def count_pairs_xi_grid_w_update(self, masks=None, dataset_name="All_galaxies", return_output=False,
-									 print_num=True, over_h=False, cosmology=None, data_suffix="_DD"
+									 print_num=True, over_h=False, cosmology=None, data_suffix="_DD", jk_group_name=""
 									 ):
 		"""
 		Measures the projected clustering (xi_gg) for given coordinates of the position and shape sample
@@ -512,7 +512,7 @@ class MeasureWObservations(MeasureIABase):
 
 		if (self.output_file_name != None) and (return_output == False):
 			output_file = h5py.File(self.output_file_name, "a")
-			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_gg")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_gg/{jk_group_name}")
 			write_dataset_hdf5(group, dataset_name + data_suffix, data=DD)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)

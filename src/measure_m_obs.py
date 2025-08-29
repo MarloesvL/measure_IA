@@ -45,7 +45,8 @@ class MeasureMultipolesObservations(MeasureIABase):
 
 	def measure_projected_correlation_multipoles_obs_clusters(self, masks=None, dataset_name="All_galaxies",
 															  return_output=False,
-															  print_num=True, over_h=True, cosmology=None, rp_cut=None
+															  print_num=True, over_h=True, cosmology=None, rp_cut=None,
+															  jk_group_name=""
 															  ):
 		"""
 		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
@@ -180,16 +181,16 @@ class MeasureMultipolesObservations(MeasureIABase):
 
 		if (self.output_file_name != None) and (return_output == False):
 			output_file = h5py.File(self.output_file_name, "a")
-			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/multipoles/xi_g_plus")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/multipoles/xi_g_plus/{jk_group_name}")
 			write_dataset_hdf5(group, dataset_name, data=correlation)
 			write_dataset_hdf5(group, dataset_name + "_SplusD", data=Splus_D)
 			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
-			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/multipoles/xi_g_cross")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/multipoles/xi_g_cross/{jk_group_name}")
 			write_dataset_hdf5(group, dataset_name + "_ScrossD", data=Scross_D)
 			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
-			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/multipoles/xi_gg")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/multipoles/xi_gg/{jk_group_name}")
 			write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
 			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
@@ -201,7 +202,7 @@ class MeasureMultipolesObservations(MeasureIABase):
 	def count_pairs_xi_grid_multipoles(self, masks=None, dataset_name="All_galaxies",
 									   return_output=False,
 									   print_num=True, over_h=False, cosmology=None, rp_cut=None,
-									   data_suffix="_DD"
+									   data_suffix="_DD", jk_group_name=""
 									   ):
 		"""
 		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
@@ -307,7 +308,7 @@ class MeasureMultipolesObservations(MeasureIABase):
 
 		if (self.output_file_name != None) and (return_output == False):
 			output_file = h5py.File(self.output_file_name, "a")
-			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/multipoles/xi_gg")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/multipoles/xi_gg/{jk_group_name}")
 			write_dataset_hdf5(group, dataset_name + data_suffix, data=DD)
 			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)

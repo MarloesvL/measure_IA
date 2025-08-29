@@ -545,7 +545,7 @@ class MeasureIABase(SimInfo):
 		output_file_pairs.close()
 		return
 
-	def measure_w_g_i(self, corr_type="both", dataset_name="All_galaxies", return_output=False):
+	def measure_w_g_i(self, corr_type="both", dataset_name="All_galaxies", return_output=False, jk_group_name=""):
 		"""
 		Measures w_gi for a given xi_gi dataset that has been calculated with the measure projected correlation
 		method. Sums over pi values. Stores [rp, w_gi]. i can be + or g
@@ -567,7 +567,7 @@ class MeasureIABase(SimInfo):
 			raise KeyError("Unknown value for corr_type. Choose from [g+, gg, both]")
 		for i in np.arange(0, len(xi_data)):
 			correlation_data_file = h5py.File(self.output_file_name, "a")
-			group = correlation_data_file[f"Snapshot_{self.snapshot}/w/" + xi_data[i]]
+			group = correlation_data_file[f"Snapshot_{self.snapshot}/w/{xi_data[i]}/{jk_group_name}"]
 			correlation_data = group[dataset_name][:]
 			pi = group[dataset_name + "_pi"]
 			rp = group[dataset_name + "_rp"]
@@ -587,14 +587,15 @@ class MeasureIABase(SimInfo):
 				correlation_data_file.close()
 				return output_data
 			else:
-				group_out = create_group_hdf5(correlation_data_file, f"Snapshot_{self.snapshot}/" + wg_data[i])
+				group_out = create_group_hdf5(correlation_data_file,
+											  f"Snapshot_{self.snapshot}/{wg_data[i]}/{jk_group_name}")
 				write_dataset_hdf5(group_out, dataset_name + "_rp", data=rp)
 				write_dataset_hdf5(group_out, dataset_name, data=w_g_i)
 				# write_dataset_hdf5(group_out, dataset_name + "_sigma", data=np.sqrt(sigsq))
 				correlation_data_file.close()
 		return
 
-	def measure_multipoles(self, corr_type="both", dataset_name="All_galaxies", return_output=False):
+	def measure_multipoles(self, corr_type="both", dataset_name="All_galaxies", return_output=False, jk_group_name=""):
 		"""
 		Measures multipoles for a given xi_g+ calculated by measure projected correlation.
 		The data assumes xi_g+ to be measured in bins of rp and pi. It measures mu_r and r
@@ -606,7 +607,7 @@ class MeasureIABase(SimInfo):
 		"""
 		correlation_data_file = h5py.File(self.output_file_name, "a")
 		if corr_type == "g+":  # todo: expand to include ++ option
-			group = correlation_data_file[f"Snapshot_{self.snapshot}/multipoles/xi_g_plus"]
+			group = correlation_data_file[f"Snapshot_{self.snapshot}/multipoles/xi_g_plus/{jk_group_name}"]
 			correlation_data_list = [group[dataset_name][:]]  # xi_g+ in grid of r,mur
 			r_list = [group[dataset_name + "_r"][:]]
 			mu_r_list = [group[dataset_name + "_mu_r"][:]]
@@ -614,7 +615,7 @@ class MeasureIABase(SimInfo):
 			l_list = sab_list
 			corr_type_list = ["g_plus"]
 		elif corr_type == "gg":
-			group = correlation_data_file[f"Snapshot_{self.snapshot}/multipoles/xi_gg"]
+			group = correlation_data_file[f"Snapshot_{self.snapshot}/multipoles/xi_gg/{jk_group_name}"]
 			correlation_data_list = [group[dataset_name][:]]  # xi_g+ in grid of rp,pi
 			r_list = [group[dataset_name + "_r"][:]]
 			mu_r_list = [group[dataset_name + "_mu_r"][:]]
@@ -622,11 +623,11 @@ class MeasureIABase(SimInfo):
 			l_list = sab_list
 			corr_type_list = ["gg"]
 		elif corr_type == "both":
-			group = correlation_data_file[f"Snapshot_{self.snapshot}/multipoles/xi_g_plus"]
+			group = correlation_data_file[f"Snapshot_{self.snapshot}/multipoles/xi_g_plus/{jk_group_name}"]
 			correlation_data_list = [group[dataset_name][:]]  # xi_g+ in grid of rp,pi
 			r_list = [group[dataset_name + "_r"][:]]
 			mu_r_list = [group[dataset_name + "_mu_r"][:]]
-			group = correlation_data_file[f"Snapshot_{self.snapshot}/multipoles/xi_gg"]
+			group = correlation_data_file[f"Snapshot_{self.snapshot}/multipoles/xi_gg/{jk_group_name}"]
 			correlation_data_list.append(group[dataset_name][:])  # xi_g+ in grid of rp,pi
 			r_list.append(group[dataset_name + "_r"][:])
 			mu_r_list.append(group[dataset_name + "_mu_r"][:])
@@ -670,14 +671,14 @@ class MeasureIABase(SimInfo):
 				np.array([separation, multipoles]).transpose()
 			else:
 				group_out = create_group_hdf5(
-					correlation_data_file, f"Snapshot_{self.snapshot}/multipoles_" + corr_type_i
+					correlation_data_file, f"Snapshot_{self.snapshot}/multipoles_{corr_type_i}/{jk_group_name}"
 				)
 				write_dataset_hdf5(group_out, dataset_name + "_r", data=separation)
 				write_dataset_hdf5(group_out, dataset_name, data=multipoles)
 		correlation_data_file.close()
 		return
 
-	def obs_estimator(self, corr_type, IA_estimator, dataset_name, dataset_name_randoms, num_samples):
+	def obs_estimator(self, corr_type, IA_estimator, dataset_name, dataset_name_randoms, num_samples, jk_group_name=""):
 		'''
 		Reads various components of xi and combines into correct estimator for cluster or galaxy observational alignments
 		:param corr_type: w or multipoles
@@ -688,10 +689,11 @@ class MeasureIABase(SimInfo):
 		'''
 		output_file = h5py.File(self.output_file_name, "a")
 		if corr_type[0] == "g+" or corr_type[0] == "both":
-			group_gp = output_file[f"Snapshot_{self.snapshot}/{corr_type[1]}/xi_g_plus"]  # /w/xi_g_plus/
+			group_gp = output_file[
+				f"Snapshot_{self.snapshot}/{corr_type[1]}/xi_g_plus/{jk_group_name}"]  # /w/xi_g_plus/
 			SpD = group_gp[f"{dataset_name}_SplusD"][:]
 			SpR = group_gp[f"{dataset_name_randoms}_SplusD"][:]
-		group_gg = output_file[f"Snapshot_{self.snapshot}/{corr_type[1]}/xi_gg"]
+		group_gg = output_file[f"Snapshot_{self.snapshot}/{corr_type[1]}/xi_gg/{jk_group_name}"]
 		DD = group_gg[f"{dataset_name}_DD"][:]
 
 		if IA_estimator == "clusters":

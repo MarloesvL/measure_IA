@@ -44,8 +44,9 @@ class MeasureWSimulations(MeasureIABase):
 						 LOS_lim, output_file_name, boxsize, periodicity)
 		return
 
-	def measure_projected_correlation(self, masks=None, dataset_name="All_galaxies", return_output=False, print_num=True
-									  ):
+	def measure_projected_correlation(self, masks=None, dataset_name="All_galaxies", return_output=False,
+									  print_num=True,
+									  jk_group_name=""):
 		"""
 		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
@@ -171,21 +172,21 @@ class MeasureWSimulations(MeasureIABase):
 
 		if (self.output_file_name != None) and (return_output == False):
 			output_file = h5py.File(self.output_file_name, "a")
-			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_g_plus")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_g_plus/{jk_group_name}")
 			write_dataset_hdf5(group, dataset_name, data=correlation)
 			write_dataset_hdf5(group, dataset_name + "_SplusD", data=Splus_D)
 			write_dataset_hdf5(group, dataset_name + "_RR_g_plus", data=RR_g_plus)
 			write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
-			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_g_cross")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_g_cross/{jk_group_name}")
 			write_dataset_hdf5(group, dataset_name + "_ScrossD", data=Scross_D)
 			write_dataset_hdf5(group, dataset_name, data=xi_g_cross)
 			write_dataset_hdf5(group, dataset_name + "_RR_g_cross", data=RR_g_plus)
 			write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
-			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_gg")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_gg/{jk_group_name}")
 			write_dataset_hdf5(group, dataset_name, data=(DD / RR_gg) - 1)
 			write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
 			write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
@@ -199,7 +200,7 @@ class MeasureWSimulations(MeasureIABase):
 
 	def measure_projected_correlation_tree(self, tree_input=None, masks=None, dataset_name="All_galaxies",
 										   return_output=False, print_num=True, dataset_name_tree=None, save_tree=False,
-										   file_tree_path=None):
+										   file_tree_path=None, jk_group_name=""):
 		"""
 		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
@@ -359,21 +360,21 @@ class MeasureWSimulations(MeasureIABase):
 
 		if (self.output_file_name != None) & return_output == False:
 			output_file = h5py.File(self.output_file_name, "a")
-			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_g_plus")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_g_plus/{jk_group_name}")
 			write_dataset_hdf5(group, dataset_name, data=correlation)
 			write_dataset_hdf5(group, dataset_name + "_SplusD", data=Splus_D)
 			write_dataset_hdf5(group, dataset_name + "_RR_g_plus", data=RR_g_plus)
 			write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
-			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_g_cross")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_g_cross/{jk_group_name}")
 			write_dataset_hdf5(group, dataset_name + "_ScrossD", data=Scross_D)
 			write_dataset_hdf5(group, dataset_name, data=xi_g_cross)
 			write_dataset_hdf5(group, dataset_name + "_RR_g_cross", data=RR_g_plus)
 			write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
-			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_gg")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_gg/{jk_group_name}")
 			write_dataset_hdf5(group, dataset_name, data=(DD / RR_gg) - 1)
 			write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
 			write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
@@ -448,7 +449,7 @@ class MeasureWSimulations(MeasureIABase):
 
 	def measure_projected_correlation_multiprocessing(self, num_nodes=9, masks=None,
 													  dataset_name="All_galaxies", return_output=False,
-													  print_num=True):
+													  print_num=True, jk_group_name=""):
 		"""
 		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
@@ -547,21 +548,21 @@ class MeasureWSimulations(MeasureIABase):
 
 		if (self.output_file_name != None) & return_output == False:
 			output_file = h5py.File(self.output_file_name, "a")
-			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_g_plus")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_g_plus/{jk_group_name}")
 			write_dataset_hdf5(group, dataset_name, data=correlation)
 			write_dataset_hdf5(group, dataset_name + "_SplusD", data=Splus_D)
 			write_dataset_hdf5(group, dataset_name + "_RR_g_plus", data=RR_g_plus)
 			write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
-			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_g_cross")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_g_cross/{jk_group_name}")
 			write_dataset_hdf5(group, dataset_name + "_ScrossD", data=Scross_D)
 			write_dataset_hdf5(group, dataset_name, data=xi_g_cross)
 			write_dataset_hdf5(group, dataset_name + "_RR_g_cross", data=RR_g_plus)
 			write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
-			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_gg")
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_gg/{jk_group_name}")
 			write_dataset_hdf5(group, dataset_name, data=(DD / RR_gg) - 1)
 			write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
 			write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)

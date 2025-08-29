@@ -135,6 +135,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 								save_tree=False,
 								dataset_name_tree=f"m_{self.simname}_tree_{figname_dataset_name}",
 								file_tree_path=file_tree_path,
+								jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}",
 							)
 						else:
 							self.measure_projected_correlation_multipoles_multiprocessing(
@@ -142,9 +143,11 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 								rp_cut=rp_cut,
 								dataset_name=dataset_name + "_" + str(num_box),
 								print_num=False,
-								num_nodes=num_nodes
+								num_nodes=num_nodes,
+								jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}",
 							)
-						self.measure_multipoles(corr_type=corr_type[0], dataset_name=dataset_name + "_" + str(num_box))
+						self.measure_multipoles(corr_type=corr_type[0], dataset_name=dataset_name + "_" + str(num_box),
+												jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}")
 					else:
 						if num_nodes == None:
 							self.measure_projected_correlation_tree(
@@ -155,15 +158,18 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 								save_tree=False,
 								dataset_name_tree=f"w_{self.simname}_tree_{figname_dataset_name}",
 								file_tree_path=file_tree_path,
+								jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}",
 							)
 						else:
 							self.measure_projected_correlation_multiprocessing(
 								masks=masks_total,
 								dataset_name=dataset_name + "_" + str(num_box),
 								print_num=False,
-								num_nodes=num_nodes
+								num_nodes=num_nodes,
+								jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}",
 							)
-						self.measure_w_g_i(corr_type=corr_type[0], dataset_name=dataset_name + "_" + str(num_box))
+						self.measure_w_g_i(corr_type=corr_type[0], dataset_name=dataset_name + "_" + str(num_box),
+										   jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}")
 
 					num_box += 1
 		if remove_tree_file and tree_saved:
@@ -176,7 +182,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 		covs, stds = [], []
 		for d in np.arange(0, len(data)):
 			data_file = h5py.File(self.output_file_name, "a")
-			group_multipoles = data_file[f"Snapshot_{self.snapshot}/" + data[d]]
+			group_multipoles = data_file[f"Snapshot_{self.snapshot}/{data[d]}/{dataset_name}_jk{num_box}/"]
 			# calculating mean of the datavectors
 			mean_multipoles = np.zeros(self.num_bins_r)
 			for b in np.arange(0, num_box):
@@ -412,7 +418,8 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 			for i in np.arange(0, len(chunck)):
 				for j, data_j in enumerate(data):
 					group_xigplus = create_group_hdf5(
-						output_file, f"Snapshot_{self.snapshot}/" + corr_type[1] + "/xi" + corr_type_suff[j]
+						output_file,
+						f"Snapshot_{self.snapshot}/{corr_type[1]}/xi{corr_type_suff[j]}/{dataset_name}_jk{L_subboxes ** 3}"
 					)
 					# correlation, (DD / RR_gg) - 1, separation_bins, pi_bins, Splus_D, DD, RR_g_plus
 					write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i]}", data=result[i][j])
@@ -427,7 +434,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 										   data=result[i][4 + j])
 						write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i]}_RR_{corr_type_suff[j]}",
 										   data=result[i][6])
-					# write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i]}_sigmasq", data=result[i][3])
+			# write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i]}_sigmasq", data=result[i][3])
 			output_file.close()
 		if remove_tree_file and tree_saved:
 			if corr_type[1] == "multipoles":
@@ -438,13 +445,15 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 					f"{file_tree_path}/w_{self.simname}_tree_{figname_dataset_name}.pickle")  # removes temp pickle file
 		for i in np.arange(0, num_box):
 			if corr_type[1] == "multipoles":
-				self.measure_multipoles(corr_type=args_multipoles[i][0], dataset_name=args_multipoles[i][1])
+				self.measure_multipoles(corr_type=args_multipoles[i][0], dataset_name=args_multipoles[i][1],
+										jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}")
 			else:
-				self.measure_w_g_i(corr_type=args_multipoles[i][0], dataset_name=args_multipoles[i][1])
+				self.measure_w_g_i(corr_type=args_multipoles[i][0], dataset_name=args_multipoles[i][1],
+								   jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}")
 		covs, stds = [], []
 		for d in np.arange(0, len(data)):
 			data_file = h5py.File(self.output_file_name, "a")
-			group_multipoles = data_file[f"Snapshot_{self.snapshot}/" + data[d]]
+			group_multipoles = data_file[f"Snapshot_{self.snapshot}/{data[d]}/{dataset_name}_jk{num_box}"]
 			# calculating mean of the datavectors
 			mean_multipoles = np.zeros((self.num_bins_r))
 			for b in np.arange(0, num_box):
@@ -536,7 +545,8 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 				if count_pairs:
 					self.count_pairs_xi_grid_multipoles(masks=masks_total, dataset_name=dataset_name + "_" + str(i),
 														over_h=over_h, cosmology=cosmology, print_num=False,
-														data_suffix=data_suffix, rp_cut=rp_cut)
+														data_suffix=data_suffix, rp_cut=rp_cut,
+														jk_group_name=f"{dataset_name}_jk{num_patches}")
 				else:
 					self.measure_projected_correlation_multipoles_obs_clusters(
 						masks=masks_total,
@@ -545,13 +555,14 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 						print_num=False,
 						over_h=over_h,
 						cosmology=cosmology,
+						jk_group_name=f"{dataset_name}_jk{num_patches}",
 					)
 
 			else:
 				if count_pairs:
 					self.count_pairs_xi_grid_w(masks=masks_total, dataset_name=dataset_name + "_" + str(i),
 											   over_h=over_h, cosmology=cosmology, print_num=False,
-											   data_suffix=data_suffix)
+											   data_suffix=data_suffix, jk_group_name=f"{dataset_name}_jk{num_patches}")
 				else:
 					self.measure_projected_correlation_obs_clusters(
 						masks=masks_total,
@@ -559,6 +570,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 						print_num=False,
 						over_h=over_h,
 						cosmology=cosmology,
+						jk_group_name=f"{dataset_name}_jk{num_patches}",
 					)
 		return
 
@@ -597,14 +609,17 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 		for d in np.arange(0, len(data)):
 			for b in np.arange(min_patch, max_patch + 1):
 				self.obs_estimator(corr_type, IA_estimator, f"{dataset_name}_{b}",
-								   f"{dataset_name}{randoms_suf}_{b}", self.num_samples[f"{b}"])
+								   f"{dataset_name}{randoms_suf}_{b}", self.num_samples[f"{b}"],
+								   jk_group_name=f"{dataset_name}_jk{num_patches}")
 				if "w" in data[d]:
-					self.measure_w_g_i(corr_type=corr_type[0], dataset_name=f"{dataset_name}_{b}")
+					self.measure_w_g_i(corr_type=corr_type[0], dataset_name=f"{dataset_name}_{b}",
+									   jk_group_name=f"{dataset_name}_jk{num_patches}")
 				else:
-					self.measure_multipoles(corr_type=corr_type[0], dataset_name=f"{dataset_name}_{b}")
+					self.measure_multipoles(corr_type=corr_type[0], dataset_name=f"{dataset_name}_{b}",
+											jk_group_name=f"{dataset_name}_jk{num_patches}")
 
 			data_file = h5py.File(self.output_file_name, "a")
-			group_multipoles = data_file[f"Snapshot_{self.snapshot}/" + data[d]]
+			group_multipoles = data_file[f"Snapshot_{self.snapshot}/{data[d]}/{dataset_name}_jk{num_patches}"]
 			# calculating mean of the datavectors
 			mean_multipoles = np.zeros(self.num_bins_r)
 			for b in np.arange(min_patch, max_patch + 1):
@@ -795,7 +810,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 				for i in np.arange(0, len(chunck)):
 					for j, data_j in enumerate(data):
 						group_xigplus = create_group_hdf5(
-							output_file, f"Snapshot_{self.snapshot}/" + corr_type[1] + "/xi_gg"
+							output_file, f"Snapshot_{self.snapshot}/{corr_type[1]}/xi_gg/{dataset_name}_jk{num_patches}"
 						)
 						write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i] + min_patch}{data_suffix}",
 										   data=result[i][j])
@@ -811,7 +826,8 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 				for i in np.arange(0, len(chunck)):
 					for j, data_j in enumerate(data):
 						group_xigplus = create_group_hdf5(
-							output_file, f"Snapshot_{self.snapshot}/" + corr_type[1] + "/xi" + corr_type_suff[j]
+							output_file,
+							f"Snapshot_{self.snapshot}/{corr_type[1]}/xi{corr_type_suff[j]}/{dataset_name}_jk{num_patches}"
 						)
 						write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i] + min_patch}_{xi_suff[j]}",
 										   data=result[i][j])
@@ -847,11 +863,11 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 			raise ValueError("corr_type must be 'w_g_plus' or 'multipoles_g_plus'.")
 
 		data_file = h5py.File(self.output_file_name, "a")
-		group = data_file[f"Snapshot_{self.snapshot}/" + corr_type]
 
 		mean_list = []  # list of arrays
 
 		for dataset_name in dataset_names:
+			group = data_file[f"Snapshot_{self.snapshot}/{corr_type}/{dataset_name}_jk{num_box}"]
 			mean_multipoles = np.zeros(self.num_bins_r)
 			for b in np.arange(0, num_box):
 				mean_multipoles += group[dataset_name + "_" + str(b)]
@@ -864,6 +880,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 
 		if len(dataset_names) == 1:  # covariance with itself
 			dataset_name = dataset_names[0]
+			group = data_file[f"Snapshot_{self.snapshot}/{corr_type}/{dataset_name}_jk{num_box}"]
 			for b in np.arange(0, num_box):
 				std += (group[dataset_name + "_" + str(b)] - mean_list[0]) ** 2
 				for i in np.arange(self.num_bins_r):
@@ -871,12 +888,14 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 							group[dataset_name + "_" + str(b)][i] - mean_list[0][i]
 					)
 		elif len(dataset_names) == 2:
+			group0 = data_file[f"Snapshot_{self.snapshot}/{corr_type}/{dataset_names[0]}_jk{num_box}"]
+			group1 = data_file[f"Snapshot_{self.snapshot}/{corr_type}/{dataset_names[1]}_jk{num_box}"]
 			for b in np.arange(0, num_box):
-				std += (group[dataset_names[0] + "_" + str(b)] - mean_list[0]) * (
-						group[dataset_names[1] + "_" + str(b)] - mean_list[1])
+				std += (group0[dataset_names[0] + "_" + str(b)] - mean_list[0]) * (
+						group1[dataset_names[1] + "_" + str(b)] - mean_list[1])
 				for i in np.arange(self.num_bins_r):
-					cov[:, i] += (group[dataset_names[0] + "_" + str(b)] - mean_list[0]) * (
-							group[dataset_names[1] + "_" + str(b)][i] - mean_list[1][i]
+					cov[:, i] += (group0[dataset_names[0] + "_" + str(b)] - mean_list[0]) * (
+							group1[dataset_names[1] + "_" + str(b)][i] - mean_list[1][i]
 					)
 		else:
 			raise KeyError("Too many datasets given, choose either 1 or 2")
@@ -889,7 +908,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 
 		if (self.output_file_name != None) and (return_output == False):
 			output_file = h5py.File(self.output_file_name, "a")
-			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/" + corr_type)
+			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/{corr_type}")
 			if len(dataset_names) == 2:
 				write_dataset_hdf5(group, dataset_names[0] + "_" + dataset_names[1] + "_jackknife_cov_" + str(
 					num_box), data=cov)
