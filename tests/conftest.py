@@ -1,6 +1,6 @@
 import pytest
 import h5py
-from src.measure_SV import MeasureSnapshotVariables
+# from src.measure_SV import MeasureSnapshotVariables
 from src.measure_IA_base import MeasureIABase
 from src.measure_IA import MeasureIA
 
@@ -15,22 +15,22 @@ from src.measure_IA import MeasureIA
 # def demo_sim(a):
 # 	return a**2
 
-@pytest.fixture()
-def SV_PT4_TNG100_99():
-	raw_path = "./data/raw/"
-	return MeasureSnapshotVariables(4, "TNG100", 99, numnodes=1, output_file_name=None, data_path=raw_path, update=True)
+# @pytest.fixture()
+# def SV_PT4_TNG100_99():
+# 	raw_path = "./data/raw/"
+# 	return MeasureSnapshotVariables(4, "TNG100", 99, numnodes=1, output_file_name=None, data_path=raw_path, update=True)
+#
+#
+# @pytest.fixture()
+# def SV_PT4_TNG300_99():
+# 	raw_path = "./data/raw/"
+# 	return MeasureSnapshotVariables(4, "TNG300", 99, numnodes=1, output_file_name=None, data_path=raw_path, update=True)
 
 
-@pytest.fixture()
-def SV_PT4_TNG300_99():
-	raw_path = "./data/raw/"
-	return MeasureSnapshotVariables(4, "TNG300", 99, numnodes=1, output_file_name=None, data_path=raw_path, update=True)
-
-
-@pytest.fixture()
-def SV_PT4_EAGLE_28():
-	raw_path = "./data/raw/"
-	return MeasureSnapshotVariables(4, "EAGLE", 28, numnodes=1, output_file_name=None, data_path=raw_path, update=True)
+# @pytest.fixture()
+# def SV_PT4_EAGLE_28():
+# 	raw_path = "./data/raw/"
+# 	return MeasureSnapshotVariables(4, "EAGLE", 28, numnodes=1, output_file_name=None, data_path=raw_path, update=True)
 
 
 @pytest.fixture()
