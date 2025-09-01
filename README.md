@@ -20,7 +20,7 @@ Your output file with your own input of [output_file_name, snapshot, dataset_nam
 
 ```
 [output_file_name]  
-├──Snapshot_[snapshot]
+└── Snapshot_[snapshot]
 	├── w_gg
 	│	├── [dataset_name]								w_gg values for each r_p bin
 	│	├── [dataset_name]_rp							r_p mean bin values
