@@ -6,7 +6,9 @@ KPC_TO_KM = 3.086e16  # 1 kpc is 3.086e16 km
 
 
 class MeasureIA(MeasureJackknife):
-	"""Manages the methods used in the MeasureIA class based on speed and input.
+	"""Manages the methods used in the MeasureIA package based on speed and input.
+	This class is used to call the methods that measure w_gg, w_g+ and multipoles for simulations (and observations).
+	Depending on the input parameters, various correlations incl covariance estimates are measured for given data.
 
 	Parameters
 	----------
@@ -112,6 +114,9 @@ class MeasureIA(MeasureJackknife):
 		else:
 			if self.num_nodes == 1:
 				multiproc_bool = False
+				save_tree = False
+			elif self.num_nodes > 2:
+				multiproc_bool = True
 				save_tree = False
 			else:
 				multiproc_bool = True
@@ -224,6 +229,9 @@ class MeasureIA(MeasureJackknife):
 		else:
 			if self.num_nodes == 1:
 				multiproc_bool = False
+				save_tree = False
+			elif self.num_nodes > 2:
+				multiproc_bool = True
 				save_tree = False
 			else:
 				multiproc_bool = True
