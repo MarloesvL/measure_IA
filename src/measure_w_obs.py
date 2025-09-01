@@ -14,18 +14,33 @@ KPC_TO_KM = 3.086e16  # 1 kpc is 3.086e16 km
 
 
 class MeasureWObservations(MeasureIABase):
-	"""
-	Measures intrinsic alignment correlation functions including errors. Different samples for shapes and positions
-	can be used. Currently allows for w_g+, w_gg and multipoles to be calculated.
-	:param data: Dictionary with data needed for calculations. See specifications for keywords.
-	:param simulation: Indicator of simulation. Choose from [TNG100, TNG300] for now.
-	:param snapshot: Number of the snapshot
-	:param separation_limits: Bounds of the (projected) separation vector length bins in cMpc/h (so, r or r_p)
-	:param num_bins_r: Number of bins for (projected) separation vector.
-	:param num_bins_pi: Number of bins for line of sight (LOS) vector, pi.
-	:param PT: Number indicating particle type
-	:param LOS_lim: Bound for line of sight bins. Bounds will be [-LOS_lim, LOS_lim]
-	:param output_file_name: Name and filepath of the file where the output should be stored.
+	"""Measures intrinsic alignment correlation functions including errors. Different samples for shapes and positions
+		can be used. Currently allows for w_g+, w_gg and multipoles to be calculated.
+
+	Parameters
+	----------
+	data :
+		Dictionary with data needed for calculations. See specifications for keywords.
+	simulation :
+		Indicator of simulation. Choose from [TNG100, TNG300] for now.
+	snapshot :
+		Number of the snapshot
+	separation_limits :
+		Bounds of the (projected) separation vector length bins in cMpc/h (so, r or r_p)
+	num_bins_r :
+		Number of bins for (projected) separation vector.
+	num_bins_pi :
+		Number of bins for line of sight (LOS) vector, pi.
+	PT :
+		Number indicating particle type
+	LOS_lim :
+		Bound for line of sight bins. Bounds will be [-LOS_lim, LOS_lim]
+	output_file_name :
+		Name and filepath of the file where the output should be stored.
+
+	Returns
+	-------
+
 	"""
 
 	def __init__(
@@ -49,15 +64,33 @@ class MeasureWObservations(MeasureIABase):
 	def _measure_xi_rp_pi_obs_brute(self, masks=None, dataset_name="All_galaxies", return_output=False,
 									print_num=True, over_h=False, cosmology=None, jk_group_name=""
 									):
-		"""
-		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
+		"""Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
 		axes, q=b/a (q) and the index of the direction of the line of sight (LOS=2 for z axis).
 		Positions are assumed to be given in cMpc/h.
-		:param masks: the masks for the data to select only part of the data
-		:param dataset_name: the dataset name given in the hdf5 file.
-		:param return_output: Output is returned if True, saved to file if False.
-		:return: xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
+
+		Parameters
+		----------
+		masks :
+			the masks for the data to select only part of the data (Default value = None)
+		dataset_name :
+			the dataset name given in the hdf5 file. (Default value = "All_galaxies")
+		return_output :
+			Output is returned if True, saved to file if False. (Default value = False)
+		print_num :
+			 (Default value = True)
+		over_h :
+			 (Default value = False)
+		cosmology :
+			 (Default value = None)
+		jk_group_name :
+			 (Default value = "")
+
+		Returns
+		-------
+		type
+			xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
+
 		"""
 
 		if masks == None:
@@ -202,14 +235,34 @@ class MeasureWObservations(MeasureIABase):
 	def _count_pairs_xi_rp_pi_obs_brute(self, masks=None, dataset_name="All_galaxies", return_output=False,
 										print_num=True, over_h=False, cosmology=None, data_suffix="_DD", jk_group_name=""
 										):
-		"""
-		Measures the projected clustering (xi_gg) for given coordinates of the position and shape sample
+		"""Measures the projected clustering (xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample) and the index of the direction of the line of sight (LOS=2 for z axis).
 		Positions are assumed to be given in cMpc/h.
-		:param masks: the masks for the data to select only part of the data
-		:param dataset_name: the dataset name given in the hdf5 file.
-		:param return_output: Output is returned if True, saved to file if False.
-		:return: xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
+
+		Parameters
+		----------
+		masks :
+			the masks for the data to select only part of the data (Default value = None)
+		dataset_name :
+			the dataset name given in the hdf5 file. (Default value = "All_galaxies")
+		return_output :
+			Output is returned if True, saved to file if False. (Default value = False)
+		print_num :
+			 (Default value = True)
+		over_h :
+			 (Default value = False)
+		cosmology :
+			 (Default value = None)
+		data_suffix :
+			 (Default value = "_DD")
+		jk_group_name :
+			 (Default value = "")
+
+		Returns
+		-------
+		type
+			xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
+
 		"""
 
 		if masks == None:
@@ -308,8 +361,20 @@ class MeasureWObservations(MeasureIABase):
 			return DD, separation_bins, pi_bins
 
 	def get_cosmo_points(self, data, cosmology=cosmo):
-		'''convert from astropy table of RA, DEC, and redshift to 3D cartesian coordinates in Mpc/h
-		Assumes col0=RA, col1=DEC, col2=Z'''
+		"""convert from astropy table of RA, DEC, and redshift to 3D cartesian coordinates in Mpc/h
+		Assumes col0=RA, col1=DEC, col2=Z
+
+		Parameters
+		----------
+		data :
+
+		cosmology :
+			 (Default value = cosmo)
+
+		Returns
+		-------
+
+		"""
 		comoving_dist = cosmo.comoving_distance(data[:, 2]).to(u.Mpc)
 		print(min(data[:, 1]), max(data[:, 1]))
 		points = coordinates.spherical_to_cartesian(np.abs(comoving_dist), np.asarray(data[:, 1]) * u.deg,
@@ -317,23 +382,33 @@ class MeasureWObservations(MeasureIABase):
 		return np.asarray(points).transpose() * cosmology.h  # in Mpc/h
 
 	def get_pair_coords(self, obs_pos1, obs_pos2, use_center_origin=True, cosmology=cosmo):
-		'''
-		Takes in observed positions of galaxy pairs and returns comoving coordinates, in Mpc/h, with the orgin at the center of the pair.
+		"""Takes in observed positions of galaxy pairs and returns comoving coordinates, in Mpc/h, with the orgin at the center of the pair.
 		The first coordinate (x-axis) is along the LOS
 		The second coordinate (y-axis) is along 'RA'
 		The third coordinate (z-axis) along 'DEC', i.e. aligned with North in origional coordinates.
-
+		
 		INPUT
 		-------
 		obs_pos1, obs_pos2: table with columns: 'RA', 'DEC', z_column
 		use_center_origin: True for coordinate orgin at center of pair, othersise centers on first position
 		cosmology: astropy.cosmology
 
-		RETURNS
-		-------
-		numpy array of cartesian coordinates, in Mpc/h. Shape (2,3)
+		Parameters
+		----------
+		obs_pos1 :
 
-		'''
+		obs_pos2 :
+
+		use_center_origin :
+			 (Default value = True)
+		cosmology :
+			 (Default value = cosmo)
+
+		Returns
+		-------
+
+		
+		"""
 		cartesian_coords = self.get_cosmo_points(np.vstack([obs_pos1, obs_pos2]), cosmology=cosmology)  # in Mpc/h
 		# find center position of coordinates
 		origin = cartesian_coords[0]
@@ -345,14 +420,34 @@ class MeasureWObservations(MeasureIABase):
 	def count_pairs_xi_grid_w_update(self, masks=None, dataset_name="All_galaxies", return_output=False,
 									 print_num=True, over_h=False, cosmology=None, data_suffix="_DD", jk_group_name=""
 									 ):
-		"""
-		Measures the projected clustering (xi_gg) for given coordinates of the position and shape sample
+		"""Measures the projected clustering (xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample) and the index of the direction of the line of sight (LOS=2 for z axis).
 		Positions are assumed to be given in cMpc/h.
-		:param masks: the masks for the data to select only part of the data
-		:param dataset_name: the dataset name given in the hdf5 file.
-		:param return_output: Output is returned if True, saved to file if False.
-		:return: xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
+
+		Parameters
+		----------
+		masks :
+			the masks for the data to select only part of the data (Default value = None)
+		dataset_name :
+			the dataset name given in the hdf5 file. (Default value = "All_galaxies")
+		return_output :
+			Output is returned if True, saved to file if False. (Default value = False)
+		print_num :
+			 (Default value = True)
+		over_h :
+			 (Default value = False)
+		cosmology :
+			 (Default value = None)
+		data_suffix :
+			 (Default value = "_DD")
+		jk_group_name :
+			 (Default value = "")
+
+		Returns
+		-------
+		type
+			xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
+
 		"""
 
 		if masks == None:

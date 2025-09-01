@@ -13,18 +13,33 @@ KPC_TO_KM = 3.086e16  # 1 kpc is 3.086e16 km
 
 
 class MeasureMultipolesSimulations(MeasureIABase):
-	"""
-	Measures intrinsic alignment correlation functions including errors. Different samples for shapes and positions
-	can be used. Currently allows for w_g+, w_gg and multipoles to be calculated.
-	:param data: Dictionary with data needed for calculations. See specifications for keywords.
-	:param simulation: Indicator of simulation. Choose from [TNG100, TNG300] for now.
-	:param snapshot: Number of the snapshot
-	:param separation_limits: Bounds of the (projected) separation vector length bins in cMpc/h (so, r or r_p)
-	:param num_bins_r: Number of bins for (projected) separation vector.
-	:param num_bins_pi: Number of bins for line of sight (LOS) vector, pi.
-	:param PT: Number indicating particle type
-	:param LOS_lim: Bound for line of sight bins. Bounds will be [-LOS_lim, LOS_lim]
-	:param output_file_name: Name and filepath of the file where the output should be stored.
+	"""Measures intrinsic alignment correlation functions including errors. Different samples for shapes and positions
+		can be used. Currently allows for w_g+, w_gg and multipoles to be calculated.
+
+	Parameters
+	----------
+	data :
+		Dictionary with data needed for calculations. See specifications for keywords.
+	simulation :
+		Indicator of simulation. Choose from [TNG100, TNG300] for now.
+	snapshot :
+		Number of the snapshot
+	separation_limits :
+		Bounds of the (projected) separation vector length bins in cMpc/h (so, r or r_p)
+	num_bins_r :
+		Number of bins for (projected) separation vector.
+	num_bins_pi :
+		Number of bins for line of sight (LOS) vector, pi.
+	PT :
+		Number indicating particle type
+	LOS_lim :
+		Bound for line of sight bins. Bounds will be [-LOS_lim, LOS_lim]
+	output_file_name :
+		Name and filepath of the file where the output should be stored.
+
+	Returns
+	-------
+
 	"""
 
 	def __init__(
@@ -49,16 +64,31 @@ class MeasureMultipolesSimulations(MeasureIABase):
 			self, masks=None, rp_cut=None, dataset_name="All_galaxies", return_output=False, print_num=True,
 			jk_group_name=""
 	):
-		"""
-		Measures the projected correlation function (xi_g_plus) for given coordinates of the position and shape sample
+		"""Measures the projected correlation function (xi_g_plus) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
 		axes, q=b/a (q) and the index of the direction of the line of sight (LOS=2 for z axis).
 		Positions are assumed to be given in Mpc.
-		:param rp_cut: Limit for minimum r_p value for pairs to be included.
-		:param masks: the masks for the data to select only part of the data
-		:param dataset_name: the dataset name given in the hdf5 file.
-		:param return_output: Output is returned if True, saved to file if False.
-		:return: correlation, separation_bins, pi_bins if no output file is specified
+
+		Parameters
+		----------
+		rp_cut :
+			Limit for minimum r_p value for pairs to be included. (Default value = None)
+		masks :
+			the masks for the data to select only part of the data (Default value = None)
+		dataset_name :
+			the dataset name given in the hdf5 file. (Default value = "All_galaxies")
+		return_output :
+			Output is returned if True, saved to file if False. (Default value = False)
+		print_num :
+			 (Default value = True)
+		jk_group_name :
+			 (Default value = "")
+
+		Returns
+		-------
+		type
+			correlation, separation_bins, pi_bins if no output file is specified
+
 		"""
 		if masks == None:
 			positions = self.data["Position"]
@@ -211,16 +241,31 @@ class MeasureMultipolesSimulations(MeasureIABase):
 			self, masks=None, rp_cut=None, dataset_name="All_galaxies", return_output=False, print_num=True,
 			jk_group_name=""
 	):
-		"""
-		Measures the projected correlation function (xi_g_plus) for given coordinates of the position and shape sample
+		"""Measures the projected correlation function (xi_g_plus) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
 		axes, q=b/a (q) and the index of the direction of the line of sight (LOS=2 for z axis).
 		Positions are assumed to be given in Mpc.
-		:param rp_cut: Limit for minimum r_p value for pairs to be included.
-		:param masks: the masks for the data to select only part of the data
-		:param dataset_name: the dataset name given in the hdf5 file.
-		:param return_output: Output is returned if True, saved to file if False.
-		:return: correlation, separation_bins, pi_bins if no output file is specified
+
+		Parameters
+		----------
+		rp_cut :
+			Limit for minimum r_p value for pairs to be included. (Default value = None)
+		masks :
+			the masks for the data to select only part of the data (Default value = None)
+		dataset_name :
+			the dataset name given in the hdf5 file. (Default value = "All_galaxies")
+		return_output :
+			Output is returned if True, saved to file if False. (Default value = False)
+		print_num :
+			 (Default value = True)
+		jk_group_name :
+			 (Default value = "")
+
+		Returns
+		-------
+		type
+			correlation, separation_bins, pi_bins if no output file is specified
+
 		"""
 		if masks == None:
 			positions = self.data["Position"]
@@ -369,15 +414,39 @@ class MeasureMultipolesSimulations(MeasureIABase):
 									dataset_name="All_galaxies", return_output=False, print_num=True,
 									dataset_name_tree=None, save_tree=False, file_tree_path=None,
 									jk_group_name=""):
-		"""
-		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
+		"""Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
 		axes, q=b/a (q) and the index of the direction of the line of sight (LOS=2 for z axis).
 		Positions are assumed to be given in cMpc/h.
-		:param masks: the masks for the data to select only part of the data
-		:param dataset_name: the dataset name given in the hdf5 file.
-		:param return_output: Output is returned if True, saved to file if False.
-		:return: xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
+
+		Parameters
+		----------
+		masks :
+			the masks for the data to select only part of the data (Default value = None)
+		dataset_name :
+			the dataset name given in the hdf5 file. (Default value = "All_galaxies")
+		return_output :
+			Output is returned if True, saved to file if False. (Default value = False)
+		tree_input :
+			 (Default value = None)
+		rp_cut :
+			 (Default value = None)
+		print_num :
+			 (Default value = True)
+		dataset_name_tree :
+			 (Default value = None)
+		save_tree :
+			 (Default value = False)
+		file_tree_path :
+			 (Default value = None)
+		jk_group_name :
+			 (Default value = "")
+
+		Returns
+		-------
+		type
+			xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
+
 		"""
 
 		if masks == None:
@@ -565,6 +634,17 @@ class MeasureMultipolesSimulations(MeasureIABase):
 			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus
 
 	def _measure_xi_r_mur_sims_batch(self, indices):
+		"""
+
+		Parameters
+		----------
+		indices :
+
+
+		Returns
+		-------
+
+		"""
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
@@ -633,15 +713,33 @@ class MeasureMultipolesSimulations(MeasureIABase):
 	def _measure_xi_r_mur_sims_multiprocessing(self, num_nodes=9, masks=None,
 											   rp_cut=None, dataset_name="All_galaxies",
 											   return_output=False, print_num=True, jk_group_name=""):
-		"""
-		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
+		"""Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
 		axes, q=b/a (q) and the index of the direction of the line of sight (LOS=2 for z axis).
 		Positions are assumed to be given in cMpc/h.
-		:param masks: the masks for the data to select only part of the data
-		:param dataset_name: the dataset name given in the hdf5 file.
-		:param return_output: Output is returned if True, saved to file if False.
-		:return: xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
+
+		Parameters
+		----------
+		masks :
+			the masks for the data to select only part of the data (Default value = None)
+		dataset_name :
+			the dataset name given in the hdf5 file. (Default value = "All_galaxies")
+		return_output :
+			Output is returned if True, saved to file if False. (Default value = False)
+		num_nodes :
+			 (Default value = 9)
+		rp_cut :
+			 (Default value = None)
+		print_num :
+			 (Default value = True)
+		jk_group_name :
+			 (Default value = "")
+
+		Returns
+		-------
+		type
+			xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
+
 		"""
 
 		if masks == None:

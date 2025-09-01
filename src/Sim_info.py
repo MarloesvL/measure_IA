@@ -1,10 +1,18 @@
 class SimInfo:
-	"""
-	Class that stores simulation information in an object to be inherited by other classes.
-	Simulation information is hard coded and therefore uses are limited. However, can easily be expanded,
-	given the file structures are the same.
-	:param sim_name: identifier of the simulation, allowing for correct information to be obtained. [TNG100, TNG300]
-	:param snapshot: number of the snapshot, influences which folders are located.
+	"""Class that stores simulation information in an object to be inherited by other classes.
+		Simulation information is hard coded and therefore uses are limited. However, can easily be expanded,
+		given the file structures are the same.
+
+	Parameters
+	----------
+	sim_name :
+		identifier of the simulation, allowing for correct information to be obtained. [TNG100, TNG300]
+	snapshot :
+		number of the snapshot, influences which folders are located.
+
+	Returns
+	-------
+
 	"""
 
 	def __init__(self, sim_name, snapshot, PT=None, manual=False, update=False):
@@ -41,6 +49,21 @@ class SimInfo:
 			raise AttributeError("Child' object has no attribute '%s'" % name)
 
 	def get_catalogue_names(self, shapes_cat=None, subhalo_cat=None, snap_cat=None):
+		"""
+
+		Parameters
+		----------
+		shapes_cat :
+			 (Default value = None)
+		subhalo_cat :
+			 (Default value = None)
+		snap_cat :
+			 (Default value = None)
+
+		Returns
+		-------
+
+		"""
 		self.shapes_cat = "Shapes"
 		self.subhalo_cat = "SubhaloPT"
 		self.snap_cat = f"{self.simname}_PT{self.PT_first}_subhalos_only"
@@ -54,9 +77,23 @@ class SimInfo:
 		return
 
 	def get_specs(self, boxsize=None, h=None, DM_part_mass=None, N_files=None):
-		"""
-		Creates attributes describing the simulation specs, e.g. boxsize, DM particle mass.
+		"""Creates attributes describing the simulation specs, e.g. boxsize, DM particle mass.
 		:return:
+
+		Parameters
+		----------
+		boxsize :
+			 (Default value = None)
+		h :
+			 (Default value = None)
+		DM_part_mass :
+			 (Default value = None)
+		N_files :
+			 (Default value = None)
+
+		Returns
+		-------
+
 		"""
 		if self.manual:
 			self.boxsize = boxsize  # ckpc/h
@@ -132,9 +169,39 @@ class SimInfo:
 			masses_name=None,
 			coordinates_name=None,
 	):
-		"""
-		Creates attributes describing the variable names for different datasets.
+		"""Creates attributes describing the variable names for different datasets.
 		:return:
+
+		Parameters
+		----------
+		mass_name :
+			 (Default value = None)
+		ID_name :
+			 (Default value = None)
+		offset_name :
+			 (Default value = None)
+		sub_len_name :
+			 (Default value = None)
+		group_len_name :
+			 (Default value = None)
+		photo_name :
+			 (Default value = None)
+		SFR_name :
+			 (Default value = None)
+		flag_name :
+			 (Default value = None)
+		wind_name :
+			 (Default value = None)
+		velocities_name :
+			 (Default value = None)
+		masses_name :
+			 (Default value = None)
+		coordinates_name :
+			 (Default value = None)
+
+		Returns
+		-------
+
 		"""
 		if self.manual:
 			self.mass_name = mass_name
@@ -215,9 +282,21 @@ class SimInfo:
 		return
 
 	def get_folders(self, fof_folder=None, snap_folder=None, snap_group=None):
-		"""
-		Creates attributes for subpaths leading to datafiles. Assumes that data is always in the same format.
+		"""Creates attributes for subpaths leading to datafiles. Assumes that data is always in the same format.
 		:return:
+
+		Parameters
+		----------
+		fof_folder :
+			 (Default value = None)
+		snap_folder :
+			 (Default value = None)
+		snap_group :
+			 (Default value = None)
+
+		Returns
+		-------
+
 		"""
 		if self.manual:
 			self.fof_folder = fof_folder
@@ -248,6 +327,17 @@ class SimInfo:
 		return
 
 	def get_scalefactor(self, redshifts=None):
+		"""
+
+		Parameters
+		----------
+		redshifts :
+			 (Default value = None)
+
+		Returns
+		-------
+
+		"""
 		if self.manual:
 			pass
 		elif "TNG" in self.simname:

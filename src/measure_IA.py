@@ -6,21 +6,39 @@ KPC_TO_KM = 3.086e16  # 1 kpc is 3.086e16 km
 
 
 class MeasureIA(MeasureJackknife):
-	"""
-	Manages the methods used in the MeasureIA class based on speed and input.
-	:param data: Dictionary with data needed for calculations. See specifications for keywords.
-	:param simulation: Indicator of simulation. Choose from [TNG100, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1_m8, FLAMINGO_L1_m9, FLAMINGO_L1_m10, FLAMINGO_L2p8_m9] for now.
-	:param snapshot: Number of the snapshot
-	:param separation_limits: Bounds of the (projected) separation vector length bins in cMpc/h (so, r or r_p)
-	:param num_bins_r: Number of bins for (projected) separation vector.
-	:param num_bins_pi: Number of bins for line of sight (LOS) vector, pi.
-	:param PT: Number indicating particle type
-	:param LOS_lim: Bound for line of sight bins. Bounds will be [-LOS_lim, LOS_lim]
-	:param output_file_name: Name and filepath of the file where the output should be stored.
-	:param boxsize: Specify the boxsize of the simulation if using a simulation that is not in SimInfo
-	:param periodicity: Set to True (default) to include periodic boundary conditions. False to ignore. Note that the RR
-	terms are calculated analytically for the simulations, so periodicity=False only works for the S+D and DD terms.
-	:param num_nodes: Number of cores available for multiprocessing. (Influences which method is used)
+	"""Manages the methods used in the MeasureIA class based on speed and input.
+
+	Parameters
+	----------
+	data :
+		Dictionary with data needed for calculations. See specifications for keywords.
+	simulation :
+		Indicator of simulation. Choose from [TNG100, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1_m8, FLAMINGO_L1_m9, FLAMINGO_L1_m10, FLAMINGO_L2p8_m9] for now.
+	snapshot :
+		Number of the snapshot
+	separation_limits :
+		Bounds of the (projected) separation vector length bins in cMpc/h (so, r or r_p)
+	num_bins_r :
+		Number of bins for (projected) separation vector.
+	num_bins_pi :
+		Number of bins for line of sight (LOS) vector, pi.
+	PT :
+		Number indicating particle type
+	LOS_lim :
+		Bound for line of sight bins. Bounds will be [-LOS_lim, LOS_lim]
+	output_file_name :
+		Name and filepath of the file where the output should be stored.
+	boxsize :
+		Specify the boxsize of the simulation if using a simulation that is not in SimInfo
+	periodicity :
+		Set to True (default) to include periodic boundary conditions. False to ignore. Note that the RR
+		terms are calculated analytically for the simulations, so periodicity=False only works for the S+D and DD terms.
+	num_nodes :
+		Number of cores available for multiprocessing. (Influences which method is used)
+
+	Returns
+	-------
+
 	"""
 
 	def __init__(
@@ -46,19 +64,33 @@ class MeasureIA(MeasureJackknife):
 
 	def measure_xi_w(self, dataset_name, corr_type, num_jk=0, calc_errors=True, file_tree_path=None, masks=None,
 					 remove_tree_file=True, save_jk_terms=False):
-		"""
-		Manages the various measure_projected_correlation options in MeasureIABase.
-		:param dataset_name: Name of the dataset in the output file.
-		:param corr_type: Type of correlation to be measured. Choose from [g+, gg, both].
-		:param num_jk: Number of jackknife regions (needs to be x^3, with x an int) for the error calculation.
-		:param calc_errors: If True, jackknife errors are calculated.
-		:param file_tree_path: Path to where the tree information is temporarily stored. If None (default), no trees
-		are used in the calculation. Note that the use of trees speeds up the calculations significantly.
-		:param masks: Directory of mask information in the same form as the data input, where the masks are placed over
-		the data to apply selections.
-		:param remove_tree_file: If True (default), the file that stores the tree information is removed after the
-		calculations.
-		:return:
+		"""Manages the various measure_projected_correlation options in MeasureIABase.
+
+		Parameters
+		----------
+		dataset_name :
+			Name of the dataset in the output file.
+		corr_type :
+			Type of correlation to be measured. Choose from [g+, gg, both].
+		num_jk :
+			Number of jackknife regions (needs to be x^3, with x an int) for the error calculation. (Default value = 0)
+		calc_errors :
+			If True, jackknife errors are calculated. (Default value = True)
+		file_tree_path :
+			Path to where the tree information is temporarily stored. If None (default), no trees
+			are used in the calculation. Note that the use of trees speeds up the calculations significantly.
+		masks :
+			Directory of mask information in the same form as the data input, where the masks are placed over
+			the data to apply selections. (Default value = None)
+		remove_tree_file :
+			If True (default), the file that stores the tree information is removed after the
+			calculations.
+		save_jk_terms :
+			 (Default value = False)
+
+		Returns
+		-------
+
 		"""
 		if calc_errors:
 			try:
@@ -105,9 +137,12 @@ class MeasureIA(MeasureJackknife):
 				self._measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
 				if calc_errors:
 					self._measure_jackknife_covariance_sims_multiprocessing(masks=masks, corr_type=[corr_type, "w"],
-																			dataset_name=dataset_name, L_subboxes=L, rp_cut=None,
-																			num_nodes=self.num_nodes, twoD=False, tree=True,
-																			tree_saved=True, file_tree_path=file_tree_path,
+																			dataset_name=dataset_name, L_subboxes=L,
+																			rp_cut=None,
+																			num_nodes=self.num_nodes, twoD=False,
+																			tree=True,
+																			tree_saved=True,
+																			file_tree_path=file_tree_path,
 																			remove_tree_file=remove_tree_file,
 																			save_jk_terms=save_jk_terms)
 			elif not multiproc_bool and save_tree:
@@ -142,20 +177,33 @@ class MeasureIA(MeasureJackknife):
 
 	def measure_xi_multipoles(self, dataset_name, corr_type, num_jk, calc_errors=True, file_tree_path=None, masks=None,
 							  remove_tree_file=True, rp_cut=None):
-		"""
-		Manages the various measure_projected_correlation options in MeasureIABase.
-		:param dataset_name: Name of the dataset in the output file.
-		:param corr_type: Type of correlation to be measured. Choose from [g+, gg, both].
-		:param num_jk: Number of jackknife regions (needs to be x^3, with x an int) for the error calculation.
-		:param calc_errors: If True, jackknife errors are calculated.
-		:param file_tree_path: Path to where the tree information is temporarily stored. If None (default), no trees
-		are used in the calculation. Note that the use of trees speeds up the calculations significantly.
-		:param masks: Directory of mask information in the same form as the data input, where the masks are placed over
-		the data to apply selections.
-		:param remove_tree_file: If True (default), the file that stores the tree information is removed after the
-		calculations.
-		:param rp_cut: Applies a minimum r_p value condition for pairs to be included. Default is None.
-		:return:
+		"""Manages the various measure_projected_correlation options in MeasureIABase.
+
+		Parameters
+		----------
+		dataset_name :
+			Name of the dataset in the output file.
+		corr_type :
+			Type of correlation to be measured. Choose from [g+, gg, both].
+		num_jk :
+			Number of jackknife regions (needs to be x^3, with x an int) for the error calculation.
+		calc_errors :
+			If True, jackknife errors are calculated. (Default value = True)
+		file_tree_path :
+			Path to where the tree information is temporarily stored. If None (default), no trees
+			are used in the calculation. Note that the use of trees speeds up the calculations significantly.
+		masks :
+			Directory of mask information in the same form as the data input, where the masks are placed over
+			the data to apply selections. (Default value = None)
+		remove_tree_file :
+			If True (default), the file that stores the tree information is removed after the
+			calculations.
+		rp_cut :
+			Applies a minimum r_p value condition for pairs to be included. Default is None.
+
+		Returns
+		-------
+
 		"""
 		if calc_errors:
 			try:
@@ -207,8 +255,10 @@ class MeasureIA(MeasureJackknife):
 																			corr_type=[corr_type, "multipoles"],
 																			dataset_name=dataset_name, L_subboxes=L,
 																			rp_cut=rp_cut,
-																			num_nodes=self.num_nodes, twoD=False, tree=True,
-																			tree_saved=True, file_tree_path=file_tree_path,
+																			num_nodes=self.num_nodes, twoD=False,
+																			tree=True,
+																			tree_saved=True,
+																			file_tree_path=file_tree_path,
 																			remove_tree_file=remove_tree_file)
 			elif not multiproc_bool and save_tree:
 				self._measure_xi_r_mur_sims_tree(tree_input=None, masks=masks,
@@ -251,22 +301,39 @@ class MeasureIA(MeasureJackknife):
 	def measure_xi_w_obs(self, IA_estimator, dataset_name, corr_type, jk_patches=None, num_jk=None, randoms_data=None,
 						 calc_errors=True,
 						 masks=None, masks_randoms=None, cosmology=None, over_h=False):
-		"""
-		Manages the measurement of observational wg+ in MeasureIABase.
-		:param IA_estimator: Choose which type of xi estimator is used. Choose "clusters" or "galaxies".
-		:param dataset_name: Name of the dataset in the output file.
-		:param corr_type: ype of correlation to be measured. Choose from [g+, gg, both].
-		:param jk_patches: Directory with entries of the jackknife patches for each sample, named "position", "shape"
-		and "random".
-		:param randoms_data: Data directory that includes the randoms information in the same form as the data input.
-		:param calc_errors: If True, jackknife errors are calculated.
-		:param masks: Directory of mask information in the same form as the data input, where the masks are placed over
-		the data to apply selections.
-		:param masks_randoms: Directory of mask information for the randoms data in the same form as the data input,
-		where the masks are placed over the data to apply selections.
-		:param cosmology: pyccl cosmology to use in the calculation. If None (default), a default cosmology is used.
-		:param over_h: If True, the units are assumed to be in not-over-h and converted to over-h units. Default is False.
-		:return:
+		"""Manages the measurement of observational wg+ in MeasureIABase.
+
+		Parameters
+		----------
+		IA_estimator :
+			Choose which type of xi estimator is used. Choose "clusters" or "galaxies".
+		dataset_name :
+			Name of the dataset in the output file.
+		corr_type :
+			ype of correlation to be measured. Choose from [g+, gg, both].
+		jk_patches :
+			Directory with entries of the jackknife patches for each sample, named "position", "shape"
+			and "random". (Default value = None)
+		randoms_data :
+			Data directory that includes the randoms information in the same form as the data input. (Default value = None)
+		calc_errors :
+			If True, jackknife errors are calculated. (Default value = True)
+		masks :
+			Directory of mask information in the same form as the data input, where the masks are placed over
+			the data to apply selections. (Default value = None)
+		masks_randoms :
+			Directory of mask information for the randoms data in the same form as the data input,
+			where the masks are placed over the data to apply selections. (Default value = None)
+		cosmology :
+			pyccl cosmology to use in the calculation. If None (default), a default cosmology is used.
+		over_h :
+			If True, the units are assumed to be in not-over-h and converted to over-h units. Default is False.
+		num_jk :
+			 (Default value = None)
+
+		Returns
+		-------
+
 		"""
 		if IA_estimator == "clusters":
 			if randoms_data == None:
@@ -288,7 +355,6 @@ class MeasureIA(MeasureJackknife):
 				print("WARNING: this version of the code has not been fully validated. Proceed with caution.")
 		else:
 			raise ValueError("Unknown input for IA_estimator, choose from [clusters, galaxies].")
-
 
 		# todo: Expand to include methods with trees and internal multiproc
 		# todo: Checks to see if data directories include everything they need
@@ -396,7 +462,8 @@ class MeasureIA(MeasureJackknife):
 				"weight": self.data_dir["weight"],
 				"weight_shape_sample": self.data_dir["weight_shape_sample"]
 			}
-			self._count_pairs_xi_rp_pi_obs_brute(masks=masks, dataset_name=dataset_name, over_h=over_h, cosmology=cosmology,
+			self._count_pairs_xi_rp_pi_obs_brute(masks=masks, dataset_name=dataset_name, over_h=over_h,
+												 cosmology=cosmology,
 												 data_suffix="_DD")
 
 			# SR (Cg+, Cgg, Ggg) - watch name (Obs estimator) # if g+ or both, already have it
@@ -410,7 +477,8 @@ class MeasureIA(MeasureJackknife):
 				"weight": self.randoms_data["weight"],
 				"weight_shape_sample": self.data_dir["weight_shape_sample"]
 			}
-			self._count_pairs_xi_rp_pi_obs_brute(masks=masks, dataset_name=dataset_name, over_h=over_h, cosmology=cosmology,
+			self._count_pairs_xi_rp_pi_obs_brute(masks=masks, dataset_name=dataset_name, over_h=over_h,
+												 cosmology=cosmology,
 												 data_suffix="_SR")
 
 		if corr_type == "gg" or corr_type == "both":
@@ -425,7 +493,8 @@ class MeasureIA(MeasureJackknife):
 				"weight": self.data_dir["weight"],
 				"weight_shape_sample": self.randoms_data["weight_shape_sample"]
 			}
-			self._count_pairs_xi_rp_pi_obs_brute(masks=masks, dataset_name=dataset_name, over_h=over_h, cosmology=cosmology,
+			self._count_pairs_xi_rp_pi_obs_brute(masks=masks, dataset_name=dataset_name, over_h=over_h,
+												 cosmology=cosmology,
 												 data_suffix="_RD")
 
 		if IA_estimator == "galaxies" or corr_type == "gg" or corr_type == "both":
@@ -440,7 +509,8 @@ class MeasureIA(MeasureJackknife):
 				"weight": self.randoms_data["weight"],
 				"weight_shape_sample": self.randoms_data["weight_shape_sample"]
 			}
-			self._count_pairs_xi_rp_pi_obs_brute(masks=masks, dataset_name=dataset_name, over_h=over_h, cosmology=cosmology,
+			self._count_pairs_xi_rp_pi_obs_brute(masks=masks, dataset_name=dataset_name, over_h=over_h,
+												 cosmology=cosmology,
 												 data_suffix="_RR")
 
 		self._obs_estimator([corr_type, "w"], IA_estimator, dataset_name, f"{dataset_name}_randoms", num_samples)
@@ -585,22 +655,41 @@ class MeasureIA(MeasureJackknife):
 								  randoms_data=None,
 								  calc_errors=True, rp_cut=None,
 								  masks=None, masks_randoms=None, cosmology=None, over_h=False):
-		"""
-		Manages the measurement of observational wg+ in MeasureIABase.
-		:param IA_estimator: Choose which type of xi estimator is used. Choose "clusters" or "galaxies".
-		:param dataset_name: Name of the dataset in the output file.
-		:param corr_type: ype of correlation to be measured. Choose from [g+, gg, both].
-		:param jk_patches: Directory with entries of the jackknife patches for each sample, named "position", "shape"
-		and "random".
-		:param randoms_data: Data directory that includes the randoms information in the same form as the data input.
-		:param calc_errors: If True, jackknife errors are calculated.
-		:param masks: Directory of mask information in the same form as the data input, where the masks are placed over
-		the data to apply selections.
-		:param masks_randoms: Directory of mask information for the randoms data in the same form as the data input,
-		where the masks are placed over the data to apply selections.
-		:param cosmology: pyccl cosmology to use in the calculation. If None (default), a default cosmology is used.
-		:param over_h: If True, the units are assumed to be in not-over-h and converted to over-h units. Default is False.
-		:return:
+		"""Manages the measurement of observational wg+ in MeasureIABase.
+
+		Parameters
+		----------
+		IA_estimator :
+			Choose which type of xi estimator is used. Choose "clusters" or "galaxies".
+		dataset_name :
+			Name of the dataset in the output file.
+		corr_type :
+			ype of correlation to be measured. Choose from [g+, gg, both].
+		jk_patches :
+			Directory with entries of the jackknife patches for each sample, named "position", "shape"
+			and "random". (Default value = None)
+		randoms_data :
+			Data directory that includes the randoms information in the same form as the data input. (Default value = None)
+		calc_errors :
+			If True, jackknife errors are calculated. (Default value = True)
+		masks :
+			Directory of mask information in the same form as the data input, where the masks are placed over
+			the data to apply selections. (Default value = None)
+		masks_randoms :
+			Directory of mask information for the randoms data in the same form as the data input,
+			where the masks are placed over the data to apply selections. (Default value = None)
+		cosmology :
+			pyccl cosmology to use in the calculation. If None (default), a default cosmology is used.
+		over_h :
+			If True, the units are assumed to be in not-over-h and converted to over-h units. Default is False.
+		num_jk :
+			 (Default value = None)
+		rp_cut :
+			 (Default value = None)
+
+		Returns
+		-------
+
 		"""
 		if IA_estimator == "clusters":
 			if randoms_data == None:
@@ -922,7 +1011,8 @@ class MeasureIA(MeasureJackknife):
 																		 num_sample_names=["R_S", "R_D"])
 
 			self._measure_jackknife_covariance_obs(IA_estimator=IA_estimator, max_patch=max(jk_patches['shape']),
-												   min_patch=min(jk_patches["shape"]), corr_type=[corr_type, "multipoles"],
+												   min_patch=min(jk_patches["shape"]),
+												   corr_type=[corr_type, "multipoles"],
 												   dataset_name=dataset_name, randoms_suf="_randoms")
 		self.data = data
 		return

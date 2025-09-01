@@ -5,14 +5,25 @@ from src.write_data import *
 
 
 class ReadData(SimInfo):
-	"""
-	Class to read different TNG data files.
-	:param project (str): Project name. Choose 'TNG100' or 'TNG300'
-	:param catalogue (str): Catalogue name that contains the data. If groupcat file: 'Subhalo'.
-													If snapshot file: enter 'PartTypeX' where X is the particle type number.
-	:param output_file_name: file path and name where output should be stored
-	:param snapshot (int): The number of the snapshot. e.g. 99
-	:param data_path (str): The start path to where the data is saved. Expects the files to be in a folder with the project name.
+	"""Class to read different TNG data files.
+
+	Parameters
+	----------
+	project :
+		str): Project name. Choose 'TNG100' or 'TNG300'
+	catalogue :
+		str): Catalogue name that contains the data. If groupcat file: 'Subhalo'.
+		If snapshot file: enter 'PartTypeX' where X is the particle type number.
+	output_file_name :
+		file path and name where output should be stored
+	snapshot :
+		int): The number of the snapshot. e.g. 99
+	data_path :
+		str): The start path to where the data is saved. Expects the files to be in a folder with the project name.
+
+	Returns
+	-------
+
 	"""
 
 	def __init__(
@@ -27,10 +38,20 @@ class ReadData(SimInfo):
 		return
 
 	def read_cat(self, variable, cut=None):
-		"""
-		Reads the data from the specified catalogue for a specified snapshot.
-		:param variable: the variable name for the requested data
-		:return: the data
+		"""Reads the data from the specified catalogue for a specified snapshot.
+
+		Parameters
+		----------
+		variable :
+			the variable name for the requested data
+		cut :
+			 (Default value = None)
+
+		Returns
+		-------
+		type
+			the data
+
 		"""
 		if self.catalogue == "Subhalo":
 			raise KeyError("Use ReadSubhalo method")
@@ -45,10 +66,20 @@ class ReadData(SimInfo):
 		return data
 
 	def read_subhalo(self, variable, Nfiles=0):
-		"""
-		Read the data from the subhalo files for a specified shapshot.
-		:param variable: the variable name for the requested data
-		:return: the data
+		"""Read the data from the subhalo files for a specified shapshot.
+
+		Parameters
+		----------
+		variable :
+			the variable name for the requested data
+		Nfiles :
+			 (Default value = 0)
+
+		Returns
+		-------
+		type
+			the data
+
 		"""
 		subhalo_file = h5py.File(f"{self.data_path}{self.fof_folder}.0.hdf5", "r")
 		Subhalo = subhalo_file[self.catalogue]
@@ -81,10 +112,18 @@ class ReadData(SimInfo):
 		return data
 
 	def read_snapshot(self, variable):
-		"""
-		Read the data from the snapshot files for a specified shapshot number
-		:param variable: the variable name for the requested data
-		:return: the data or nothing if output_file_name is specified
+		"""Read the data from the snapshot files for a specified shapshot number
+
+		Parameters
+		----------
+		variable :
+			the variable name for the requested data
+
+		Returns
+		-------
+		type
+			the data or nothing if output_file_name is specified
+
 		"""
 		if self.output_file_name != None:
 			output_file = h5py.File(self.output_file_name, "a")
@@ -141,10 +180,20 @@ class ReadData(SimInfo):
 			return data
 
 	def read_snapshot_multiple(self, variables):
-		"""
-		Read the data from the snapshot files for a specified shapshot number
-		:param variable: the variable name for the requested data
-		:return: the data or nothing if output_file_name is specified
+		"""Read the data from the snapshot files for a specified shapshot number
+
+		Parameters
+		----------
+		variable :
+			the variable name for the requested data
+		variables :
+
+
+		Returns
+		-------
+		type
+			the data or nothing if output_file_name is specified
+
 		"""
 		if self.output_file_name != None:
 			output_file = h5py.File(self.output_file_name, "a")

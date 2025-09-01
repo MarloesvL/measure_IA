@@ -13,18 +13,33 @@ KPC_TO_KM = 3.086e16  # 1 kpc is 3.086e16 km
 
 
 class MeasureIABase(SimInfo):
-	"""
-	Measures intrinsic alignment correlation functions including errors. Different samples for shapes and positions
-	can be used. Currently allows for w_g+, w_gg and multipoles to be calculated.
-	:param data: Dictionary with data needed for calculations. See specifications for keywords.
-	:param simulation: Indicator of simulation. Choose from [TNG100, TNG300] for now.
-	:param snapshot: Number of the snapshot
-	:param separation_limits: Bounds of the (projected) separation vector length bins in cMpc/h (so, r or r_p)
-	:param num_bins_r: Number of bins for (projected) separation vector.
-	:param num_bins_pi: Number of bins for line of sight (LOS) vector, pi.
-	:param PT: Number indicating particle type
-	:param LOS_lim: Bound for line of sight bins. Bounds will be [-LOS_lim, LOS_lim]
-	:param output_file_name: Name and filepath of the file where the output should be stored.
+	"""Measures intrinsic alignment correlation functions including errors. Different samples for shapes and positions
+		can be used. Currently allows for w_g+, w_gg and multipoles to be calculated.
+
+	Parameters
+	----------
+	data :
+		Dictionary with data needed for calculations. See specifications for keywords.
+	simulation :
+		Indicator of simulation. Choose from [TNG100, TNG300] for now.
+	snapshot :
+		Number of the snapshot
+	separation_limits :
+		Bounds of the (projected) separation vector length bins in cMpc/h (so, r or r_p)
+	num_bins_r :
+		Number of bins for (projected) separation vector.
+	num_bins_pi :
+		Number of bins for line of sight (LOS) vector, pi.
+	PT :
+		Number indicating particle type
+	LOS_lim :
+		Bound for line of sight bins. Bounds will be [-LOS_lim, LOS_lim]
+	output_file_name :
+		Name and filepath of the file where the output should be stored.
+
+	Returns
+	-------
+
 	"""
 
 	def __init__(
@@ -116,12 +131,21 @@ class MeasureIABase(SimInfo):
 
 	@staticmethod
 	def calculate_dot_product_arrays(a1, a2):
-		"""
-		Calculates the dot product over 2 2D arrays across axis 1 so that
+		"""Calculates the dot product over 2 2D arrays across axis 1 so that
 		dot_product[i] = np.dot(a1[i],a2[i])
-		:param a1: First array
-		:param a2: Second array
-		:return: Dot product of columns of arrays
+
+		Parameters
+		----------
+		a1 :
+			First array
+		a2 :
+			Second array
+
+		Returns
+		-------
+		type
+			Dot product of columns of arrays
+
 		"""
 		dot_product = np.zeros(np.shape(a1)[0])
 		for i in np.arange(0, np.shape(a1)[1]):
@@ -129,12 +153,21 @@ class MeasureIABase(SimInfo):
 		return dot_product
 
 	def measure_3D_orientation_separation_correlation(self, masks=None, dataset_name="All_galaxies"):
-		"""
-		NEEDS MORE EXTENSIVE TESTS
+		"""NEEDS MORE EXTENSIVE TESTS
 		Measures the 3D orientation-separation correlation function for given positions and minor axis directions.
-		:param masks: Directory of masks for the data that makes a selection in the data.
-		:param dataset_name: Name of the dataset in the hdf5 file specified in output file name.
-		:return: correlation, separation bin means (log) if output file name not specified.
+
+		Parameters
+		----------
+		masks :
+			Directory of masks for the data that makes a selection in the data. (Default value = None)
+		dataset_name :
+			Name of the dataset in the hdf5 file specified in output file name. (Default value = "All_galaxies")
+
+		Returns
+		-------
+		type
+			correlation, separation bin means (log) if output file name not specified.
+
 		"""
 		print("WARNING: this method has not been tested and is likely not correct.")
 		exit()
@@ -180,28 +213,54 @@ class MeasureIABase(SimInfo):
 
 	@staticmethod
 	def get_ellipticity(e, phi):
-		"""
-		Calculates the radial and tangential components of the ellipticity, given the size of the ellipticty vector
+		"""Calculates the radial and tangential components of the ellipticity, given the size of the ellipticty vector
 		and the angle between the semimajor or semiminor axis and the separation vector.
-		:param e: size of the ellipticity vector
-		:param phi: angle between semimajor/semiminor axis and separation vector
-		:return: e_+ and e_x
+
+		Parameters
+		----------
+		e :
+			size of the ellipticity vector
+		phi :
+			angle between semimajor/semiminor axis and separation vector
+
+		Returns
+		-------
+		type
+			e_+ and e_x
+
 		"""
 		e_plus, e_cross = e * np.cos(2 * phi), e * np.sin(2 * phi)
 		return e_plus, e_cross
 
 	@staticmethod
 	def get_random_pairs(rp_max, rp_min, pi_max, pi_min, L3, corrtype, Num_position, Num_shape):
-		"""
-		Returns analytical value of the number of pairs expected in an r_p, pi bin for a random uniform distribution.
+		"""Returns analytical value of the number of pairs expected in an r_p, pi bin for a random uniform distribution.
 		(Singh et al. 2023)
-		:param rp_max: upper bound of projected separation vector bin
-		:param rp_min: lower bound of projected separation vector bin
-		:param pi_max: upper bound of line of sight vector bin
-		:param pi_min: lower bound of line of sight vector bin
-		:param L3: volume of the simulation box
-		:param corrtype: Correlation type, auto or cross. RR for auto is RR_cross/2.
-		:return: number of pairs in r_p, pi bin
+
+		Parameters
+		----------
+		rp_max :
+			upper bound of projected separation vector bin
+		rp_min :
+			lower bound of projected separation vector bin
+		pi_max :
+			upper bound of line of sight vector bin
+		pi_min :
+			lower bound of line of sight vector bin
+		L3 :
+			volume of the simulation box
+		corrtype :
+			Correlation type, auto or cross. RR for auto is RR_cross/2.
+		Num_position :
+
+		Num_shape :
+
+
+		Returns
+		-------
+		type
+			number of pairs in r_p, pi bin
+
 		"""
 		if corrtype == "auto":
 			RR = (
@@ -219,25 +278,51 @@ class MeasureIABase(SimInfo):
 
 	@staticmethod
 	def get_volume_spherical_cap(mur, r):
-		"""
-		Calculate the volume of a spherical cap.
-		:param mur: cos(theta), where theta is the polar angle between the apex and disk of the cap.
-		:param r: radius
-		:return: Volume of the spherical cap.
+		"""Calculate the volume of a spherical cap.
+
+		Parameters
+		----------
+		mur :
+			cos(theta), where theta is the polar angle between the apex and disk of the cap.
+		r :
+			radius
+
+		Returns
+		-------
+		type
+			Volume of the spherical cap.
+
 		"""
 		return np.pi / 3.0 * r ** 3 * (2 + mur) * (1 - mur) ** 2
 
 	def get_random_pairs_r_mur(self, r_max, r_min, mur_max, mur_min, L3, corrtype, Num_position, Num_shape):
-		"""
-		Retruns analytical value of the number of pairs expected in an r_p, pi bin for a random uniform distribution.
+		"""Retruns analytical value of the number of pairs expected in an r_p, pi bin for a random uniform distribution.
 		(Singh et al. 2023)
-		:param r_max: upper bound of projected separation vector bin
-		:param r_min: lower bound of projected separation vector bin
-		:param mur_max: upper bound of mu_r bin
-		:param mur_min: lower bound of mu_r bin
-		:param L3: volume of the simulation box
-		:param corrtype:  Correlation type, auto or cross. RR for auto is RR_cross/2.
-		:return: number of pairs in r, mu_r bin
+
+		Parameters
+		----------
+		r_max :
+			upper bound of projected separation vector bin
+		r_min :
+			lower bound of projected separation vector bin
+		mur_max :
+			upper bound of mu_r bin
+		mur_min :
+			lower bound of mu_r bin
+		L3 :
+			volume of the simulation box
+		corrtype :
+			Correlation type, auto or cross. RR for auto is RR_cross/2.
+		Num_position :
+
+		Num_shape :
+
+
+		Returns
+		-------
+		type
+			number of pairs in r, mu_r bin
+
 		"""
 
 		if corrtype == "auto":
@@ -272,6 +357,19 @@ class MeasureIABase(SimInfo):
 
 	@staticmethod
 	def setdiff2D(a1, a2):
+		"""
+
+		Parameters
+		----------
+		a1 :
+
+		a2 :
+
+
+		Returns
+		-------
+
+		"""
 		diff = []
 		for i in np.arange(0, len(a1)):
 			setdiff = np.setdiff1d(a1[i], a2[i])
@@ -281,6 +379,21 @@ class MeasureIABase(SimInfo):
 
 	@staticmethod
 	def setdiff_omit(a1, a2, incl_ind):
+		"""
+
+		Parameters
+		----------
+		a1 :
+
+		a2 :
+
+		incl_ind :
+
+
+		Returns
+		-------
+
+		"""
 		diff = []
 		for i in np.arange(0, len(a1)):
 			if np.isin(i, incl_ind):
@@ -473,15 +586,29 @@ class MeasureIABase(SimInfo):
 
 	def measure_projected_correlation_save_pairs(self, output_file_pairs="", masks=None, dataset_name="All_galaxies",
 												 print_num=True):
-		"""
-		Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
+		"""Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
 		axes, q=b/a (q) and the index of the direction of the line of sight (LOS=2 for z axis).
 		Positions are assumed to be given in cMpc/h.
-		:param masks: the masks for the data to select only part of the data
-		:param dataset_name: the dataset name given in the hdf5 file.
-		:param return_output: Output is returned if True, saved to file if False.
-		:return: xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
+
+		Parameters
+		----------
+		masks :
+			the masks for the data to select only part of the data (Default value = None)
+		dataset_name :
+			the dataset name given in the hdf5 file. (Default value = "All_galaxies")
+		return_output :
+			Output is returned if True, saved to file if False.
+		output_file_pairs :
+			 (Default value = "")
+		print_num :
+			 (Default value = True)
+
+		Returns
+		-------
+		type
+			xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
+
 		"""
 
 		if masks == None:
@@ -546,13 +673,23 @@ class MeasureIABase(SimInfo):
 		return
 
 	def _measure_w_g_i(self, corr_type="both", dataset_name="All_galaxies", return_output=False, jk_group_name=""):
-		"""
-		Measures w_gi for a given xi_gi dataset that has been calculated with the measure projected correlation
+		"""Measures w_gi for a given xi_gi dataset that has been calculated with the measure projected correlation
 		method. Sums over pi values. Stores [rp, w_gi]. i can be + or g
-		:param dataset_name: Name of xi_gi dataset and name given to w_gi dataset when stored.
-		:param return_output: Output is returned if True, saved to file if False.
-		:param corr_type: Type of correlation function. Choose from [g+,gg,both].
-		:return:
+
+		Parameters
+		----------
+		dataset_name :
+			Name of xi_gi dataset and name given to w_gi dataset when stored. (Default value = "All_galaxies")
+		return_output :
+			Output is returned if True, saved to file if False. (Default value = False)
+		corr_type :
+			Type of correlation function. Choose from [g+,gg,both]. (Default value = "both")
+		jk_group_name :
+			 (Default value = "")
+
+		Returns
+		-------
+
 		"""
 		if corr_type == "both":
 			xi_data = ["xi_g_plus", "xi_gg"]
@@ -596,14 +733,24 @@ class MeasureIABase(SimInfo):
 		return
 
 	def _measure_multipoles(self, corr_type="both", dataset_name="All_galaxies", return_output=False, jk_group_name=""):
-		"""
-		Measures multipoles for a given xi_g+ calculated by measure projected correlation.
+		"""Measures multipoles for a given xi_g+ calculated by measure projected correlation.
 		The data assumes xi_g+ to be measured in bins of rp and pi. It measures mu_r and r
 		and saves the multipoles in the (r,mu_r) space. Should be binned into r bins.
-		:param corr_type: Default value of g+, ensuring correct dataset and sab and l to be 2.
-		:param dataset_name: Name of the dataset of xi_g+ and multipoles.
-		:param return_output: Output is returned if True, saved to file if False.
-		:return:
+
+		Parameters
+		----------
+		corr_type :
+			Default value of g+, ensuring correct dataset and sab and l to be 2.
+		dataset_name :
+			Name of the dataset of xi_g+ and multipoles. (Default value = "All_galaxies")
+		return_output :
+			Output is returned if True, saved to file if False. (Default value = False)
+		jk_group_name :
+			 (Default value = "")
+
+		Returns
+		-------
+
 		"""
 		correlation_data_file = h5py.File(self.output_file_name, "a")
 		if corr_type == "g+":  # todo: expand to include ++ option
@@ -679,14 +826,27 @@ class MeasureIABase(SimInfo):
 		return
 
 	def _obs_estimator(self, corr_type, IA_estimator, dataset_name, dataset_name_randoms, num_samples, jk_group_name=""):
-		'''
-		Reads various components of xi and combines into correct estimator for cluster or galaxy observational alignments
-		:param corr_type: w or multipoles
-		:param IA_estimator: clusters or galaxies
-		:param dataset_name: Name of the dataset
-		:param dataset_name_randoms: Name of the dataset for data with randoms as positions
-		:return:
-		'''
+		"""Reads various components of xi and combines into correct estimator for cluster or galaxy observational alignments
+
+		Parameters
+		----------
+		corr_type :
+			w or multipoles
+		IA_estimator :
+			clusters or galaxies
+		dataset_name :
+			Name of the dataset
+		dataset_name_randoms :
+			Name of the dataset for data with randoms as positions
+		num_samples :
+
+		jk_group_name :
+			 (Default value = "")
+
+		Returns
+		-------
+
+		"""
 		output_file = h5py.File(self.output_file_name, "a")
 		if corr_type[0] == "g+" or corr_type[0] == "both":
 			group_gp = output_file[
@@ -736,14 +896,24 @@ class MeasureIABase(SimInfo):
 		return
 
 	def assign_jackknife_patches(self, data, randoms_data, num_jk):
-		'''
-		Assigns jackknife patches to data and randoms given a number of patches.
+		"""Assigns jackknife patches to data and randoms given a number of patches.
 		Based on https://github.com/esheldon/kmeans_radec
-		:param data: directory containing position and shape sample data
-		:param randoms_data: directory containing position and shape sample data of randoms
-		:param num_jk: number of jackknife patches
-		:return: directory with patch numbers for each sample
-		'''
+
+		Parameters
+		----------
+		data :
+			directory containing position and shape sample data
+		randoms_data :
+			directory containing position and shape sample data of randoms
+		num_jk :
+			number of jackknife patches
+
+		Returns
+		-------
+		type
+			directory with patch numbers for each sample
+
+		"""
 
 		jk_patches = {}
 
@@ -782,14 +952,24 @@ class MeasureIABase(SimInfo):
 		return jk_patches
 
 	def measure_misalignment_angle(self, vector1_name, vector2_name, normalise=False):
-		"""
-		NOT TESTED
+		"""NOT TESTED
 		Calculate the misalignment angle between two given vectors. Assumes the vectors to be normalised unless
 		otherwise specified.
-		:param vector1_name: Name in data of the first vector.
-		:param vector2_name: Name in data of the second vector
-		:param normalise: If True, the vectors are divided by their length. Default is False.
-		:return: the misalignment angle, unless an output file name is given.
+
+		Parameters
+		----------
+		vector1_name :
+			Name in data of the first vector.
+		vector2_name :
+			Name in data of the second vector
+		normalise :
+			If True, the vectors are divided by their length. Default is False.
+
+		Returns
+		-------
+		type
+			the misalignment angle, unless an output file name is given.
+
 		"""
 
 		eigen_vector1 = self.data[vector1_name]

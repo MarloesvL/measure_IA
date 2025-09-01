@@ -16,6 +16,7 @@ KPC_TO_KM = 3.086e16  # 1 kpc is 3.086e16 km
 
 class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, MeasureWObservations,
 					   MeasureMultipolesObservations):
+	""" """
 
 	def __init__(
 			self,
@@ -39,15 +40,36 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 			self, masks=None, corr_type=["both", "multipoles"], dataset_name="All_galaxies", L_subboxes=3, rp_cut=None,
 			tree_saved=True, file_tree_path=None, remove_tree_file=True, num_nodes=None
 	):
-		"""
-		Measures the errors in the projected correlation function using the jackknife method.
+		"""Measures the errors in the projected correlation function using the jackknife method.
 		The box is divided into L_subboxes^3 subboxes; the correlation function is calculated omitting one box at a time.
 		Then the standard deviation is taken for wg+ and the covariance matrix is calculated for the multipoles.
-		:param rp_cut: Limit for minimum r_p value for pairs to be included. (Needed for measure_projected_correlation_multipoles)
-		:param corr_type: Array with two entries. For first choose from [gg, g+, both], for second from [w, multipoles]
-		:param dataset_name: Name of the dataset
-		:param L_subboxes: Integer by which the length of the side of the mox should be divided.
-		:return:
+
+		Parameters
+		----------
+		rp_cut :
+			Limit for minimum r_p value for pairs to be included. (Needed for measure_projected_correlation_multipoles) (Default value = None)
+		corr_type :
+			Array with two entries. For first choose from [gg, g+, both], for second from [w, multipoles] (Default value = ["both")
+		dataset_name :
+			Name of the dataset (Default value = "All_galaxies")
+		L_subboxes :
+			Integer by which the length of the side of the mox should be divided. (Default value = 3)
+		masks :
+			 (Default value = None)
+		"multipoles"] :
+
+		tree_saved :
+			 (Default value = True)
+		file_tree_path :
+			 (Default value = None)
+		remove_tree_file :
+			 (Default value = True)
+		num_nodes :
+			 (Default value = None)
+
+		Returns
+		-------
+
 		"""
 		if corr_type[0] == "both":
 			data = [corr_type[1] + "_g_plus", corr_type[1] + "_gg"]
@@ -222,17 +244,42 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 			num_nodes=4, twoD=False, tree=True, tree_saved=True, file_tree_path=None, remove_tree_file=True,
 			save_jk_terms=False
 	):
-		"""
-		Measures the errors in the projected correlation function using the jackknife method, using multiple CPU cores.
+		"""Measures the errors in the projected correlation function using the jackknife method, using multiple CPU cores.
 		The box is divided into L_subboxes^3 subboxes; the correlation function is calculated omitting one box at a time.
 		Then the standard deviation is taken for wg+ and the covariance matrix is calculated for the multipoles.
-		:param twoD: Divide box into L_subboxes^2, no division in z-direction.
-		:param num_nodes: Number of CPU nodes to use in multiprocessing.
-		:param dataset_name: Name of the dataset
-		:param L_subboxes: Integer by which the length of the side of the mox should be divided.
-		:param rp_cut: Limit for minimum r_p value for pairs to be included. (Needed for measure_projected_correlation_multipoles)
-		:param corr_type: Array with two entries. For first choose from [gg, g+, both], for second from [w, multipoles]
-		:return:
+
+		Parameters
+		----------
+		twoD :
+			Divide box into L_subboxes^2, no division in z-direction. (Default value = False)
+		num_nodes :
+			Number of CPU nodes to use in multiprocessing. (Default value = 4)
+		dataset_name :
+			Name of the dataset (Default value = "All_galaxies")
+		L_subboxes :
+			Integer by which the length of the side of the mox should be divided. (Default value = 3)
+		rp_cut :
+			Limit for minimum r_p value for pairs to be included. (Needed for measure_projected_correlation_multipoles) (Default value = None)
+		corr_type :
+			Array with two entries. For first choose from [gg, g+, both], for second from [w, multipoles] (Default value = ["both")
+		masks :
+			 (Default value = None)
+		"multipoles"] :
+
+		tree :
+			 (Default value = True)
+		tree_saved :
+			 (Default value = True)
+		file_tree_path :
+			 (Default value = None)
+		remove_tree_file :
+			 (Default value = True)
+		save_jk_terms :
+			 (Default value = False)
+
+		Returns
+		-------
+
 		"""
 		if corr_type[0] == "both":
 			data = [corr_type[1] + "_g_plus", corr_type[1] + "_gg"]
@@ -492,15 +539,44 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 			self, patches_pos, patches_shape, masks=None, corr_type=["both", "multipoles"], dataset_name="All_galaxies",
 			rp_cut=None, over_h=False, cosmology=None, count_pairs=False, data_suffix="", num_sample_names=["S", "D"]
 	):
-		"""
-		Measures the errors in the projected correlation function using the jackknife method.
+		"""Measures the errors in the projected correlation function using the jackknife method.
 		The box is divided into L_subboxes^3 subboxes; the correlation function is calculated omitting one box at a time.
 		Then the standard deviation is taken for wg+ and the covariance matrix is calculated for the multipoles.
-		:param rp_cut: Limit for minimum r_p value for pairs to be included. (Needed for measure_projected_correlation_multipoles)
-		:param corr_type: Array with two entries. For first choose from [gg, g+, both], for second from [w, multipoles]
-		:param dataset_name: Name of the dataset
-		:param L_subboxes: Integer by which the length of the side of the mox should be divided.
-		:return:
+
+		Parameters
+		----------
+		rp_cut :
+			Limit for minimum r_p value for pairs to be included. (Needed for measure_projected_correlation_multipoles) (Default value = None)
+		corr_type :
+			Array with two entries. For first choose from [gg, g+, both], for second from [w, multipoles] (Default value = ["both")
+		dataset_name :
+			Name of the dataset (Default value = "All_galaxies")
+		L_subboxes :
+			Integer by which the length of the side of the mox should be divided.
+		patches_pos :
+
+		patches_shape :
+
+		masks :
+			 (Default value = None)
+		"multipoles"] :
+
+		over_h :
+			 (Default value = False)
+		cosmology :
+			 (Default value = None)
+		count_pairs :
+			 (Default value = False)
+		data_suffix :
+			 (Default value = "")
+		num_sample_names :
+			 (Default value = ["S")
+		"D"] :
+
+
+		Returns
+		-------
+
 		"""
 		if count_pairs and data_suffix == "":
 			raise ValueError("Enter a data suffix (like _DD) for your pair count.")
@@ -578,15 +654,34 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 			self, IA_estimator, max_patch, min_patch=1, corr_type=["both", "multipoles"], dataset_name="All_galaxies",
 			randoms_suf="_randoms"
 	):
-		"""
-		Measures the errors in the projected correlation function using the jackknife method.
+		"""Measures the errors in the projected correlation function using the jackknife method.
 		The box is divided into L_subboxes^3 subboxes; the correlation function is calculated omitting one box at a time.
 		Then the standard deviation is taken for wg+ and the covariance matrix is calculated for the multipoles.
-		:param rp_cut: Limit for minimum r_p value for pairs to be included. (Needed for measure_projected_correlation_multipoles)
-		:param corr_type: Array with two entries. For first choose from [gg, g+, both], for second from [w, multipoles]
-		:param dataset_name: Name of the dataset
-		:param L_subboxes: Integer by which the length of the side of the mox should be divided.
-		:return:
+
+		Parameters
+		----------
+		rp_cut :
+			Limit for minimum r_p value for pairs to be included. (Needed for measure_projected_correlation_multipoles)
+		corr_type :
+			Array with two entries. For first choose from [gg, g+, both], for second from [w, multipoles] (Default value = ["both")
+		dataset_name :
+			Name of the dataset (Default value = "All_galaxies")
+		L_subboxes :
+			Integer by which the length of the side of the mox should be divided.
+		IA_estimator :
+
+		max_patch :
+
+		min_patch :
+			 (Default value = 1)
+		"multipoles"] :
+
+		randoms_suf :
+			 (Default value = "_randoms")
+
+		Returns
+		-------
+
 		"""
 		if corr_type[0] == "both":
 			data = [corr_type[1] + "_g_plus", corr_type[1] + "_gg"]
@@ -659,17 +754,48 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 			rp_cut=None, over_h=False, num_nodes=4, cosmology=None, count_pairs=False, data_suffix="",
 			num_sample_names=["S", "D"]
 	):
-		"""
-		Measures the errors in the projected correlation function using the jackknife method, using multiple CPU cores.
+		"""Measures the errors in the projected correlation function using the jackknife method, using multiple CPU cores.
 		The box is divided into L_subboxes^3 subboxes; the correlation function is calculated omitting one box at a time.
 		Then the standard deviation is taken for wg+ and the covariance matrix is calculated for the multipoles.
-		:param twoD: Divide box into L_subboxes^2, no division in z-direction.
-		:param num_nodes: Number of CPU nodes to use in multiprocessing.
-		:param dataset_name: Name of the dataset
-		:param L_subboxes: Integer by which the length of the side of the mox should be divided.
-		:param rp_cut: Limit for minimum r_p value for pairs to be included. (Needed for measure_projected_correlation_multipoles)
-		:param corr_type: Array with two entries. For first choose from [gg, g+, both], for second from [w, multipoles]
-		:return:
+
+		Parameters
+		----------
+		twoD :
+			Divide box into L_subboxes^2, no division in z-direction.
+		num_nodes :
+			Number of CPU nodes to use in multiprocessing. (Default value = 4)
+		dataset_name :
+			Name of the dataset (Default value = "All_galaxies")
+		L_subboxes :
+			Integer by which the length of the side of the mox should be divided.
+		rp_cut :
+			Limit for minimum r_p value for pairs to be included. (Needed for measure_projected_correlation_multipoles) (Default value = None)
+		corr_type :
+			Array with two entries. For first choose from [gg, g+, both], for second from [w, multipoles] (Default value = ["both")
+		patches_pos :
+
+		patches_shape :
+
+		masks :
+			 (Default value = None)
+		"multipoles"] :
+
+		over_h :
+			 (Default value = False)
+		cosmology :
+			 (Default value = None)
+		count_pairs :
+			 (Default value = False)
+		data_suffix :
+			 (Default value = "")
+		num_sample_names :
+			 (Default value = ["S")
+		"D"] :
+
+
+		Returns
+		-------
+
 		"""
 		if num_nodes == 1:
 			self._measure_jackknife_realisations_obs(patches_pos, patches_shape, masks, corr_type, dataset_name,
@@ -850,12 +976,23 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 		return
 
 	def measure_covariance_multiple_datasets(self, corr_type, dataset_names, num_box=3, return_output=False):
-		"""
-		Combines the jackknife measurements for different datasets into one covariance matrix.
+		"""Combines the jackknife measurements for different datasets into one covariance matrix.
 		Author: Marta Garcia Escobar (starting from measure_jackknife_errors code); updated
-		:param corr_type: Takes "w_g_plus" or "multipoles_g_plus".
-		:param dataset_names: List of the dataset names. If there is only one value, it calculates the covariance matrix with itself.
-		:param num_box: Number of boxes.
+
+		Parameters
+		----------
+		corr_type :
+			Takes "w_g_plus" or "multipoles_g_plus".
+		dataset_names :
+			List of the dataset names. If there is only one value, it calculates the covariance matrix with itself.
+		num_box :
+			Number of boxes. (Default value = 3)
+		return_output :
+			 (Default value = False)
+
+		Returns
+		-------
+
 		"""
 		# check if corr_type is valid
 		valid_corr_types = ["w_g_plus", "multipoles_g_plus"]
@@ -926,14 +1063,28 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 
 	def create_full_cov_matrix_projections(self, corr_type, dataset_names=["LOS_x", "LOS_y", "LOS_z"], num_box=27,
 										   retun_output=False):
-		'''
-		Function that creates the full covariance matrix for all 3 projections by combining previously obtained jackknife information.
+		"""Function that creates the full covariance matrix for all 3 projections by combining previously obtained jackknife information.
 		Generalised from Marta Garcia Escobar's code.
-		:param corr_type:
-		:param dataset_names:
-		:param num_box:
-		:return:
-		'''
+
+		Parameters
+		----------
+		corr_type :
+			param dataset_names:
+		num_box :
+			return: (Default value = 27)
+		dataset_names :
+			 (Default value = ["LOS_x")
+		"LOS_y" :
+
+		"LOS_z"] :
+
+		retun_output :
+			 (Default value = False)
+
+		Returns
+		-------
+
+		"""
 		self.measure_covariance_multiple_datasets(corr_type=corr_type,
 												  dataset_names=[dataset_names[0], dataset_names[1]], num_box=num_box)
 		self.measure_covariance_multiple_datasets(corr_type=corr_type,
