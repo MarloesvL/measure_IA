@@ -48,7 +48,7 @@ Your output file with your own input of [output_file_name, snapshot, dataset_nam
 		│	├── [dataset_name]_DD						DD grid in (r_p,pi) (pair counts)
 		│	└── [dataset_name]_jk[num_jk]				group containing all jackknife realisations for this dataset
 		│		├── [dataset_name]_[i] 					jackknife realisations with i running from 0 to num_jk - 1
-		│		└── [dataset_name]_[i]_[x]				with x in [r_p, pi, RR_gg, DD] as above
+		│		└── [dataset_name]_[i]_[x]				with x in [rp, pi, RR_gg, DD] as above
 		├── xi_g_plus
 		│	├── [dataset_name]							xi_g+ grid in (rp_,pi)
 		│	├── [dataset_name]_rp						r_p mean bin values
@@ -57,7 +57,7 @@ Your output file with your own input of [output_file_name, snapshot, dataset_nam
 		│	├── [dataset_name]_SplusD					S+D grid in (r_p,pi) (pair counts)
 		│	└── [dataset_name]_jk[num_jk]				group containing all jackknife realisations for this dataset
 		│		├── [dataset_name]_[i] 					jackknife realisations with i running from 0 to num_jk - 1
-		│		└── [dataset_name]_[i]_[x]				with x in [r_p, pi, RR_g_plus, SplusD] as above
+		│		└── [dataset_name]_[i]_[x]				with x in [rp, pi, RR_g_plus, SplusD] as above
 		└── xi_g_cross
 			├── [dataset_name]							xi_gx grid in (r_p,pi)
 			├── [dataset_name]_rp						r_p mean bin values
@@ -66,7 +66,7 @@ Your output file with your own input of [output_file_name, snapshot, dataset_nam
 			├── [dataset_name]_ScrossD					SxD grid in (r_p,pi) (pair counts)
 			└── [dataset_name]_jk[num_jk]				group containing all jackknife realisations for this dataset
 				├── [dataset_name]_[i] 					jackknife realisations with i running from 0 to num_jk - 1
-				└── [dataset_name]_[i]_[x]				with x in [r_p, pi, RR_g_cross, ScrossD] as above
+				└── [dataset_name]_[i]_[x]				with x in [rp, pi, RR_g_cross, ScrossD] as above
 
 ```
 If you choose to measure multipoles instead of wg+, all 'w' will be replaced by 'multipoles' - or both will appear, if you have measured both.
