@@ -20,7 +20,7 @@ Your output file with your own input of [output_file_name, snapshot, dataset_nam
 
 ```
 [output_file_name]  
-└── Snapshot_[snapshot]
+└── Snapshot_[snapshot]                                 Optional. If input [snapshot] is None, this group is omitted.
 	├── w_gg
 	│	├── [dataset_name]								w_gg values for each r_p bin
 	│	├── [dataset_name]_rp							r_p mean bin values
@@ -71,7 +71,8 @@ Your output file with your own input of [output_file_name, snapshot, dataset_nam
 ```
 If you choose to measure multipoles instead of wg+, all 'w' will be replaced by 'multipoles' - or both will appear, if you have measured both.
 For the multipoles, all xi_g+, DD (etc) grids are in (r, mu_r), not in (r_p, pi) and the suffixes of the bin values are also replaced by '_r' and '_mu_r' accordingly.
-In one file, multiple redshift (snapshot) measurememts can be saved without being overwritten, as well as the jackknife information for different numbers of jackknife realisations (num_jk) for the same dataset.
+In one file, multiple redshift (snapshot) measurements can be saved without being overwritten, as well as the jackknife
+information for different numbers of jackknife realisations (num_jk) for the same dataset.
 
 ## License
 
