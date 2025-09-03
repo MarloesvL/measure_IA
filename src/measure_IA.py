@@ -47,18 +47,17 @@ class MeasureIA(MeasureJackknife):
 			self,
 			data,
 			simulation=None,
-			snapshot=99,
+			snapshot=None,
 			separation_limits=[0.1, 20.0],
 			num_bins_r=8,
 			num_bins_pi=20,
-			PT=4,
 			LOS_lim=None,
 			output_file_name=None,
 			boxsize=None,
 			periodicity=True,
 			num_nodes=1,
 	):
-		super().__init__(data, simulation, snapshot, separation_limits, num_bins_r, num_bins_pi, PT,
+		super().__init__(data, simulation, snapshot, separation_limits, num_bins_r, num_bins_pi,
 						 LOS_lim, output_file_name, boxsize, periodicity)
 		self.num_nodes = num_nodes
 
@@ -161,6 +160,7 @@ class MeasureIA(MeasureJackknife):
 															tree_saved=True, file_tree_path=file_tree_path,
 															remove_tree_file=remove_tree_file)
 			elif multiproc_bool and not save_tree:
+				print("yes")
 				self._measure_xi_rp_pi_sims_multiprocessing(num_nodes=self.num_nodes, masks=masks,
 															dataset_name=dataset_name, return_output=False,
 															print_num=True)

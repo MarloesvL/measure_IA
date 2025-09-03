@@ -46,33 +46,16 @@ class MeasureIABase(SimInfo):
 			self,
 			data,
 			simulation=None,
-			snapshot=99,
+			snapshot=None,
 			separation_limits=[0.1, 20.0],
 			num_bins_r=8,
 			num_bins_pi=20,
-			PT=4,
 			LOS_lim=None,
 			output_file_name=None,
 			boxsize=None,
 			periodicity=True,
 	):
-		if type(simulation) == str:  # simulation is a tag that is hardcoded into SimInfo
-			SimInfo.__init__(self, simulation, snapshot, PT)
-			self.boxsize /= 1000.0  # ckpc -> cMpc
-			self.L_0p5 /= 1000.0
-		elif boxsize is not None:  # boxsize is given manually
-			self.boxsize = boxsize
-			self.L_0p5 = boxsize / 2.0
-			self.PT = PT
-			self.snapshot = snapshot
-		elif simulation == False:
-			print("Assuming observational data. Only use observational methods.")
-			self.L_0p5 = None
-			self.PT = None
-			self.snapshot = None
-		else:
-			SimInfo.__init__(self, simulation,
-							 snapshot, PT)  # simulation is a SimInfo object created in the file that calls this class
+		SimInfo.__init__(self, simulation, snapshot, boxsize)
 		self.data = data
 		self.output_file_name = output_file_name
 		self.periodicity = periodicity
@@ -106,7 +89,11 @@ class MeasureIABase(SimInfo):
 		self.num_bins_pi = num_bins_pi
 		self.bin_edges = np.logspace(np.log10(self.separation_min), np.log10(self.separation_max), self.num_bins_r + 1)
 		if LOS_lim == None:
-			pi_max = self.L_0p5
+			if self.L_0p5 is None:
+				raise ValueError(
+					"Both LOS_lim and boxsize are None. Provide input on one of them to determine the integration limit pi_max.")
+			else:
+				pi_max = self.L_0p5
 		else:
 			pi_max = LOS_lim
 		self.pi_bins = np.linspace(-pi_max, pi_max, self.num_bins_pi + 1)
@@ -725,7 +712,7 @@ class MeasureIABase(SimInfo):
 				return output_data
 			else:
 				group_out = create_group_hdf5(correlation_data_file,
-											  f"Snapshot_{self.snapshot}/{wg_data[i]}/{jk_group_name}")
+											  f"{self.snap_group}/{wg_data[i]}/{jk_group_name}")
 				write_dataset_hdf5(group_out, dataset_name + "_rp", data=rp)
 				write_dataset_hdf5(group_out, dataset_name, data=w_g_i)
 				# write_dataset_hdf5(group_out, dataset_name + "_sigma", data=np.sqrt(sigsq))
@@ -754,7 +741,7 @@ class MeasureIABase(SimInfo):
 		"""
 		correlation_data_file = h5py.File(self.output_file_name, "a")
 		if corr_type == "g+":  # todo: expand to include ++ option
-			group = correlation_data_file[f"Snapshot_{self.snapshot}/multipoles/xi_g_plus/{jk_group_name}"]
+			group = correlation_data_file[f"{self.snap_group}/multipoles/xi_g_plus/{jk_group_name}"]
 			correlation_data_list = [group[dataset_name][:]]  # xi_g+ in grid of r,mur
 			r_list = [group[dataset_name + "_r"][:]]
 			mu_r_list = [group[dataset_name + "_mu_r"][:]]
@@ -762,7 +749,7 @@ class MeasureIABase(SimInfo):
 			l_list = sab_list
 			corr_type_list = ["g_plus"]
 		elif corr_type == "gg":
-			group = correlation_data_file[f"Snapshot_{self.snapshot}/multipoles/xi_gg/{jk_group_name}"]
+			group = correlation_data_file[f"{self.snap_group}/multipoles/xi_gg/{jk_group_name}"]
 			correlation_data_list = [group[dataset_name][:]]  # xi_g+ in grid of rp,pi
 			r_list = [group[dataset_name + "_r"][:]]
 			mu_r_list = [group[dataset_name + "_mu_r"][:]]
@@ -770,11 +757,11 @@ class MeasureIABase(SimInfo):
 			l_list = sab_list
 			corr_type_list = ["gg"]
 		elif corr_type == "both":
-			group = correlation_data_file[f"Snapshot_{self.snapshot}/multipoles/xi_g_plus/{jk_group_name}"]
+			group = correlation_data_file[f"{self.snap_group}/multipoles/xi_g_plus/{jk_group_name}"]
 			correlation_data_list = [group[dataset_name][:]]  # xi_g+ in grid of rp,pi
 			r_list = [group[dataset_name + "_r"][:]]
 			mu_r_list = [group[dataset_name + "_mu_r"][:]]
-			group = correlation_data_file[f"Snapshot_{self.snapshot}/multipoles/xi_gg/{jk_group_name}"]
+			group = correlation_data_file[f"{self.snap_group}/multipoles/xi_gg/{jk_group_name}"]
 			correlation_data_list.append(group[dataset_name][:])  # xi_g+ in grid of rp,pi
 			r_list.append(group[dataset_name + "_r"][:])
 			mu_r_list.append(group[dataset_name + "_mu_r"][:])
@@ -818,14 +805,15 @@ class MeasureIABase(SimInfo):
 				np.array([separation, multipoles]).transpose()
 			else:
 				group_out = create_group_hdf5(
-					correlation_data_file, f"Snapshot_{self.snapshot}/multipoles_{corr_type_i}/{jk_group_name}"
+					correlation_data_file, f"{self.snap_group}/multipoles_{corr_type_i}/{jk_group_name}"
 				)
 				write_dataset_hdf5(group_out, dataset_name + "_r", data=separation)
 				write_dataset_hdf5(group_out, dataset_name, data=multipoles)
 		correlation_data_file.close()
 		return
 
-	def _obs_estimator(self, corr_type, IA_estimator, dataset_name, dataset_name_randoms, num_samples, jk_group_name=""):
+	def _obs_estimator(self, corr_type, IA_estimator, dataset_name, dataset_name_randoms, num_samples,
+					   jk_group_name=""):
 		"""Reads various components of xi and combines into correct estimator for cluster or galaxy observational alignments
 
 		Parameters
@@ -850,10 +838,10 @@ class MeasureIABase(SimInfo):
 		output_file = h5py.File(self.output_file_name, "a")
 		if corr_type[0] == "g+" or corr_type[0] == "both":
 			group_gp = output_file[
-				f"Snapshot_{self.snapshot}/{corr_type[1]}/xi_g_plus/{jk_group_name}"]  # /w/xi_g_plus/
+				f"{self.snap_group}/{corr_type[1]}/xi_g_plus/{jk_group_name}"]  # /w/xi_g_plus/
 			SpD = group_gp[f"{dataset_name}_SplusD"][:]
 			SpR = group_gp[f"{dataset_name_randoms}_SplusD"][:]
-		group_gg = output_file[f"Snapshot_{self.snapshot}/{corr_type[1]}/xi_gg/{jk_group_name}"]
+		group_gg = output_file[f"{self.snap_group}/{corr_type[1]}/xi_gg/{jk_group_name}"]
 		DD = group_gg[f"{dataset_name}_DD"][:]
 
 		if IA_estimator == "clusters":
@@ -981,7 +969,7 @@ class MeasureIABase(SimInfo):
 
 		if self.output_file_name != None:
 			output_file = h5py.File(self.output_file_name, "a")
-			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/Misalignment_angels")
+			group = create_group_hdf5(output_file, f"{self.snap_group}/Misalignment_angels")
 			write_dataset_hdf5(group, vector1_name + "_" + vector2_name, data=misalignment_angle)
 			output_file.close()
 		else:

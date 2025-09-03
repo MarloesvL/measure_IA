@@ -6,7 +6,8 @@ class SimInfo:
 	Parameters
 	----------
 	sim_name :
-		identifier of the simulation, allowing for correct information to be obtained. [TNG100, TNG300]
+		identifier of the simulation, allowing for correct information to be obtained.
+		[TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, FLAMINGO_L2p8]
 	snapshot :
 		number of the snapshot, influences which folders are located.
 
@@ -15,31 +16,23 @@ class SimInfo:
 
 	"""
 
-	def __init__(self, sim_name, snapshot, PT=None, manual=False, update=False):
-		if type(sim_name) == str:
-			self.simname = sim_name
-			self.snapshot = str(snapshot)
-			try:
-				self.PT_first = PT[0]
-			except TypeError:
-				self.PT_first = PT
-			self.manual = manual
-			if not self.manual:
-				self.get_specs()
-				self.get_variable_names()
-				self.get_folders()
-				self.get_scalefactor()
-				self.get_catalogue_names()
+	def __init__(self, sim_name, snapshot, boxsize=None, h=None):
+		self.simname = sim_name
+		if snapshot is None:
+			self.snapshot = None
+			self.snap_group = ""
 		else:
-			self.sim_name = sim_name
 			self.snapshot = str(snapshot)
-			try:
-				self.PT_first = PT[0]
-			except TypeError:
-				self.PT_first = PT
-			self.manual = manual
-		if update:
-			self.manual = True
+			self.snap_group = f"Snapshot_{self.snapshot}/"
+		if type(sim_name) == str:
+			self.get_specs()
+		else:
+			self.boxsize = boxsize
+			self.h = h
+			if boxsize is None:
+				self.L_0p5 = None
+			else:
+				self.L_0p5 = boxsize / 2.
 		return
 
 	def __getattr__(self, name):
@@ -48,35 +41,7 @@ class SimInfo:
 		except:
 			raise AttributeError("Child' object has no attribute '%s'" % name)
 
-	def get_catalogue_names(self, shapes_cat=None, subhalo_cat=None, snap_cat=None):
-		"""
-
-		Parameters
-		----------
-		shapes_cat :
-			 (Default value = None)
-		subhalo_cat :
-			 (Default value = None)
-		snap_cat :
-			 (Default value = None)
-
-		Returns
-		-------
-
-		"""
-		self.shapes_cat = "Shapes"
-		self.subhalo_cat = "SubhaloPT"
-		self.snap_cat = f"{self.simname}_PT{self.PT_first}_subhalos_only"
-		if self.manual:
-			if shapes_cat != None:
-				self.shapes_cat = shapes_cat
-			if subhalo_cat != None:
-				self.subhalo_cat = subhalo_cat
-			if snap_cat != None:
-				self.snap_cat = snap_cat
-		return
-
-	def get_specs(self, boxsize=None, h=None, DM_part_mass=None, N_files=None):
+	def get_specs(self):
 		"""Creates attributes describing the simulation specs, e.g. boxsize, DM particle mass.
 		:return:
 
@@ -86,300 +51,41 @@ class SimInfo:
 			 (Default value = None)
 		h :
 			 (Default value = None)
-		DM_part_mass :
-			 (Default value = None)
-		N_files :
-			 (Default value = None)
 
 		Returns
 		-------
 
 		"""
-		if self.manual:
-			self.boxsize = boxsize  # ckpc/h
-			self.L_0p5 = self.boxsize / 2.0
-			self.h = h
-			self.DM_part_mass = DM_part_mass  # 10^10 M_sun/h
-			self.N_files = N_files
-		elif self.simname == "TNG100":
-			self.boxsize = 75000.0  # ckpc/h
+		if self.simname == "TNG100":
+			self.boxsize = 75.0  # cMpc/h
 			self.L_0p5 = self.boxsize / 2.0
 			self.h = 0.6774
-			self.DM_part_mass = 0.000505574296436975  # 10^10 M_sun/h
-			self.N_files = 448
 		elif self.simname == "TNG100_2":
-			self.boxsize = 75000.0  # ckpc/h
+			self.boxsize = 75.0  # cMpc/h
 			self.L_0p5 = self.boxsize / 2.0
 			self.h = 0.6774
-			self.DM_part_mass = 0.0040445943714958  # 10^10 M_sun/h
-			self.N_files = 56
 		elif self.simname == "TNG300":
-			self.boxsize = 205000.0  # ckpc/h
+			self.boxsize = 205.0  # cMpc/h
 			self.L_0p5 = self.boxsize / 2.0
 			self.h = 0.6774
-			self.DM_part_mass = 0.00398342749867548  # 10^10 M_sun/h
-			self.N_files = 600
 		elif self.simname == "EAGLE":
-			self.boxsize = 100000.0 * 0.6777  # ckpc/h
+			self.boxsize = 100.0 * 0.6777  # cMpc/h
 			self.L_0p5 = self.boxsize / 2.0
 			self.h = 0.6777
-			self.DM_part_mass = 0.000970 * self.h  # 10^10 M_sun/h
-			self.N_files = 256
 		elif self.simname == "HorizonAGN":
-			self.boxsize = 100000.0  # ckpc/h
+			self.boxsize = 100.0  # cMpc/h
 			self.L_0p5 = self.boxsize / 2.0
 			self.h = 0.704
-			self.DM_part_mass = 0.008 * self.h  # 10^10 M_sun/h
-			self.N_files = 1.
 		elif "FLAMINGO" in self.simname:
 			if "L1" in self.simname:
-				self.boxsize = 1000000.0 * 0.681  # ckpc/h
+				self.boxsize = 1000.0 * 0.681  # cMpc/h
 			elif "L2p8" in self.simname:
-				self.boxsize = 2800000.0 * 0.681  # ckpc/h
+				self.boxsize = 2800.0 * 0.681  # cMpc/h
 			else:
 				raise KeyError("Add an L1 or L2p8 suffix to your simname to specify which boxsize is used")
 			self.L_0p5 = self.boxsize / 2.0
 			self.h = 0.681
-			if "m8" in self.simname:
-				self.DM_part_mass = 0.0706  # 10^10 M_sun/h
-			elif "m9" in self.simname:
-				self.DM_part_mass = 0.565  # 10^10 M_sun/h
-			elif "m9" in self.simname:
-				self.DM_part_mass = 4.52  # 10^10 M_sun/h
-			else:
-				raise KeyError("Add an m8, m9 or m10 suffix to your simname to specify the resolution")
-			self.N_files = None
 		else:
 			raise KeyError(
-				"Simulation name not recognised. Choose from [TNG100, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1_m8, FLAMINGO_L1_m9, FLAMINGO_L1_m10, FLAMINGO_L2p8_m9].")
-		return
-
-	def get_variable_names(
-			self,
-			mass_name=None,
-			ID_name=None,
-			offset_name=None,
-			sub_len_name=None,
-			group_len_name=None,
-			photo_name=None,
-			SFR_name=None,
-			flag_name=None,
-			wind_name=None,
-			velocities_name=None,
-			masses_name=None,
-			coordinates_name=None,
-	):
-		"""Creates attributes describing the variable names for different datasets.
-		:return:
-
-		Parameters
-		----------
-		mass_name :
-			 (Default value = None)
-		ID_name :
-			 (Default value = None)
-		offset_name :
-			 (Default value = None)
-		sub_len_name :
-			 (Default value = None)
-		group_len_name :
-			 (Default value = None)
-		photo_name :
-			 (Default value = None)
-		SFR_name :
-			 (Default value = None)
-		flag_name :
-			 (Default value = None)
-		wind_name :
-			 (Default value = None)
-		velocities_name :
-			 (Default value = None)
-		masses_name :
-			 (Default value = None)
-		coordinates_name :
-			 (Default value = None)
-
-		Returns
-		-------
-
-		"""
-		if self.manual:
-			self.mass_name = mass_name
-			self.ID_name = ID_name
-			self.offset_name = offset_name
-			self.sub_len_name = sub_len_name
-			self.group_len_name = group_len_name
-			self.photo_name = photo_name
-			self.SFR_name = SFR_name
-			self.flag_name = flag_name
-			self.wind_name = wind_name
-
-			self.velocities_name = velocities_name
-			self.masses_name = masses_name
-			self.coordinates_name = coordinates_name
-		elif "TNG" in self.simname:
-			if self.PT_first == 4:
-				self.mass_name = "StellarMass"  # "SubhaloMassType"
-			else:
-				self.mass_name = "GasMass"
-			self.ID_name = "SubhaloIDs"
-			self.offset_name = "Offset_Subhalo"
-			self.sub_len_name = "SubhaloLenType"
-			self.group_len_name = "GroupLenType"
-			self.photo_name = "SubhaloStellarPhotometrics"
-			self.SFR_name = "SubhaloSFR"
-			self.flag_name = "SubhaloFlag"
-			self.wind_name = "GFM_StellarFormationTime"  # >0 for star particles
-
-			self.velocities_name = "Velocities"
-			self.masses_name = "Masses"
-			self.coordinates_name = "Coordinates"
-		elif self.simname == "EAGLE":
-			self.mass_name = "MassType_Star"
-			self.ID_name = "GalaxyID"
-			self.offset_name = "Offset_Subhalo"
-			self.sub_len_name = "Len"
-			self.group_len_name = None  # "GroupLenType"
-			self.photo_name = None  # "SubhaloStellarPhotometrics"
-			self.SFR_name = "StarFormationRate"
-			self.flag_name = "Spurious"
-			self.wind_name = None  # "GFM_StellarFormationTime"  # >0 for star particles
-
-			self.velocities_name = "Velocity"
-			self.masses_name = "Mass"
-			self.coordinates_name = "Coordinates"
-		elif self.simname == "HorizonAGN":
-			self.mass_name = "StellarMass"
-			self.ID_name = "GalaxyID"
-			self.offset_name = None
-			self.sub_len_name = "Len"
-			self.group_len_name = None
-			self.photo_name = None
-			self.SFR_name = None
-			self.flag_name = None
-			self.wind_name = None  # "GFM_StellarFormationTime"  # >0 for star particles
-
-			self.velocities_name = "Velocity"
-			self.masses_name = "Mass"
-			self.coordinates_name = "Coordinates"
-		elif "FLAMINGO" in self.simname:
-			self.mass_name = None
-			self.ID_name = None
-			self.offset_name = None
-			self.sub_len_name = None
-			self.group_len_name = None
-			self.photo_name = None
-			self.SFR_name = None
-			self.flag_name = None
-			self.wind_name = None
-
-			self.velocities_name = None
-			self.masses_name = None
-			self.coordinates_name = None
-		else:
-			raise KeyError(
-				"Simulation name not recognised. Choose from [TNG100, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1_m8, FLAMINGO_L1_m9, FLAMINGO_L1_m10, FLAMINGO_L2p8_m9].")
-		return
-
-	def get_folders(self, fof_folder=None, snap_folder=None, snap_group=None):
-		"""Creates attributes for subpaths leading to datafiles. Assumes that data is always in the same format.
-		:return:
-
-		Parameters
-		----------
-		fof_folder :
-			 (Default value = None)
-		snap_folder :
-			 (Default value = None)
-		snap_group :
-			 (Default value = None)
-
-		Returns
-		-------
-
-		"""
-		if self.manual:
-			self.fof_folder = fof_folder
-			self.snap_folder = snap_folder
-			self.snap_group = snap_group
-		elif "TNG" in self.simname:
-			self.fof_folder = f"/fof_subhalo_tab_0{self.snapshot}/fof_subhalo_tab_0{self.snapshot}"
-			self.snap_folder = f"/snap_0{self.snapshot}/snap_0{self.snapshot}"
-			self.snap_group = f"Snapshot_{self.snapshot}/"
-		elif self.simname == "EAGLE":
-			znames = {"28": "z000p000", "17": "z001p487", "19": "z001p004", "21": "z000p736", "23": "z000p503",
-					  "25": "z000p271"}
-			zname = znames[self.snapshot]
-			self.snap_folder = f"/snap_0{self.snapshot}/RefL0100N1504/snapshot_0{self.snapshot}_{zname}/snap_0{self.snapshot}_{zname}"  # update for different z?
-			self.snap_group = f"Snapshot_{self.snapshot}/"
-			self.fof_folder = None
-		elif self.simname == "HorizonAGN":
-			self.fof_folder = None
-			self.snap_folder = None
-			self.snap_group = f"Snapshot_{self.snapshot}/"
-		elif "FLAMINGO" in self.simname:
-			self.fof_folder = None
-			self.snap_folder = None
-			self.snap_group = f"Snapshot_{self.snapshot}/"
-		else:
-			raise KeyError(
-				"Simulation name not recognised. Choose from [TNG100, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1_m8, FLAMINGO_L1_m9, FLAMINGO_L1_m10, FLAMINGO_L2p8_m9].")
-		return
-
-	def get_scalefactor(self, redshifts=None):
-		"""
-
-		Parameters
-		----------
-		redshifts :
-			 (Default value = None)
-
-		Returns
-		-------
-
-		"""
-		if self.manual:
-			pass
-		elif "TNG" in self.simname:
-			redshifts = {"25": 3.01, "33": 2., "39": 1.53, "40": 1.5, "50": 1.0, "67": 0.5, "78": 0.3, "59": 0.7,
-						 "84": 0.2,
-						 "91": 0.1,
-						 "99": 0.0}
-		elif self.simname == "EAGLE":
-			redshifts = {"28": 0.0, "17": 1.487, "19": 1.004, "21": 0.736, "23": 0.503, "25": 0.271}
-		elif self.simname == "HorizonAGN":
-			redshifts = {"519": 0.5, "302": 1.2, "248": 1.6, "691": 0.2, "406": 0.8, "638": 0.3, "761": 0.0556,
-						 "213": 1.8, "175": 2.2, "125": 3, "197": 2, "266": 1.5, "343": 1, "154": 2.5}
-		elif "FLAMINGO" in self.simname:
-			if "L1" and "m9" in self.simname:
-				redshifts = {"0": 15, "1": 10.38, "2": 9.51, "3": 8.7, "4": 7.95, "5": 7.26, "6": 6.63, "7": 6.04,
-							 "8": 5.5, "9": 5, "10": 4.75, "11": 4.5, "12": 4.25, "13": 4, "14": 3.75, "15": 3.5,
-							 "16": 3.25, "17": 3, "18": 2.95, "19": 2.9, "20": 2.85, "21": 2.8, "22": 2.75, "23": 2.7,
-							 "24": 2.65, "25": 2.6, "26": 2.55, "27": 2.5, "28": 2.45, "29": 2.4, "30": 2.35, "31": 2.3,
-							 "32": 2.25, "33": 2.2, "34": 2.15, "35": 2.1, "36": 2.05, "37": 2, "38": 1.95, "39": 1.9,
-							 "40": 1.85, "41": 1.8, "42": 1.75, "43": 1.7, "44": 1.65, "45": 1.6, "46": 1.55, "47": 1.5,
-							 "48": 1.45, "49": 1.4, "50": 1.35, "51": 1.3, "52": 1.25, "53": 1.2, "54": 1.15, "55": 1.1,
-							 "56": 1.05, "57": 1, "58": 0.95, "59": 0.9, "60": 0.85, "61": 0.8, "62": 0.75, "63": 0.7,
-							 "64": 0.65, "65": 0.6, "66": 0.55, "67": 0.5, "68": 0.45, "69": 0.4, "70": 0.35, "71": 0.3,
-							 "72": 0.25, "73": 0.2, "74": 0.15, "75": 0.1, "76": 0.05, "77": 0}
-			else:
-				redshifts = {'0': 15, '1': 12.26, '2': 10.38, '3': 9.51, '4': 8.7, '5': 7.95, '6': 7.26, '7': 6.63,
-							 '8': 6.04,
-							 '9': 5.5, '10': 5, '11': 4.75, '12': 4.5, '13': 4.25, '14': 4, '15': 3.75, '16': 3.5,
-							 '17': 3.25, '18': 3, '19': 2.95, '20': 2.9, '21': 2.85, '22': 2.8, '23': 2.75, '24': 2.7,
-							 '25': 2.65, '26': 2.6, '27': 2.55, '28': 2.5, '29': 2.45, '30': 2.4, '31': 2.35, '32': 2.3,
-							 '33': 2.25, '34': 2.2, '35': 2.15, '36': 2.1, '37': 2.05, '38': 2, '39': 1.95, '40': 1.9,
-							 '41': 1.85, '42': 1.8, '43': 1.75, '44': 1.7, '45': 1.65, '46': 1.6, '47': 1.55, '48': 1.5,
-							 '49': 1.45, '50': 1.4, '51': 1.35, '52': 1.3, '53': 1.25, '54': 1.2, '55': 1.15, '56': 1.1,
-							 '57': 1.05, '58': 1, '59': 0.95, '60': 0.9, '61': 0.85, '62': 0.8, '63': 0.75, '64': 0.7,
-							 '65': 0.65, '66': 0.6, '67': 0.55, '68': 0.5, '69': 0.45, '70': 0.4, '71': 0.35, '72': 0.3,
-							 '73': 0.25, '74': 0.2, '75': 0.15, '76': 0.1, '77': 0.05, '78': 0}
-		else:
-			raise KeyError(
-				"Simulation name not recognised. Choose from [TNG100, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1_m8, FLAMINGO_L1_m9, FLAMINGO_L1_m10, FLAMINGO_L2p8_m9].")
-		try:
-			self.scalefactor = 1.0 / (1.0 + redshifts[self.snapshot])
-			self.redshift = redshifts[self.snapshot]
-		except ValueError:
-			raise KeyError(f"Snapshot {self.snapshot} not in redshift directory for {self.simname}.")
+				"Simulation name not recognised. Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, FLAMINGO_L2p8].")
 		return
