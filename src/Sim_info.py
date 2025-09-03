@@ -1,22 +1,47 @@
 class SimInfo:
 	"""Class that stores simulation information in an object to be inherited by other classes.
-		Simulation information is hard coded and therefore uses are limited. However, can easily be expanded,
-		given the file structures are the same.
+		Simulation information is hard coded and therefore uses are limited. However, can easily be expanded.
+		Currently, these simulations are available: [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1,
+		FLAMINGO_L2p8].
 
-	Parameters
+	Attributes
 	----------
-	sim_name :
-		identifier of the simulation, allowing for correct information to be obtained.
-		[TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, FLAMINGO_L2p8]
-	snapshot :
-		number of the snapshot, influences which folders are located.
-
-	Returns
-	-------
+	simname : str or NoneType
+		Identifier of the simulation, allowing for correct information to be obtained.
+	snapshot : int or str or NoneType
+		Number of the snapshot.
+	snap_group : str
+		Name of group in output file. Equal to 'Snapshot_[snapshot]' if snapshot is given, otherwise emtpy string.
+	boxsize :  int or float, default=None
+		Size of simulation box. If simname is in SimInfo, units are cMpc/h. Otherwise, manual input.
+	L_0p5 : int or float, default=None
+		Half of the boxsize.
+	h : float, default=None
+		Value of cosmological h parameter, for easy access to convert units.
 
 	"""
 
 	def __init__(self, sim_name, snapshot, boxsize=None, h=None):
+		"""
+		The __init__ method of SimInfo class.
+		Creates all attributes and obtains information that is hardcoded in the class.
+
+		Parameters
+		----------
+		sim_name : str or NoneType
+			Identifier of the simulation, allowing for correct information to be obtained.
+			Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, FLAMINGO_L2p8].
+			If None, no information will be returned that is not already given as input.
+		snapshot : int or str or NoneType
+			Number of the snapshot, which, if given, will ensure that the output file to contains a group
+			'Snapshot_[snapshot]'.
+			If None, the group is omitted from the output file structure.
+		boxsize : int or float, default=None
+			Size of simulation box. Use if your simulation information is not provided by SimInfo.
+			Make sure that the boxsize is in the same units as your position coordinates.
+		h : float, default=None
+			Value of cosmological h parameter, for easy access to convert units.
+		"""
 		self.simname = sim_name
 		if snapshot is None:
 			self.snapshot = None
@@ -35,25 +60,14 @@ class SimInfo:
 				self.L_0p5 = boxsize / 2.
 		return
 
-	def __getattr__(self, name):
-		try:
-			return getattr(self.sim_name, name)
-		except:
-			raise AttributeError("Child' object has no attribute '%s'" % name)
-
 	def get_specs(self):
-		"""Creates attributes describing the simulation specs, e.g. boxsize, DM particle mass.
-		:return:
+		"""Obtains the boxsize, L_0p5 and h parameters that are stored for [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN,
+		FLAMINGO_L1, FLAMINGO_L2p8].
 
-		Parameters
-		----------
-		boxsize :
-			 (Default value = None)
-		h :
-			 (Default value = None)
-
-		Returns
-		-------
+		Raises
+		------
+		KeyError
+			If unknown simname is given.
 
 		"""
 		if self.simname == "TNG100":
@@ -87,5 +101,6 @@ class SimInfo:
 			self.h = 0.681
 		else:
 			raise KeyError(
-				"Simulation name not recognised. Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, FLAMINGO_L2p8].")
+				"Simulation name not recognised. Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, "
+				"FLAMINGO_L2p8].")
 		return
