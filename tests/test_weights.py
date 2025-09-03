@@ -15,9 +15,9 @@ def test_weights_w(IA_mock_TNG300_n8):
 		[0.5] * len(IA_mock_TNG300_n8.data["Position_shape_sample"][:, 0]))
 	IA_mock_TNG300_n8.measure_xi_w("All_both_weight", 'both', 8, file_tree_path='./data/processed/')
 
-	output_wgp = ReadData("TNG300", "test_IA_mock_TNG300", 99, "w_g_plus/", data_path='./data/processed/')
-	output_wgg = ReadData("TNG300", "test_IA_mock_TNG300", 99, "w_gg/", data_path='./data/processed/')
-	output_xigg = ReadData("TNG300", "test_IA_mock_TNG300", 99, "w/xi_gg/", data_path='./data/processed/')
+	output_wgp = ReadData("TNG300", "test_IA_mock_TNG300", 99, "w_g_plus/", data_path='./data/processed/TNG300/')
+	output_wgg = ReadData("TNG300", "test_IA_mock_TNG300", 99, "w_gg/", data_path='./data/processed/TNG300/')
+	output_xigg = ReadData("TNG300", "test_IA_mock_TNG300", 99, "w/xi_gg/", data_path='./data/processed/TNG300/')
 	wgp = output_wgp.read_cat("All_both")
 	rp_wgp = output_wgp.read_cat("All_both_rp")
 	cov_wgp = output_wgp.read_cat("All_both_jackknife_cov_8")
@@ -56,9 +56,11 @@ def test_weights_m(IA_mock_TNG300_n8):
 		[0.5] * len(IA_mock_TNG300_n8.data["Position_shape_sample"][:, 0]))
 	IA_mock_TNG300_n8.measure_xi_multipoles("All_both_weight", 'both', 8, file_tree_path='./data/processed/')
 
-	output_wgp = ReadData("TNG300", "test_IA_mock_TNG300", 99, "multipoles_g_plus/", data_path='./data/processed/')
-	output_wgg = ReadData("TNG300", "test_IA_mock_TNG300", 99, "multipoles_gg/", data_path='./data/processed/')
-	output_xigg = ReadData("TNG300", "test_IA_mock_TNG300", 99, "multipoles/xi_gg/", data_path='./data/processed/')
+	output_wgp = ReadData("TNG300", "test_IA_mock_TNG300", 99, "multipoles_g_plus/",
+						  data_path='./data/processed/TNG300/')
+	output_wgg = ReadData("TNG300", "test_IA_mock_TNG300", 99, "multipoles_gg/", data_path='./data/processed/TNG300/')
+	output_xigg = ReadData("TNG300", "test_IA_mock_TNG300", 99, "multipoles/xi_gg/",
+						   data_path='./data/processed/TNG300/')
 	wgp = output_wgp.read_cat("All_both")
 	rp_wgp = output_wgp.read_cat("All_both_r")
 	cov_wgp = output_wgp.read_cat("All_both_jackknife_cov_8")

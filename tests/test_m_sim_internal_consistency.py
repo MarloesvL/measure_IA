@@ -10,8 +10,9 @@ def test_compare_saved_output(IA_mock_TNG300_n8):
 	:return:
 	'''
 	IA_mock_TNG300_n8.measure_xi_multipoles("All_both", 'both', 8, file_tree_path='./data/processed/')
-	output_wgp = ReadData("TNG300", "test_IA_mock_TNG300", 99, "multipoles_g_plus/", data_path='./data/processed/')
-	output_wgg = ReadData("TNG300", "test_IA_mock_TNG300", 99, "multipoles_gg/", data_path='./data/processed/')
+	output_wgp = ReadData("TNG300", "test_IA_mock_TNG300", 99, "multipoles_g_plus/",
+						  data_path='./data/processed/TNG300/')
+	output_wgg = ReadData("TNG300", "test_IA_mock_TNG300", 99, "multipoles_gg/", data_path='./data/processed/TNG300/')
 	wgp = output_wgp.read_cat("All_both")
 	rp_wgp = output_wgp.read_cat("All_both_r")
 	cov_wgp = output_wgp.read_cat("All_both_jackknife_cov_8")
@@ -19,8 +20,9 @@ def test_compare_saved_output(IA_mock_TNG300_n8):
 	rp_wgg = output_wgg.read_cat("All_both_r")
 	cov_wgg = output_wgg.read_cat("All_both_jackknife_cov_8")
 
-	available_out_wgp = ReadData("TNG300", "mock_IA_TNG300", 99, "multipoles_g_plus/", data_path='./data/processed/')
-	available_out_wgg = ReadData("TNG300", "mock_IA_TNG300", 99, "multipoles_gg/", data_path='./data/processed/')
+	available_out_wgp = ReadData("TNG300", "mock_IA_TNG300", 99, "multipoles_g_plus/",
+								 data_path='./data/processed/TNG300/')
+	available_out_wgg = ReadData("TNG300", "mock_IA_TNG300", 99, "multipoles_gg/", data_path='./data/processed/TNG300/')
 	a_wgp = available_out_wgp.read_cat("All")
 	a_rp_wgp = available_out_wgp.read_cat("All_r")
 	a_cov_wgp = available_out_wgp.read_cat("All_jackknife_cov_8")
@@ -44,8 +46,9 @@ def test_gg_gp_both(IA_mock_TNG300_n8):
 	IA_mock_TNG300_n8.measure_xi_multipoles("All_gp", 'g+', 8, file_tree_path='./data/processed/')
 	IA_mock_TNG300_n8.measure_xi_multipoles("All_gg", 'gg', 8, file_tree_path='./data/processed/')
 
-	output_wgp = ReadData("TNG300", "test_IA_mock_TNG300", 99, "multipoles_g_plus/", data_path='./data/processed/')
-	output_wgg = ReadData("TNG300", "test_IA_mock_TNG300", 99, "multipoles_gg/", data_path='./data/processed/')
+	output_wgp = ReadData("TNG300", "test_IA_mock_TNG300", 99, "multipoles_g_plus/",
+						  data_path='./data/processed/TNG300/')
+	output_wgg = ReadData("TNG300", "test_IA_mock_TNG300", 99, "multipoles_gg/", data_path='./data/processed/TNG300/')
 	wgp_b = output_wgp.read_cat("All_both")
 	rp_wgp_b = output_wgp.read_cat("All_both_r")
 	wgg_b = output_wgg.read_cat("All_both")
@@ -76,7 +79,7 @@ def test_multiprocessing_versions(IA_mock_TNG300_n1_large, IA_mock_TNG300_n8_lar
 	IA_mock_TNG300_n17_large.measure_xi_multipoles("n17", 'both', 8, file_tree_path='./data/processed/')
 
 	output_wgp = ReadData("TNG300", "test_IA_mock_TNG300_large", 99, "multipoles_g_plus/", data_path=
-	'./data/processed/')
+	'./data/processed/TNG300/')
 	wgp_n1 = output_wgp.read_cat("n1")
 	wgp_n8 = output_wgp.read_cat("n8")
 	wgp_n17 = output_wgp.read_cat("n17")

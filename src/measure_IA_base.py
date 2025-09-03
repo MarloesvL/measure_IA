@@ -30,8 +30,6 @@ class MeasureIABase(SimInfo):
 		Number of bins for (projected) separation vector.
 	num_bins_pi :
 		Number of bins for line of sight (LOS) vector, pi.
-	PT :
-		Number indicating particle type
 	LOS_lim :
 		Bound for line of sight bins. Bounds will be [-LOS_lim, LOS_lim]
 	output_file_name :

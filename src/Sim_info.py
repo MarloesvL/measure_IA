@@ -18,10 +18,16 @@ class SimInfo:
 		Half of the boxsize.
 	h : float, default=None
 		Value of cosmological h parameter, for easy access to convert units.
+	N_files : int, default=None
+		Number of files of snapshot or subhalo data. Used in ReadData class.
+	fof_folder : str, default=None
+		Name of folder where fof files are saved (only available for TNG).
+	snap_folder : str, default=None
+		Name of folder where snapshot files are saved.
 
 	"""
 
-	def __init__(self, sim_name, snapshot, boxsize=None, h=None):
+	def __init__(self, sim_name, snapshot, boxsize=None, h=None, file_info=False):
 		"""
 		The __init__ method of SimInfo class.
 		Creates all attributes and obtains information that is hardcoded in the class.
@@ -41,8 +47,14 @@ class SimInfo:
 			Make sure that the boxsize is in the same units as your position coordinates.
 		h : float, default=None
 			Value of cosmological h parameter, for easy access to convert units.
+		file_info : bool, default=False
+			If True, calls get_file_info method
+
 		"""
 		self.simname = sim_name
+		self.N_files = None
+		self.fof_folder = None
+		self.snap_folder = None
 		if snapshot is None:
 			self.snapshot = None
 			self.snap_group = ""
@@ -51,6 +63,8 @@ class SimInfo:
 			self.snap_group = f"Snapshot_{self.snapshot}/"
 		if type(sim_name) == str:
 			self.get_specs()
+			if file_info:
+				self.get_file_info()
 		else:
 			self.boxsize = boxsize
 			self.h = h
@@ -103,4 +117,44 @@ class SimInfo:
 			raise KeyError(
 				"Simulation name not recognised. Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, "
 				"FLAMINGO_L2p8].")
+		return
+
+	def get_file_info(self):
+		"""
+		Creates N_files, fof_folder and snap_folder attributed needed by ReadData class.
+		Returns
+		-------
+
+		"""
+
+		if self.simname == "TNG100":
+			self.fof_folder = f"/fof_subhalo_tab_0{self.snapshot}/fof_subhalo_tab_0{self.snapshot}"
+			self.snap_folder = f"/snap_0{self.snapshot}/snap_0{self.snapshot}"
+			self.N_files = 448
+		elif self.simname == "TNG100_2":
+			self.fof_folder = f"/fof_subhalo_tab_0{self.snapshot}/fof_subhalo_tab_0{self.snapshot}"
+			self.snap_folder = f"/snap_0{self.snapshot}/snap_0{self.snapshot}"
+			self.N_files = 56
+		elif self.simname == "TNG300":
+			self.fof_folder = f"/fof_subhalo_tab_0{self.snapshot}/fof_subhalo_tab_0{self.snapshot}"
+			self.snap_folder = f"/snap_0{self.snapshot}/snap_0{self.snapshot}"
+			self.N_files = 600
+		elif self.simname == "EAGLE":
+			znames = {"28": "z000p000", "17": "z001p487", "19": "z001p004", "21": "z000p736", "23": "z000p503",
+					  "25": "z000p271"}
+			zname = znames[self.snapshot]
+			self.snap_folder = f"/snap_0{self.snapshot}/RefL0100N1504/snapshot_0{self.snapshot}_{zname}/snap_0{self.snapshot}_{zname}"  # update for different z?
+			self.fof_folder = None
+			self.N_files = 256
+		elif self.simname == "HorizonAGN":
+			self.fof_folder = None
+			self.snap_folder = None
+			self.N_files = 1.
+		elif "FLAMINGO" in self.simname:
+			self.fof_folder = None
+			self.snap_folder = None
+			self.N_files = 1
+		else:
+			raise KeyError(
+				"Simulation name not recognised. Choose from [TNG100, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1_m8, FLAMINGO_L1_m9, FLAMINGO_L1_m10, FLAMINGO_L2p8_m9].")
 		return
