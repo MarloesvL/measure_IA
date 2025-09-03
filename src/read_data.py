@@ -3,88 +3,124 @@ import numpy as np
 from src.Sim_info import SimInfo
 from src.write_data import *
 
-
 class ReadData(SimInfo):
-	"""Class to read different TNG data files.
+	"""
+	Class to read different hdf5 data files.
+	Assumes underlying file structures used in MeasureIA and MeasureSnapshotVariables classes.
 
-	Parameters
+	Attributes
 	----------
-	project :
-		str): Project name. Choose 'TNG100' or 'TNG300'
-	catalogue :
-		str): Catalogue name that contains the data. If groupcat file: 'Subhalo'.
-		If snapshot file: enter 'PartTypeX' where X is the particle type number.
-	output_file_name :
-		file path and name where output should be stored
-	snapshot :
-		int): The number of the snapshot. e.g. 99
-	data_path :
-		str): The start path to where the data is saved. Expects the files to be in a folder with the project name.
-
-	Returns
-	-------
+	simname : str or NoneType
+		Identifier of the simulation, allowing for correct information to be obtained.
+	snapshot : int or str or NoneType
+		Number of the snapshot.
+	snap_group : str
+		Name of group in output file. Equal to 'Snapshot_[snapshot]' if snapshot is given, otherwise emtpy string.
+	boxsize :  int or float, default=None
+		Size of simulation box. If simname is in SimInfo, units are cMpc/h. Otherwise, manual input.
+	L_0p5 : int or float, default=None
+		Half of the boxsize.
+	h : float, default=None
+		Value of cosmological h parameter, for easy access to convert units.
+	N_files : int, default=None
+		Number of files of snapshot or subhalo data.
+	fof_folder : str, default=None
+		Name of folder where fof files are saved (only available for TNG).
+	snap_folder : str, default=None
+		Name of folder where snapshot files are saved.
+	catalogue : str
+		Catalogue name that contains the data.
+	sub_group : str, optional
+			Name of group(s)/structure within snap_group where dataset is found. Default is empty str.
+	output_file_name : str, optional
+			Name where output should be stored.
+	data_path : str, optional
+		The path to where the data is saved. Default='./data/raw/
 
 	"""
-
 	def __init__(
-			self, project, catalogue, snapshot, sub_group="", output_file_name=None, data_path="./data/raw/",
-			sub_folder=""
+			self, simulation, catalogue, snapshot, sub_group="", output_file_name=None, data_path="./data/raw/"
 	):
-		SimInfo.__init__(self, project, snapshot, boxsize=None)
+		"""
+
+		Parameters
+		----------
+		simulation : str
+			Identifier of the simulation, allowing for correct information to be obtained.
+			Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, FLAMINGO_L2p8].
+		catalogue : str
+			Catalogue name that contains the data. If groupcat file: 'Subhalo' (then use read_subhalo).
+			If snapshot file: enter 'PartTypeX' where X is the particle type number (then use read_snapshot).
+		snapshot : int or str or NoneType
+			Number of the snapshot.
+		sub_group : str, optional
+			Name of group(s)/structure within snap_group where dataset is found. Default is empty str.
+		output_file_name : str, optional
+			Name where output should be stored.
+		data_path : str, optional
+			The path to where the data is saved. Default='./data/raw/
+
+		"""
+		SimInfo.__init__(self, simulation, snapshot, boxsize=None, file_info=True)
 		self.catalogue = catalogue
 		self.sub_group = sub_group
-		self.data_path = data_path + project + "/" + sub_folder + "/"
+		self.data_path = data_path + "/"
 		self.output_file_name = output_file_name
 		return
 
-	def read_cat(self, variable, cut=None):
-		"""Reads the data from the specified catalogue for a specified snapshot.
+	def read_cat(self, dataset_name, cut=None):
+		"""Reads the data from the specified catalogue.
 
 		Parameters
 		----------
-		variable :
-			the variable name for the requested data
-		cut :
-			 (Default value = None)
+		dataset_name :
+			the dataset name for the requested data
+		cut : iterable with 2 entries
+			 Read dataset slice [cut[0]:cut[1]]. Default value = None
 
 		Returns
 		-------
-		type
-			the data
+		ndarray
+			The requested dataset (slice)
+
+		Raises
+		------
+		KeyError
+			If catalogue=Subhalo or Snapshot.
 
 		"""
 		if self.catalogue == "Subhalo":
-			raise KeyError("Use ReadSubhalo method")
+			raise KeyError("Use read_subhalo method")
 		elif self.catalogue == "Snapshot":
-			raise KeyError("Use ReadSnapshot method")
+			raise KeyError("Use read_snapshot method")
 
 		file = h5py.File(f"{self.data_path}{self.catalogue}.hdf5", "r")
 		if cut == None:
-			data = file[self.snap_group + self.sub_group + variable][:]
+			data = file[self.snap_group + self.sub_group + dataset_name][:]
 		else:
-			data = file[self.snap_group + self.sub_group + variable][cut[0]: cut[1]]
+			data = file[self.snap_group + self.sub_group + dataset_name][cut[0]: cut[1]]
 		return data
 
-	def read_subhalo(self, variable, Nfiles=0):
-		"""Read the data from the subhalo files for a specified shapshot.
+	def read_subhalo(self, dataset_name, Nfiles=0):
+		"""Read the data from the subhalo files.
 
 		Parameters
 		----------
-		variable :
-			the variable name for the requested data
-		Nfiles :
-			 (Default value = 0)
+		dataset_name :
+			The dataset name for the requested data
+		Nfiles : int, optional
+			 Number of files to read from. Default=0, in which case the number from SimInfo object is used.
 
 		Returns
 		-------
-		type
-			the data
+		ndarray
+			The requested dataset
 
 		"""
 		subhalo_file = h5py.File(f"{self.data_path}{self.fof_folder}.0.hdf5", "r")
 		Subhalo = subhalo_file[self.catalogue]
 		try:
-			data = Subhalo[variable][:]
+			data = Subhalo[dataset_name][:]
 		except KeyError:
 			print("Variable not found in Subhalo files. Choose from ", Subhalo.keys())
 		if len(np.shape(data)) > 1:
@@ -99,7 +135,7 @@ class ReadData(SimInfo):
 			subhalo_file = h5py.File(f"{self.data_path}{self.fof_folder}.{n}.hdf5", "r")
 			try:
 				Subhalo = subhalo_file[self.catalogue]
-				data_n = Subhalo[variable][:]  # get data single file
+				data_n = Subhalo[dataset_name][:]  # get data single file
 			except KeyError:
 				print("problem at file ", n)
 				subhalo_file.close()
@@ -111,18 +147,18 @@ class ReadData(SimInfo):
 			subhalo_file.close()
 		return data
 
-	def read_snapshot(self, variable):
-		"""Read the data from the snapshot files for a specified shapshot number
+	def read_snapshot(self, dataset_name):
+		"""Read the data from the snapshot files and optionally write to output file.
 
 		Parameters
 		----------
-		variable :
-			the variable name for the requested data
+		dataset_name :
+			The dataset name for the requested data
 
 		Returns
 		-------
-		type
-			the data or nothing if output_file_name is specified
+		ndarray
+			The requested dataset or nothing if output_file_name is specified
 
 		"""
 		if self.output_file_name != None:
@@ -131,42 +167,42 @@ class ReadData(SimInfo):
 			write_output = True
 		else:
 			write_output = False
-		print(variable)
+		print(dataset_name)
 		snap_file = h5py.File(f"{self.data_path}{self.snap_folder}.0.hdf5", "r")
 		Snap_data = snap_file[self.catalogue]
 
 		try:
-			data = Snap_data[variable][:]
+			data = Snap_data[dataset_name][:]
 		except KeyError:
-			print(f"Variable not found in Snapshot files: {variable}. Choose from ", Snap_data.keys())
+			print(f"Variable not found in Snapshot files: {dataset_name}. Choose from ", Snap_data.keys())
 		if len(np.shape(data)) > 1:
 			stack = True
 		else:
 			stack = False
 		if write_output:
 			try:
-				dataset = group_out[variable]
-				del group_out[variable]
+				dataset = group_out[dataset_name]
+				del group_out[dataset_name]
 			except:
 				pass
 			if stack:
-				group_out.create_dataset(variable, data=data, maxshape=(None, np.shape(data)[1]), chunks=True)
+				group_out.create_dataset(dataset_name, data=data, maxshape=(None, np.shape(data)[1]), chunks=True)
 			else:
-				group_out.create_dataset(variable, data=data, maxshape=(None,), chunks=True)
+				group_out.create_dataset(dataset_name, data=data, maxshape=(None,), chunks=True)
 		snap_file.close()
 
 		for n in np.arange(1, self.N_files):
 			snap_file = h5py.File(f"{self.data_path}{self.snap_folder}.{n}.hdf5", "r")
 			try:
 				Snap_data = snap_file[self.catalogue]
-				data_n = Snap_data[variable][:]  # get data single file
+				data_n = Snap_data[dataset_name][:]  # get data single file
 			except KeyError:
 				print("problem at file ", n)
 				snap_file.close()
 				continue
 			if write_output:
-				group_out[variable].resize((group_out[variable].shape[0] + data_n.shape[0]), axis=0)
-				group_out[variable][-data_n.shape[0]:] = data_n
+				group_out[dataset_name].resize((group_out[dataset_name].shape[0] + data_n.shape[0]), axis=0)
+				group_out[dataset_name][-data_n.shape[0]:] = data_n
 			else:
 				if stack:
 					data = np.vstack((data, data_n))
@@ -179,20 +215,18 @@ class ReadData(SimInfo):
 		else:
 			return data
 
-	def read_snapshot_multiple(self, variables):
-		"""Read the data from the snapshot files for a specified shapshot number
+	def read_snapshot_multiple(self, dataset_name):
+		"""Read multiple datasets from the snapshot files for a specified shapshot number.
 
 		Parameters
 		----------
-		variable :
-			the variable name for the requested data
-		variables :
-
+		dataset_name : list or str
+			The dataset names for the requested data
 
 		Returns
 		-------
 		type
-			the data or nothing if output_file_name is specified
+			The requested datasets or nothing if output_file_name is specified
 
 		"""
 		if self.output_file_name != None:
@@ -204,9 +238,9 @@ class ReadData(SimInfo):
 		snap_file = h5py.File(f"{self.data_path}{self.snap_folder}.0.hdf5", "r")
 		Snap_data = snap_file[self.catalogue]
 		stack = []
-		for i, variable in enumerate(variables):
+		for i, variable in enumerate(dataset_name):
 			try:
-				data = Snap_data[variables[i]][:]
+				data = Snap_data[dataset_name[i]][:]
 			except KeyError:
 				print(f"Variable not found in Snapshot files {variable}. Choose from ", Snap_data.keys())
 			if len(np.shape(data)) > 1:
@@ -228,7 +262,7 @@ class ReadData(SimInfo):
 
 		for n in np.arange(1, self.N_files):
 			snap_file = h5py.File(f"{self.data_path}{self.snap_folder}.{n}.hdf5", "r")
-			for i, variable in enumerate(variables):
+			for i, variable in enumerate(dataset_name):
 				try:
 					Snap_data = snap_file[self.catalogue]
 					data_n = Snap_data[variable][:]  # get data single file
