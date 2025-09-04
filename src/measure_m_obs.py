@@ -11,50 +11,40 @@ KPC_TO_KM = 3.086e16  # 1 kpc is 3.086e16 km
 
 
 class MeasureMultipolesObservations(MeasureIABase):
-	"""Measures intrinsic alignment correlation functions including errors. Different samples for shapes and positions
-		can be used. Currently allows for w_g+, w_gg and multipoles to be calculated.
+	"""Class that contains all methods for the measurements of xi_gg and x_g+ for multipoles with lightcone data.
 
-	Parameters
-	----------
-	data :
-		Dictionary with data needed for calculations. See specifications for keywords.
-	simulation :
-		Indicator of simulation. Choose from [TNG100, TNG300] for now.
-	snapshot :
-		Number of the snapshot
-	separation_limits :
-		Bounds of the (projected) separation vector length bins in cMpc/h (so, r or r_p)
-	num_bins_r :
-		Number of bins for (projected) separation vector.
-	num_bins_pi :
-		Number of bins for line of sight (LOS) vector, pi.
-	PT :
-		Number indicating particle type
-	LOS_lim :
-		Bound for line of sight bins. Bounds will be [-LOS_lim, LOS_lim]
-	output_file_name :
-		Name and filepath of the file where the output should be stored.
-
-	Returns
-	-------
+	Notes
+	-----
+	Inherits attributes from 'SimInfo', where 'boxsize', 'L_0p5' and 'snap_group' are used in this class.
+	Inherits attributed from 'MeasureIABase', where 'data', 'output_file_name', 'periodicity', 'Num_position',
+	'Num_shape', 'r_min', 'r_max', 'num_bins_r', 'num_bins_pi', 'r_bins', 'pi_bins', 'mu_r_bins' are used.
 
 	"""
 
 	def __init__(
 			self,
 			data,
+			output_file_name,
 			simulation=None,
 			snapshot=None,
 			separation_limits=[0.1, 20.0],
 			num_bins_r=8,
 			num_bins_pi=20,
-			LOS_lim=None,
-			output_file_name=None,
+			pi_max=None,
 			boxsize=None,
 			periodicity=True,
 	):
-		super().__init__(data, simulation, snapshot, separation_limits, num_bins_r, num_bins_pi,
-						 LOS_lim, output_file_name, boxsize, periodicity)
+		"""
+		The __init__ method of the MeasureMultipolesObservations class.
+
+		Notes
+		-----
+		Constructor parameters 'data', 'output_file_name', 'simulation', 'snapshot', 'separation_limits', 'num_bins_r',
+		'num_bins_pi', 'pi_max', 'boxsize' and 'periodicity' are passed to MeasureIABase.
+
+		"""
+		super().__init__(data, output_file_name, simulation, snapshot, separation_limits, num_bins_r, num_bins_pi,
+						 pi_max, boxsize, periodicity)
 		return
 
 	def _measure_xi_rp_pi_obs_brute(self, masks=None, dataset_name="All_galaxies",
@@ -130,7 +120,7 @@ class MeasureMultipolesObservations(MeasureIABase):
 				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
 		if rp_cut == None:
 			rp_cut = 0.0
-		sub_box_len_logr = (np.log10(self.separation_max) - np.log10(self.separation_min)) / self.num_bins_r
+		sub_box_len_logr = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
 		sub_box_len_mu_r = 2.0 / self.num_bins_pi
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
@@ -184,16 +174,16 @@ class MeasureMultipolesObservations(MeasureIABase):
 			# get the indices for the binning
 			mask = (
 					(projected_separation_len > rp_cut)
-					* (separation_len >= self.bin_edges[0])
-					* (separation_len < self.bin_edges[-1])
+					* (separation_len >= self.r_bins[0])
+					* (separation_len < self.r_bins[-1])
 			)
 			ind_r = np.floor(
-				np.log10(separation_len[mask]) / sub_box_len_logr - np.log10(self.bin_edges[0]) / sub_box_len_logr
+				np.log10(separation_len[mask]) / sub_box_len_logr - np.log10(self.r_bins[0]) / sub_box_len_logr
 			)
 			del separation_len, projected_separation_len
 			ind_r = np.array(ind_r, dtype=int)
 			ind_mu_r = np.floor(
-				mu_r[mask] / sub_box_len_mu_r - self.bins_mu_r[0] / sub_box_len_mu_r
+				mu_r[mask] / sub_box_len_mu_r - self.mu_r_bins[0] / sub_box_len_mu_r
 			)  # need length of LOS, so only positive values
 			ind_mu_r = np.array(ind_mu_r, dtype=int)
 			del LOS
@@ -208,10 +198,10 @@ class MeasureMultipolesObservations(MeasureIABase):
 		DD[np.where(DD == 0)] = 1
 
 		correlation = Splus_D / DD
-		dsep = (self.bin_edges[1:] - self.bin_edges[:-1]) / 2.0
-		separation_bins = self.bin_edges[:-1] + abs(dsep)  # middle of bins
-		dmur = (self.bins_mu_r[1:] - self.bins_mu_r[:-1]) / 2.0
-		mu_r_bins = self.bins_mu_r[:-1] + abs(dmur)  # middle of bins
+		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
+		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
+		dmur = (self.mu_r_bins[1:] - self.mu_r_bins[:-1]) / 2.0
+		mu_r_bins = self.mu_r_bins[:-1] + abs(dmur)  # middle of bins
 
 		if (self.output_file_name != None) and (return_output == False):
 			output_file = h5py.File(self.output_file_name, "a")
@@ -303,7 +293,7 @@ class MeasureMultipolesObservations(MeasureIABase):
 				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
 		if rp_cut == None:
 			rp_cut = 0.0
-		sub_box_len_logr = (np.log10(self.separation_max) - np.log10(self.separation_min)) / self.num_bins_r
+		sub_box_len_logr = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
 		sub_box_len_mu_r = 2.0 / self.num_bins_pi
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		if cosmology == None:
@@ -337,16 +327,16 @@ class MeasureMultipolesObservations(MeasureIABase):
 			# get the indices for the binning
 			mask = (
 					(projected_separation_len > rp_cut)
-					* (separation_len >= self.bin_edges[0])
-					* (separation_len < self.bin_edges[-1])
+					* (separation_len >= self.r_bins[0])
+					* (separation_len < self.r_bins[-1])
 			)
 			ind_r = np.floor(
-				np.log10(separation_len[mask]) / sub_box_len_logr - np.log10(self.bin_edges[0]) / sub_box_len_logr
+				np.log10(separation_len[mask]) / sub_box_len_logr - np.log10(self.r_bins[0]) / sub_box_len_logr
 			)
 			del separation_len, projected_separation_len
 			ind_r = np.array(ind_r, dtype=int)
 			ind_mu_r = np.floor(
-				mu_r[mask] / sub_box_len_mu_r - self.bins_mu_r[0] / sub_box_len_mu_r
+				mu_r[mask] / sub_box_len_mu_r - self.mu_r_bins[0] / sub_box_len_mu_r
 			)  # need length of LOS, so only positive values
 			ind_mu_r = np.array(ind_mu_r, dtype=int)
 			del LOS
@@ -357,10 +347,10 @@ class MeasureMultipolesObservations(MeasureIABase):
 
 		DD[np.where(DD == 0)] = 1
 
-		dsep = (self.bin_edges[1:] - self.bin_edges[:-1]) / 2.0
-		separation_bins = self.bin_edges[:-1] + abs(dsep)  # middle of bins
-		dmur = (self.bins_mu_r[1:] - self.bins_mu_r[:-1]) / 2.0
-		mu_r_bins = self.bins_mu_r[:-1] + abs(dmur)  # middle of bins
+		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
+		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
+		dmur = (self.mu_r_bins[1:] - self.mu_r_bins[:-1]) / 2.0
+		mu_r_bins = self.mu_r_bins[:-1] + abs(dmur)  # middle of bins
 
 		if (self.output_file_name != None) and (return_output == False):
 			output_file = h5py.File(self.output_file_name, "a")
@@ -372,3 +362,7 @@ class MeasureMultipolesObservations(MeasureIABase):
 			return
 		else:
 			return DD, separation_bins, mu_r_bins
+
+
+if __name__ == "__main__":
+	pass

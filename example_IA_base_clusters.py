@@ -112,7 +112,7 @@ for i, zsel in enumerate([selection_z1, selection_z2, selection_z3]):
 				num_bins_r=num_bins_r,
 				num_bins_pi=num_bins_pi,
 				separation_limits=separation_limits,
-				LOS_lim=LOS_lims[i],
+				pi_max=LOS_lims[i],
 				output_file_name=data_path_out + file_name,
 			)
 			# measure xi_g+ for w_g+
@@ -164,7 +164,7 @@ for i, zsel in enumerate([selection_z1, selection_z2, selection_z3]):
 			num_bins_r=num_bins_r,
 			num_bins_pi=num_bins_pi,
 			separation_limits=separation_limits,
-			LOS_lim=LOS_lims[i],
+			pi_max=LOS_lims[i],
 			output_file_name=data_path_out + file_name,
 		)
 		# wg+

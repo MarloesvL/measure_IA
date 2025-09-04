@@ -16,23 +16,39 @@ KPC_TO_KM = 3.086e16  # 1 kpc is 3.086e16 km
 
 class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, MeasureWObservations,
 					   MeasureMultipolesObservations):
-	""" """
+	"""Class that contains all methods for jackknife covariance measurements for IA correlation functions.
+
+	Notes
+	-----
+	Inherits attributes from 'SimInfo', where 'boxsize', 'L_0p5' and 'snap_group' are used in this class.
+	Inherits attributed from 'MeasureIABase', where 'data', 'output_file_name', 'periodicity', 'Num_position',
+	'Num_shape', 'r_min', 'r_max', 'num_bins_r', 'num_bins_pi', 'r_bins', 'pi_bins', 'mu_r_bins' are used.
+	"""
 
 	def __init__(
 			self,
 			data,
+			output_file_name,
 			simulation=None,
 			snapshot=None,
 			separation_limits=[0.1, 20.0],
 			num_bins_r=8,
 			num_bins_pi=20,
-			LOS_lim=None,
-			output_file_name=None,
+			pi_max=None,
 			boxsize=None,
 			periodicity=True,
 	):
-		super().__init__(data, simulation, snapshot, separation_limits, num_bins_r, num_bins_pi,
-						 LOS_lim, output_file_name, boxsize, periodicity)
+		"""
+		The __init__ method of the MeasureJackknife class.
+
+		Notes
+		-----
+		Constructor parameters 'data', 'output_file_name', 'simulation', 'snapshot', 'separation_limits', 'num_bins_r',
+		'num_bins_pi', 'pi_max', 'boxsize' and 'periodicity' are passed to MeasureIABase.
+
+		"""
+		super().__init__(data, output_file_name, simulation, snapshot, separation_limits, num_bins_r, num_bins_pi,
+						 pi_max, boxsize, periodicity)
 		return
 
 	def _measure_jackknife_covariance_sims(
@@ -1139,3 +1155,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 							   f'{dataset_names[1]}_{dataset_names[2]}_combined_jackknife_cov_{num_box}',
 							   data=cov2yz)
 			return
+
+
+if __name__ == "__main__":
+	pass

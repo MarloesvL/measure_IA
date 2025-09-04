@@ -14,50 +14,40 @@ KPC_TO_KM = 3.086e16  # 1 kpc is 3.086e16 km
 
 
 class MeasureWObservations(MeasureIABase):
-	"""Measures intrinsic alignment correlation functions including errors. Different samples for shapes and positions
-		can be used. Currently allows for w_g+, w_gg and multipoles to be calculated.
+	"""Class that contains all methods for the measurements of xi_gg and xi_g+ for w_gg and w_g+ with lightcone data.
 
-	Parameters
-	----------
-	data :
-		Dictionary with data needed for calculations. See specifications for keywords.
-	simulation :
-		Indicator of simulation. Choose from [TNG100, TNG300] for now.
-	snapshot :
-		Number of the snapshot
-	separation_limits :
-		Bounds of the (projected) separation vector length bins in cMpc/h (so, r or r_p)
-	num_bins_r :
-		Number of bins for (projected) separation vector.
-	num_bins_pi :
-		Number of bins for line of sight (LOS) vector, pi.
-	PT :
-		Number indicating particle type
-	LOS_lim :
-		Bound for line of sight bins. Bounds will be [-LOS_lim, LOS_lim]
-	output_file_name :
-		Name and filepath of the file where the output should be stored.
-
-	Returns
-	-------
+	Notes
+	-----
+	Inherits attributes from 'SimInfo', where 'boxsize', 'L_0p5' and 'snap_group' are used in this class.
+	Inherits attributed from 'MeasureIABase', where 'data', 'output_file_name', 'periodicity', 'Num_position',
+	'Num_shape', 'r_min', 'r_max', 'num_bins_r', 'num_bins_pi', 'r_bins', 'pi_bins', 'mu_r_bins' are used.
 
 	"""
 
 	def __init__(
 			self,
 			data,
+			output_file_name,
 			simulation=None,
 			snapshot=None,
 			separation_limits=[0.1, 20.0],
 			num_bins_r=8,
 			num_bins_pi=20,
-			LOS_lim=None,
-			output_file_name=None,
+			pi_max=None,
 			boxsize=None,
 			periodicity=True,
 	):
-		super().__init__(data, simulation, snapshot, separation_limits, num_bins_r, num_bins_pi,
-						 LOS_lim, output_file_name, boxsize, periodicity)
+		"""
+		The __init__ method of the MeasureWObservations class.
+
+		Notes
+		-----
+		Constructor parameters 'data', 'output_file_name', 'simulation', 'snapshot', 'separation_limits', 'num_bins_r',
+		'num_bins_pi', 'pi_max', 'boxsize' and 'periodicity' are passed to MeasureIABase.
+
+		"""
+		super().__init__(data, output_file_name, simulation, snapshot, separation_limits, num_bins_r, num_bins_pi,
+						 pi_max, boxsize, periodicity)
 		return
 
 	def _measure_xi_rp_pi_obs_brute(self, masks=None, dataset_name="All_galaxies", return_output=False,
@@ -128,7 +118,7 @@ class MeasureWObservations(MeasureIABase):
 			print(
 				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
 
-		sub_box_len_logrp = (np.log10(self.separation_max) - np.log10(self.separation_min)) / self.num_bins_r
+		sub_box_len_logrp = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
 		sub_box_len_pi = (self.pi_bins[-1] - self.pi_bins[0]) / self.num_bins_pi
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
@@ -175,10 +165,10 @@ class MeasureWObservations(MeasureIABase):
 			e_cross[np.isnan(e_cross)] = 0.0
 
 			# get the indices for the binning
-			mask = (separation_len >= self.bin_edges[0]) * (separation_len < self.bin_edges[-1]) * (
+			mask = (separation_len >= self.r_bins[0]) * (separation_len < self.r_bins[-1]) * (
 					LOS >= self.pi_bins[0]) * (LOS < self.pi_bins[-1])
 			ind_r = np.floor(
-				np.log10(separation_len[mask]) / sub_box_len_logrp - np.log10(self.bin_edges[0]) / sub_box_len_logrp
+				np.log10(separation_len[mask]) / sub_box_len_logrp - np.log10(self.r_bins[0]) / sub_box_len_logrp
 			)
 			del separation_len
 			ind_r = np.array(ind_r, dtype=int)
@@ -206,8 +196,8 @@ class MeasureWObservations(MeasureIABase):
 		DD[np.where(DD == 0)] = 1
 
 		correlation = Splus_D / DD
-		dsep = (self.bin_edges[1:] - self.bin_edges[:-1]) / 2.0
-		separation_bins = self.bin_edges[:-1] + abs(dsep)  # middle of bins
+		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
+		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
 		dpi = (self.pi_bins[1:] - self.pi_bins[:-1]) / 2.0
 		pi_bins = self.pi_bins[:-1] + abs(dpi)  # middle of bins
 
@@ -296,7 +286,7 @@ class MeasureWObservations(MeasureIABase):
 			print(
 				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
 
-		sub_box_len_logrp = (np.log10(self.separation_max) - np.log10(self.separation_min)) / self.num_bins_r
+		sub_box_len_logrp = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
 		sub_box_len_pi = (self.pi_bins[-1] - self.pi_bins[0]) / self.num_bins_pi
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		if cosmology == None:
@@ -324,10 +314,10 @@ class MeasureWObservations(MeasureIABase):
 			separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=0))
 
 			# get the indices for the binning
-			mask = (separation_len >= self.bin_edges[0]) * (separation_len < self.bin_edges[-1]) * (
+			mask = (separation_len >= self.r_bins[0]) * (separation_len < self.r_bins[-1]) * (
 					LOS >= self.pi_bins[0]) * (LOS < self.pi_bins[-1])
 			ind_r = np.floor(
-				np.log10(separation_len[mask]) / sub_box_len_logrp - np.log10(self.bin_edges[0]) / sub_box_len_logrp
+				np.log10(separation_len[mask]) / sub_box_len_logrp - np.log10(self.r_bins[0]) / sub_box_len_logrp
 			)
 			del separation_len
 			ind_r = np.array(ind_r, dtype=int)
@@ -343,8 +333,8 @@ class MeasureWObservations(MeasureIABase):
 
 		DD[np.where(DD == 0)] = 1
 
-		dsep = (self.bin_edges[1:] - self.bin_edges[:-1]) / 2.0
-		separation_bins = self.bin_edges[:-1] + abs(dsep)  # middle of bins
+		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
+		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
 		dpi = (self.pi_bins[1:] - self.pi_bins[:-1]) / 2.0
 		pi_bins = self.pi_bins[:-1] + abs(dpi)  # middle of bins
 
@@ -481,7 +471,7 @@ class MeasureWObservations(MeasureIABase):
 			print(
 				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
 
-		sub_box_len_logrp = (np.log10(self.separation_max) - np.log10(self.separation_min)) / self.num_bins_r
+		sub_box_len_logrp = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
 		sub_box_len_pi = (self.pi_bins[-1] - self.pi_bins[0]) / self.num_bins_pi
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		if cosmology == None:
@@ -580,10 +570,10 @@ class MeasureWObservations(MeasureIABase):
 			separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=0))
 
 			# get the indices for the binning
-			mask = (separation_len >= self.bin_edges[0]) * (separation_len < self.bin_edges[-1]) * (
+			mask = (separation_len >= self.r_bins[0]) * (separation_len < self.r_bins[-1]) * (
 					LOS >= self.pi_bins[0]) * (LOS < self.pi_bins[-1])
 			ind_r = np.floor(
-				np.log10(separation_len[mask]) / sub_box_len_logrp - np.log10(self.bin_edges[0]) / sub_box_len_logrp
+				np.log10(separation_len[mask]) / sub_box_len_logrp - np.log10(self.r_bins[0]) / sub_box_len_logrp
 			)
 			del separation_len
 			ind_r = np.array(ind_r, dtype=int)
@@ -599,8 +589,8 @@ class MeasureWObservations(MeasureIABase):
 
 		DD[np.where(DD == 0)] = 1
 
-		dsep = (self.bin_edges[1:] - self.bin_edges[:-1]) / 2.0
-		separation_bins = self.bin_edges[:-1] + abs(dsep)  # middle of bins
+		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
+		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
 		dpi = (self.pi_bins[1:] - self.pi_bins[:-1]) / 2.0
 		pi_bins = self.pi_bins[:-1] + abs(dpi)  # middle of bins
 
@@ -614,3 +604,189 @@ class MeasureWObservations(MeasureIABase):
 			return
 		else:
 			return DD, separation_bins, pi_bins
+
+# def get_cosmo_points(self, data, cosmology=cosmo):
+# 	'''convert from astropy table of RA, DEC, and redshift to 3D cartesian coordinates in Mpc/h
+# 	Assumes col0=RA, col1=DEC, col2=Z'''
+# 	comoving_dist = cosmo.comoving_distance(data[:, 2]).to(u.Mpc)
+# 	points = coordinates.spherical_to_cartesian(np.abs(comoving_dist), np.asarray(data[:, 1]) * u.deg,
+# 												np.asarray(data[:, 0]) * u.deg)  # in Mpc
+# 	return np.asarray(points).transpose() * cosmology.h  # in Mpc/h
+#
+# def get_pair_coords(self, obs_pos1, obs_pos2, use_center_origin=True, cosmology=cosmo):
+# 	'''
+# 	Takes in observed positions of galaxy pairs and returns comoving coordinates, in Mpc/h, with the orgin at the center of the pair.
+# 	The first coordinate (x-axis) is along the LOS
+# 	The second coordinate (y-axis) is along 'RA'
+# 	The third coordinate (z-axis) along 'DEC', i.e. aligned with North in origional coordinates.
+#
+# 	INPUT
+# 	-------
+# 	obs_pos1, obs_pos2: table with columns: 'RA', 'DEC', z_column
+# 	use_center_origin: True for coordinate orgin at center of pair, othersise centers on first position
+# 	cosmology: astropy.cosmology
+#
+# 	RETURNS
+# 	-------
+# 	numpy array of cartesian coordinates, in Mpc/h. Shape (2,3)
+#
+# 	'''
+# 	cartesian_coords = self.get_cosmo_points(vstack([obs_pos1, obs_pos2]), cosmology=cosmology)  # in Mpc/h
+# 	# find center position of coordinates
+# 	origin = cartesian_coords[0]
+# 	if use_center_origin == True:
+# 		origin = np.mean(cartesian_coords, axis=0)
+# 	cartesian_coords -= origin
+# 	return cartesian_coords  # in Mpc/h
+#
+# def measure_projected_correlation_obs(self, masks=None, dataset_name="All_galaxies",
+# 									  return_output=False, print_num=True):
+# 	"""
+# 	Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
+# 	(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
+# 	axes, q=b/a (q) and the index of the direction of the line of sight (LOS=2 for z axis).
+# 	Positions are assumed to be given in cMpc/h.
+# 	:param masks: the masks for the data to select only part of the data
+# 	:param dataset_name: the dataset name given in the hdf5 file.
+# 	:param return_output: Output is returned if True, saved to file if False.
+# 	:return: xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
+# 	"""
+#
+# 	if masks == None:
+# 		positions = self.data["Position"]
+# 		positions_shape_sample = self.data["Position_shape_sample"]
+# 		axis_direction_v = self.data["Axis_Direction"]
+# 		axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
+# 		axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
+# 		try:
+# 			q = self.data["q"]
+# 		except:
+# 			e1, e2 = self.data["e1"], self.data["e2"]
+# 		weight = self.data["weight"]
+# 		weight_shape = self.data["weight_shape_sample"]
+# 	else:
+# 		positions = self.data["Position"][masks["Position"]]
+# 		positions_shape_sample = self.data["Position_shape_sample"][masks["Position_shape_sample"]]
+# 		axis_direction_v = self.data["Axis_Direction"][masks["Axis_Direction"]]
+# 		axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
+# 		axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
+# 		try:
+# 			q = self.data["q"][masks["q"]]
+# 		except:
+# 			e1, e2 = self.data["e1"][masks["e1"]], self.data["e2"][masks["e2"]]
+# 		weight = self.data["weight"][masks["weight"]]
+# 		weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
+# 	Num_position = len(positions)
+# 	Num_shape = len(positions_shape_sample)
+# 	if print_num:
+# 		print(
+# 			f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
+#
+# 	LOS_ind = 2  # redshift column #self.data["LOS"]  # eg 2 for z axis
+# 	not_LOS = [0, 1]  # np.array([0, 1, 2])[np.isin([0, 1, 2], LOS_ind, invert=True)]  # eg 0,1 for x&y
+# 	try:
+# 		e = (1 - q ** 2) / (1 + q ** 2)  # size of ellipticity
+# 	except:
+# 		e_comp = e1 + 1j * e2
+# 		e = np.sqrt(e_comp.real ** 2 + e_comp.imag ** 2)
+# 	R = 1 - np.mean(e ** 2) / 2.0  # responsivity factor
+# 	L3 = self.boxsize ** 3  # box volume
+# 	sub_box_len_logrp = (np.log10(self.separation_max) - np.log10(self.separation_min)) / self.num_bins_r
+# 	sub_box_len_pi = (self.pi_bins[-1] - self.pi_bins[0]) / self.num_bins_pi
+# 	DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+# 	Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+# 	Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+# 	RR_g_plus = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+# 	RR_gg = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+# 	variance = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+#
+# 	pos_tree = KDTree(positions, boxsize=self.boxsize)
+# 	shape_tree = KDTree(positions_shape_sample, boxsize=self.boxsize)
+# 	ind_min = shape_tree.query_ball_tree(pos_tree, self.separation_min)
+# 	ind_max = shape_tree.query_ball_tree(pos_tree, self.separation_max)
+# 	ind_rbin = self.setdiff2D(ind_max, ind_min)
+# 	del ind_min, ind_max
+#
+# 	for n in np.arange(0, len(positions_shape_sample)):
+# 		# for Splus_D (calculate ellipticities around position sample)
+# 		separation = self.get_pair_coords(positions_shape_sample[n], positions[ind_rbin[n]],
+# 										  use_center_origin=False)
+# 		# separation = positions_shape_sample[n] - positions[ind_rbin[n]]
+# 		# separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
+# 		# separation[separation < -self.L_0p5] += self.boxsize
+# 		projected_sep = separation[:, not_LOS]
+# 		LOS = separation[:, LOS_ind]
+# 		separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
+# 		separation_dir = (projected_sep.transpose() / separation_len).transpose()  # normalisation of rp
+# 		phi = np.arccos(separation_dir[:, 0] * axis_direction[n, 0] + separation_dir[:, 1] * axis_direction[
+# 			n, 1])  # [0,pi]
+# 		e_plus, e_cross = self.get_ellipticity(e[n], phi)
+# 		e_plus[np.isnan(e_plus)] = 0.0
+# 		e_cross[np.isnan(e_cross)] = 0.0
+#
+# 		# get the indices for the binning
+# 		mask = (separation_len >= self.bin_edges[0]) * (separation_len < self.bin_edges[-1]) * (
+# 				LOS >= self.pi_bins[0]) * (LOS < self.pi_bins[-1])
+# 		ind_r = np.floor(
+# 			np.log10(separation_len[mask]) / sub_box_len_logrp - np.log10(self.bin_edges[0]) / sub_box_len_logrp
+# 		)
+# 		ind_r = np.array(ind_r, dtype=int)
+# 		ind_pi = np.floor(
+# 			LOS[mask] / sub_box_len_pi - self.pi_bins[0] / sub_box_len_pi
+# 		)  # need length of LOS, so only positive values
+# 		ind_pi = np.array(ind_pi, dtype=int)
+# 		np.add.at(Splus_D, (ind_r, ind_pi), e_plus[mask] / (2 * R))
+# 		np.add.at(Scross_D, (ind_r, ind_pi), e_cross[mask] / (2 * R))
+# 		np.add.at(variance, (ind_r, ind_pi), (e_plus[mask] / (2 * R)) ** 2)
+# 		np.add.at(DD, (ind_r, ind_pi), 1.0)
+#
+# 	if Num_position == Num_shape:
+# 		DD = DD / 2.0  # auto correlation, all pairs are double
+#
+# 	for i in np.arange(0, self.num_bins_r):
+# 		for p in np.arange(0, self.num_bins_pi):
+# 			RR_g_plus[i, p] = self.get_random_pairs(
+# 				self.bin_edges[i + 1], self.bin_edges[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "cross",
+# 				Num_position, Num_shape)
+# 			RR_gg[i, p] = self.get_random_pairs(
+# 				self.bin_edges[i + 1], self.bin_edges[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "auto",
+# 				Num_position, Num_shape)
+# 	correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
+# 	xi_g_cross = Scross_D / RR_g_plus  # (Scross_D - Scross_R) / RR_g_plus
+# 	sigsq = variance / RR_g_plus ** 2
+# 	dsep = (self.bin_edges[1:] - self.bin_edges[:-1]) / 2.0
+# 	separation_bins = self.bin_edges[:-1] + abs(dsep)  # middle of bins
+# 	dpi = (self.pi_bins[1:] - self.pi_bins[:-1]) / 2.0
+# 	pi_bins = self.pi_bins[:-1] + abs(dpi)  # middle of bins
+#
+# 	if (self.output_file_name != None) & return_output == False:
+# 		output_file = h5py.File(self.output_file_name, "a")
+# 		group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_g_plus")
+# 		write_dataset_hdf5(group, dataset_name, data=correlation)
+# 		write_dataset_hdf5(group, dataset_name + "_SplusD", data=Splus_D)
+# 		write_dataset_hdf5(group, dataset_name + "_RR_g_plus", data=RR_g_plus)
+# 		write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
+# 		write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
+# 		write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
+# 		group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_g_cross")
+# 		write_dataset_hdf5(group, dataset_name + "_ScrossD", data=Scross_D)
+# 		write_dataset_hdf5(group, dataset_name, data=xi_g_cross)
+# 		write_dataset_hdf5(group, dataset_name + "_RR_g_cross", data=RR_g_plus)
+# 		write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
+# 		write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
+# 		write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
+# 		group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_gg")
+# 		write_dataset_hdf5(group, dataset_name, data=(DD / RR_gg) - 1)
+# 		write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
+# 		write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
+# 		write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
+# 		write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
+# 		write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
+# 		output_file.close()
+# 		return
+# 	else:
+# 		return correlation, (DD / RR_gg) - 1, separation_bins, pi_bins
+
+
+if __name__ == "__main__":
+	pass

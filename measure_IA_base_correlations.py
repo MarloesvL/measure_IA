@@ -42,7 +42,7 @@ IA_Projected = MeasureIABase(
 	num_bins_r=num_bins_r,
 	num_bins_pi=num_bins_pi,
 	separation_limits=separation_limits,
-	LOS_lim=LOS_lims,
+	pi_max=LOS_lims,
 	output_file_name=data_path_out + file_name,
 	boxsize=boxsize,
 )

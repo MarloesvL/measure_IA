@@ -6,12 +6,12 @@ def test_sim_input():
 	boxsize = 300.
 	snapshot = 30
 
-	siminfo_v = MeasureIA(None, sim_str, snapshot)
-	siminfo_nosnap_v = MeasureIA(None, sim_str, None)
-	boxsize_v = MeasureIA(None, None, snapshot, boxsize=boxsize)
-	boxsize_nosnap_v = MeasureIA(None, None, None, boxsize=boxsize)
-	nosim_v = MeasureIA(None, LOS_lim=20.)
-	siminfo_extrabox_v = MeasureIA(None, sim_str, snapshot, boxsize=boxsize)
+	siminfo_v = MeasureIA(None, None, sim_str, snapshot)
+	siminfo_nosnap_v = MeasureIA(None, None, sim_str, None)
+	boxsize_v = MeasureIA(None, None, None, snapshot, boxsize=boxsize)
+	boxsize_nosnap_v = MeasureIA(None, None, None, None, boxsize=boxsize)
+	nosim_v = MeasureIA(None, None, pi_max=20.)
+	siminfo_extrabox_v = MeasureIA(None, None, sim_str, snapshot, boxsize=boxsize)
 
 	assert siminfo_v.simname == sim_str
 	assert siminfo_v.snapshot == '30'

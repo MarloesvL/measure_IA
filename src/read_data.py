@@ -10,24 +10,6 @@ class ReadData(SimInfo):
 
 	Attributes
 	----------
-	simname : str or NoneType
-		Identifier of the simulation, allowing for correct information to be obtained.
-	snapshot : int or str or NoneType
-		Number of the snapshot.
-	snap_group : str
-		Name of group in output file. Equal to 'Snapshot_[snapshot]' if snapshot is given, otherwise emtpy string.
-	boxsize :  int or float, default=None
-		Size of simulation box. If simname is in SimInfo, units are cMpc/h. Otherwise, manual input.
-	L_0p5 : int or float, default=None
-		Half of the boxsize.
-	h : float, default=None
-		Value of cosmological h parameter, for easy access to convert units.
-	N_files : int, default=None
-		Number of files of snapshot or subhalo data.
-	fof_folder : str, default=None
-		Name of folder where fof files are saved (only available for TNG).
-	snap_folder : str, default=None
-		Name of folder where snapshot files are saved.
 	catalogue : str
 		Catalogue name that contains the data.
 	sub_group : str, optional
@@ -37,11 +19,16 @@ class ReadData(SimInfo):
 	data_path : str, optional
 		The path to where the data is saved. Default='./data/raw/
 
+	Notes
+	-----
+	Inherits attributes from 'SimInfo', where 'snap_group', 'snap_folder' and 'fof_folder' are used in this class.
+
 	"""
 	def __init__(
 			self, simulation, catalogue, snapshot, sub_group="", output_file_name=None, data_path="./data/raw/"
 	):
 		"""
+		The __init__ method of the ReadData class.
 
 		Parameters
 		----------
@@ -284,3 +271,7 @@ class ReadData(SimInfo):
 			return
 		else:
 			return data
+
+
+if __name__ == "__main__":
+	pass

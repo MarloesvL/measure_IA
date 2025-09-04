@@ -40,8 +40,7 @@ class SimInfo:
 			If None, no information will be returned that is not already given as input.
 		snapshot : int or str or NoneType
 			Number of the snapshot, which, if given, will ensure that the output file to contains a group
-			'Snapshot_[snapshot]'.
-			If None, the group is omitted from the output file structure.
+			'Snapshot_[snapshot]'. If None, the group is omitted from the output file structure. Default is None.
 		boxsize : int or float, default=None
 			Size of simulation box. Use if your simulation information is not provided by SimInfo.
 			Make sure that the boxsize is in the same units as your position coordinates.
@@ -158,3 +157,7 @@ class SimInfo:
 			raise KeyError(
 				"Simulation name not recognised. Choose from [TNG100, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1_m8, FLAMINGO_L1_m9, FLAMINGO_L1_m10, FLAMINGO_L2p8_m9].")
 		return
+
+
+if __name__ == "__main__":
+	pass

@@ -53,9 +53,8 @@ def IA_mock_TNG300_n8():
 		"LOS": 2,
 		"q": q
 	}
-	return MeasureIA(data_dir, "TNG300", 99, [0.1, 20], 10, 8, None,
-					 f"./data/processed/TNG300/test_IA_mock_TNG300.hdf5",
-					 num_nodes=8)
+	return MeasureIA(data_dir, f"./data/processed/TNG300/test_IA_mock_TNG300.hdf5", "TNG300",
+					 99, [0.1, 20], 10, 8, None, num_nodes=8)
 
 
 @pytest.fixture()
@@ -72,9 +71,9 @@ def IA_mock_TNG300_n1_large():
 		"LOS": 2,
 		"q": q
 	}
-	return MeasureIA(data_dir, "TNG300", 99, [0.1, 20], 10, 8, None,
-					 f"./data/processed/TNG300/test_IA_mock_TNG300_large.hdf5",
-					 num_nodes=1)
+	return MeasureIA(data_dir, f"./data/processed/TNG300/test_IA_mock_TNG300_large.hdf5",
+					 "TNG300", 99, [0.1, 20], 10,
+					 8, None, num_nodes=1)
 
 
 @pytest.fixture()
@@ -91,9 +90,9 @@ def IA_mock_TNG300_n8_large():
 		"LOS": 2,
 		"q": q
 	}
-	return MeasureIA(data_dir, "TNG300", 99, [0.1, 20], 10, 8, None,
-					 f"./data/processed/TNG300/test_IA_mock_TNG300_large.hdf5",
-					 num_nodes=8)
+	return MeasureIA(data_dir, f"./data/processed/TNG300/test_IA_mock_TNG300_large.hdf5",
+					 "TNG300", 99, [0.1, 20], 10, 8,
+					 None, num_nodes=8)
 
 
 @pytest.fixture()
@@ -110,9 +109,9 @@ def IA_mock_TNG300_n17_large():
 		"LOS": 2,
 		"q": q
 	}
-	return MeasureIA(data_dir, "TNG300", 99, [0.1, 20], 10, 8, None,
-					 f"./data/processed/TNG300/test_IA_mock_TNG300_large.hdf5",
-					 num_nodes=17)
+	return MeasureIA(data_dir, f"./data/processed/TNG300/test_IA_mock_TNG300_large.hdf5",
+					 "TNG300", 99, [0.1, 20], 10,
+					 8, None, num_nodes=17)
 
 # def MSV(project, snapshot):
 # 	raw_path = "./data/raw/"

@@ -58,3 +58,7 @@ def create_group_hdf5(file, name):
 	if groups != name:
 		raise ValueError('Created groups do not match specified one.')
 	return file[name]
+
+
+if __name__ == "__main__":
+	pass

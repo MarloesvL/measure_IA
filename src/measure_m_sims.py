@@ -13,50 +13,41 @@ KPC_TO_KM = 3.086e16  # 1 kpc is 3.086e16 km
 
 
 class MeasureMultipolesSimulations(MeasureIABase):
-	"""Measures intrinsic alignment correlation functions including errors. Different samples for shapes and positions
-		can be used. Currently allows for w_g+, w_gg and multipoles to be calculated.
+	"""Class that contains all methods for the measurements of xi_gg and x_g+ for multipoles with carthesian
+	simulation data.
 
-	Parameters
-	----------
-	data :
-		Dictionary with data needed for calculations. See specifications for keywords.
-	simulation :
-		Indicator of simulation. Choose from [TNG100, TNG300] for now.
-	snapshot :
-		Number of the snapshot
-	separation_limits :
-		Bounds of the (projected) separation vector length bins in cMpc/h (so, r or r_p)
-	num_bins_r :
-		Number of bins for (projected) separation vector.
-	num_bins_pi :
-		Number of bins for line of sight (LOS) vector, pi.
-	PT :
-		Number indicating particle type
-	LOS_lim :
-		Bound for line of sight bins. Bounds will be [-LOS_lim, LOS_lim]
-	output_file_name :
-		Name and filepath of the file where the output should be stored.
-
-	Returns
-	-------
+	Notes
+	-----
+	Inherits attributes from 'SimInfo', where 'boxsize', 'L_0p5' and 'snap_group' are used in this class.
+	Inherits attributed from 'MeasureIABase', where 'data', 'output_file_name', 'periodicity', 'Num_position',
+	'Num_shape', 'r_min', 'r_max', 'num_bins_r', 'num_bins_pi', 'r_bins', 'pi_bins', 'mu_r_bins' are used.
 
 	"""
 
 	def __init__(
 			self,
 			data,
+			output_file_name,
 			simulation=None,
 			snapshot=None,
 			separation_limits=[0.1, 20.0],
 			num_bins_r=8,
 			num_bins_pi=20,
-			LOS_lim=None,
-			output_file_name=None,
+			pi_max=None,
 			boxsize=None,
 			periodicity=True,
 	):
-		super().__init__(data, simulation, snapshot, separation_limits, num_bins_r, num_bins_pi,
-						 LOS_lim, output_file_name, boxsize, periodicity)
+		"""
+		The __init__ method of the MeasureMultipolesSimulations class.
+
+		Notes
+		-----
+		Constructor parameters 'data', 'output_file_name', 'simulation', 'snapshot', 'separation_limits', 'num_bins_r',
+		'num_bins_pi', 'pi_max', 'boxsize' and 'periodicity' are passed to MeasureIABase.
+
+		"""
+		super().__init__(data, output_file_name, simulation, snapshot, separation_limits, num_bins_r, num_bins_pi,
+						 pi_max, boxsize, periodicity)
 		return
 
 	def _measure_xi_r_pi_sims_brute(
@@ -132,7 +123,7 @@ class MeasureMultipolesSimulations(MeasureIABase):
 		R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape)
 		# R = 1 - np.mean(e ** 2) / 2.0  # responsivity factor
 		L3 = self.boxsize ** 3  # box volume
-		sub_box_len_logr = (np.log10(self.separation_max) - np.log10(self.separation_min)) / self.num_bins_r
+		sub_box_len_logr = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
 		sub_box_len_pi = (self.pi_bins[-1] - self.pi_bins[0]) / self.num_bins_pi
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
@@ -166,12 +157,12 @@ class MeasureMultipolesSimulations(MeasureIABase):
 			# get the indices for the binning
 			mask = (
 					(projected_separation_len > rp_cut)
-					* (separation_len >= self.bin_edges[0])
-					* (separation_len < self.bin_edges[-1])
+					* (separation_len >= self.r_bins[0])
+					* (separation_len < self.r_bins[-1])
 					* (LOS >= self.pi_bins[0]) * (LOS < self.pi_bins[-1])
 			)
 			ind_r = np.floor(
-				np.log10(separation_len[mask]) / sub_box_len_logr - np.log10(self.bin_edges[0]) / sub_box_len_logr
+				np.log10(separation_len[mask]) / sub_box_len_logr - np.log10(self.r_bins[0]) / sub_box_len_logr
 			)
 			del separation_len, projected_separation_len
 			ind_r = np.array(ind_r, dtype=int)
@@ -195,16 +186,16 @@ class MeasureMultipolesSimulations(MeasureIABase):
 		for i in np.arange(0, self.num_bins_r):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_g_plus[i, p] = self.get_random_pairs_r_mur(
-					self.bin_edges[i + 1], self.bin_edges[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "cross",
+					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "cross",
 					Num_position, Num_shape)
 				RR_gg[i, p] = self.get_random_pairs_r_mur(
-					self.bin_edges[i + 1], self.bin_edges[i], self.pi_bins[p + 1], self.pi_bins[p], L3, corrtype,
+					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, corrtype,
 					Num_position, Num_shape)
 
 		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
 		xi_g_cross = Scross_D / RR_g_plus  # (Scross_D - Scross_R) / RR_g_plus
-		dsep = (self.bin_edges[1:] - self.bin_edges[:-1]) / 2.0
-		separation_bins = self.bin_edges[:-1] + abs(dsep)  # middle of bins
+		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
+		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
 		dmur = (self.pi_bins[1:] - self.pi_bins[:-1]) / 2.0
 		mu_r_bins = self.pi_bins[:-1] + abs(dmur)  # middle of bins
 
@@ -309,7 +300,7 @@ class MeasureMultipolesSimulations(MeasureIABase):
 		R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape)
 		# R = 1 - np.mean(e ** 2) / 2.0  # responsivity factor
 		L3 = self.boxsize ** 3  # box volume
-		sub_box_len_logr = (np.log10(self.separation_max) - np.log10(self.separation_min)) / self.num_bins_r
+		sub_box_len_logr = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
 		sub_box_len_mu_r = 2.0 / self.num_bins_pi  # mu_r ranges from -1 to 1. Same number of bins as pi
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
@@ -343,16 +334,16 @@ class MeasureMultipolesSimulations(MeasureIABase):
 			# get the indices for the binning
 			mask = (
 					(projected_separation_len > rp_cut)
-					* (separation_len >= self.bin_edges[0])
-					* (separation_len < self.bin_edges[-1])
+					* (separation_len >= self.r_bins[0])
+					* (separation_len < self.r_bins[-1])
 			)
 			ind_r = np.floor(
-				np.log10(separation_len[mask]) / sub_box_len_logr - np.log10(self.bin_edges[0]) / sub_box_len_logr
+				np.log10(separation_len[mask]) / sub_box_len_logr - np.log10(self.r_bins[0]) / sub_box_len_logr
 			)
 			del separation_len, projected_separation_len
 			ind_r = np.array(ind_r, dtype=int)
 			ind_mu_r = np.floor(
-				mu_r[mask] / sub_box_len_mu_r - self.bins_mu_r[0] / sub_box_len_mu_r
+				mu_r[mask] / sub_box_len_mu_r - self.mu_r_bins[0] / sub_box_len_mu_r
 			)  # need length of LOS, so only positive values
 			ind_mu_r = np.array(ind_mu_r, dtype=int)
 
@@ -371,18 +362,18 @@ class MeasureMultipolesSimulations(MeasureIABase):
 		for i in np.arange(0, self.num_bins_r):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_g_plus[i, p] = self.get_random_pairs_r_mur(
-					self.bin_edges[i + 1], self.bin_edges[i], self.bins_mu_r[p + 1], self.bins_mu_r[p], L3, "cross",
+					self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, "cross",
 					Num_position, Num_shape)
 				RR_gg[i, p] = self.get_random_pairs_r_mur(
-					self.bin_edges[i + 1], self.bin_edges[i], self.bins_mu_r[p + 1], self.bins_mu_r[p], L3, corrtype,
+					self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, corrtype,
 					Num_position, Num_shape)
 
 		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
 		xi_g_cross = Scross_D / RR_g_plus  # (Scross_D - Scross_R) / RR_g_plus
-		dsep = (self.bin_edges[1:] - self.bin_edges[:-1]) / 2.0
-		separation_bins = self.bin_edges[:-1] + abs(dsep)  # middle of bins
-		dmur = (self.bins_mu_r[1:] - self.bins_mu_r[:-1]) / 2.0
-		mu_r_bins = self.bins_mu_r[:-1] + abs(dmur)  # middle of bins
+		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
+		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
+		dmur = (self.mu_r_bins[1:] - self.mu_r_bins[:-1]) / 2.0
+		mu_r_bins = self.mu_r_bins[:-1] + abs(dmur)  # middle of bins
 
 		if (self.output_file_name != None) & return_output == False:
 			output_file = h5py.File(self.output_file_name, "a")
@@ -488,7 +479,7 @@ class MeasureMultipolesSimulations(MeasureIABase):
 		R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape)
 		# R = 1 - np.mean(e ** 2) / 2.0  # responsivity factor
 		L3 = self.boxsize ** 3  # box volume
-		sub_box_len_logr = (np.log10(self.separation_max) - np.log10(self.separation_min)) / self.num_bins_r
+		sub_box_len_logr = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
 		sub_box_len_mu_r = 2.0 / self.num_bins_pi  # mu_r ranges from -1 to 1. Same number of bins as pi
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
@@ -528,8 +519,8 @@ class MeasureMultipolesSimulations(MeasureIABase):
 				weight_shape_i = weight_shape_i[indices_shape_i]
 			else:
 				shape_tree = KDTree(positions_shape_sample_i, boxsize=self.boxsize)
-				ind_min_i = shape_tree.query_ball_tree(pos_tree, self.separation_min)
-				ind_max_i = shape_tree.query_ball_tree(pos_tree, self.separation_max)
+				ind_min_i = shape_tree.query_ball_tree(pos_tree, self.r_min)
+				ind_max_i = shape_tree.query_ball_tree(pos_tree, self.r_max)
 				ind_rbin_i = self.setdiff2D(ind_max_i, ind_min_i)
 				if save_tree:
 					with open(f"{file_tree_path}/m_{self.simname}_tree_{figname_dataset_name}.pickle", 'ab') as handle:
@@ -564,16 +555,16 @@ class MeasureMultipolesSimulations(MeasureIABase):
 					# get the indices for the binning
 					mask = (
 							(projected_separation_len > rp_cut)
-							* (separation_len >= self.bin_edges[0])
-							* (separation_len < self.bin_edges[-1])
+							* (separation_len >= self.r_bins[0])
+							* (separation_len < self.r_bins[-1])
 					)
 					ind_r = np.floor(
 						np.log10(separation_len[mask]) / sub_box_len_logr - np.log10(
-							self.bin_edges[0]) / sub_box_len_logr
+							self.r_bins[0]) / sub_box_len_logr
 					)
 					ind_r = np.array(ind_r, dtype=int)
 					ind_mu_r = np.floor(
-						mu_r[mask] / sub_box_len_mu_r - self.bins_mu_r[0] / sub_box_len_mu_r
+						mu_r[mask] / sub_box_len_mu_r - self.mu_r_bins[0] / sub_box_len_mu_r
 					)  # need length of LOS, so only positive values
 					ind_mu_r = np.array(ind_mu_r, dtype=int)
 					np.add.at(Splus_D, (ind_r, ind_mu_r),
@@ -594,18 +585,18 @@ class MeasureMultipolesSimulations(MeasureIABase):
 		for i in np.arange(0, self.num_bins_r):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_g_plus[i, p] = self.get_random_pairs_r_mur(
-					self.bin_edges[i + 1], self.bin_edges[i], self.bins_mu_r[p + 1], self.bins_mu_r[p], L3, "cross",
+					self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, "cross",
 					Num_position, Num_shape)
 				RR_gg[i, p] = self.get_random_pairs_r_mur(
-					self.bin_edges[i + 1], self.bin_edges[i], self.bins_mu_r[p + 1], self.bins_mu_r[p], L3, corrtype,
+					self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, corrtype,
 					Num_position, Num_shape)
 
 		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
 		xi_g_cross = Scross_D / RR_g_plus  # (Scross_D - Scross_R) / RR_g_plus
-		dsep = (self.bin_edges[1:] - self.bin_edges[:-1]) / 2.0
-		separation_bins = self.bin_edges[:-1] + abs(dsep)  # middle of bins
-		dmur = (self.bins_mu_r[1:] - self.bins_mu_r[:-1]) / 2.0
-		mu_r_bins = self.bins_mu_r[:-1] + abs(dmur)  # middle of bins
+		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
+		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
+		dmur = (self.mu_r_bins[1:] - self.mu_r_bins[:-1]) / 2.0
+		mu_r_bins = self.mu_r_bins[:-1] + abs(dmur)  # middle of bins
 
 		if (self.output_file_name != None) & return_output == False:
 			output_file = h5py.File(self.output_file_name, "a")
@@ -656,8 +647,8 @@ class MeasureMultipolesSimulations(MeasureIABase):
 			weight_shape_i = self.weight_shape[i:i2]
 
 			shape_tree = KDTree(positions_shape_sample_i, boxsize=self.boxsize)
-			ind_min_i = shape_tree.query_ball_tree(self.pos_tree, self.separation_min)
-			ind_max_i = shape_tree.query_ball_tree(self.pos_tree, self.separation_max)
+			ind_min_i = shape_tree.query_ball_tree(self.pos_tree, self.r_min)
+			ind_max_i = shape_tree.query_ball_tree(self.pos_tree, self.r_max)
 			ind_rbin_i = self.setdiff2D(ind_max_i, ind_min_i)
 			for n in np.arange(0, len(positions_shape_sample_i)):
 				if len(ind_rbin_i[n]) > 0:
@@ -689,16 +680,16 @@ class MeasureMultipolesSimulations(MeasureIABase):
 					# get the indices for the binning
 					mask = (
 							(projected_separation_len > self.rp_cut)
-							* (separation_len >= self.bin_edges[0])
-							* (separation_len < self.bin_edges[-1])
+							* (separation_len >= self.r_bins[0])
+							* (separation_len < self.r_bins[-1])
 					)
 					ind_r = np.floor(
 						np.log10(separation_len[mask]) / self.sub_box_len_logr - np.log10(
-							self.bin_edges[0]) / self.sub_box_len_logr
+							self.r_bins[0]) / self.sub_box_len_logr
 					)
 					ind_r = np.array(ind_r, dtype=int)
 					ind_mu_r = np.floor(
-						mu_r[mask] / self.sub_box_len_mu_r - self.bins_mu_r[0] / self.sub_box_len_mu_r
+						mu_r[mask] / self.sub_box_len_mu_r - self.mu_r_bins[0] / self.sub_box_len_mu_r
 					)  # need length of LOS, so only positive values
 					ind_mu_r = np.array(ind_mu_r, dtype=int)
 					np.add.at(Splus_D, (ind_r, ind_mu_r),
@@ -787,7 +778,7 @@ class MeasureMultipolesSimulations(MeasureIABase):
 		self.R = sum(self.weight_shape * (1 - self.e ** 2 / 2.0)) / sum(self.weight_shape)
 		# self.R = 1 - np.mean(self.e ** 2) / 2.0  # responsivity factor
 		L3 = self.boxsize ** 3  # box volume
-		self.sub_box_len_logr = (np.log10(self.separation_max) - np.log10(self.separation_min)) / self.num_bins_r
+		self.sub_box_len_logr = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
 		self.sub_box_len_mu_r = 2.0 / self.num_bins_pi  # mu_r ranges from -1 to 1. Same number of bins as pi
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
@@ -817,18 +808,18 @@ class MeasureMultipolesSimulations(MeasureIABase):
 		for i in np.arange(0, self.num_bins_r):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_g_plus[i, p] = self.get_random_pairs_r_mur(
-					self.bin_edges[i + 1], self.bin_edges[i], self.bins_mu_r[p + 1], self.bins_mu_r[p], L3, "cross",
+					self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, "cross",
 					Num_position, Num_shape)
 				RR_gg[i, p] = self.get_random_pairs_r_mur(
-					self.bin_edges[i + 1], self.bin_edges[i], self.bins_mu_r[p + 1], self.bins_mu_r[p], L3, corrtype,
+					self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, corrtype,
 					Num_position, Num_shape)
 
 		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
 		xi_g_cross = Scross_D / RR_g_plus  # (Scross_D - Scross_R) / RR_g_plus
-		dsep = (self.bin_edges[1:] - self.bin_edges[:-1]) / 2.0
-		separation_bins = self.bin_edges[:-1] + abs(dsep)  # middle of bins
-		dmur = (self.bins_mu_r[1:] - self.bins_mu_r[:-1]) / 2.0
-		mu_r_bins = self.bins_mu_r[:-1] + abs(dmur)  # middle of bins
+		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
+		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
+		dmur = (self.mu_r_bins[1:] - self.mu_r_bins[:-1]) / 2.0
+		mu_r_bins = self.mu_r_bins[:-1] + abs(dmur)  # middle of bins
 
 		if (self.output_file_name != None) & return_output == False:
 			output_file = h5py.File(self.output_file_name, "a")
@@ -854,3 +845,7 @@ class MeasureMultipolesSimulations(MeasureIABase):
 			return
 		else:
 			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus
+
+
+if __name__ == "__main__":
+	pass

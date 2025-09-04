@@ -1,58 +1,101 @@
 import math
 import numpy as np
 import h5py
-import kmeans_radec
-from kmeans_radec import KMeans, kmeans_sample
+from kmeans_radec import kmeans_sample
 from scipy.special import lpmn
 from src.write_data import write_dataset_hdf5, create_group_hdf5
 from src.Sim_info import SimInfo
-from astropy.cosmology import LambdaCDM, z_at_value
-
-cosmo = LambdaCDM(H0=69.6, Om0=0.286, Ode0=0.714)
-KPC_TO_KM = 3.086e16  # 1 kpc is 3.086e16 km
-
 
 class MeasureIABase(SimInfo):
-	"""Measures intrinsic alignment correlation functions including errors. Different samples for shapes and positions
-		can be used. Currently allows for w_g+, w_gg and multipoles to be calculated.
+	"""Base class for MeasureIA package that includes some general methods used throughout the package.
 
-	Parameters
+	Attributes
 	----------
-	data :
-		Dictionary with data needed for calculations. See specifications for keywords.
-	simulation :
-		Indicator of simulation. Choose from [TNG100, TNG300] for now.
-	snapshot :
-		Number of the snapshot
-	separation_limits :
-		Bounds of the (projected) separation vector length bins in cMpc/h (so, r or r_p)
-	num_bins_r :
-		Number of bins for (projected) separation vector.
-	num_bins_pi :
-		Number of bins for line of sight (LOS) vector, pi.
-	LOS_lim :
-		Bound for line of sight bins. Bounds will be [-LOS_lim, LOS_lim]
-	output_file_name :
-		Name and filepath of the file where the output should be stored.
+	Num_position : int
+		Number of objects in the position sample. This value is updated in jackknife realisations.
+	Num_shape : int
+		Number of objects in the shape sample. This value is updated in jackknife realisations.
+	r_min : float
+		Minimum bound of (projected) separation length; bin edge. Default is 0.1.
+	r_max : float
+		Maximum bound of (projected) separation length; bin edge. Default is 20.
+	r_bins : ndarray
+		Bin edges of the (projected) separation length (r_p or r).
+	pi_bins : ndarray
+		Bin edges of the line of sight (pi).
+	mu_r_bins : ndarray
+		Bin edges of the mu_r.
 
-	Returns
-	-------
+	Notes
+	-----
+	Inherits attributes from 'SimInfo', where 'boxsize', 'L_0p5' and 'snap_group' are used in this class.
 
 	"""
 
 	def __init__(
 			self,
 			data,
+			output_file_name,
 			simulation=None,
 			snapshot=None,
 			separation_limits=[0.1, 20.0],
 			num_bins_r=8,
 			num_bins_pi=20,
-			LOS_lim=None,
-			output_file_name=None,
+			pi_max=None,
 			boxsize=None,
 			periodicity=True,
 	):
+		"""
+		The __init__ method of the MeasureIABase class.
+
+		Parameters
+		----------
+		data : dict
+			Dictionary with data needed for calculations.
+			For carthesian coordinates, the keywords are:
+			'Position' and 'Position_shape_sample': (N_p,3), (N_s,3) ndarrays with the x, y, z coordinates
+			of the N_p, N_s objects in the position and shape samples, respectively.
+			'Axis_Direction': (N_s,2) ndarray with the two elements of the unit vectors describing the
+			axis direction of the projected axis of the object shape.
+			'LOS': index referring back to the column number in the 'Position' samples that contains the
+			line-of-sight coordinate. (e.g. if the shapes are projected over the z-axis, LOS=2)
+			'q': (N_s) array containing the axis ratio q=b/a for each object in the shape sample.
+			For lightcone coordinates, the keywords are:
+			'Redshift' and 'Redshift_shape_sample': (N_p) and (N_s) ndarray with redshifts of position and shape samples.
+			'RA' and 'RA_shape_sample': (N_p) and (N_s) ndarray with RA coordinate of position and shape samples.
+			'DEC' and 'DEC_shape_sample': (N_p) and (N_s) ndarray with DEC coordinate of position and shape samples.
+			'e1' and 'e2': (N_s) arrays with the two ellipticity components e1 and e2 of the shape sample objects.
+		output_file_name : str
+			Name and filepath of the file where the output should be stored. Needs to be hdf5-type.
+		simulation : str or NoneType, optional
+			Indicator of simulation, obtaining correct boxsize in cMpc/h automatically. 
+			Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, FLAMINGO_L2p8].
+			Default is None, in which case boxsize needs to be added manually; or in the case of observational data, 
+			the pi_max.
+		snapshot : int or str or NoneType, optional
+			Number of the snapshot, which, if given, will ensure that the output file to contains a group
+			'Snapshot_[snapshot]'. If None, the group is omitted from the output file structure. Default is None.
+		separation_limits : iterable of 2 entries, optional
+			Bounds of the (projected) separation vector length bins in cMpc/h (so, r or r_p). Default is [0.1,20].
+		num_bins_r : int, optional
+			Number of bins for (projected) separation vector. Default is 8.
+		num_bins_pi : int, optional
+			Number of bins for line of sight (LOS) vector, pi or mu_r when multipoles are measured. Default is 20.
+		pi_max : int or float, optional
+			Bound for line of sight bins. Bounds will be [-pi_max, pi_max]. Default is None, in which case half the
+			boxsize will be used.
+		boxsize : int or float or NoneType, optional
+			If simulation is not included in SimInfo, a manual boxsize can be added here. Make sure simulation=None
+			and the boxsize units are equal to those in the data dictionary. Default is None.
+		periodicity : bool, optional
+			If True, the periodic boundary conditions of the simulation box are taken into account. If False, they are
+			ignored. Note that because this code used analytical randoms for the simulations, the correlations will not
+			be correct in this case and only DD and S+D terms should be studied. Non-periodic randoms can be measured by
+			providing random data to the code and considering the DD term that is measured. Correlations and covariance
+			matrix will need to be reconstructed from parts. [Please add a request for teh integration of this method of
+			this if you would like to use this option often.] Default is True.
+		
+		"""
 		SimInfo.__init__(self, simulation, snapshot, boxsize)
 		self.data = data
 		self.output_file_name = output_file_name
@@ -81,26 +124,24 @@ class MeasureIABase(SimInfo):
 				weight = self.data["weight_shape_sample"]
 			except:
 				self.data["weight_shape_sample"] = np.ones(self.Num_shape)
-		self.separation_min = separation_limits[0]  # cMpc/h
-		self.separation_max = separation_limits[1]  # cMpc/h
+		self.r_min = separation_limits[0]  # cMpc/h
+		self.r_max = separation_limits[1]  # cMpc/h
 		self.num_bins_r = num_bins_r
 		self.num_bins_pi = num_bins_pi
-		self.bin_edges = np.logspace(np.log10(self.separation_min), np.log10(self.separation_max), self.num_bins_r + 1)
-		if LOS_lim == None:
+		self.r_bins = np.logspace(np.log10(self.r_min), np.log10(self.r_max), self.num_bins_r + 1)
+		if pi_max == None:
 			if self.L_0p5 is None:
 				raise ValueError(
-					"Both LOS_lim and boxsize are None. Provide input on one of them to determine the integration limit pi_max.")
+					"Both pi_max and boxsize are None. Provide input on one of them to determine the integration limit pi_max.")
 			else:
 				pi_max = self.L_0p5
-		else:
-			pi_max = LOS_lim
 		self.pi_bins = np.linspace(-pi_max, pi_max, self.num_bins_pi + 1)
-		self.bins_mu_r = np.linspace(-1, 1, self.num_bins_pi + 1)
+		self.mu_r_bins = np.linspace(-1, 1, self.num_bins_pi + 1)
 		if simulation == False:
 			print(f"MeasureIA object initialised with:\n \
 					observational data.\n \
 					There are {self.Num_shape} galaxies in the shape sample and {self.Num_position} galaxies in the position sample.\n\
-					The separation bin edges are given by {self.bin_edges} Mpc.\n \
+					The separation bin edges are given by {self.r_bins} Mpc.\n \
 					There are {num_bins_r} r or r_p bins and {num_bins_pi} pi bins.\n \
 					The maximum pi used for binning is {pi_max}.\n \
 					The data will be written to {self.output_file_name}")
@@ -108,7 +149,7 @@ class MeasureIABase(SimInfo):
 			print(f"MeasureIA object initialised with:\n \
 			simulation {simulation} that has a {periodic}boxsize of {self.boxsize} cMpc/h.\n \
 			There are {self.Num_shape} galaxies in the shape sample and {self.Num_position} galaxies in the position sample.\n\
-			The separation bin edges are given by {self.bin_edges} cMpc/h.\n \
+			The separation bin edges are given by {self.r_bins} cMpc/h.\n \
 			There are {num_bins_r} r or r_p bins and {num_bins_pi} pi bins.\n \
 			The maximum pi used for binning is {pi_max}.\n \
 			The data will be written to {self.output_file_name}")
@@ -178,18 +219,18 @@ class MeasureIABase(SimInfo):
 			separation_dir = (separation.transpose() / separation_len).transpose()
 			inner_product_n = self.calculate_dot_product_arrays(separation_dir, axis_direction) ** 2
 			for i in np.arange(0, self.num_bins_r):
-				lower_limit_mask = separation_len > self.bin_edges[i]
-				upper_limit_mask = separation_len < self.bin_edges[i + 1]
+				lower_limit_mask = separation_len > self.r_bins[i]
+				upper_limit_mask = separation_len < self.r_bins[i + 1]
 				mask = lower_limit_mask * upper_limit_mask
 				n_pairs[i] += sum(mask)
 				inner_product[i] += sum(inner_product_n[mask])
 		correlation = np.array(inner_product) / np.array(n_pairs) - 1.0 / 3
-		dsep = (self.bin_edges[:-1] - self.bin_edges[1:]) / 2.0
-		separation_bins = self.bin_edges[:-1] + abs(dsep)
+		dsep = (self.r_bins[:-1] - self.r_bins[1:]) / 2.0
+		separation_bins = self.r_bins[:-1] + abs(dsep)
 
 		if self.output_file_name != None:
 			output_file = h5py.File(self.output_file_name, "a")
-			group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/3D_correlations")
+			group = create_group_hdf5(output_file, f"{self.snap_group}/3D_correlations")
 			write_dataset_hdf5(group, dataset_name, data=np.array([separation_bins, correlation]).transpose())
 			output_file.close()
 			return
@@ -387,187 +428,7 @@ class MeasureIABase(SimInfo):
 				del setdiff
 		return diff
 
-	# def get_cosmo_points(self, data, cosmology=cosmo):
-	# 	'''convert from astropy table of RA, DEC, and redshift to 3D cartesian coordinates in Mpc/h
-	# 	Assumes col0=RA, col1=DEC, col2=Z'''
-	# 	comoving_dist = cosmo.comoving_distance(data[:, 2]).to(u.Mpc)
-	# 	points = coordinates.spherical_to_cartesian(np.abs(comoving_dist), np.asarray(data[:, 1]) * u.deg,
-	# 												np.asarray(data[:, 0]) * u.deg)  # in Mpc
-	# 	return np.asarray(points).transpose() * cosmology.h  # in Mpc/h
-	#
-	# def get_pair_coords(self, obs_pos1, obs_pos2, use_center_origin=True, cosmology=cosmo):
-	# 	'''
-	# 	Takes in observed positions of galaxy pairs and returns comoving coordinates, in Mpc/h, with the orgin at the center of the pair.
-	# 	The first coordinate (x-axis) is along the LOS
-	# 	The second coordinate (y-axis) is along 'RA'
-	# 	The third coordinate (z-axis) along 'DEC', i.e. aligned with North in origional coordinates.
-	#
-	# 	INPUT
-	# 	-------
-	# 	obs_pos1, obs_pos2: table with columns: 'RA', 'DEC', z_column
-	# 	use_center_origin: True for coordinate orgin at center of pair, othersise centers on first position
-	# 	cosmology: astropy.cosmology
-	#
-	# 	RETURNS
-	# 	-------
-	# 	numpy array of cartesian coordinates, in Mpc/h. Shape (2,3)
-	#
-	# 	'''
-	# 	cartesian_coords = self.get_cosmo_points(vstack([obs_pos1, obs_pos2]), cosmology=cosmology)  # in Mpc/h
-	# 	# find center position of coordinates
-	# 	origin = cartesian_coords[0]
-	# 	if use_center_origin == True:
-	# 		origin = np.mean(cartesian_coords, axis=0)
-	# 	cartesian_coords -= origin
-	# 	return cartesian_coords  # in Mpc/h
-	#
-	# def measure_projected_correlation_obs(self, masks=None, dataset_name="All_galaxies",
-	# 									  return_output=False, print_num=True):
-	# 	"""
-	# 	Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
-	# 	(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
-	# 	axes, q=b/a (q) and the index of the direction of the line of sight (LOS=2 for z axis).
-	# 	Positions are assumed to be given in cMpc/h.
-	# 	:param masks: the masks for the data to select only part of the data
-	# 	:param dataset_name: the dataset name given in the hdf5 file.
-	# 	:param return_output: Output is returned if True, saved to file if False.
-	# 	:return: xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
-	# 	"""
-	#
-	# 	if masks == None:
-	# 		positions = self.data["Position"]
-	# 		positions_shape_sample = self.data["Position_shape_sample"]
-	# 		axis_direction_v = self.data["Axis_Direction"]
-	# 		axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
-	# 		axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
-	# 		try:
-	# 			q = self.data["q"]
-	# 		except:
-	# 			e1, e2 = self.data["e1"], self.data["e2"]
-	# 		weight = self.data["weight"]
-	# 		weight_shape = self.data["weight_shape_sample"]
-	# 	else:
-	# 		positions = self.data["Position"][masks["Position"]]
-	# 		positions_shape_sample = self.data["Position_shape_sample"][masks["Position_shape_sample"]]
-	# 		axis_direction_v = self.data["Axis_Direction"][masks["Axis_Direction"]]
-	# 		axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
-	# 		axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
-	# 		try:
-	# 			q = self.data["q"][masks["q"]]
-	# 		except:
-	# 			e1, e2 = self.data["e1"][masks["e1"]], self.data["e2"][masks["e2"]]
-	# 		weight = self.data["weight"][masks["weight"]]
-	# 		weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
-	# 	Num_position = len(positions)
-	# 	Num_shape = len(positions_shape_sample)
-	# 	if print_num:
-	# 		print(
-	# 			f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
-	#
-	# 	LOS_ind = 2  # redshift column #self.data["LOS"]  # eg 2 for z axis
-	# 	not_LOS = [0, 1]  # np.array([0, 1, 2])[np.isin([0, 1, 2], LOS_ind, invert=True)]  # eg 0,1 for x&y
-	# 	try:
-	# 		e = (1 - q ** 2) / (1 + q ** 2)  # size of ellipticity
-	# 	except:
-	# 		e_comp = e1 + 1j * e2
-	# 		e = np.sqrt(e_comp.real ** 2 + e_comp.imag ** 2)
-	# 	R = 1 - np.mean(e ** 2) / 2.0  # responsivity factor
-	# 	L3 = self.boxsize ** 3  # box volume
-	# 	sub_box_len_logrp = (np.log10(self.separation_max) - np.log10(self.separation_min)) / self.num_bins_r
-	# 	sub_box_len_pi = (self.pi_bins[-1] - self.pi_bins[0]) / self.num_bins_pi
-	# 	DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
-	# 	Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
-	# 	Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
-	# 	RR_g_plus = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
-	# 	RR_gg = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
-	# 	variance = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
-	#
-	# 	pos_tree = KDTree(positions, boxsize=self.boxsize)
-	# 	shape_tree = KDTree(positions_shape_sample, boxsize=self.boxsize)
-	# 	ind_min = shape_tree.query_ball_tree(pos_tree, self.separation_min)
-	# 	ind_max = shape_tree.query_ball_tree(pos_tree, self.separation_max)
-	# 	ind_rbin = self.setdiff2D(ind_max, ind_min)
-	# 	del ind_min, ind_max
-	#
-	# 	for n in np.arange(0, len(positions_shape_sample)):
-	# 		# for Splus_D (calculate ellipticities around position sample)
-	# 		separation = self.get_pair_coords(positions_shape_sample[n], positions[ind_rbin[n]],
-	# 										  use_center_origin=False)
-	# 		# separation = positions_shape_sample[n] - positions[ind_rbin[n]]
-	# 		# separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
-	# 		# separation[separation < -self.L_0p5] += self.boxsize
-	# 		projected_sep = separation[:, not_LOS]
-	# 		LOS = separation[:, LOS_ind]
-	# 		separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
-	# 		separation_dir = (projected_sep.transpose() / separation_len).transpose()  # normalisation of rp
-	# 		phi = np.arccos(separation_dir[:, 0] * axis_direction[n, 0] + separation_dir[:, 1] * axis_direction[
-	# 			n, 1])  # [0,pi]
-	# 		e_plus, e_cross = self.get_ellipticity(e[n], phi)
-	# 		e_plus[np.isnan(e_plus)] = 0.0
-	# 		e_cross[np.isnan(e_cross)] = 0.0
-	#
-	# 		# get the indices for the binning
-	# 		mask = (separation_len >= self.bin_edges[0]) * (separation_len < self.bin_edges[-1]) * (
-	# 				LOS >= self.pi_bins[0]) * (LOS < self.pi_bins[-1])
-	# 		ind_r = np.floor(
-	# 			np.log10(separation_len[mask]) / sub_box_len_logrp - np.log10(self.bin_edges[0]) / sub_box_len_logrp
-	# 		)
-	# 		ind_r = np.array(ind_r, dtype=int)
-	# 		ind_pi = np.floor(
-	# 			LOS[mask] / sub_box_len_pi - self.pi_bins[0] / sub_box_len_pi
-	# 		)  # need length of LOS, so only positive values
-	# 		ind_pi = np.array(ind_pi, dtype=int)
-	# 		np.add.at(Splus_D, (ind_r, ind_pi), e_plus[mask] / (2 * R))
-	# 		np.add.at(Scross_D, (ind_r, ind_pi), e_cross[mask] / (2 * R))
-	# 		np.add.at(variance, (ind_r, ind_pi), (e_plus[mask] / (2 * R)) ** 2)
-	# 		np.add.at(DD, (ind_r, ind_pi), 1.0)
-	#
-	# 	if Num_position == Num_shape:
-	# 		DD = DD / 2.0  # auto correlation, all pairs are double
-	#
-	# 	for i in np.arange(0, self.num_bins_r):
-	# 		for p in np.arange(0, self.num_bins_pi):
-	# 			RR_g_plus[i, p] = self.get_random_pairs(
-	# 				self.bin_edges[i + 1], self.bin_edges[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "cross",
-	# 				Num_position, Num_shape)
-	# 			RR_gg[i, p] = self.get_random_pairs(
-	# 				self.bin_edges[i + 1], self.bin_edges[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "auto",
-	# 				Num_position, Num_shape)
-	# 	correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
-	# 	xi_g_cross = Scross_D / RR_g_plus  # (Scross_D - Scross_R) / RR_g_plus
-	# 	sigsq = variance / RR_g_plus ** 2
-	# 	dsep = (self.bin_edges[1:] - self.bin_edges[:-1]) / 2.0
-	# 	separation_bins = self.bin_edges[:-1] + abs(dsep)  # middle of bins
-	# 	dpi = (self.pi_bins[1:] - self.pi_bins[:-1]) / 2.0
-	# 	pi_bins = self.pi_bins[:-1] + abs(dpi)  # middle of bins
-	#
-	# 	if (self.output_file_name != None) & return_output == False:
-	# 		output_file = h5py.File(self.output_file_name, "a")
-	# 		group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_g_plus")
-	# 		write_dataset_hdf5(group, dataset_name, data=correlation)
-	# 		write_dataset_hdf5(group, dataset_name + "_SplusD", data=Splus_D)
-	# 		write_dataset_hdf5(group, dataset_name + "_RR_g_plus", data=RR_g_plus)
-	# 		write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
-	# 		write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
-	# 		write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
-	# 		group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_g_cross")
-	# 		write_dataset_hdf5(group, dataset_name + "_ScrossD", data=Scross_D)
-	# 		write_dataset_hdf5(group, dataset_name, data=xi_g_cross)
-	# 		write_dataset_hdf5(group, dataset_name + "_RR_g_cross", data=RR_g_plus)
-	# 		write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
-	# 		write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
-	# 		write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
-	# 		group = create_group_hdf5(output_file, f"Snapshot_{self.snapshot}/w/xi_gg")
-	# 		write_dataset_hdf5(group, dataset_name, data=(DD / RR_gg) - 1)
-	# 		write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
-	# 		write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
-	# 		write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
-	# 		write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
-	# 		write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
-	# 		output_file.close()
-	# 		return
-	# 	else:
-	# 		return correlation, (DD / RR_gg) - 1, separation_bins, pi_bins
+
 
 	def measure_projected_correlation_save_pairs(self, output_file_pairs="", masks=None, dataset_name="All_galaxies",
 												 print_num=True):
@@ -689,7 +550,7 @@ class MeasureIABase(SimInfo):
 			raise KeyError("Unknown value for corr_type. Choose from [g+, gg, both]")
 		for i in np.arange(0, len(xi_data)):
 			correlation_data_file = h5py.File(self.output_file_name, "a")
-			group = correlation_data_file[f"Snapshot_{self.snapshot}/w/{xi_data[i]}/{jk_group_name}"]
+			group = correlation_data_file[f"{self.snap_group}/w/{xi_data[i]}/{jk_group_name}"]
 			correlation_data = group[dataset_name][:]
 			pi = group[dataset_name + "_pi"]
 			rp = group[dataset_name + "_rp"]
@@ -784,7 +645,7 @@ class MeasureIABase(SimInfo):
 				for m in np.arange(0, len(mu_r[0])):
 					L_m, dL = lpmn(l, sab, mu_r[n, m])  # make associated Legendre polynomial grid
 					L[n, m] = L_m[-1, -1]  # grid ranges from 0 to sab and 0 to l, so last element is what we seek
-			dmur = (self.bins_mu_r[1:] - self.bins_mu_r[:-1])
+			dmur = (self.mu_r_bins[1:] - self.mu_r_bins[:-1])
 			dmu_r_array = np.array(list(dmur) * len(r)).reshape((len(r), len(dmur)))
 			multipoles = (
 					(2 * l + 1)
@@ -796,8 +657,8 @@ class MeasureIABase(SimInfo):
 					* dmu_r_array
 			)
 			multipoles = np.sum(multipoles, axis=1)
-			dsep = (self.bin_edges[1:] - self.bin_edges[:-1]) / 2.0
-			separation = self.bin_edges[:-1] + abs(dsep)  # middle of bins
+			dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
+			separation = self.r_bins[:-1] + abs(dsep)  # middle of bins
 			if return_output:
 				correlation_data_file.close()
 				np.array([separation, multipoles]).transpose()

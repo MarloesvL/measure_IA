@@ -2,63 +2,50 @@ import sympy
 import numpy as np
 from src.measure_jackknife import MeasureJackknife
 
-KPC_TO_KM = 3.086e16  # 1 kpc is 3.086e16 km
-
 
 class MeasureIA(MeasureJackknife):
-	"""Manages the methods used in the MeasureIA package based on speed and input.
+	"""Manages the IA correlation function measurement methods used in the MeasureIA package based on speed and input.
 	This class is used to call the methods that measure w_gg, w_g+ and multipoles for simulations (and observations).
 	Depending on the input parameters, various correlations incl covariance estimates are measured for given data.
 
-	Parameters
-	----------
-	data :
-		Dictionary with data needed for calculations. See specifications for keywords.
-	simulation :
-		Indicator of simulation. Choose from [TNG100, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1_m8, FLAMINGO_L1_m9, FLAMINGO_L1_m10, FLAMINGO_L2p8_m9] for now.
-	snapshot :
-		Number of the snapshot
-	separation_limits :
-		Bounds of the (projected) separation vector length bins in cMpc/h (so, r or r_p)
-	num_bins_r :
-		Number of bins for (projected) separation vector.
-	num_bins_pi :
-		Number of bins for line of sight (LOS) vector, pi.
-	PT :
-		Number indicating particle type
-	LOS_lim :
-		Bound for line of sight bins. Bounds will be [-LOS_lim, LOS_lim]
-	output_file_name :
-		Name and filepath of the file where the output should be stored.
-	boxsize :
-		Specify the boxsize of the simulation if using a simulation that is not in SimInfo
-	periodicity :
-		Set to True (default) to include periodic boundary conditions. False to ignore. Note that the RR
-		terms are calculated analytically for the simulations, so periodicity=False only works for the S+D and DD terms.
-	num_nodes :
-		Number of cores available for multiprocessing. (Influences which method is used)
-
-	Returns
-	-------
+	Notes
+	-----
+	Inherits attributes from 'SimInfo', where 'boxsize', 'L_0p5' and 'snap_group' are used in this class.
+	Inherits attributed from 'MeasureIABase', where 'data', 'output_file_name', 'periodicity', 'Num_position',
+	'Num_shape', 'r_min', 'r_max', 'num_bins_r', 'num_bins_pi', 'r_bins', 'pi_bins', 'mu_r_bins' are used.
 
 	"""
 
 	def __init__(
 			self,
 			data,
+			output_file_name,
 			simulation=None,
 			snapshot=None,
 			separation_limits=[0.1, 20.0],
 			num_bins_r=8,
 			num_bins_pi=20,
-			LOS_lim=None,
-			output_file_name=None,
+			pi_max=None,
 			boxsize=None,
 			periodicity=True,
 			num_nodes=1,
 	):
-		super().__init__(data, simulation, snapshot, separation_limits, num_bins_r, num_bins_pi,
-						 LOS_lim, output_file_name, boxsize, periodicity)
+		"""
+		The __init__ method of the MeasureIA class.
+
+		Parameters
+		----------
+		num_nodes : int, optional
+			Number of cores to be used in multiprocessing. Default is 1.
+
+		Notes
+		-----
+		Constructor parameters 'data', 'output_file_name', 'simulation', 'snapshot', 'separation_limits', 'num_bins_r',
+		'num_bins_pi', 'pi_max', 'boxsize' and 'periodicity' are passed to MeasureIABase.
+
+		"""
+		super().__init__(data, output_file_name, simulation, snapshot, separation_limits, num_bins_r, num_bins_pi,
+						 pi_max, boxsize, periodicity)
 		self.num_nodes = num_nodes
 
 		return
@@ -1025,178 +1012,6 @@ class MeasureIA(MeasureJackknife):
 		self.data = data
 		return
 
-# def measure_xi_multipoles_obs(self, IA_estimator, dataset_name, corr_type, jk_patches=None, randoms_data=None,
-# 							  calc_errors=True, rp_cut=None,
-# 							  masks=None, masks_randoms=None, cosmology=None, over_h=False):
-# 	"""
-# 	Manages the measurement of observational multipoles in MeasureIABase.
-# 	:param IA_estimator: Choose which type of xi estimator is used. Choose "clusters" or "galaxies".
-# 	:param dataset_name: Name of the dataset in the output file.
-# 	:param corr_type: ype of correlation to be measured. Choose from [g+, gg, both].
-# 	:param jk_patches: Directory with entries of the jackknife patches for each sample, named "position", "shape"
-# 	and "random".
-# 	:param randoms_data: Data directory that includes the randoms information in the same form as the data input.
-# 	:param calc_errors: If True, jackknife errors are calculated.
-# 	:param rp_cut: Applies a minimum r_p value condition for pairs to be included. Default is None.
-# 	:param masks: Directory of mask information in the same form as the data input, where the masks are placed over
-# 	the data to apply selections.
-# 	:param masks_randoms: Directory of mask information for the randoms data in the same form as the data input,
-# 	where the masks are placed over the data to apply selections.
-# 	:param cosmology: pyccl cosmology to use in the calculation. If None (default), a default cosmology is used.
-# 	:param over_h: If True, the units are assumed to be in not-over-h and converted to over-h units. Default is False.
-# 	:return:
-# 	"""
-# 	if IA_estimator == "clusters":
-# 		if randoms_data == None:
-# 			print("No randoms given, correlation defined as S+D/DD")
-# 		else:
-# 			print("xi_g+ defined as S+D/SD - S+R/SR, xi_gg as (DS - DR - SR)/RR - 1")
-# 			if masks != None and masks_randoms == None:
-# 				print("Warning, masks given for data vector but not for randoms.")
-# 	elif IA_estimator == "galaxies":
-# 		if randoms_data == None:
-# 			print("No randoms given. Please provide input.")
-# 			exit()
-# 		else:
-# 			print("xi_g+ defined as (S+D - S+R)/RR, xi_gg as (SD - DR - SR)/RR - 1")
-# 			if masks != None and masks_randoms == None:
-# 				print("Warning, masks given for data vector but not for randoms.")
-# 	else:
-# 		raise ValueError("Unknown input for IA_estimator, choose from [clusters, galaxies].")
-#
-# 	if calc_errors and jk_patches == None:
-# 		raise ValueError("No jackknife patches are given, but calc_errors is set to True.")
-#
-# 	# expand to include methods with trees and internal multiproc
-# 	data = self.data  # temporary save so it can be restored at the end of the calculation
-# 	self.randoms_data = randoms_data
-# 	self.randoms_data["RA_shape_sample"] = data["RA_shape_sample"]
-# 	self.randoms_data["DEC_shape_sample"] = data["DEC_shape_sample"]
-# 	self.randoms_data["Redshift_shape_sample"] = data["Redshift_shape_sample"]
-# 	self.randoms_data["e1"] = data["e1"]
-# 	self.randoms_data["e2"] = data["e2"]
-# 	try:
-# 		weight = self.randoms_data["weight_shape_sample"]
-# 	except:
-# 		self.randoms_data["weight_shape_sample"] = np.ones(len(self.randoms_data["RA_shape_sample"]))
-# 	self.data_dir = self.data
-# 	dataset_names = [dataset_name, f"{dataset_name}_randoms"]
-# 	jk_names = ["position", "randoms"]
-#
-# 	# more elaborate to include other types of estimators. Compute all elements, then overwrite the correlation with the correct combination
-# 	for i, self.data in enumerate([self.data_dir, self.randoms_data]):
-# 		try:
-# 			weight = self.data["weight"]
-# 		except:
-# 			self.data["weight"] = np.ones(len(self.data["RA"]))
-# 		try:
-# 			weight = self.data["weight_shape_sample"]
-# 		except:
-# 			self.data["weight_shape_sample"] = np.ones(len(self.data["RA_shape_sample"]))
-# 		self.measure_projected_correlation_multipoles_obs_clusters(masks=masks, dataset_name=dataset_names[i],
-# 																   over_h=over_h, rp_cut=rp_cut,
-# 																   cosmology=cosmology)
-# 	if corr_type == "both" or corr_type == "gg":
-# 		# 	get DR
-# 		self.data = {
-# 			"Redshift": self.data_dir["Redshift"],
-# 			"Redshift_shape_sample": self.randoms_data["Redshift"],
-# 			"RA": self.data_dir["RA"],
-# 			"RA_shape_sample": self.randoms_data["RA"],
-# 			"DEC": self.data_dir["DEC"],
-# 			"DEC_shape_sample": self.randoms_data["DEC"],
-# 		}
-# 		self.count_pairs_xi_grid_multipoles(masks=masks, dataset_name=dataset_name, over_h=over_h,
-# 											cosmology=cosmology,
-# 											data_suffix="_DR", rp_cut=rp_cut)
-# 	if IA_estimator == "galaxies" or corr_type == "both" or corr_type == "gg":
-# 		# 	get RR
-# 		self.data = {
-# 			"Redshift": self.randoms_data["Redshift"],
-# 			"Redshift_shape_sample": self.randoms_data["Redshift"],
-# 			"RA": self.randoms_data["RA"],
-# 			"RA_shape_sample": self.randoms_data["RA"],
-# 			"DEC": self.randoms_data["DEC"],
-# 			"DEC_shape_sample": self.randoms_data["DEC"],
-# 		}
-# 		self.count_pairs_xi_grid_multipoles(masks=masks, dataset_name=dataset_name, over_h=over_h,
-# 											cosmology=cosmology,
-# 											data_suffix="_RR", rp_cut=rp_cut)
-#
-# 	self.obs_estimator([corr_type, "multipoles"], IA_estimator, dataset_name, f"{dataset_name}_randoms")
-# 	self.measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
-# 	if calc_errors:
-# 		for i, self.data in enumerate([self.data_dir, self.randoms_data]):
-# 			if self.num_nodes == 1:
-# 				self.measure_jackknife_realisations_obs(patches_pos=jk_patches[jk_names[i]],
-# 														patches_shape=jk_patches["shape"],
-# 														corr_type=[corr_type, "multipoles"], rp_cut=rp_cut,
-# 														dataset_name=dataset_names[i], over_h=over_h,
-# 														cosmology=cosmology)
-# 			else:
-# 				self.measure_jackknife_realisations_obs_multiprocessing(patches_pos=jk_patches[jk_names[i]],
-# 																		patches_shape=jk_patches["shape"],
-# 																		corr_type=[corr_type, "multipoles"],
-# 																		dataset_name=dataset_names[i],
-# 																		num_nodes=self.num_nodes, over_h=over_h,
-# 																		rp_cut=rp_cut,
-# 																		cosmology=cosmology)
-#
-# 		if corr_type == "both" or corr_type == "gg":
-# 			# 	get DR
-# 			self.data = {
-# 				"Redshift": self.data_dir["Redshift"],
-# 				"Redshift_shape_sample": self.randoms_data["Redshift"],
-# 				"RA": self.data_dir["RA"],
-# 				"RA_shape_sample": self.randoms_data["RA"],
-# 				"DEC": self.data_dir["DEC"],
-# 				"DEC_shape_sample": self.randoms_data["DEC"],
-# 			}
-# 			if self.num_nodes == 1:
-# 				self.measure_jackknife_realisations_obs(patches_pos=jk_patches["position"],
-# 														patches_shape=jk_patches["randoms"],
-# 														corr_type=["gg", "multipoles"],
-# 														dataset_name=dataset_name, over_h=over_h, rp_cut=rp_cut,
-# 														cosmology=cosmology, count_pairs=True, data_suffix="_DR")
-# 			else:
-# 				self.measure_jackknife_realisations_obs_multiprocessing(patches_pos=jk_patches["position"],
-# 																		patches_shape=jk_patches["randoms"],
-# 																		corr_type=["gg", "multipoles"],
-# 																		dataset_name=dataset_name,
-# 																		num_nodes=self.num_nodes, over_h=over_h,
-# 																		rp_cut=rp_cut,
-# 																		cosmology=cosmology, count_pairs=True,
-# 																		data_suffix="_DR")
-# 		if IA_estimator == "galaxies" or corr_type == "both" or corr_type == "gg":
-# 			# 	get RR
-# 			self.data = {
-# 				"Redshift": self.randoms_data["Redshift"],
-# 				"Redshift_shape_sample": self.randoms_data["Redshift"],
-# 				"RA": self.randoms_data["RA"],
-# 				"RA_shape_sample": self.randoms_data["RA"],
-# 				"DEC": self.randoms_data["DEC"],
-# 				"DEC_shape_sample": self.randoms_data["DEC"],
-# 			}
-# 			if self.num_nodes == 1:
-# 				self.measure_jackknife_realisations_obs(patches_pos=jk_patches["randoms"],
-# 														patches_shape=jk_patches["randoms"],
-# 														corr_type=["gg", "multipoles"],
-# 														dataset_name=dataset_name, over_h=over_h, rp_cut=rp_cut,
-# 														cosmology=cosmology, count_pairs=True, data_suffix="_RR")
-# 			else:
-# 				self.measure_jackknife_realisations_obs_multiprocessing(patches_pos=jk_patches["randoms"],
-# 																		patches_shape=jk_patches["randoms"],
-# 																		corr_type=["gg", "multipoles"],
-# 																		dataset_name=dataset_name,
-# 																		num_nodes=self.num_nodes, over_h=over_h,
-# 																		rp_cut=rp_cut,
-# 																		cosmology=cosmology, count_pairs=True,
-# 																		data_suffix="_RR")
-# 		# rewrite method to be adaptable to all types of estimators
-# 		self.measure_jackknife_errors_obs(IA_estimator=IA_estimator, max_patch=max(jk_patches['shape']),
-# 										  min_patch=min(jk_patches["shape"]),
-# 										  corr_type=[corr_type, "multipoles"],
-# 										  dataset_name=dataset_name, randoms_suf="_randoms")
-# 	self.data = data
-#
-# 	return
+
+if __name__ == "__main__":
+	pass

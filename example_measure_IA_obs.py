@@ -62,7 +62,7 @@ data = {"Redshift": z,  # redshift of D sample
 		"e2": e2}  # e2 of S sample
 
 MeasureIA_validation_obs = MeasureIA(data, simulation=False,
-									 separation_limits=separation_limits, LOS_lim=LOS_lims,
+									 separation_limits=separation_limits, pi_max=LOS_lims,
 									 num_bins_r=num_bins_r, num_nodes=num_nodes,
 									 num_bins_pi=num_bins_pi, output_file_name=data_path_out + file_name)
 dataset_name = "test"

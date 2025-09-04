@@ -41,7 +41,7 @@ data_dir = {
 dataset_name = "test"
 
 MeasureIA_validation = MeasureIA(data_dir, simulation=simulation, snapshot=snapshot,
-								 separation_limits=r_lims, LOS_lim=LOS_lim,
+								 separation_limits=r_lims, pi_max=LOS_lim,
 								 num_bins_r=num_r, num_nodes=num_nodes,
 								 num_bins_pi=num_pi, output_file_name=outfile, periodicity=periodicity)
 # calculate wg+
