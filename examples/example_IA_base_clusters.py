@@ -1,10 +1,8 @@
 import h5py
-import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits
 from astropy.table import Table
-from src.measure_IA_base import MeasureIABase
-from src.read_data import ReadData
+from measure_IA_base import MeasureIABase
 from src.plotting import *
 
 file_path_randoms = ""

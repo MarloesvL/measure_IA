@@ -1,7 +1,7 @@
 import h5py
 import numpy as np
-from src.Sim_info import SimInfo
-from src.write_data import *
+from Sim_info import SimInfo
+from write_data import *
 
 
 class ReadData(SimInfo):

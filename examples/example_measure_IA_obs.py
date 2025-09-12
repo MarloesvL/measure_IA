@@ -1,5 +1,5 @@
 import numpy as np
-from src.measure_IA import MeasureIA
+from measure_IA import MeasureIA
 
 # data
 RA = np.array([])  # RA of clusters
@@ -24,7 +24,7 @@ num_bins_r = 10  # number of r or rp bins
 num_bins_pi = 20  # number of pi bins. (trivial for wg+, not too little for multipoles)
 separation_limits = [2.5 / h, 140.0 / h]  # Mpc
 LOS_lims = 100. / h  # pi max value
-data_path_out = "./"  # file path to output data
+data_path_out = "../"  # file path to output data
 file_name = "test_IA.hdf5"  # datafile name (must be hdf5)
 num_nodes = 5  # number of CPU cores available for calculation
 

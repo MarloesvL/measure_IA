@@ -217,6 +217,6 @@ __marimo__/
 
 # custom
 src_old
-example_multiprocessing.py
+examples/example_multiprocessing.py
 ../measure_SV_sims/create_mock_data.py
 site/

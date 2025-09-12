@@ -1,5 +1,5 @@
 import numpy as np
-from src.measure_IA import MeasureIA
+from measure_IA import MeasureIA
 
 # parameters for MeasureIA object
 simulation = "TNG300"  # Indicator of simulation.
@@ -16,7 +16,7 @@ LOS_lim = None  # pi max value
 periodicity = True  # take periodic boundary conditions into account
 
 # parameters for methods
-tree_path = f"./"  # path where tree can be temporarily stored. For large samples this file can grow large.
+tree_path = f"../"  # path where tree can be temporarily stored. For large samples this file can grow large.
 # If tree_path=None, no trees will be used (slower calculation)
 calc_errors = True  # If true, jackknife errors are calculated (Default is True)
 num_jk = 27  # number of jackknife regions. Must be x^3 with x and int.

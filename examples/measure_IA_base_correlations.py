@@ -1,5 +1,5 @@
 import numpy as np
-from src.measure_IA_base import MeasureIABase
+from measure_IA_base import MeasureIABase
 
 # creating random sample data
 positions = np.random.rand(100, 3) * 100  # in cMpc, so boxlength is 100 cMpc here

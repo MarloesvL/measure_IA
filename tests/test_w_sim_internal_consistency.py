@@ -1,6 +1,5 @@
-import h5py
 import numpy as np
-from src.read_data import ReadData
+from read_data import ReadData
 
 
 def test_compare_saved_output(IA_mock_TNG300_n8):

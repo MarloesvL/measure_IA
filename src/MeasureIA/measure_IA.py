@@ -1,6 +1,6 @@
 import sympy
 import numpy as np
-from src.measure_jackknife import MeasureJackknife
+from measure_jackknife import MeasureJackknife
 
 
 class MeasureIA(MeasureJackknife):
