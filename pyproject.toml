@@ -1,0 +1,24 @@
+[project]
+name = "MeasureIA"
+version = "0.1.0"
+description = "Add your description here"
+authors = [{ name = "Marloes van Heukelum", email = "m.l.vanheukelum@uu.nl" }]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "astropy~=6.1.0",
+    "h5py~=3.10.0",
+    "kmeans-radec",
+    "matplotlib~=3.10.6",
+    "numpy~=1.26.2",
+    "pathos~=0.3.1",
+    "pyccl~=3.2",
+    "scipy~=1.11.4",
+    "sympy~=1.12",
+]
+
+[dependency-groups] # doc packages also in dev
+dev = ["pytest~=8.3.1"]
+
+[tool.uv.sources]
+kmeans-radec = { git = "https://github.com/esheldon/kmeans_radec" }
