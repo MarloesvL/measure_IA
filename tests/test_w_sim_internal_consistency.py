@@ -1,5 +1,5 @@
 import numpy as np
-from read_data import ReadData
+from MeasureIA.read_data import ReadData
 
 
 def test_compare_saved_output(IA_mock_TNG300_n8):

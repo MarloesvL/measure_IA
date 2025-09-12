@@ -2,11 +2,11 @@ import numpy as np
 import h5py
 import os
 from pathos.multiprocessing import ProcessingPool
-from write_data import write_dataset_hdf5, create_group_hdf5
-from measure_w_sims import MeasureWSimulations
-from measure_m_sims import MeasureMultipolesSimulations
-from measure_w_obs import MeasureWObservations
-from measure_m_obs import MeasureMultipolesObservations
+from .write_data import write_dataset_hdf5, create_group_hdf5
+from .measure_w_sims import MeasureWSimulations
+from .measure_m_sims import MeasureMultipolesSimulations
+from .measure_w_obs import MeasureWObservations
+from .measure_m_obs import MeasureMultipolesObservations
 from astropy.cosmology import LambdaCDM
 
 cosmo = LambdaCDM(H0=69.6, Om0=0.286, Ode0=0.714)

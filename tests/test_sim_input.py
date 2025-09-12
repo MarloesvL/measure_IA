@@ -1,4 +1,4 @@
-from measure_IA import MeasureIA
+from MeasureIA import MeasureIA
 
 
 def test_sim_input():
