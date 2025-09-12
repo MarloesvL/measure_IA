@@ -7,13 +7,71 @@ Furthermore, the jackknife method is used to estimate the covariance matrix.
 Outputs are saved in hdf5 files.
 This package was developed for [link to paper].
 
+#### WARNING: this package is still in a development phase and this is therefore a beta-version.
+
 ## Installation
-Information about installation needs to be added once this is an actual installable package.
+
+This package is currently still in a development phase and therefore not pip-installable. However, this will be
+available in the future. The beta-version of this package can be installed.
+
+### Install beta-version
+
+The easiest way to install MeasureIA and its dependencies is using uv.
+
+First, install uv (see https://docs.astral.sh/uv/getting-started/installation/).
+Then clone the repository using either option:
+
+```angular2html
+git clone git@github.com:MarloesvL/measure_IA_sims.git
+git clone https://github.com/MarloesvL/measure_IA_sims.git
+```
+
+Next, navigate into the directory in your terminal (using cd).
+Then run the command:
+
+```angular2html
+uv sync
+```
+
+This will create a virtual environment with all the dependencies needed for this package.
+Either activate the virtual environment created by uv, or run scripts directly using:
+
+```angular2html
+uv run [script_name].py
+```
+
+#### Installing without uv
+
+If you do not want to use uv, you can also install dependencies the provided requirements.txt document.
+Note that you need to also download the kmeans-radec repository (https://github.com/esheldon/kmeans_radec) in this case.
+Also, make sure your Python version is compatible. This package has been set up to use Python 3.11.
+Both the extra repository and the python version are handeled by uv automatically so please consider using this for
+easy installation.
 
 ## Usage
-See the example script 'example_measure_IA_sims.py' for a short example on how this package can be used.
-Explanations on various input parameters are explained in the comments.
-Note that this script is not meant to run; it does not include data.
+
+See the example script 'example_measure_IA_sims.py' or the jupyter notebook 'example_measureIA_sims.ipynb' in the
+examples directory for short examples on how this package can be used.
+Explanations on various input parameters are explained in the comments (and more fully in the docstrings of the methods
+and classes).
+Given the data dictionary in the correct format, the methods (with all optional parameters as their default)
+can be called as follows:
+
+```angular2html
+MeasureIA_validation = MeasureIA(data=data_dict, output_file_name="./outfile_name.hdf5", boxsize=205.)
+# measure wgg, wg+
+MeasureIA_validation.measure_xi_w(dataset_name=dataset_name, corr_type="both", num_jk=27)
+# measure multipoles
+MeasureIA_validation.measure_xi_multipoles(dataset_name=dataset_name, corr_type="both", num_jk=27)
+```
+
+It is advisable to check out all the optional inputs in the examples.
+
+## Documentation
+
+The documentation for this package is still under development (see roadmap). Currently, the methods meant for use and
+the inits of all classes have docstrings that provide the information needed. Please feel free to contact me for any
+additional questions.
 
 ## Output file structure
 Your output file with your own input of [output_file_name, snapshot, dataset_name, num_jk] will have the following structure:
@@ -73,6 +131,25 @@ If you choose to measure multipoles instead of wg+, all 'w' will be replaced by 
 For the multipoles, all xi_g+, DD (etc) grids are in (r, mu_r), not in (r_p, pi) and the suffixes of the bin values are also replaced by '_r' and '_mu_r' accordingly.
 In one file, multiple redshift (snapshot) measurements can be saved without being overwritten, as well as the jackknife
 information for different numbers of jackknife realisations (num_jk) for the same dataset.
+
+## Roadmap
+
+Upcoming developments include adding docstrings for all (internal) methods; creating a documentation website; extending
+the tests; validating the lightcone methods further and adding the Landy-Salazy estimator for the lightcone code.
+Once the lightcone code is sufficiently validated, multiprocessing methods will be added there too.
+Further down the road, another speed update may be added for the box methods; along with more variability
+in definitions (e.g. optional resposivity factor).
+
+## Requests
+
+### Bugs
+
+If you find a bug, please report it in a GitHub issue.
+
+### Features
+
+If you would like a feature added, please create an issue with the request. Within the issue, we can discuss how best
+to proceed and what the timeline will be. Pull requests that have not been discussed beforehand will not be accepted.
 
 ## License
 
