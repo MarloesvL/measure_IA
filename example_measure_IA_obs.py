@@ -68,7 +68,7 @@ MeasureIA_validation_obs = MeasureIA(data, simulation=False,
 dataset_name = "test"
 # measure wg+
 MeasureIA_validation_obs.measure_xi_w_obs("clusters", dataset_name, corr_type, jk_patches=patches, randoms_data=data_r,
-										  calc_errors=calc_errors, masks=masks, masks_randoms=masks_randoms,
+										  measure_cov=calc_errors, masks=masks, masks_randoms=masks_randoms,
 										  cosmology=cosmology,
 										  over_h=over_h)
 # measure multipoles

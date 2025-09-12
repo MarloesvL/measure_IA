@@ -3,7 +3,7 @@ from src.measure_IA import MeasureIA
 
 # parameters for MeasureIA object
 simulation = "TNG300"  # Indicator of simulation.
-# Choose from [TNG100, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1_m8, FLAMINGO_L1_m9, FLAMINGO_L1_m10, FLAMINGO_L2p8_m9] for now.
+# Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, FLAMINGO_L2p8] for now.
 # If your simulation is not included: input None and make sure to add the boxsize input parameter in the object creation.
 # If this is used, the boxsize is in Mpc/h so the positions and r/rp limits must also be in these units.
 snapshot = 99  # Number of snapshot - for saving the output in group 'Snapshot_99'
