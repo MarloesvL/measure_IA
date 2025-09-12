@@ -29,7 +29,7 @@ Your output file with your own input of [output_file_name, snapshot, dataset_nam
 	│	├── [dataset_name]_jackknife_[num_jk]			sqrt of diagonal of covariance matrix (size of errorbars)
 	│	└── [dataset_name]_jk[num_jk]					group containing all jackknife realisations for this dataset
 	│		├── [dataset_name]_[i]						jackknife realisations with i running from 0 to num_jk - 1
-	│		└── [dataset_name]_[i]_rp					r_p bin values of each jackknife realistation
+	│		└── [dataset_name]_[i]_rp					r_p bin values of each jackknife realisation
 	├── w_g_plus
 	│	├── [dataset_name]								w_g+ values for each r_p bin
 	│	├── [dataset_name]_rp							r_p mean bin values
@@ -38,7 +38,7 @@ Your output file with your own input of [output_file_name, snapshot, dataset_nam
 	│	├── [dataset_name]_jackknife_[num_jk]			sqrt of diagonal of covariance matrix (size of errorbars)
 	│	└── [dataset_name]_jk[num_jk]					group containing all jackknife realisations for this dataset
 	│		├── [dataset_name]_[i]						jackknife realisations with i running from 0 to num_jk - 1
-	│		└── [dataset_name]_[i]_rp					r_p bin values of each jackknife realistation
+	│		└── [dataset_name]_[i]_rp					r_p bin values of each jackknife realisation
 	└──  w
 		├── xi_gg
 		│	├── [dataset_name]							xi_gg grid in (r_p,pi)
