@@ -21,7 +21,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 	Notes
 	-----
 	Inherits attributes from 'SimInfo', where 'boxsize', 'L_0p5' and 'snap_group' are used in this class.
-	Inherits attributed from 'MeasureIABase', where 'data', 'output_file_name', 'periodicity', 'Num_position',
+	Inherits attributes from 'MeasureIABase', where 'data', 'output_file_name', 'periodicity', 'Num_position',
 	'Num_shape', 'r_min', 'r_max', 'num_bins_r', 'num_bins_pi', 'r_bins', 'pi_bins', 'mu_r_bins' are used.
 	"""
 
@@ -52,7 +52,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 		return
 
 	def _measure_jackknife_covariance_sims(
-			self, masks=None, corr_type=["both", "multipoles"], dataset_name="All_galaxies", L_subboxes=3, rp_cut=None,
+			self, dataset_name, masks=None, corr_type=None, L_subboxes=3, rp_cut=None,
 			tree_saved=True, file_tree_path=None, remove_tree_file=True, num_nodes=None
 	):
 		"""Measures the errors in the projected correlation function using the jackknife method.
@@ -61,31 +61,31 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 
 		Parameters
 		----------
-		rp_cut :
-			Limit for minimum r_p value for pairs to be included. (Needed for measure_projected_correlation_multipoles) (Default value = None)
-		corr_type :
-			Array with two entries. For first choose from [gg, g+, both], for second from [w, multipoles] (Default value = ["both")
-		dataset_name :
-			Name of the dataset (Default value = "All_galaxies")
-		L_subboxes :
-			Integer by which the length of the side of the mox should be divided. (Default value = 3)
-		masks :
-			 (Default value = None)
-		"multipoles"] :
-
-		tree_saved :
-			 (Default value = True)
-		file_tree_path :
-			 (Default value = None)
-		remove_tree_file :
-			 (Default value = True)
-		num_nodes :
-			 (Default value = None)
-
-		Returns
-		-------
+		dataset_name : str
+			Name of the dataset in the output file.
+		masks : dict or NoneType, optional
+			See MeasureIA methods. Default is None.
+		corr_type : iterable with 2 str entries, optional
+			Array with two entries. For first choose from [gg, g+, both], for second from [w, multipoles].
+			Default = ["both","multipoles"].
+		L_subboxes : int, optional
+			Integer by which the length of the side of the box should be divided. Total number of jackknife realisations
+			will be L_subboxes^3. Default is 3.
+		rp_cut : float or NoneType, optional
+			See MeasureIA.measure_xi_multipoles. Default is None.
+		tree_saved : bool, optional
+			If True, a method using trees has been used in the correlation measurement and the tree information is
+			saved. Default is True.
+		file_tree_path : str or NoneType, optional
+			Data path to tree information. See MeasureIA methods. Default is None.
+		remove_tree_file : bool, optional
+			If True, the tree information file is removed after the jackknife covariance is measured. Default is True.
+		num_nodes : int or NoneType, optional
+			Number of cores to be used in multiprocessing. Default is None.
 
 		"""
+		if corr_type is None:
+			corr_type = ["both", "multipoles"]
 		if corr_type[0] == "both":
 			data = [corr_type[1] + "_g_plus", corr_type[1] + "_gg"]
 		elif corr_type[0] == "g+":
@@ -255,7 +255,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 			return covs, stds
 
 	def _measure_jackknife_covariance_sims_multiprocessing(
-			self, masks=None, corr_type=["both", "multipoles"], dataset_name="All_galaxies", L_subboxes=3, rp_cut=None,
+			self, masks=None, corr_type=None, dataset_name="All_galaxies", L_subboxes=3, rp_cut=None,
 			num_nodes=4, twoD=False, tree=True, tree_saved=True, file_tree_path=None, remove_tree_file=True,
 			save_jk_terms=False
 	):
@@ -274,21 +274,21 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 		L_subboxes :
 			Integer by which the length of the side of the mox should be divided. (Default value = 3)
 		rp_cut :
-			Limit for minimum r_p value for pairs to be included. (Needed for measure_projected_correlation_multipoles) (Default value = None)
+			Limit for minimum r_p value for pairs to be included. (Needed for measure_projected_correlation_multipoles) Default is None
 		corr_type :
 			Array with two entries. For first choose from [gg, g+, both], for second from [w, multipoles] (Default value = ["both")
 		masks :
-			 (Default value = None)
+			 Default is None
 		"multipoles"] :
 
 		tree :
-			 (Default value = True)
+			 Default is True
 		tree_saved :
-			 (Default value = True)
+			 Default is True
 		file_tree_path :
-			 (Default value = None)
+			 Default is None
 		remove_tree_file :
-			 (Default value = True)
+			 Default is True
 		save_jk_terms :
 			 (Default value = False)
 
@@ -299,15 +299,15 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 		if corr_type[0] == "both":
 			data = [corr_type[1] + "_g_plus", corr_type[1] + "_gg"]
 			corr_type_suff = ["_g_plus", "_gg"]
-			jk_terms = ["Splus_D", "DD"]
+			jk_terms = ["SplusD", "DD"]
 		elif corr_type[0] == "g+":
 			data = [corr_type[1] + "_g_plus"]
 			corr_type_suff = ["_g_plus"]
-			jk_terms = ["Splus_D"]
+			jk_terms = ["SplusD"]
 		elif corr_type[0] == "gg":
 			data = [corr_type[1] + "_g_plus", corr_type[1] + "_gg"]
 			corr_type_suff = ["_g_plus", "_gg"]
-			jk_terms = ["Splus_D", "DD"]
+			jk_terms = ["SplusD", "DD"]
 			corr_type[0] = 'both'  # will write away wrong data at the end (j,data_j loop) if gg only
 		# todo: update this to only do gg (count pairs methods) if asked
 		# data = [corr_type[1] + "_gg"]
@@ -494,7 +494,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 					if save_jk_terms:
 						write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i]}_{jk_terms[j]}",
 										   data=result[i][4 + j])
-						write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i]}_RR_{corr_type_suff[j]}",
+						write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i]}_RR{corr_type_suff[j]}",
 										   data=result[i][6])
 			# write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i]}_sigmasq", data=result[i][3])
 			output_file.close()
@@ -551,7 +551,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 			return covs, stds
 
 	def _measure_jackknife_realisations_obs(
-			self, patches_pos, patches_shape, masks=None, corr_type=["both", "multipoles"], dataset_name="All_galaxies",
+			self, patches_pos, patches_shape, masks=None, corr_type=None, dataset_name="All_galaxies",
 			rp_cut=None, over_h=False, cosmology=None, count_pairs=False, data_suffix="", num_sample_names=["S", "D"]
 	):
 		"""Measures the errors in the projected correlation function using the jackknife method.
@@ -561,7 +561,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 		Parameters
 		----------
 		rp_cut :
-			Limit for minimum r_p value for pairs to be included. (Needed for measure_projected_correlation_multipoles) (Default value = None)
+			Limit for minimum r_p value for pairs to be included. (Needed for measure_projected_correlation_multipoles) Default is None
 		corr_type :
 			Array with two entries. For first choose from [gg, g+, both], for second from [w, multipoles] (Default value = ["both")
 		dataset_name :
@@ -573,13 +573,13 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 		patches_shape :
 
 		masks :
-			 (Default value = None)
+			 Default is None
 		"multipoles"] :
 
 		over_h :
 			 (Default value = False)
 		cosmology :
-			 (Default value = None)
+			 Default is None
 		count_pairs :
 			 (Default value = False)
 		data_suffix :
@@ -634,12 +634,12 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 			}
 			if corr_type[1] == "multipoles":
 				if count_pairs:
-					self._count_pairs_xi_rp_pi_obs_brute(masks=masks_total, dataset_name=dataset_name + "_" + str(i),
+					self._count_pairs_xi_r_mur_obs_brute(masks=masks_total, dataset_name=dataset_name + "_" + str(i),
 														 over_h=over_h, cosmology=cosmology, print_num=False,
 														 data_suffix=data_suffix, rp_cut=rp_cut,
 														 jk_group_name=f"{dataset_name}_jk{num_patches}")
 				else:
-					self._measure_xi_rp_pi_obs_brute(
+					self._measure_xi_r_mur_obs_brute(
 						masks=masks_total,
 						rp_cut=rp_cut,
 						dataset_name=dataset_name + "_" + str(i),
@@ -667,7 +667,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 		return
 
 	def _measure_jackknife_covariance_obs(
-			self, IA_estimator, max_patch, min_patch=1, corr_type=["both", "multipoles"], dataset_name="All_galaxies",
+			self, IA_estimator, max_patch, min_patch=1, corr_type=None, dataset_name="All_galaxies",
 			randoms_suf="_randoms"
 	):
 		"""Measures the errors in the projected correlation function using the jackknife method.
@@ -766,7 +766,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 			return covs, stds
 
 	def _measure_jackknife_realisations_obs_multiprocessing(
-			self, patches_pos, patches_shape, masks=None, corr_type=["both", "multipoles"], dataset_name="All_galaxies",
+			self, patches_pos, patches_shape, masks=None, corr_type=None, dataset_name="All_galaxies",
 			rp_cut=None, over_h=False, num_nodes=4, cosmology=None, count_pairs=False, data_suffix="",
 			num_sample_names=["S", "D"]
 	):
@@ -785,7 +785,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 		L_subboxes :
 			Integer by which the length of the side of the mox should be divided.
 		rp_cut :
-			Limit for minimum r_p value for pairs to be included. (Needed for measure_projected_correlation_multipoles) (Default value = None)
+			Limit for minimum r_p value for pairs to be included. (Needed for measure_projected_correlation_multipoles) Default is None
 		corr_type :
 			Array with two entries. For first choose from [gg, g+, both], for second from [w, multipoles] (Default value = ["both")
 		patches_pos :
@@ -793,13 +793,13 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 		patches_shape :
 
 		masks :
-			 (Default value = None)
+			 Default is None
 		"multipoles"] :
 
 		over_h :
 			 (Default value = False)
 		cosmology :
-			 (Default value = None)
+			 Default is None
 		count_pairs :
 			 (Default value = False)
 		data_suffix :
@@ -903,7 +903,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 			if corr_type[1] == "multipoles":
 				if count_pairs:
 					result = ProcessingPool(nodes=len(chunck)).map(
-						self._count_pairs_xi_rp_pi_obs_brute,
+						self._count_pairs_xi_r_mur_obs_brute,
 						args_xi_g_plus[chunck][:, 0],
 						args_xi_g_plus[chunck][:, 1],
 						args_xi_g_plus[chunck][:, 2],
@@ -915,7 +915,7 @@ class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, Measur
 					)
 				else:
 					result = ProcessingPool(nodes=len(chunck)).map(
-						self._measure_xi_rp_pi_obs_brute,
+						self._measure_xi_r_mur_obs_brute,
 						args_xi_g_plus[chunck][:, 0],
 						args_xi_g_plus[chunck][:, 1],
 						args_xi_g_plus[chunck][:, 2],

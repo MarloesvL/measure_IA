@@ -54,7 +54,7 @@ Your output file with your own input of [output_file_name, snapshot, dataset_nam
 		│	├── [dataset_name]_rp						r_p mean bin values
 		│	├── [dataset_name]_pi						pi mean bin values
 		│	├── [dataset_name]_RR_g_plus				RR grid in (r_p,pi)
-		│	├── [dataset_name]_SplusD					S+D grid in (r_p,pi) (pair counts)
+		│	├── [dataset_name]_SplusD					S+D grid in (r_p,pi)
 		│	└── [dataset_name]_jk[num_jk]				group containing all jackknife realisations for this dataset
 		│		├── [dataset_name]_[i] 					jackknife realisations with i running from 0 to num_jk - 1
 		│		└── [dataset_name]_[i]_[x]				with x in [rp, pi, RR_g_plus, SplusD] as above

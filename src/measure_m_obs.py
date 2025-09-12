@@ -16,7 +16,7 @@ class MeasureMultipolesObservations(MeasureIABase):
 	Notes
 	-----
 	Inherits attributes from 'SimInfo', where 'boxsize', 'L_0p5' and 'snap_group' are used in this class.
-	Inherits attributed from 'MeasureIABase', where 'data', 'output_file_name', 'periodicity', 'Num_position',
+	Inherits attributes from 'MeasureIABase', where 'data', 'output_file_name', 'periodicity', 'Num_position',
 	'Num_shape', 'r_min', 'r_max', 'num_bins_r', 'num_bins_pi', 'r_bins', 'pi_bins', 'mu_r_bins' are used.
 
 	"""
@@ -47,7 +47,7 @@ class MeasureMultipolesObservations(MeasureIABase):
 						 pi_max, boxsize, periodicity)
 		return
 
-	def _measure_xi_rp_pi_obs_brute(self, masks=None, dataset_name="All_galaxies",
+	def _measure_xi_r_mur_obs_brute(self, masks=None, dataset_name="All_galaxies",
 									return_output=False,
 									print_num=True, over_h=True, cosmology=None, rp_cut=None,
 									jk_group_name=""
@@ -223,7 +223,7 @@ class MeasureMultipolesObservations(MeasureIABase):
 		else:
 			return Splus_D, DD, separation_bins, mu_r_bins
 
-	def _count_pairs_xi_rp_pi_obs_brute(self, masks=None, dataset_name="All_galaxies",
+	def _count_pairs_xi_r_mur_obs_brute(self, masks=None, dataset_name="All_galaxies",
 										return_output=False,
 										print_num=True, over_h=False, cosmology=None, rp_cut=None,
 										data_suffix="_DD", jk_group_name=""

@@ -1,17 +1,14 @@
 def write_dataset_hdf5(group, name, data):
-	"""Deletes a dataset with the name of the dataset we want to create if it exists before creating the desired dataset.
+	"""Creates the desired dataset, overwriting if there is already one with that name.
 
 	Parameters
 	----------
-	group :
+	group : <class 'h5py._hl.group.Group'>
 		link to group in datafile
 	name :
 		name of desired dataset
 	data :
 		the data
-
-	Returns
-	-------
 
 	"""
 	try:
@@ -28,14 +25,14 @@ def create_group_hdf5(file, name):
 
 	Parameters
 	----------
-	file :
+	file : <class 'h5py._hl.files.File'>
 		hdf5 file
-	name :
+	name : str
 		path of groups (e.g. group1/group2)
 
 	Returns
 	-------
-	type
+	<class 'h5py._hl.group.Group'>
 		link to the last group in the path
 
 	"""

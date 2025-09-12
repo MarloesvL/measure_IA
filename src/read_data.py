@@ -3,6 +3,7 @@ import numpy as np
 from src.Sim_info import SimInfo
 from src.write_data import *
 
+
 class ReadData(SimInfo):
 	"""
 	Class to read different hdf5 data files.
@@ -24,6 +25,7 @@ class ReadData(SimInfo):
 	Inherits attributes from 'SimInfo', where 'snap_group', 'snap_folder' and 'fof_folder' are used in this class.
 
 	"""
+
 	def __init__(
 			self, simulation, catalogue, snapshot, sub_group="", output_file_name=None, data_path="./data/raw/"
 	):
@@ -50,7 +52,7 @@ class ReadData(SimInfo):
 		"""
 		SimInfo.__init__(self, simulation, snapshot, boxsize=None, file_info=True)
 		self.catalogue = catalogue
-		self.sub_group = sub_group
+		self.sub_group = sub_group + "/"
 		self.data_path = data_path + "/"
 		self.output_file_name = output_file_name
 		return

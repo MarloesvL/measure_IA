@@ -119,11 +119,7 @@ class SimInfo:
 		return
 
 	def get_file_info(self):
-		"""
-		Creates N_files, fof_folder and snap_folder attributed needed by ReadData class.
-		Returns
-		-------
-
+		"""Creates N_files, fof_folder and snap_folder attributed needed by ReadData class.
 		"""
 
 		if self.simname == "TNG100":

@@ -8,10 +8,26 @@ class MeasureIA(MeasureJackknife):
 	This class is used to call the methods that measure w_gg, w_g+ and multipoles for simulations (and observations).
 	Depending on the input parameters, various correlations incl covariance estimates are measured for given data.
 
+	Attributes
+	----------
+	randoms_data : dict or NoneType
+		Dictionary with data of the randoms needed for lightcone-type measurements.
+		The keywords are:
+		'Redshift' and 'Redshift_shape_sample': (N_p) and (N_s) ndarray with redshifts of position and shape samples.
+		'RA' and 'RA_shape_sample': (N_p) and (N_s) ndarray with RA coordinate of position and shape samples.
+		'DEC' and 'DEC_shape_sample': (N_p) and (N_s) ndarray with DEC coordinate of position and shape samples.
+		If only 'Redshift', 'RA' and 'DEC' are added, the sample will be used for both position and shape sample randoms.
+	data_dir : dict or NoneType
+		Temporary storage space for added data directory to allow for flexibility in passing data or randoms to internal
+		methods.
+	num_samples : dict or NoneType
+		Dictionary containing the numbers of objects for each sample for lightcone-type measurements. Filled internally,
+		no input needed.
+
 	Notes
 	-----
 	Inherits attributes from 'SimInfo', where 'boxsize', 'L_0p5' and 'snap_group' are used in this class.
-	Inherits attributed from 'MeasureIABase', where 'data', 'output_file_name', 'periodicity', 'Num_position',
+	Inherits attributes from 'MeasureIABase', where 'data', 'output_file_name', 'periodicity', 'Num_position',
 	'Num_shape', 'r_min', 'r_max', 'num_bins_r', 'num_bins_pi', 'r_bins', 'pi_bins', 'mu_r_bins' are used.
 
 	"""
@@ -47,40 +63,43 @@ class MeasureIA(MeasureJackknife):
 		super().__init__(data, output_file_name, simulation, snapshot, separation_limits, num_bins_r, num_bins_pi,
 						 pi_max, boxsize, periodicity)
 		self.num_nodes = num_nodes
+		self.randoms_data = None
+		self.data_dir = None
+		self.num_samples = None
 
 		return
 
-	def measure_xi_w(self, dataset_name, corr_type, num_jk=0, calc_errors=True, file_tree_path=None, masks=None,
+	def measure_xi_w(self, dataset_name, corr_type, num_jk=0, measure_cov=True, file_tree_path=None, masks=None,
 					 remove_tree_file=True, save_jk_terms=False):
-		"""Manages the various measure_projected_correlation options in MeasureIABase.
+		"""Measures xi_gg, xi_g+ and w_gg, w_g+ including jackknife covariance if desired.
+		Manages the various _measure_xi_rp_pi_sims and _measure_jackknife_covariance_sims options in MeasureWSimulations
+		and MeasureJackknife.
 
 		Parameters
 		----------
-		dataset_name :
+		dataset_name : str
 			Name of the dataset in the output file.
-		corr_type :
+		corr_type : str
 			Type of correlation to be measured. Choose from [g+, gg, both].
-		num_jk :
-			Number of jackknife regions (needs to be x^3, with x an int) for the error calculation. (Default value = 0)
-		calc_errors :
-			If True, jackknife errors are calculated. (Default value = True)
-		file_tree_path :
-			Path to where the tree information is temporarily stored. If None (default), no trees
-			are used in the calculation. Note that the use of trees speeds up the calculations significantly.
-		masks :
-			Directory of mask information in the same form as the data input, where the masks are placed over
-			the data to apply selections. (Default value = None)
-		remove_tree_file :
-			If True (default), the file that stores the tree information is removed after the
-			calculations.
-		save_jk_terms :
-			 (Default value = False)
-
-		Returns
-		-------
+		num_jk : int, optional
+			Number of jackknife regions (needs to be x^3, with x an int) for the covariance measurement. Default is 0.
+		measure_cov : bool, optional
+			If True, jackknife covariance is measured. Default is True
+		file_tree_path : str or NoneType, optional
+			Path to where the tree information is temporarily stored [file name generated automatically].
+			If None (default), no trees are used in the calculation.
+			Note that the use of trees speeds up the calculations significantly.
+		masks : dict or NoneType, optional
+			Directory of mask information in the same form as the data dictionary, where the masks are placed over
+			the data to apply selections. Default is None.
+		remove_tree_file : bool, optional
+			If True (default), the file that stores the tree information is removed after the measurements.
+		save_jk_terms : bool, optional
+			If True, DD and S+D terms of the jackknife realisations are also saved in the output file.
+			These terms are automatically saved when only 1 core is used in the measurements. Default is False.
 
 		"""
-		if calc_errors:
+		if measure_cov:
 			try:
 				assert sympy.integer_nthroot(num_jk, 3)[1]
 				L = sympy.integer_nthroot(num_jk, 3)[0]
@@ -126,7 +145,7 @@ class MeasureIA(MeasureJackknife):
 												 return_output=False, print_num=True, dataset_name_tree=None,
 												 save_tree=save_tree, file_tree_path=file_tree_path)
 				self._measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
-				if calc_errors:
+				if measure_cov:
 					self._measure_jackknife_covariance_sims_multiprocessing(masks=masks, corr_type=[corr_type, "w"],
 																			dataset_name=dataset_name, L_subboxes=L,
 																			rp_cut=None,
@@ -141,7 +160,7 @@ class MeasureIA(MeasureJackknife):
 												 return_output=False, print_num=True, dataset_name_tree=None,
 												 save_tree=save_tree, file_tree_path=file_tree_path)
 				self._measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
-				if calc_errors:
+				if measure_cov:
 					self._measure_jackknife_covariance_sims(masks=masks, corr_type=[corr_type, "w"],
 															dataset_name=dataset_name, L_subboxes=L, rp_cut=None,
 															tree_saved=True, file_tree_path=file_tree_path,
@@ -152,7 +171,7 @@ class MeasureIA(MeasureJackknife):
 															dataset_name=dataset_name, return_output=False,
 															print_num=True)
 				self._measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
-				if calc_errors:
+				if measure_cov:
 					self._measure_jackknife_covariance_sims(masks=masks, corr_type=[corr_type, "w"],
 															dataset_name=dataset_name, L_subboxes=L, rp_cut=None,
 															num_nodes=self.num_nodes, tree_saved=False)
@@ -160,44 +179,43 @@ class MeasureIA(MeasureJackknife):
 				self._measure_xi_rp_pi_sims_brute(masks=masks, dataset_name=dataset_name,
 												  return_output=False, print_num=True)
 				self._measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
-				if calc_errors:
+				if measure_cov:
 					self._measure_jackknife_covariance_sims(masks=masks, corr_type=[corr_type, "w"],
 															dataset_name=dataset_name, L_subboxes=L, rp_cut=None,
 															num_nodes=self.num_nodes, tree_saved=False)
 
 		return
 
-	def measure_xi_multipoles(self, dataset_name, corr_type, num_jk, calc_errors=True, file_tree_path=None, masks=None,
+	def measure_xi_multipoles(self, dataset_name, corr_type, num_jk, measure_cov=True, file_tree_path=None, masks=None,
 							  remove_tree_file=True, rp_cut=None):
-		"""Manages the various measure_projected_correlation options in MeasureIABase.
+		"""Measures multipoles including jackknife covariance if desired.
+		Manages the various _measure_xi_r_mu_r_sims and _measure_jackknife_covariance_sims options in
+		MeasureMultipolesSimulations and MeasureJackknife.
 
 		Parameters
 		----------
-		dataset_name :
+		dataset_name : str
 			Name of the dataset in the output file.
-		corr_type :
+		corr_type : str
 			Type of correlation to be measured. Choose from [g+, gg, both].
-		num_jk :
-			Number of jackknife regions (needs to be x^3, with x an int) for the error calculation.
-		calc_errors :
-			If True, jackknife errors are calculated. (Default value = True)
-		file_tree_path :
-			Path to where the tree information is temporarily stored. If None (default), no trees
-			are used in the calculation. Note that the use of trees speeds up the calculations significantly.
-		masks :
-			Directory of mask information in the same form as the data input, where the masks are placed over
-			the data to apply selections. (Default value = None)
-		remove_tree_file :
-			If True (default), the file that stores the tree information is removed after the
-			calculations.
-		rp_cut :
+		num_jk : int, optional
+			Number of jackknife regions (needs to be x^3, with x an int) for the covariance measurement. Default is 0.
+		measure_cov : bool, optional
+			If True, jackknife covariance is measured. Default is True
+		file_tree_path : str or NoneType, optional
+			Path to where the tree information is temporarily stored [file name generated automatically].
+			If None (default), no trees are used in the calculation.
+			Note that the use of trees speeds up the calculations significantly.
+		masks : dict or NoneType, optional
+			Directory of mask information in the same form as the data dictionary, where the masks are placed over
+			the data to apply selections. Default is None.
+		remove_tree_file : bool, optional
+			If True (default), the file that stores the tree information is removed after the measurements.
+		rp_cut : float or NoneType, optional
 			Applies a minimum r_p value condition for pairs to be included. Default is None.
 
-		Returns
-		-------
-
 		"""
-		if calc_errors:
+		if measure_cov:
 			try:
 				assert sympy.integer_nthroot(num_jk, 3)[1]
 				L = sympy.integer_nthroot(num_jk, 3)[0]
@@ -231,125 +249,120 @@ class MeasureIA(MeasureJackknife):
 			file_tree_path = None
 		try:
 			RA = self.data["RA"]
-			sim_bool = False
-		except:
-			sim_bool = True
-		if not sim_bool:
-			print("Assuming observational data.")
-			self.measure_xi_multipoles_obs()
+			raise KeyError(
+				"Lightcone input provided, use measure_xi_w_obs and measure_xi_multipoles_obs for measurements or "
+				"provide carthesian coordinate data.")
+		except KeyError:
+			pass
+		if multiproc_bool and save_tree:
+			self._measure_xi_r_mur_sims_tree(tree_input=None, masks=masks,
+											 dataset_name=dataset_name,
+											 return_output=False, print_num=True,
+											 dataset_name_tree=None, rp_cut=rp_cut,
+											 save_tree=save_tree, file_tree_path=file_tree_path)
+			self._measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
+			if measure_cov:
+				self._measure_jackknife_covariance_sims_multiprocessing(masks=masks,
+																		corr_type=[corr_type, "multipoles"],
+																		dataset_name=dataset_name, L_subboxes=L,
+																		rp_cut=rp_cut,
+																		num_nodes=self.num_nodes, twoD=False,
+																		tree=True,
+																		tree_saved=True,
+																		file_tree_path=file_tree_path,
+																		remove_tree_file=remove_tree_file)
+		elif not multiproc_bool and save_tree:
+			self._measure_xi_r_mur_sims_tree(tree_input=None, masks=masks,
+											 dataset_name=dataset_name,
+											 return_output=False, print_num=True,
+											 dataset_name_tree=None, rp_cut=rp_cut,
+											 save_tree=save_tree, file_tree_path=file_tree_path)
+			self._measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
+			if measure_cov:
+				self._measure_jackknife_covariance_sims(masks=masks, corr_type=[corr_type, "multipoles"],
+														dataset_name=dataset_name, L_subboxes=L, rp_cut=rp_cut,
+														tree_saved=True, file_tree_path=file_tree_path,
+														remove_tree_file=remove_tree_file)
+		elif multiproc_bool and not save_tree:
+			self._measure_xi_r_mur_sims_multiprocessing(num_nodes=self.num_nodes,
+														masks=masks,
+														dataset_name=dataset_name,
+														return_output=False, rp_cut=rp_cut,
+														print_num=True)
+			self._measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
+			if measure_cov:
+				self._measure_jackknife_covariance_sims(masks=masks, corr_type=[corr_type, "multipoles"],
+														dataset_name=dataset_name, L_subboxes=L,
+														rp_cut=rp_cut, num_nodes=self.num_nodes,
+														tree_saved=False)
 		else:
-			if multiproc_bool and save_tree:
-				self._measure_xi_r_mur_sims_tree(tree_input=None, masks=masks,
-												 dataset_name=dataset_name,
-												 return_output=False, print_num=True,
-												 dataset_name_tree=None, rp_cut=rp_cut,
-												 save_tree=save_tree, file_tree_path=file_tree_path)
-				self._measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
-				if calc_errors:
-					self._measure_jackknife_covariance_sims_multiprocessing(masks=masks,
-																			corr_type=[corr_type, "multipoles"],
-																			dataset_name=dataset_name, L_subboxes=L,
-																			rp_cut=rp_cut,
-																			num_nodes=self.num_nodes, twoD=False,
-																			tree=True,
-																			tree_saved=True,
-																			file_tree_path=file_tree_path,
-																			remove_tree_file=remove_tree_file)
-			elif not multiproc_bool and save_tree:
-				self._measure_xi_r_mur_sims_tree(tree_input=None, masks=masks,
-												 dataset_name=dataset_name,
-												 return_output=False, print_num=True,
-												 dataset_name_tree=None, rp_cut=rp_cut,
-												 save_tree=save_tree, file_tree_path=file_tree_path)
-				self._measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
-				if calc_errors:
-					self._measure_jackknife_covariance_sims(masks=masks, corr_type=[corr_type, "multipoles"],
-															dataset_name=dataset_name, L_subboxes=L, rp_cut=rp_cut,
-															tree_saved=True, file_tree_path=file_tree_path,
-															remove_tree_file=remove_tree_file)
-			elif multiproc_bool and not save_tree:
-				self._measure_xi_r_mur_sims_multiprocessing(num_nodes=self.num_nodes,
-															masks=masks,
-															dataset_name=dataset_name,
-															return_output=False, rp_cut=rp_cut,
-															print_num=True)
-				self._measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
-				if calc_errors:
-					self._measure_jackknife_covariance_sims(masks=masks, corr_type=[corr_type, "multipoles"],
-															dataset_name=dataset_name, L_subboxes=L,
-															rp_cut=rp_cut, num_nodes=self.num_nodes,
-															tree_saved=False)
-			else:
-				self._measure_xi_r_mur_sims_brute(masks=masks,
-												  dataset_name=dataset_name,
-												  return_output=False, print_num=True,
-												  rp_cut=rp_cut)
-				self._measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
-				if calc_errors:
-					self._measure_jackknife_covariance_sims(masks=masks, corr_type=[corr_type, "multipoles"],
-															dataset_name=dataset_name, L_subboxes=L,
-															rp_cut=rp_cut, num_nodes=self.num_nodes,
-															tree_saved=False)
+			self._measure_xi_r_mur_sims_brute(masks=masks,
+											  dataset_name=dataset_name,
+											  return_output=False, print_num=True,
+											  rp_cut=rp_cut)
+			self._measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
+			if measure_cov:
+				self._measure_jackknife_covariance_sims(masks=masks, corr_type=[corr_type, "multipoles"],
+														dataset_name=dataset_name, L_subboxes=L,
+														rp_cut=rp_cut, num_nodes=self.num_nodes,
+														tree_saved=False)
 
 		return
 
-	def measure_xi_w_obs(self, IA_estimator, dataset_name, corr_type, jk_patches=None, num_jk=None, randoms_data=None,
-						 calc_errors=True,
-						 masks=None, masks_randoms=None, cosmology=None, over_h=False):
-		"""Manages the measurement of observational wg+ in MeasureIABase.
+	def measure_xi_w_obs(self, IA_estimator, dataset_name, corr_type, randoms_data, jk_patches=None, num_jk=None,
+						 measure_cov=True, masks=None, masks_randoms=None, cosmology=None, over_h=False):
+		"""Measures xi_gg, xi_g+ and w_gg, w_g+ including jackknife covariance if desired for lightcone data.
+		Manages the various _measure_xi_rp_pi_obs and _measure_jackknife_covariance options in MeasureWObservations
+		and MeasureJackknife.
 
 		Parameters
 		----------
-		IA_estimator :
-			Choose which type of xi estimator is used. Choose "clusters" or "galaxies".
-		dataset_name :
+		IA_estimator : str
+			Choose which type of xi estimator is used. Choose from "clusters" or "galaxies".
+		dataset_name : str
 			Name of the dataset in the output file.
-		corr_type :
-			ype of correlation to be measured. Choose from [g+, gg, both].
-		jk_patches :
-			Directory with entries of the jackknife patches for each sample, named "position", "shape"
-			and "random". (Default value = None)
-		randoms_data :
-			Data directory that includes the randoms information in the same form as the data input. (Default value = None)
-		calc_errors :
-			If True, jackknife errors are calculated. (Default value = True)
-		masks :
-			Directory of mask information in the same form as the data input, where the masks are placed over
-			the data to apply selections. (Default value = None)
-		masks_randoms :
-			Directory of mask information for the randoms data in the same form as the data input,
-			where the masks are placed over the data to apply selections. (Default value = None)
-		cosmology :
-			pyccl cosmology to use in the calculation. If None (default), a default cosmology is used.
-		over_h :
+		corr_type : str
+			Type of correlation to be measured. Choose from [g+, gg, both].
+		randoms_data : dict or NoneType
+			Dictionary that includes the randoms data in the same form as the data dictionary.
+		jk_patches : dict or NoneType, optional
+			Dictionary with entries of the jackknife patch numbers (ndarray) for each sample, named "position", "shape"
+			and "random". Default is None.
+		num_jk : int, optional
+			Number of jackknife patches to be generated internally. Default is None.
+		measure_cov : bool, optional
+			If True, jackknife errors are calculated. Default is True.
+		masks : dict or NoneType, optional
+			Dictionary of mask information in the same form as the data dictionary, where the masks are placed over
+			the data to apply selections. Default is None.
+		masks_randoms : dict or NoneType, optional
+			Dictionary of mask information for the randoms data in the same form as the data dictionary,
+			where the masks are placed over the data to apply selections. Default is None.
+		cosmology : pyccl cosmology object or NoneType, optional
+			Pyccl cosmology to use in the calculation. If None (default), the cosmology is used:
+			ccl.Cosmology(Omega_c=0.225, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.0)
+		over_h : bool, optional
 			If True, the units are assumed to be in not-over-h and converted to over-h units. Default is False.
-		num_jk :
-			 (Default value = None)
-
-		Returns
-		-------
 
 		"""
 		if IA_estimator == "clusters":
 			if randoms_data == None:
 				print("No randoms given, correlation defined as S+D/DD")
-				print("This version does not work yet, add randoms.")
-				exit()
+				raise KeyError("This version does not work yet, add randoms.")
 			else:
 				print("xi_g+ defined as S+D/SD - S+R/SR, xi_gg as (SD - RD - SR)/RR - 1")
 				if masks != None and masks_randoms == None:
 					print("Warning, masks given for data vector but not for randoms.")
 		elif IA_estimator == "galaxies":
 			if randoms_data == None:
-				print("No randoms given. Please provide input.")
-				exit()
+				raise KeyError("No randoms given. Please provide input.")
 			else:
 				print("xi_g+ defined as (S+D - S+R)/RR, xi_gg as (SD - RD - SR)/RR - 1")
 				if masks != None and masks_randoms == None:
 					print("Warning, masks given for data vector but not for randoms.")
 				print("WARNING: this version of the code has not been fully validated. Proceed with caution.")
 		else:
-			raise ValueError("Unknown input for IA_estimator, choose from [clusters, galaxies].")
+			raise KeyError("Unknown input for IA_estimator, choose from [clusters, galaxies].")
 
 		# todo: Expand to include methods with trees and internal multiproc
 		# todo: Checks to see if data directories include everything they need
@@ -376,7 +389,7 @@ class MeasureIA(MeasureJackknife):
 			else:
 				self.randoms_data["weight_shape_sample"] = np.ones(len(self.randoms_data["RA_shape_sample"]))
 
-		if calc_errors:
+		if measure_cov:
 			if jk_patches == None:
 				if num_jk != None:
 					jk_patches = self.assign_jackknife_patches(data, randoms_data, num_jk)
@@ -511,7 +524,7 @@ class MeasureIA(MeasureJackknife):
 		self._obs_estimator([corr_type, "w"], IA_estimator, dataset_name, f"{dataset_name}_randoms", num_samples)
 		self._measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
 
-		if calc_errors:
+		if measure_cov:
 			self.num_samples = {}
 			min_patch, max_patch = int(min(jk_patches["shape"])), int(max(jk_patches["shape"]))
 			for n in np.arange(min_patch, max_patch + 1):
@@ -646,41 +659,43 @@ class MeasureIA(MeasureJackknife):
 		self.data = data
 		return
 
-	def measure_xi_multipoles_obs(self, IA_estimator, dataset_name, corr_type, jk_patches=None, num_jk=None,
-								  randoms_data=None,
-								  calc_errors=True, rp_cut=None,
-								  masks=None, masks_randoms=None, cosmology=None, over_h=False):
-		"""Manages the measurement of observational wg+ in MeasureIABase.
+	def measure_xi_multipoles_obs(self, IA_estimator, dataset_name, randoms_data, corr_type, jk_patches=None,
+								  num_jk=None, calc_errors=True, masks=None, masks_randoms=None, cosmology=None,
+								  over_h=False, rp_cut=None):
+		"""Measures multipoles including jackknife covariance if desired for lightcone data.
+		Manages the various _measure_xi_r_mu_r_obs and _measure_jackknife_covariance options in
+		MeasureMultipolesObservations and MeasureJackknife.
 
 		Parameters
 		----------
-		IA_estimator :
-			Choose which type of xi estimator is used. Choose "clusters" or "galaxies".
-		dataset_name :
+		IA_estimator : str
+			Choose which type of xi estimator is used. Choose from "clusters" or "galaxies".
+		dataset_name : str
 			Name of the dataset in the output file.
-		corr_type :
-			ype of correlation to be measured. Choose from [g+, gg, both].
-		jk_patches :
-			Directory with entries of the jackknife patches for each sample, named "position", "shape"
-			and "random". (Default value = None)
-		randoms_data :
-			Data directory that includes the randoms information in the same form as the data input. (Default value = None)
-		calc_errors :
-			If True, jackknife errors are calculated. (Default value = True)
-		masks :
-			Directory of mask information in the same form as the data input, where the masks are placed over
-			the data to apply selections. (Default value = None)
-		masks_randoms :
-			Directory of mask information for the randoms data in the same form as the data input,
-			where the masks are placed over the data to apply selections. (Default value = None)
-		cosmology :
-			pyccl cosmology to use in the calculation. If None (default), a default cosmology is used.
-		over_h :
+		corr_type : str
+			Type of correlation to be measured. Choose from [g+, gg, both].
+		randoms_data : dict or NoneType
+			Dictionary that includes the randoms data in the same form as the data dictionary.
+		jk_patches : dict or NoneType, optional
+			Dictionary with entries of the jackknife patch numbers (ndarray) for each sample, named "position", "shape"
+			and "random". Default is None.
+		num_jk : int, optional
+			Number of jackknife patches to be generated internally. Default is None.
+		measure_cov : bool, optional
+			If True, jackknife errors are calculated. Default is True.
+		masks : dict or NoneType, optional
+			Dictionary of mask information in the same form as the data dictionary, where the masks are placed over
+			the data to apply selections. Default is None.
+		masks_randoms : dict or NoneType, optional
+			Dictionary of mask information for the randoms data in the same form as the data dictionary,
+			where the masks are placed over the data to apply selections. Default is None.
+		cosmology : pyccl cosmology object or NoneType, optional
+			Pyccl cosmology to use in the calculation. If None (default), the cosmology is used:
+			ccl.Cosmology(Omega_c=0.225, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.0)
+		over_h : bool, optional
 			If True, the units are assumed to be in not-over-h and converted to over-h units. Default is False.
-		num_jk :
-			 (Default value = None)
-		rp_cut :
-			 (Default value = None)
+		rp_cut : float or NoneType, optional
+			Applies a minimum r_p value condition for pairs to be included. Default is None.
 
 		Returns
 		-------
@@ -689,23 +704,21 @@ class MeasureIA(MeasureJackknife):
 		if IA_estimator == "clusters":
 			if randoms_data == None:
 				print("No randoms given, correlation defined as S+D/DD")
-				print("This version does not work yet, add randoms.")
-				exit()
+				raise KeyError("This version does not work yet, add randoms.")
 			else:
 				print("xi_g+ defined as S+D/SD - S+R/SR, xi_gg as (SD - RD - SR)/RR - 1")
 				if masks != None and masks_randoms == None:
 					print("Warning, masks given for data vector but not for randoms.")
 		elif IA_estimator == "galaxies":
 			if randoms_data == None:
-				print("No randoms given. Please provide input.")
-				exit()
+				raise KeyError("No randoms given. Please provide input.")
 			else:
 				print("xi_g+ defined as (S+D - S+R)/RR, xi_gg as (SD - RD - SR)/RR - 1")
 				if masks != None and masks_randoms == None:
 					print("Warning, masks given for data vector but not for randoms.")
 				print("WARNING: this version of the code has not been fully validated. Proceed with caution.")
 		else:
-			raise ValueError("Unknown input for IA_estimator, choose from [clusters, galaxies].")
+			raise KeyError("Unknown input for IA_estimator, choose from [clusters, galaxies].")
 
 		# todo: Expand to include methods with trees and internal multiproc
 		# todo: Checks to see if data directories include everything they need
@@ -774,7 +787,7 @@ class MeasureIA(MeasureJackknife):
 		if corr_type == "g+" or corr_type == "both":
 			# S+D
 			self.data = self.data_dir
-			self._measure_xi_rp_pi_obs_brute(masks=masks, dataset_name=dataset_name,
+			self._measure_xi_r_mur_obs_brute(masks=masks, dataset_name=dataset_name,
 											 over_h=over_h, rp_cut=rp_cut,
 											 cosmology=cosmology)
 			# S+R
@@ -791,7 +804,7 @@ class MeasureIA(MeasureJackknife):
 				"weight_shape_sample": self.data_dir["weight_shape_sample"]
 			}
 			# print(self.data)
-			self._measure_xi_rp_pi_obs_brute(masks=masks,
+			self._measure_xi_r_mur_obs_brute(masks=masks,
 											 dataset_name=f"{dataset_name}_randoms",
 											 over_h=over_h, rp_cut=rp_cut,
 											 cosmology=cosmology)
@@ -814,7 +827,7 @@ class MeasureIA(MeasureJackknife):
 				"weight": self.data_dir["weight"],
 				"weight_shape_sample": self.data_dir["weight_shape_sample"]
 			}
-			self._count_pairs_xi_rp_pi_obs_brute(masks=masks, dataset_name=dataset_name, over_h=over_h,
+			self._count_pairs_xi_r_mur_obs_brute(masks=masks, dataset_name=dataset_name, over_h=over_h,
 												 cosmology=cosmology,
 												 data_suffix="_DD", rp_cut=rp_cut)
 
@@ -845,7 +858,7 @@ class MeasureIA(MeasureJackknife):
 				"weight": self.data_dir["weight"],
 				"weight_shape_sample": self.randoms_data["weight_shape_sample"]
 			}
-			self._count_pairs_xi_rp_pi_obs_brute(masks=masks, dataset_name=dataset_name, over_h=over_h,
+			self._count_pairs_xi_r_mur_obs_brute(masks=masks, dataset_name=dataset_name, over_h=over_h,
 												 cosmology=cosmology, rp_cut=rp_cut,
 												 data_suffix="_RD")
 
