@@ -1,5 +1,5 @@
 import numpy as np
-from measure_IA import MeasureIA
+from MeasureIA import MeasureIALightcone
 
 # data
 RA = np.array([])  # RA of clusters
@@ -61,19 +61,18 @@ data = {"Redshift": z,  # redshift of D sample
 		"e1": e1,  # e1 of S sample
 		"e2": e2}  # e2 of S sample
 
-MeasureIA_validation_obs = MeasureIA(data, simulation=False,
-									 separation_limits=separation_limits, pi_max=LOS_lims,
-									 num_bins_r=num_bins_r, num_nodes=num_nodes,
-									 num_bins_pi=num_bins_pi, output_file_name=data_path_out + file_name)
+MeasureIA_validation_obs = MeasureIALightcone(data, data_r,
+										separation_limits=separation_limits, pi_max=LOS_lims,
+										num_bins_r=num_bins_r, num_nodes=num_nodes,
+										num_bins_pi=num_bins_pi, output_file_name=data_path_out + file_name)
 dataset_name = "test"
 # measure wg+
-MeasureIA_validation_obs.measure_xi_w_obs("clusters", dataset_name, corr_type, jk_patches=patches, randoms_data=data_r,
-										  measure_cov=calc_errors, masks=masks, masks_randoms=masks_randoms,
-										  cosmology=cosmology,
-										  over_h=over_h)
+MeasureIA_validation_obs.measure_xi_w("clusters", dataset_name, corr_type, jk_patches=patches,
+									  measure_cov=calc_errors, masks=masks, masks_randoms=masks_randoms,
+									  cosmology=cosmology,
+									  over_h=over_h)
 # measure multipoles
-MeasureIA_validation_obs.measure_xi_multipoles_obs("clusters", dataset_name, corr_type, jk_patches=patches,
-												   randoms_data=data_r,
-												   calc_errors=calc_errors, rp_cut=rp_cut, masks=masks,
-												   masks_randoms=masks_randoms,
-												   cosmology=cosmology, over_h=over_h)
+MeasureIA_validation_obs.measure_xi_multipoles("clusters", dataset_name, corr_type, jk_patches=patches,
+											   calc_errors=calc_errors, rp_cut=rp_cut, masks=masks,
+											   masks_randoms=masks_randoms,
+											   cosmology=cosmology, over_h=over_h)

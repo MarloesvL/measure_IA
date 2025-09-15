@@ -1,5 +1,5 @@
 import numpy as np
-from measure_IA import MeasureIA
+from MeasureIA import MeasureIABox
 
 # parameters for MeasureIA object
 simulation = "TNG300"  # Indicator of simulation.
@@ -40,10 +40,10 @@ data_dir = {
 
 dataset_name = "test"
 
-MeasureIA_validation = MeasureIA(data_dir, simulation=simulation, snapshot=snapshot,
-								 separation_limits=r_lims, pi_max=LOS_lim,
-								 num_bins_r=num_r, num_nodes=num_nodes,
-								 num_bins_pi=num_pi, output_file_name=outfile, periodicity=periodicity)
+MeasureIA_validation = MeasureIABox(data_dir, simulation=simulation, snapshot=snapshot,
+									separation_limits=r_lims, pi_max=LOS_lim,
+									num_bins_r=num_r, num_nodes=num_nodes,
+									num_bins_pi=num_pi, output_file_name=outfile, periodicity=periodicity)
 # calculate wg+
 MeasureIA_validation.measure_xi_w(dataset_name, corr_type, num_jk, file_tree_path=tree_path)
 # calculate multipoles

@@ -3,26 +3,10 @@ import numpy as np
 from .measure_jackknife import MeasureJackknife
 
 
-class MeasureIA(MeasureJackknife):
+class MeasureIABox(MeasureJackknife):
 	"""Manages the IA correlation function measurement methods used in the MeasureIA package based on speed and input.
 	This class is used to call the methods that measure w_gg, w_g+ and multipoles for simulations (and observations).
 	Depending on the input parameters, various correlations incl covariance estimates are measured for given data.
-
-	Attributes
-	----------
-	randoms_data : dict or NoneType
-		Dictionary with data of the randoms needed for lightcone-type measurements.
-		The keywords are:
-		'Redshift' and 'Redshift_shape_sample': (N_p) and (N_s) ndarray with redshifts of position and shape samples.
-		'RA' and 'RA_shape_sample': (N_p) and (N_s) ndarray with RA coordinate of position and shape samples.
-		'DEC' and 'DEC_shape_sample': (N_p) and (N_s) ndarray with DEC coordinate of position and shape samples.
-		If only 'Redshift', 'RA' and 'DEC' are added, the sample will be used for both position and shape sample randoms.
-	data_dir : dict or NoneType
-		Temporary storage space for added data directory to allow for flexibility in passing data or randoms to internal
-		methods.
-	num_samples : dict or NoneType
-		Dictionary containing the numbers of objects for each sample for lightcone-type measurements. Filled internally,
-		no input needed.
 
 	Notes
 	-----
@@ -104,9 +88,8 @@ class MeasureIA(MeasureJackknife):
 				assert sympy.integer_nthroot(num_jk, 3)[1]
 				L = sympy.integer_nthroot(num_jk, 3)[0]
 			except AssertionError:
-				print(
+				raise ValueError(
 					f"Use x^3 as input for num_jk, with x as an int. {float(int(num_jk ** (1. / 3)))},{num_jk ** (1. / 3)}")
-				exit()
 			if self.num_nodes == 1:
 				multiproc_bool = False
 				save_tree = True
@@ -220,8 +203,7 @@ class MeasureIA(MeasureJackknife):
 				assert sympy.integer_nthroot(num_jk, 3)[1]
 				L = sympy.integer_nthroot(num_jk, 3)[0]
 			except AssertionError:
-				print("Use x^3 as input for num_jk, with x as an int.")
-				exit()
+				raise ValueError("Use x^3 as input for num_jk, with x as an int.")
 			if self.num_nodes == 1:
 				multiproc_bool = False
 				save_tree = True
@@ -309,8 +291,71 @@ class MeasureIA(MeasureJackknife):
 
 		return
 
-	def measure_xi_w_obs(self, IA_estimator, dataset_name, corr_type, randoms_data, jk_patches=None, num_jk=None,
-						 measure_cov=True, masks=None, masks_randoms=None, cosmology=None, over_h=False):
+
+class MeasureIALightcone(MeasureJackknife):
+	"""Manages the IA correlation function measurement methods used in the MeasureIA package based on speed and input.
+	This class is used to call the methods that measure w_gg, w_g+ and multipoles for simulations (and observations).
+	Depending on the input parameters, various correlations incl covariance estimates are measured for given data.
+
+	Attributes
+	----------
+	data_dir : dict or NoneType
+		Temporary storage space for added data directory to allow for flexibility in passing data or randoms to internal
+		methods.
+	num_samples : dict or NoneType
+		Dictionary containing the numbers of objects for each sample for lightcone-type measurements. Filled internally,
+		no input needed.
+
+	Notes
+	-----
+	Inherits attributes from 'SimInfo', where none are used in this class.
+	Inherits attributes from 'MeasureIABase', where 'data', 'output_file_name', 'Num_position',
+	'Num_shape', 'r_min', 'r_max', 'num_bins_r', 'num_bins_pi', 'r_bins', 'pi_bins', 'mu_r_bins' are used.
+
+	"""
+
+	def __init__(
+			self,
+			data,
+			randoms_data,
+			output_file_name,
+			separation_limits=[0.1, 20.0],
+			num_bins_r=8,
+			num_bins_pi=20,
+			pi_max=None,
+			num_nodes=1,
+	):
+		"""
+		The __init__ method of the MeasureIA class.
+
+		Parameters
+		----------
+		randoms_data : dict or NoneType
+			Dictionary with data of the randoms needed for lightcone-type measurements.
+			The keywords are:
+			'Redshift' and 'Redshift_shape_sample': (N_p) and (N_s) ndarray with redshifts of position and shape samples.
+			'RA' and 'RA_shape_sample': (N_p) and (N_s) ndarray with RA coordinate of position and shape samples.
+			'DEC' and 'DEC_shape_sample': (N_p) and (N_s) ndarray with DEC coordinate of position and shape samples.
+			If only 'Redshift', 'RA' and 'DEC' are added, the sample will be used for both position and shape sample randoms.
+		num_nodes : int, optional
+			Number of cores to be used in multiprocessing. Default is 1.
+
+		Notes
+		-----
+		Constructor parameters 'data', 'output_file_name', 'separation_limits', 'num_bins_r',
+		'num_bins_pi', 'pi_max', are passed to MeasureIABase.
+
+		"""
+		super().__init__(data, output_file_name, False, None, separation_limits, num_bins_r, num_bins_pi,
+						 pi_max, None, False)
+		self.num_nodes = num_nodes
+		self.randoms_data = randoms_data
+		self.data_dir = None
+		self.num_samples = None
+
+		return
+	def measure_xi_w(self, IA_estimator, dataset_name, corr_type, jk_patches=None, num_jk=None,
+					 measure_cov=True, masks=None, masks_randoms=None, cosmology=None, over_h=False):
 		"""Measures xi_gg, xi_g+ and w_gg, w_g+ including jackknife covariance if desired for lightcone data.
 		Manages the various _measure_xi_rp_pi_obs and _measure_jackknife_covariance options in MeasureWObservations
 		and MeasureJackknife.
@@ -346,7 +391,7 @@ class MeasureIA(MeasureJackknife):
 
 		"""
 		if IA_estimator == "clusters":
-			if randoms_data == None:
+			if self.randoms_data == None:
 				print("No randoms given, correlation defined as S+D/DD")
 				raise KeyError("This version does not work yet, add randoms.")
 			else:
@@ -354,7 +399,7 @@ class MeasureIA(MeasureJackknife):
 				if masks != None and masks_randoms == None:
 					print("Warning, masks given for data vector but not for randoms.")
 		elif IA_estimator == "galaxies":
-			if randoms_data == None:
+			if self.randoms_data == None:
 				raise KeyError("No randoms given. Please provide input.")
 			else:
 				print("xi_g+ defined as (S+D - S+R)/RR, xi_gg as (SD - RD - SR)/RR - 1")
@@ -368,15 +413,14 @@ class MeasureIA(MeasureJackknife):
 		# todo: Checks to see if data directories include everything they need
 		data = self.data  # temporary save so it can be restored at the end of the calculation
 
-		self.randoms_data = randoms_data
 		try:  # Are there one or two random samples given?
-			random_shape = randoms_data["RA_shape_sample"]
+			random_shape = self.randoms_data["RA_shape_sample"]
 			one_random_sample = False
 		except:
 			one_random_sample = True
-			self.randoms_data["RA_shape_sample"] = randoms_data["RA"]
-			self.randoms_data["DEC_shape_sample"] = randoms_data["DEC"]
-			self.randoms_data["Redshift_shape_sample"] = randoms_data["Redshift"]
+			self.randoms_data["RA_shape_sample"] = self.randoms_data["RA"]
+			self.randoms_data["DEC_shape_sample"] = self.randoms_data["DEC"]
+			self.randoms_data["Redshift_shape_sample"] = self.randoms_data["Redshift"]
 		try:
 			weight = self.randoms_data["weight"]
 		except:
@@ -392,7 +436,7 @@ class MeasureIA(MeasureJackknife):
 		if measure_cov:
 			if jk_patches == None:
 				if num_jk != None:
-					jk_patches = self.assign_jackknife_patches(data, randoms_data, num_jk)
+					jk_patches = self.assign_jackknife_patches(data, self.randoms_data, num_jk)
 				else:
 					raise ValueError("Set calc_errors to False, or provide either jk_patches or num_jk input.")
 			else:
@@ -659,9 +703,9 @@ class MeasureIA(MeasureJackknife):
 		self.data = data
 		return
 
-	def measure_xi_multipoles_obs(self, IA_estimator, dataset_name, randoms_data, corr_type, jk_patches=None,
-								  num_jk=None, calc_errors=True, masks=None, masks_randoms=None, cosmology=None,
-								  over_h=False, rp_cut=None):
+	def measure_xi_multipoles(self, IA_estimator, dataset_name, corr_type, jk_patches=None,
+							  num_jk=None, calc_errors=True, masks=None, masks_randoms=None, cosmology=None,
+							  over_h=False, rp_cut=None):
 		"""Measures multipoles including jackknife covariance if desired for lightcone data.
 		Manages the various _measure_xi_r_mu_r_obs and _measure_jackknife_covariance options in
 		MeasureMultipolesObservations and MeasureJackknife.
@@ -702,7 +746,7 @@ class MeasureIA(MeasureJackknife):
 
 		"""
 		if IA_estimator == "clusters":
-			if randoms_data == None:
+			if self.randoms_data == None:
 				print("No randoms given, correlation defined as S+D/DD")
 				raise KeyError("This version does not work yet, add randoms.")
 			else:
@@ -710,7 +754,7 @@ class MeasureIA(MeasureJackknife):
 				if masks != None and masks_randoms == None:
 					print("Warning, masks given for data vector but not for randoms.")
 		elif IA_estimator == "galaxies":
-			if randoms_data == None:
+			if self.randoms_data == None:
 				raise KeyError("No randoms given. Please provide input.")
 			else:
 				print("xi_g+ defined as (S+D - S+R)/RR, xi_gg as (SD - RD - SR)/RR - 1")
@@ -724,15 +768,14 @@ class MeasureIA(MeasureJackknife):
 		# todo: Checks to see if data directories include everything they need
 		data = self.data  # temporary save so it can be restored at the end of the calculation
 
-		self.randoms_data = randoms_data
 		try:  # Are there one or two random samples given?
-			random_shape = randoms_data["RA_shape_sample"]
+			random_shape = self.randoms_data["RA_shape_sample"]
 			one_random_sample = False
 		except:
 			one_random_sample = True
-			self.randoms_data["RA_shape_sample"] = randoms_data["RA"]
-			self.randoms_data["DEC_shape_sample"] = randoms_data["DEC"]
-			self.randoms_data["Redshift_shape_sample"] = randoms_data["Redshift"]
+			self.randoms_data["RA_shape_sample"] = self.randoms_data["RA"]
+			self.randoms_data["DEC_shape_sample"] = self.randoms_data["DEC"]
+			self.randoms_data["Redshift_shape_sample"] = self.randoms_data["Redshift"]
 		try:
 			weight = self.randoms_data["weight"]
 		except:
@@ -748,7 +791,7 @@ class MeasureIA(MeasureJackknife):
 		if calc_errors:
 			if jk_patches == None:
 				if num_jk != None:
-					jk_patches = self.assign_jackknife_patches(data, randoms_data, num_jk)
+					jk_patches = self.assign_jackknife_patches(data, self.randoms_data, num_jk)
 				else:
 					raise ValueError("Set calc_errors to False, or provide either jk_patches or num_jk input.")
 			else:
@@ -842,7 +885,7 @@ class MeasureIA(MeasureJackknife):
 				"weight": self.randoms_data["weight"],
 				"weight_shape_sample": self.data_dir["weight_shape_sample"]
 			}
-			self._count_pairs_xi_rp_pi_obs_brute(masks=masks, dataset_name=dataset_name, over_h=over_h,
+			self._count_pairs_xi_r_mur_obs_brute(masks=masks, dataset_name=dataset_name, over_h=over_h,
 												 cosmology=cosmology, rp_cut=rp_cut,
 												 data_suffix="_SR")
 
@@ -874,7 +917,7 @@ class MeasureIA(MeasureJackknife):
 				"weight": self.randoms_data["weight"],
 				"weight_shape_sample": self.randoms_data["weight_shape_sample"]
 			}
-			self._count_pairs_xi_rp_pi_obs_brute(masks=masks, dataset_name=dataset_name, over_h=over_h,
+			self._count_pairs_xi_r_mur_obs_brute(masks=masks, dataset_name=dataset_name, over_h=over_h,
 												 cosmology=cosmology, rp_cut=rp_cut,
 												 data_suffix="_RR")
 

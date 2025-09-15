@@ -6,6 +6,7 @@ from scipy.special import lpmn
 from .write_data import write_dataset_hdf5, create_group_hdf5
 from .Sim_info import SimInfo
 
+
 class MeasureIABase(SimInfo):
 	"""Base class for MeasureIA package that includes some general methods used throughout the package.
 
@@ -52,7 +53,7 @@ class MeasureIABase(SimInfo):
 		----------
 		data : dict or NoneType
 			Dictionary with data needed for calculations.
-			For carthesian coordinates, the keywords are:
+			For cartesian coordinates, the keywords are:
 			'Position' and 'Position_shape_sample': (N_p,3), (N_s,3) ndarrays with the x, y, z coordinates
 			of the N_p, N_s objects in the position and shape samples, respectively.
 			'Axis_Direction': (N_s,2) ndarray with the two elements of the unit vectors describing the

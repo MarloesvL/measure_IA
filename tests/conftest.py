@@ -1,6 +1,6 @@
 import pytest
 import h5py
-from MeasureIA import MeasureIA
+from MeasureIA import MeasureIABox
 
 
 # this file has to be called conftest otherwise the fixtures will not work
@@ -28,8 +28,8 @@ def IA_mock_TNG300_n8():
 		"LOS": 2,
 		"q": q
 	}
-	return MeasureIA(data_dir, f"./data/processed/TNG300/test_IA_mock_TNG300.hdf5", "TNG300",
-					 99, [0.1, 20], 10, 8, None, num_nodes=8)
+	return MeasureIABox(data_dir, f"./data/processed/TNG300/test_IA_mock_TNG300.hdf5", "TNG300",
+						99, [0.1, 20], 10, 8, None, num_nodes=8)
 
 
 @pytest.fixture()
@@ -46,9 +46,9 @@ def IA_mock_TNG300_n1_large():
 		"LOS": 2,
 		"q": q
 	}
-	return MeasureIA(data_dir, f"./data/processed/TNG300/test_IA_mock_TNG300_large.hdf5",
+	return MeasureIABox(data_dir, f"./data/processed/TNG300/test_IA_mock_TNG300_large.hdf5",
 					 "TNG300", 99, [0.1, 20], 10,
-					 8, None, num_nodes=1)
+						8, None, num_nodes=1)
 
 
 @pytest.fixture()
@@ -65,9 +65,9 @@ def IA_mock_TNG300_n8_large():
 		"LOS": 2,
 		"q": q
 	}
-	return MeasureIA(data_dir, f"./data/processed/TNG300/test_IA_mock_TNG300_large.hdf5",
+	return MeasureIABox(data_dir, f"./data/processed/TNG300/test_IA_mock_TNG300_large.hdf5",
 					 "TNG300", 99, [0.1, 20], 10, 8,
-					 None, num_nodes=8)
+						None, num_nodes=8)
 
 
 @pytest.fixture()
@@ -84,6 +84,6 @@ def IA_mock_TNG300_n17_large():
 		"LOS": 2,
 		"q": q
 	}
-	return MeasureIA(data_dir, f"./data/processed/TNG300/test_IA_mock_TNG300_large.hdf5",
+	return MeasureIABox(data_dir, f"./data/processed/TNG300/test_IA_mock_TNG300_large.hdf5",
 					 "TNG300", 99, [0.1, 20], 10,
-					 8, None, num_nodes=17)
+						8, None, num_nodes=17)

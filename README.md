@@ -1,13 +1,15 @@
 # MeasureIA - The tool for measuring intrinsic alignment correlation functions in hydrodynamic simulations
 
-MeasureIA is a tool that can be used to easily measure intrinsic alignement correlation functions and clustering in simulation boxes.
+MeasureIA is a tool that can be used to easily measure intrinsic alignment correlation functions and clustering in simulation boxes.
 It includes measurement of wg+, wgg and the multipole moment estimator introduced in Singh et al (2024).
-The correlation functions are measured for simulations in cathresian coordinates with periodic boundary conditions.
+The correlation functions are measured for simulations in cartesian coordinates with periodic boundary conditions.
+[Lightcone version is coming up, see Roadmap.]
 Furthermore, the jackknife method is used to estimate the covariance matrix.
 Outputs are saved in hdf5 files.
-This package was developed for [link to paper].
 
-#### WARNING: this package is still in a development phase and this is therefore a beta-version.
+[//]: # (This package was developed for [link to paper].)
+
+#### WARNING: This package is still in a development phase and this is therefore a beta-version.
 
 ## Installation
 
@@ -50,7 +52,7 @@ easy installation.
 
 ## Usage
 
-See the example script 'example_measure_IA_sims.py' or the jupyter notebook 'example_measureIA_sims.ipynb' in the
+See the example script 'example_measure_IA_box.py' or the jupyter notebook 'example_measureIA_box.ipynb' in the
 examples directory for short examples on how this package can be used.
 Explanations on various input parameters are explained in the comments (and more fully in the docstrings of the methods
 and classes).
@@ -58,11 +60,11 @@ Given the data dictionary in the correct format, the methods (with all optional 
 can be called as follows:
 
 ```angular2html
-MeasureIA_validation = MeasureIA(data=data_dict, output_file_name="./outfile_name.hdf5", boxsize=205.)
+MeasureIA_test = MeasureIABox(data=data_dict, output_file_name="./outfile_name.hdf5", boxsize=205.)
 # measure wgg, wg+
-MeasureIA_validation.measure_xi_w(dataset_name=dataset_name, corr_type="both", num_jk=27)
+MeasureIA_test.measure_xi_w(dataset_name=dataset_name, corr_type="both", num_jk=27)
 # measure multipoles
-MeasureIA_validation.measure_xi_multipoles(dataset_name=dataset_name, corr_type="both", num_jk=27)
+MeasureIA_test.measure_xi_multipoles(dataset_name=dataset_name, corr_type="both", num_jk=27)
 ```
 
 It is advisable to check out all the optional inputs in the examples.
@@ -135,7 +137,7 @@ information for different numbers of jackknife realisations (num_jk) for the sam
 ## Roadmap
 
 Upcoming developments include adding docstrings for all (internal) methods; creating a documentation website; extending
-the tests; validating the lightcone methods further and adding the Landy-Salazy estimator for the lightcone code.
+the tests; validating the lightcone methods and adding the Landy-Salazy estimator for the lightcone code.
 Once the lightcone code is sufficiently validated, multiprocessing methods will be added there too.
 Further down the road, another speed update may be added for the box methods; along with more variability
 in definitions (e.g. optional resposivity factor).
