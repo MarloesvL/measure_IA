@@ -24,8 +24,8 @@ First, install uv (see https://docs.astral.sh/uv/getting-started/installation/).
 Then clone the repository using either option:
 
 ```angular2html
-git clone git@github.com:MarloesvL/measure_IA_sims.git
-git clone https://github.com/MarloesvL/measure_IA_sims.git
+git clone git@github.com:MarloesvL/measure_IA.git
+git clone https://github.com/MarloesvL/measure_IA.git
 ```
 
 Next, navigate into the directory in your terminal (using cd).

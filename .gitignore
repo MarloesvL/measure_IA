@@ -218,7 +218,4 @@ __marimo__/
 # custom
 src_old
 examples/example_multiprocessing.py
-examples/example_IA_base_clusters.py
-examples/measure_IA_base_correlations.py
-../measure_SV_sims/create_mock_data.py
 site/
