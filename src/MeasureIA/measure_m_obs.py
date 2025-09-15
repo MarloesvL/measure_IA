@@ -9,7 +9,7 @@ cosmo = LambdaCDM(H0=69.6, Om0=0.286, Ode0=0.714)
 KPC_TO_KM = 3.086e16  # 1 kpc is 3.086e16 km
 
 
-class MeasureMultipolesObservations(MeasureIABase):
+class MeasureMultipolesLightcone(MeasureIABase):
 	"""Class that contains all methods for the measurements of xi_gg and x_g+ for multipoles with lightcone data.
 
 	Notes
