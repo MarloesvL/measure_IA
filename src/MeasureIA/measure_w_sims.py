@@ -11,7 +11,7 @@ cosmo = LambdaCDM(H0=69.6, Om0=0.286, Ode0=0.714)
 KPC_TO_KM = 3.086e16  # 1 kpc is 3.086e16 km
 
 
-class MeasureWSimulations(MeasureIABase):
+class MeasureWBox(MeasureIABase):
 	"""Class that contains all methods for the measurements of xi_gg and xi_g+ for w_gg and w_g+ with carthesian
 	simulation data.
 

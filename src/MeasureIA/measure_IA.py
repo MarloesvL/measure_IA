@@ -31,7 +31,7 @@ class MeasureIABox(MeasureJackknife):
 			num_nodes=1,
 	):
 		"""
-		The __init__ method of the MeasureIA class.
+		The __init__ method of the MeasureIABox class.
 
 		Parameters
 		----------
@@ -327,7 +327,7 @@ class MeasureIALightcone(MeasureJackknife):
 			num_nodes=1,
 	):
 		"""
-		The __init__ method of the MeasureIA class.
+		The __init__ method of the MeasureIALightcone class.
 
 		Parameters
 		----------

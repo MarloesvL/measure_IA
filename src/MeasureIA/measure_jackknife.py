@@ -3,18 +3,18 @@ import h5py
 import os
 from pathos.multiprocessing import ProcessingPool
 from .write_data import write_dataset_hdf5, create_group_hdf5
-from .measure_w_sims import MeasureWSimulations
-from .measure_m_sims import MeasureMultipolesSimulations
-from .measure_w_obs import MeasureWObservations
-from .measure_m_obs import MeasureMultipolesObservations
+from .measure_w_sims import MeasureWBox
+from .measure_m_sims import MeasureMultipolesBox
+from .measure_w_obs import MeasureWLightcone
+from .measure_m_obs import MeasureMultipolesLightcone
 from astropy.cosmology import LambdaCDM
 
 cosmo = LambdaCDM(H0=69.6, Om0=0.286, Ode0=0.714)
 KPC_TO_KM = 3.086e16  # 1 kpc is 3.086e16 km
 
 
-class MeasureJackknife(MeasureWSimulations, MeasureMultipolesSimulations, MeasureWObservations,
-					   MeasureMultipolesObservations):
+class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
+					   MeasureMultipolesLightcone):
 	"""Class that contains all methods for jackknife covariance measurements for IA correlation functions.
 
 	Notes
