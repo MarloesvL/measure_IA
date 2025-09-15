@@ -9,10 +9,10 @@ from .measure_IA_base import MeasureIABase
 from .measure_jackknife import MeasureJackknife
 
 # import backend method classes used in MeasureIA
-from .measure_w_sims import MeasureWBox
-from .measure_m_sims import MeasureMultipolesBox
-from .measure_w_obs import MeasureWLightcone
-from .measure_m_obs import MeasureMultipolesLightcone
+from .measure_w_box import MeasureWBox
+from .measure_m_box import MeasureMultipolesBox
+from .measure_w_lightcone import MeasureWLightcone
+from .measure_m_lightcone import MeasureMultipolesLightcone
 
 # import utilities
 from .read_data import ReadData

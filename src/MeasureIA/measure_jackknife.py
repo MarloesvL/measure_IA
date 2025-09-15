@@ -3,10 +3,10 @@ import h5py
 import os
 from pathos.multiprocessing import ProcessingPool
 from .write_data import write_dataset_hdf5, create_group_hdf5
-from .measure_w_sims import MeasureWBox
-from .measure_m_sims import MeasureMultipolesBox
-from .measure_w_obs import MeasureWLightcone
-from .measure_m_obs import MeasureMultipolesLightcone
+from .measure_w_box import MeasureWBox
+from .measure_m_box import MeasureMultipolesBox
+from .measure_w_lightcone import MeasureWLightcone
+from .measure_m_lightcone import MeasureMultipolesLightcone
 from astropy.cosmology import LambdaCDM
 
 cosmo = LambdaCDM(H0=69.6, Om0=0.286, Ode0=0.714)
