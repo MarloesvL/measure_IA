@@ -5,7 +5,7 @@ from .measure_jackknife import MeasureJackknife
 
 class MeasureIABox(MeasureJackknife):
 	"""Manages the IA correlation function measurement methods used in the MeasureIA package based on speed and input.
-	This class is used to call the methods that measure w_gg, w_g+ and multipoles for simulations (and observations).
+	This class is used to call the methods that measure w_gg, w_g+ and multipoles for simulations in cartesian coordinates.
 	Depending on the input parameters, various correlations incl covariance estimates are measured for given data.
 
 	Notes
@@ -294,7 +294,8 @@ class MeasureIABox(MeasureJackknife):
 
 class MeasureIALightcone(MeasureJackknife):
 	"""Manages the IA correlation function measurement methods used in the MeasureIA package based on speed and input.
-	This class is used to call the methods that measure w_gg, w_g+ and multipoles for simulations (and observations).
+	This class is used to call the methods that measure w_gg, w_g+ and multipoles for simulations (and observations),
+ 	with lightcone data.
 	Depending on the input parameters, various correlations incl covariance estimates are measured for given data.
 
 	Attributes
