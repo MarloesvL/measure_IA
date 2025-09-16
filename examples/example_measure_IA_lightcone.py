@@ -1,5 +1,5 @@
 import numpy as np
-from MeasureIA import MeasureIALightcone
+from measureia import MeasureIALightcone
 
 # data
 RA = np.array([])  # RA of clusters

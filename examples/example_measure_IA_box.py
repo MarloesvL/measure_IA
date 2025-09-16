@@ -1,5 +1,5 @@
 import numpy as np
-from MeasureIA import MeasureIABox
+from measureia import MeasureIABox
 
 # parameters for MeasureIA object
 simulation = "TNG300"  # Indicator of simulation.
