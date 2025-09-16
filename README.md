@@ -12,11 +12,19 @@ Outputs are saved in hdf5 files.
 #### WARNING: This package is still in a development phase and this is therefore a beta-version.
 
 ## Installation
+ 
+The beta-version of this package can be installed via pip or uv.
 
-This package is currently still in a development phase and therefore not pip-installable. However, this will be
-available in the future. The beta-version of this package can be installed.
+### Installation via pip
 
-### Install beta-version
+```angular2html
+pip install measureia
+```
+Note that you need to install the kmeans_radec package yourself as it is not pip-installable.
+See https://github.com/esheldon/kmeans_radec for installation.
+When using uv, this is not necessary as uv takes care of all the dependencies (see below).
+
+### Installation via uv
 
 The easiest way to install MeasureIA and its dependencies is using uv.
 
@@ -42,7 +50,7 @@ Either activate the virtual environment created by uv, or run scripts directly u
 uv run [script_name].py
 ```
 
-#### Installing without uv
+#### Installing manually without uv
 
 If you do not want to use uv, you can also install dependencies the provided requirements.txt document.
 Note that you need to also download the kmeans-radec repository (https://github.com/esheldon/kmeans_radec) in this case.
