@@ -1,7 +1,7 @@
 [project]
-name = "MeasureIA"
+name = "measureia"
 version = "0.1.0"
-description = "Add your description here"
+description = "Measureing tool for intrinsic alignment correlation functions."
 authors = [{ name = "Marloes van Heukelum", email = "m.l.vanheukelum@uu.nl" }]
 readme = "README.md"
 requires-python = ">=3.10"
