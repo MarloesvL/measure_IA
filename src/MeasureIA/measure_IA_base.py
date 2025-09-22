@@ -158,19 +158,18 @@ class MeasureIABase(SimInfo):
 
 	@staticmethod
 	def calculate_dot_product_arrays(a1, a2):
-		"""Calculates the dot product over 2 2D arrays across axis 1 so that
-		dot_product[i] = np.dot(a1[i],a2[i])
+		"""Calculates the dot product over 2 2D arrays across axis 1 so that dot_product[i] = np.dot(a1[i],a2[i])
 
 		Parameters
 		----------
-		a1 :
+		a1 : ndarray
 			First array
-		a2 :
+		a2 : ndarray
 			Second array
 
 		Returns
 		-------
-		type
+		ndarray
 			Dot product of columns of arrays
 
 		"""
@@ -245,14 +244,14 @@ class MeasureIABase(SimInfo):
 
 		Parameters
 		----------
-		e :
+		e : ndarray
 			size of the ellipticity vector
-		phi :
+		phi : ndarray
 			angle between semimajor/semiminor axis and separation vector
 
 		Returns
 		-------
-		type
+		ndarray
 			e_+ and e_x
 
 		"""
@@ -266,26 +265,27 @@ class MeasureIABase(SimInfo):
 
 		Parameters
 		----------
-		rp_max :
-			upper bound of projected separation vector bin
-		rp_min :
-			lower bound of projected separation vector bin
-		pi_max :
-			upper bound of line of sight vector bin
-		pi_min :
-			lower bound of line of sight vector bin
-		L3 :
-			volume of the simulation box
-		corrtype :
+		rp_max : float
+			Upper bound of projected separation vector bin
+		rp_min : float
+			Lower bound of projected separation vector bin
+		pi_max : float
+			Upper bound of line of sight vector bin
+		pi_min : float
+			Lower bound of line of sight vector bin
+		L3 : float or int
+			Volume of the simulation box
+		corrtype : str
 			Correlation type, auto or cross. RR for auto is RR_cross/2.
-		Num_position :
-
-		Num_shape :
+		Num_position : int
+			Number of objects in the position sample.
+		Num_shape : int
+			Number of objects in the shape sample.
 
 
 		Returns
 		-------
-		type
+		float
 			number of pairs in r_p, pi bin
 
 		"""
@@ -309,45 +309,45 @@ class MeasureIABase(SimInfo):
 
 		Parameters
 		----------
-		mur :
+		mur : float
 			cos(theta), where theta is the polar angle between the apex and disk of the cap.
-		r :
+		r : float
 			radius
 
 		Returns
 		-------
-		type
+		float
 			Volume of the spherical cap.
 
 		"""
 		return np.pi / 3.0 * r ** 3 * (2 + mur) * (1 - mur) ** 2
 
 	def get_random_pairs_r_mur(self, r_max, r_min, mur_max, mur_min, L3, corrtype, Num_position, Num_shape):
-		"""Retruns analytical value of the number of pairs expected in an r_p, pi bin for a random uniform distribution.
-		(Singh et al. 2023)
+		"""Returns analytical value of the number of pairs expected in an r, mu_r bin for a random uniform distribution.
 
 		Parameters
 		----------
-		r_max :
-			upper bound of projected separation vector bin
-		r_min :
-			lower bound of projected separation vector bin
-		mur_max :
-			upper bound of mu_r bin
-		mur_min :
-			lower bound of mu_r bin
-		L3 :
-			volume of the simulation box
-		corrtype :
+		r_max : float
+			Upper bound of separation vector bin
+		r_min : float
+			Lower bound of separation vector bin
+		mur_max : float
+			Upper bound of mu_r bin
+		mur_min : float
+			Lower bound of mu_r bin
+		L3 : float
+			Volume of the simulation box
+		corrtype : str
 			Correlation type, auto or cross. RR for auto is RR_cross/2.
-		Num_position :
-
-		Num_shape :
+		Num_position : int
+			Number of objects in the position sample.
+		Num_shape : int
+			Number of objects in the shape sample.
 
 
 		Returns
 		-------
-		type
+		float
 			number of pairs in r, mu_r bin
 
 		"""
@@ -384,19 +384,21 @@ class MeasureIABase(SimInfo):
 
 	@staticmethod
 	def setdiff2D(a1, a2):
-		"""
+		"""Compares each row of a1 and a2 and returns the elements that do not overlap
 
 		Parameters
 		----------
-		a1 :
-
-		a2 :
-
+		a1 : nested list
+			List containing lists of elements to compare to a2
+		a2 : nested list
+			List containing lists of elements to compare to a1
 
 		Returns
 		-------
-
+		nested list
+			For each row, the not-overlapping elements between a1 and a2
 		"""
+		assert len(a1) == len(a2), "Lengths of lists where each row is to be compared, are not the same."
 		diff = []
 		for i in np.arange(0, len(a1)):
 			setdiff = np.setdiff1d(a1[i], a2[i])
@@ -406,20 +408,22 @@ class MeasureIABase(SimInfo):
 
 	@staticmethod
 	def setdiff_omit(a1, a2, incl_ind):
-		"""
+		"""For rows in nested list a1, whose index is included in incl_ind, returns elements that do not overlap between
+		the row in a1 and a2.
 
 		Parameters
 		----------
-		a1 :
-
-		a2 :
-
-		incl_ind :
-
+		a1 : nested list
+			List of lists or arrays where indicated rows need to be compared to a2
+		a2 : list or array
+			Elements to be compared to the row in a1 [and not included in return values].
+		incl_ind : list or array
+			Indices of rows in a1 to be compared to a2.
 
 		Returns
 		-------
-
+		nested list
+			For each included row in a1, the not-overlapping elements between a1 and a2
 		"""
 		diff = []
 		for i in np.arange(0, len(a1)):
@@ -428,8 +432,6 @@ class MeasureIABase(SimInfo):
 				diff.append(setdiff)
 				del setdiff
 		return diff
-
-
 
 	def measure_projected_correlation_save_pairs(self, output_file_pairs="", masks=None, dataset_name="All_galaxies",
 												 print_num=True):
@@ -519,23 +521,25 @@ class MeasureIABase(SimInfo):
 		output_file_pairs.close()
 		return
 
-	def _measure_w_g_i(self, corr_type="both", dataset_name="All_galaxies", return_output=False, jk_group_name=""):
-		"""Measures w_gi for a given xi_gi dataset that has been calculated with the measure projected correlation
-		method. Sums over pi values. Stores [rp, w_gi]. i can be + or g
+	def _measure_w_g_i(self, dataset_name, corr_type="both", return_output=False, jk_group_name=""):
+		"""Measures w_gg or w_g+ for a given xi_gi dataset that has been calculated with the _measure_xi_rp_pi_sims
+		methods. Integrates over pi bins via sum * dpi. Stores rp, and w_gg or w_g+.
 
 		Parameters
 		----------
-		dataset_name :
-			Name of xi_gi dataset and name given to w_gi dataset when stored. (Default value = "All_galaxies")
-		return_output :
-			Output is returned if True, saved to file if False. (Default value = False)
-		corr_type :
-			Type of correlation function. Choose from [g+,gg,both]. (Default value = "both")
-		jk_group_name :
-			 (Default value = "")
+		dataset_name : str
+			Name of xi_gg or xi_g+ dataset and name given to w_gg or w_g+ dataset when stored.
+		return_output : bool, optional
+			Output is returned if True, saved to file if False. Default value = False
+		corr_type : str, optional
+			Type of correlation function. Choose from [g+,gg,both]. Default value = "both"
+		jk_group_name : str, optional
+			Name of subgroup in hdf5 file where jackknife realisations are stored. Default value = ""
 
 		Returns
 		-------
+		ndarray
+			[rp, wgg] or [rp, wg+] if return_output is True
 
 		"""
 		if corr_type == "both":
