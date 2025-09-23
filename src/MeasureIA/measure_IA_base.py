@@ -583,25 +583,25 @@ class MeasureIABase(SimInfo):
 				correlation_data_file.close()
 		return
 
-	def _measure_multipoles(self, corr_type="both", dataset_name="All_galaxies", return_output=False, jk_group_name=""):
-		"""Measures multipoles for a given xi_g+ calculated by measure projected correlation.
-		The data assumes xi_g+ to be measured in bins of rp and pi. It measures mu_r and r
-		and saves the multipoles in the (r,mu_r) space. Should be binned into r bins.
+	def _measure_multipoles(self,dataset_name, corr_type="both",  return_output=False, jk_group_name=""):
+		"""Measures multipoles for a given xi_g+ or xi_gg measured by _measure_xi_r_pi_sims methods.
+		The data assumes xi_g+ and xi_gg to be measured in bins of r and mu_r.
 
 		Parameters
 		----------
-		corr_type :
-			Default value of g+, ensuring correct dataset and sab and l to be 2.
-		dataset_name :
-			Name of the dataset of xi_g+ and multipoles. (Default value = "All_galaxies")
-		return_output :
-			Output is returned if True, saved to file if False. (Default value = False)
-		jk_group_name :
-			 (Default value = "")
+		dataset_name : str
+			Name of xi_gg or xi_g+ dataset and name given to multipoles dataset when stored.
+		corr_type : str, optional
+			Type of correlation function. Choose from [g+,gg,both]. Default value = "both"
+		return_output : bool, optional
+			Output is returned if True, saved to file if False. Default value = False.
+		jk_group_name : str, optional
+			Name of subgroup in hdf5 file where jackknife realisations are stored. Default value = ""
 
 		Returns
 		-------
-
+		ndarray
+			[r, multipoles_gg] or [r, multipoles_g+] if return_output is True
 		"""
 		correlation_data_file = h5py.File(self.output_file_name, "a")
 		if corr_type == "g+":  # todo: expand to include ++ option
@@ -678,22 +678,23 @@ class MeasureIABase(SimInfo):
 
 	def _obs_estimator(self, corr_type, IA_estimator, dataset_name, dataset_name_randoms, num_samples,
 					   jk_group_name=""):
-		"""Reads various components of xi and combines into correct estimator for cluster or galaxy observational alignments
+		"""Reads various components of xi and combines into correct estimator for cluster or galaxy
+		lightcone alignment correlations. It then writes the xi_gg or xi_g+ in the correct place in the output file.
 
 		Parameters
 		----------
-		corr_type :
-			w or multipoles
-		IA_estimator :
-			clusters or galaxies
-		dataset_name :
+		corr_type : list of 2 str elements
+			First element: ['gg', 'g+', 'both'], second: 'w' or 'multipoles'
+		IA_estimator : str
+			Chooser from 'clusters' or 'galaxies' for different estimator definition.
+		dataset_name : str
 			Name of the dataset
-		dataset_name_randoms :
+		dataset_name_randoms : str
 			Name of the dataset for data with randoms as positions
-		num_samples :
-
-		jk_group_name :
-			 (Default value = "")
+		num_samples : dict
+			Dictionary of samples sizes for position, shape and random samples. Keywords: D, S, R_D, R_S
+		jk_group_name : str
+			Name of subgroup in hdf5 file where jackknife realisations are stored. Default value = ""
 
 		Returns
 		-------
@@ -753,17 +754,20 @@ class MeasureIABase(SimInfo):
 
 		Parameters
 		----------
-		data :
-			directory containing position and shape sample data
-		randoms_data :
-			directory containing position and shape sample data of randoms
-		num_jk :
-			number of jackknife patches
+		data : dict
+			Dictionary containing position and shape sample data. Keywords: "RA", "DEC", "RA_shape_sample",
+			"DEC_shape_sample"
+		randoms_data : dict
+			Dictionary containing position and shape sample data of randoms. Keywords: "RA", "DEC", "RA_shape_sample",
+			"DEC_shape_sample"
+		num_jk : int
+			Number of jackknife patches
 
 		Returns
 		-------
-		type
-			directory with patch numbers for each sample
+		dict
+			Dictionary with patch numbers for each sample. Keywords: 'position', 'shape', 'randoms_position',
+			'randoms_shape'
 
 		"""
 
@@ -823,6 +827,8 @@ class MeasureIABase(SimInfo):
 			the misalignment angle, unless an output file name is given.
 
 		"""
+		print("WARNING: this method has not been tested")
+		exit()
 
 		eigen_vector1 = self.data[vector1_name]
 		eigen_vector2 = self.data[vector2_name]
