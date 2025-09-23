@@ -179,65 +179,6 @@ class MeasureIABase(SimInfo):
 			dot_product += a1[:, i] * a2[:, i]
 		return dot_product
 
-	def measure_3D_orientation_separation_correlation(self, masks=None, dataset_name="All_galaxies"):
-		"""NEEDS MORE EXTENSIVE TESTS
-		Measures the 3D orientation-separation correlation function for given positions and minor axis directions.
-
-		Parameters
-		----------
-		masks :
-			Directory of masks for the data that makes a selection in the data. (Default value = None)
-		dataset_name :
-			Name of the dataset in the hdf5 file specified in output file name. (Default value = "All_galaxies")
-
-		Returns
-		-------
-		type
-			correlation, separation bin means (log) if output file name not specified.
-
-		"""
-		print("WARNING: this method has not been tested and is likely not correct.")
-		exit()
-		if masks == None:
-			positions = self.data["Position"]
-			positions_shape_sample = self.data["Position_shape_sample"]
-			axis_direction_v = self.data["Axis_Direction"]
-			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
-			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
-		else:
-			positions = self.data["Position"][masks["Position"]]
-			positions_shape_sample = self.data["Position_shape_sample"][masks["Position_shape_sample"]]
-			axis_direction_v = self.data["Axis_Direction"][masks["Axis_Direction"]]
-			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
-			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
-		n_pairs = [0] * self.num_bins_r
-		inner_product = [0] * self.num_bins_r
-		for n in np.arange(0, len(positions)):
-			separation = positions_shape_sample - positions[n]
-			separation[separation > self.L_0p5] -= self.boxsize
-			separation[separation < -self.L_0p5] += self.boxsize
-			separation_len = np.sqrt(np.sum(separation ** 2, axis=1))
-			separation_dir = (separation.transpose() / separation_len).transpose()
-			inner_product_n = self.calculate_dot_product_arrays(separation_dir, axis_direction) ** 2
-			for i in np.arange(0, self.num_bins_r):
-				lower_limit_mask = separation_len > self.r_bins[i]
-				upper_limit_mask = separation_len < self.r_bins[i + 1]
-				mask = lower_limit_mask * upper_limit_mask
-				n_pairs[i] += sum(mask)
-				inner_product[i] += sum(inner_product_n[mask])
-		correlation = np.array(inner_product) / np.array(n_pairs) - 1.0 / 3
-		dsep = (self.r_bins[:-1] - self.r_bins[1:]) / 2.0
-		separation_bins = self.r_bins[:-1] + abs(dsep)
-
-		if self.output_file_name != None:
-			output_file = h5py.File(self.output_file_name, "a")
-			group = create_group_hdf5(output_file, f"{self.snap_group}/3D_correlations")
-			write_dataset_hdf5(group, dataset_name, data=np.array([separation_bins, correlation]).transpose())
-			output_file.close()
-			return
-		else:
-			return correlation, separation_bins
-
 	@staticmethod
 	def get_ellipticity(e, phi):
 		"""Calculates the radial and tangential components of the ellipticity, given the size of the ellipticty vector
@@ -429,95 +370,6 @@ class MeasureIABase(SimInfo):
 				del setdiff
 		return diff
 
-
-
-	def measure_projected_correlation_save_pairs(self, output_file_pairs="", masks=None, dataset_name="All_galaxies",
-												 print_num=True):
-		"""Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
-		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
-		axes, q=b/a (q) and the index of the direction of the line of sight (LOS=2 for z axis).
-		Positions are assumed to be given in cMpc/h.
-
-		Parameters
-		----------
-		masks :
-			the masks for the data to select only part of the data (Default value = None)
-		dataset_name :
-			the dataset name given in the hdf5 file. (Default value = "All_galaxies")
-		return_output :
-			Output is returned if True, saved to file if False.
-		output_file_pairs :
-			 (Default value = "")
-		print_num :
-			 (Default value = True)
-
-		Returns
-		-------
-		type
-			xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
-
-		"""
-
-		if masks == None:
-			positions = self.data["Position"]
-			positions_shape_sample = self.data["Position_shape_sample"]
-			axis_direction_v = self.data["Axis_Direction"]
-			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
-			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
-			q = self.data["q"]
-		else:
-			positions = self.data["Position"][masks["Position"]]
-			positions_shape_sample = self.data["Position_shape_sample"][masks["Position_shape_sample"]]
-			axis_direction_v = self.data["Axis_Direction"][masks["Axis_Direction"]]
-			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
-			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
-			q = self.data["q"][masks["q"]]
-		Num_position = len(positions)
-		Num_shape = len(positions_shape_sample)
-		if print_num:
-			print(
-				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
-
-		LOS_ind = self.data["LOS"]  # eg 2 for z axis
-		not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], LOS_ind, invert=True)]  # eg 0,1 for x&y
-		e = (1 - q ** 2) / (1 + q ** 2)  # size of ellipticity
-		del q
-		R = 1 - np.mean(e ** 2) / 2.0  # responsitivity factor
-		output_file_pairs = h5py.File(output_file_pairs, "a")
-		group = create_group_hdf5(output_file_pairs, "w_g_plus")
-
-		indices_shape = np.arange(0, len(positions_shape_sample))
-		for n in np.arange(0, len(positions)):
-			# for Splus_D (calculate ellipticities around position sample)
-			separation = positions_shape_sample - positions[n]
-			if self.periodicity:
-				separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
-				separation[separation < -self.L_0p5] += self.boxsize
-			projected_sep = separation[:, not_LOS]
-			LOS = separation[:, LOS_ind]
-			del separation
-			separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
-			separation_dir = (projected_sep.transpose() / separation_len).transpose()  # normalisation of rp
-			del projected_sep
-			phi = np.arccos(self.calculate_dot_product_arrays(separation_dir, axis_direction))  # [0,pi]
-			del separation_dir
-			e_plus, e_cross = self.get_ellipticity(e, phi)
-			del phi
-			e_plus[np.isnan(e_plus)] = 0.0
-			e_cross[np.isnan(e_cross)] = 0.0
-
-			write_data = (np.array(
-				[[n] * len(indices_shape), indices_shape, separation_len, LOS, e_plus / (2 * R)]).transpose())
-			# np.array(
-			# [[n] * len(ind_r), indices_shape[mask], ind_r, ind_pi, e_plus[mask] / (2 * R)]).transpose())
-			if n == 0:
-				group.create_dataset(dataset_name, data=write_data, maxshape=(None, 5), chunks=True)
-			else:
-				group[dataset_name].resize((group[dataset_name].shape[0] + write_data.shape[0]), axis=0)
-				group[dataset_name][-write_data.shape[0]:] = write_data
-
-		output_file_pairs.close()
-		return
 
 	def _measure_w_g_i(self, corr_type="both", dataset_name="All_galaxies", return_output=False, jk_group_name=""):
 		"""Measures w_gi for a given xi_gi dataset that has been calculated with the measure projected correlation
@@ -798,44 +650,6 @@ class MeasureIABase(SimInfo):
 		jk_patches['shape'] = jk_labels
 
 		return jk_patches
-
-	def measure_misalignment_angle(self, vector1_name, vector2_name, normalise=False):
-		"""NOT TESTED
-		Calculate the misalignment angle between two given vectors. Assumes the vectors to be normalised unless
-		otherwise specified.
-
-		Parameters
-		----------
-		vector1_name :
-			Name in data of the first vector.
-		vector2_name :
-			Name in data of the second vector
-		normalise :
-			If True, the vectors are divided by their length. Default is False.
-
-		Returns
-		-------
-		type
-			the misalignment angle, unless an output file name is given.
-
-		"""
-
-		eigen_vector1 = self.data[vector1_name]
-		eigen_vector2 = self.data[vector2_name]
-		if normalise:
-			eigen_vector1 = (eigen_vector1.transpose() / np.sqrt(np.sum(eigen_vector1 ** 2, axis=1))).transpose()
-			eigen_vector2 = (eigen_vector2.transpose() / np.sqrt(np.sum(eigen_vector2 ** 2, axis=1))).transpose()
-		misalignment_angle = np.arccos(self.calculate_dot_product_arrays(eigen_vector1, eigen_vector2))
-
-		if self.output_file_name != None:
-			output_file = h5py.File(self.output_file_name, "a")
-			group = create_group_hdf5(output_file, f"{self.snap_group}/Misalignment_angels")
-			write_dataset_hdf5(group, vector1_name + "_" + vector2_name, data=misalignment_angle)
-			output_file.close()
-		else:
-			return misalignment_angle
-		return
-
 
 if __name__ == "__main__":
 	pass
