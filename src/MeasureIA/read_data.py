@@ -325,7 +325,7 @@ class ReadData(SimInfo):
 			pass
 		try:
 			self.w_gg = data_group[f"w_gg/{dataset_name}"][:]
-			self.rp = data_group[f"w_gg/{dataset_name}_r"][:]
+			self.rp = data_group[f"w_gg/{dataset_name}_rp"][:]
 			if num_jk != None:
 				self.cov_w_gg = data_group[f"w_gg/{dataset_name}_jackknife_cov_{num_jk}"][:]
 				self.errors_w_gg = data_group[f"w_gg/{dataset_name}_jackknife_{num_jk}"][:]
@@ -333,7 +333,7 @@ class ReadData(SimInfo):
 			pass
 		try:
 			self.w_gp = data_group[f"w_g_plus/{dataset_name}"][:]
-			self.rp = data_group[f"w_g_plus/{dataset_name}_r"][:]
+			self.rp = data_group[f"w_g_plus/{dataset_name}_rp"][:]
 			if num_jk != None:
 				self.cov_w_gp = data_group[f"w_g_plus/{dataset_name}_jackknife_cov_{num_jk}"][:]
 				self.errors_w_gp = data_group[f"w_g_plus/{dataset_name}_jackknife_{num_jk}"][:]
