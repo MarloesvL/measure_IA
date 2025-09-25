@@ -1,0 +1,21 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: MeasureIA
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Marloes
+    family-names: van Heukelum
+    email: m.l.vanheukelum@uu.nl
+    affiliation: Utrecht University
+    orcid: 'https://orcid.org/0009-0008-3780-1617'
+repository-code: 'https://github.com/MarloesvL/measure_IA'
+abstract: >-
+  MeasureIA is a tool that can be used to easily measure
+  intrinsic alignment correlation functions and clustering
+  in simulation boxes.
+license: MIT
