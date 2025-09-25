@@ -8,9 +8,6 @@ import astropy.units as u
 from astropy import coordinates
 from astropy.cosmology import LambdaCDM, FlatLambdaCDM
 
-cosmo = LambdaCDM(H0=69.6, Om0=0.286, Ode0=0.714)
-KPC_TO_KM = 3.086e16  # 1 kpc is 3.086e16 km
-
 
 class MeasureWLightcone(MeasureIABase):
 	"""Class that contains all methods for the measurements of xi_gg and xi_g+ for w_gg and w_g+ with lightcone data.
@@ -49,7 +46,7 @@ class MeasureWLightcone(MeasureIABase):
 						 pi_max, boxsize, periodicity)
 		return
 
-	def _measure_xi_rp_pi_obs_brute(self, masks=None, dataset_name="All_galaxies", return_output=False,
+	def _measure_xi_rp_pi_obs_brute(self, dataset_name, masks=None, return_output=False,
 									print_num=True, over_h=False, cosmology=None, jk_group_name=""
 									):
 		"""Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
@@ -220,8 +217,9 @@ class MeasureWLightcone(MeasureIABase):
 		else:
 			return Splus_D, DD, separation_bins, pi_bins
 
-	def _count_pairs_xi_rp_pi_obs_brute(self, masks=None, dataset_name="All_galaxies", return_output=False,
-										print_num=True, over_h=False, cosmology=None, data_suffix="_DD", jk_group_name=""
+	def _count_pairs_xi_rp_pi_obs_brute(self, dataset_name, masks=None, return_output=False,
+										print_num=True, over_h=False, cosmology=None, data_suffix="_DD",
+										jk_group_name=""
 										):
 		"""Measures the projected clustering (xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample) and the index of the direction of the line of sight (LOS=2 for z axis).

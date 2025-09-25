@@ -229,7 +229,7 @@ class ReadData(SimInfo):
 
 		Returns
 		-------
-		type
+		ndarray
 			The requested datasets or nothing if output_file_name is specified
 
 		"""

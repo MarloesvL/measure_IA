@@ -15,6 +15,18 @@ class MeasureWBox(MeasureIABase):
 	"""Class that contains all methods for the measurements of xi_gg and xi_g+ for w_gg and w_g+ with carthesian
 	simulation data.
 
+	Methods
+	-------
+	_measure_xi_rp_pi_sims_brute()
+		Measure xi_gg or xi_g+ in (rp, pi) grid binning in a periodic box using 1 CPU.
+	_measure_xi_rp_pi_sims_tree()
+		Measure xi_gg or xi_g+ in (rp, pi) grid binning in a periodic box using 1 CPU and KDTree for extra speed.
+	_measure_xi_rp_pi_sims_batch()
+		Measure xi_gg or xi_g+ in (rp, pi) grid binning in a periodic box using 1 CPU for a batch of indices.
+		Support function of _measure_xi_rp_pi_sims_multiprocessing().
+	_measure_xi_rp_pi_sims_multiprocessing()
+		Measure xi_gg or xi_g+ in (rp, pi) grid binning in a periodic box using >1 CPUs.
+
 	Notes
 	-----
 	Inherits attributes from 'SimInfo', where 'boxsize', 'L_0p5' and 'snap_group' are used in this class.
@@ -49,18 +61,17 @@ class MeasureWBox(MeasureIABase):
 						 pi_max, boxsize, periodicity)
 		return
 
-	def _measure_xi_rp_pi_sims_brute(self, masks=None, dataset_name="All_galaxies", return_output=False,
+	def _measure_xi_rp_pi_sims_brute(self,dataset_name, masks=None, return_output=False,
 									 print_num=True,
 									 jk_group_name=""):
-		"""Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
-		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
-		axes, q=b/a (q) and the index of the direction of the line of sight (LOS=2 for z axis).
-		Positions are assumed to be given in cMpc/h.
+		"""Measures the projected correlation functions, xi_g+ and xi_gg, in (rp, pi) bins for an object created with
+		MeasureIABox. Uses 1 CPU.
 
 		Parameters
 		----------
-		masks :
-		    the masks for the data to select only part of the data (Default value = None)
+		masks : dict or NoneType, optional
+			Dictionary with masks for the data to select only part of the data. Uses same keywords as data dictionary.
+			Default value = None.
 		dataset_name :
 		    the dataset name given in the hdf5 file. (Default value = "All_galaxies")
 		return_output :
@@ -217,7 +228,7 @@ class MeasureWBox(MeasureIABase):
 		else:
 			return correlation, (DD / RR_gg) - 1, separation_bins, pi_bins, Splus_D, DD, RR_g_plus
 
-	def _measure_xi_rp_pi_sims_tree(self, tree_input=None, masks=None, dataset_name="All_galaxies",
+	def _measure_xi_rp_pi_sims_tree(self, dataset_name, tree_input=None, masks=None,
 									return_output=False, print_num=True, dataset_name_tree=None, save_tree=False,
 									file_tree_path=None, jk_group_name=""):
 		"""Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
@@ -499,8 +510,8 @@ class MeasureWBox(MeasureIABase):
 
 		return Splus_D, Scross_D, DD, variance
 
-	def _measure_xi_rp_pi_sims_multiprocessing(self, num_nodes=9, masks=None,
-											   dataset_name="All_galaxies", return_output=False,
+	def _measure_xi_rp_pi_sims_multiprocessing(self,dataset_name, num_nodes=9, masks=None,
+											    return_output=False,
 											   print_num=True, jk_group_name=""):
 		"""Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
