@@ -1,5 +1,10 @@
 # SimInfo
 
-::: MeasureIA.Sim_info.SimInfo
-    options:
-          members: true
+::: measureia.SimInfo
+```yaml
+handler: python
+options:
+  show_source: true
+  members_order: source
+  show_root_heading: true
+  heading_level: 2

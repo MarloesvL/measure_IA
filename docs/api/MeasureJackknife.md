@@ -1,6 +1,6 @@
-# ReadData
+# MeasureJackknife
 
-::: measureia.ReadData
+::: measureia.MeasureJackknife
 ```yaml
 handler: python
 options:
