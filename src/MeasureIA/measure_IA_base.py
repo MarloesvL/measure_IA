@@ -27,6 +27,33 @@ class MeasureIABase(SimInfo):
 	mu_r_bins : ndarray
 		Bin edges of the mu_r.
 
+	Methods
+	-------
+	calculate_dot_product_arrays()
+		Calculates dot product of elements of two arrays
+	get_ellipticity()
+		Given e and phi, e_+ and e_x components of ellipticity are returned.
+	get_random_pairs()
+		Analytical RR for a (rp,pi) bin.
+	get_volume_spherical_cap()
+		Volume of an (r,mu_r) bin.
+	get_random_pairs_r_mur()
+		Analytical RR for a (r,mu_r) bin.
+	setdiff2D()
+		Compares each row of a1 and a2 and returns the elements that do not overlap.
+	setdiff_omit()
+		For rows in nested list a1, whose index is included in incl_ind, returns elements that do not overlap between
+		the row in a1 and a2.
+	_measure_w_g_i()
+		Measure wgg or wg+ from xi grid provided by MeasureWBox or MeasureWLightcone class methods.
+	_measure_multipoles()
+		Measure multipoles (gg or g+) from xi grid provided by MeasureMultipolesBox or MeasureMultipolesLightcone
+		class methods.
+	_obs_estimator()
+		Combines elements (DD, RR, etc) of xi estimators into xi_gg or xi_g+ for MeasureIALightcone.
+	assign_jackknife_patches()
+		Given positions of multiple samples, defines jackknife patches and returns index of every object in the sample.
+
 	Notes
 	-----
 	Inherits attributes from 'SimInfo', where 'boxsize', 'L_0p5' and 'snap_group' are used in this class.
@@ -583,7 +610,7 @@ class MeasureIABase(SimInfo):
 				correlation_data_file.close()
 		return
 
-	def _measure_multipoles(self,dataset_name, corr_type="both",  return_output=False, jk_group_name=""):
+	def _measure_multipoles(self, dataset_name, corr_type="both", return_output=False, jk_group_name=""):
 		"""Measures multipoles for a given xi_g+ or xi_gg measured by _measure_xi_r_pi_sims methods.
 		The data assumes xi_g+ and xi_gg to be measured in bins of r and mu_r.
 

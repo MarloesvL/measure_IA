@@ -13,6 +13,23 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 					   MeasureMultipolesLightcone):
 	"""Class that contains all methods for jackknife covariance measurements for IA correlation functions.
 
+	Methods
+	-------
+	_measure_jackknife_covariance_sims()
+		Measures all jackknife realisations for MeasureIABox and combines into covariance using 1 or more CPUs.
+	_measure_jackknife_covariance_sims_multiprocessing()
+		Measures all jackknife realisations for MeasureIABox and combines into covariance using >1 CPU.
+	_measure_jackknife_realisations_obs()
+		Measures all jackknife realisations for MeasureIALightcone using 1 or more CPUs.
+	_measure_jackknife_covariance_obs()
+		Combines jackknife realisations for MeasureIALightcone into covariance.
+	_measure_jackknife_realisations_obs_multiprocessing()
+		Measures all jackknife realisations for MeasureIALightcone using >1 CPU.
+	measure_covariance_multiple_datasets()
+		Given the jackknife realisations of two datasets, creates the cross covariance.
+	create_full_cov_matrix_projections()
+		Creates larger covariance matrix of multiple datasets including cross terms.
+
 	Notes
 	-----
 	Inherits attributes from 'SimInfo', where 'boxsize', 'L_0p5' and 'snap_group' are used in this class.
@@ -50,29 +67,29 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 			self, dataset_name, corr_type, masks=None, L_subboxes=3, rp_cut=None,
 			tree_saved=True, file_tree_path=None, remove_tree_file=True, num_nodes=None
 	):
-		"""Measures the errors in the projected correlation function using the jackknife method.
+		"""Measures the covariance in the projected correlation functions using the jackknife method.
 		The box is divided into L_subboxes^3 subboxes; the correlation function is calculated omitting one box at a time.
-		Then the standard deviation is taken for wg+ and the covariance matrix is calculated for the multipoles.
+		Then the covariance is computed by combining the information of all realisations.
+		This method uses 1 or more CPUs.
 
 		Parameters
 		----------
 		dataset_name : str
 			Name of the dataset in the output file.
-		masks : dict or NoneType, optional
-			See MeasureIA methods. Default is None.
-		corr_type : iterable with 2 str entries, optional
+		corr_type : iterable with 2 str entries
 			Array with two entries. For first choose from [gg, g+, both], for second from [w, multipoles].
-			Default = ["both","multipoles"].
+		masks : dict or NoneType, optional
+			See MeasureIABox methods. Default is None.
 		L_subboxes : int, optional
 			Integer by which the length of the side of the box should be divided. Total number of jackknife realisations
 			will be L_subboxes^3. Default is 3.
 		rp_cut : float or NoneType, optional
-			See MeasureIA.measure_xi_multipoles. Default is None.
+			See MeasureIABox.measure_xi_multipoles. Default is None.
 		tree_saved : bool, optional
 			If True, a method using trees has been used in the correlation measurement and the tree information is
 			saved. Default is True.
 		file_tree_path : str or NoneType, optional
-			Data path to tree information. See MeasureIA methods. Default is None.
+			Data path to tree information. See MeasureIABox methods. Default is None.
 		remove_tree_file : bool, optional
 			If True, the tree information file is removed after the jackknife covariance is measured. Default is True.
 		num_nodes : int or NoneType, optional
@@ -254,38 +271,39 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 			num_nodes=4, twoD=False, tree=True, tree_saved=True, file_tree_path=None, remove_tree_file=True,
 			save_jk_terms=False
 	):
-		"""Measures the errors in the projected correlation function using the jackknife method, using multiple CPU cores.
+		"""Measures the covariance in the projected correlation functions using the jackknife method.
 		The box is divided into L_subboxes^3 subboxes; the correlation function is calculated omitting one box at a time.
-		Then the standard deviation is taken for wg+ and the covariance matrix is calculated for the multipoles.
+		Then the covariance is computed by combining the information of all realisations.
+		This method uses >1 CPUs.
 
 		Parameters
 		----------
-		twoD :
-			Divide box into L_subboxes^2, no division in z-direction. (Default value = False)
-		num_nodes :
-			Number of CPU nodes to use in multiprocessing. (Default value = 4)
-		dataset_name :
-			Name of the dataset (Default value = "All_galaxies")
-		L_subboxes :
-			Integer by which the length of the side of the mox should be divided. (Default value = 3)
-		rp_cut :
-			Limit for minimum r_p value for pairs to be included. (Needed for measure_projected_correlation_multipoles) Default is None
-		corr_type :
-			Array with two entries. For first choose from [gg, g+, both], for second from [w, multipoles] (Default value = ["both")
-		masks :
-			 Default is None
-		"multipoles"] :
-
-		tree :
-			 Default is True
-		tree_saved :
-			 Default is True
-		file_tree_path :
-			 Default is None
-		remove_tree_file :
-			 Default is True
-		save_jk_terms :
-			 (Default value = False)
+		dataset_name : str
+			Name of the dataset in the output file.
+		corr_type : iterable with 2 str entries
+			Array with two entries. For first choose from [gg, g+, both], for second from [w, multipoles].
+		masks : dict or NoneType, optional
+			See MeasureIABox methods. Default is None.
+		L_subboxes : int, optional
+			Integer by which the length of the side of the box should be divided. Total number of jackknife realisations
+			will be L_subboxes^3. Default is 3.
+		rp_cut : float or NoneType, optional
+			See MeasureIABox.measure_xi_multipoles. Default is None.
+		tree_saved : bool, optional
+			If True, a method using trees has been used in the correlation measurement and the tree information is
+			saved. Default is True.
+		file_tree_path : str or NoneType, optional
+			Data path to tree information. See MeasureIABox methods. Default is None.
+		remove_tree_file : bool, optional
+			If True, the tree information file is removed after the jackknife covariance is measured. Default is True.
+		num_nodes : int or NoneType, optional
+			Number of cores to be used in multiprocessing. Default is 4.
+		twoD : bool, optional
+			Divide box into L_subboxes^2, no division in z-direction. Default value is False.
+		tree : bool, optional
+			Manually determine if trees should be used in measurement. Default is True
+		save_jk_terms : bool, optional
+			If True, DD, and S+D terms are saved for each realisation. Default value is False.
 
 		Returns
 		-------
@@ -549,40 +567,35 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 			self, patches_pos, patches_shape, corr_type, dataset_name, masks=None,
 			rp_cut=None, over_h=False, cosmology=None, count_pairs=False, data_suffix="", num_sample_names=["S", "D"]
 	):
-		"""Measures the errors in the projected correlation function using the jackknife method.
-		The box is divided into L_subboxes^3 subboxes; the correlation function is calculated omitting one box at a time.
-		Then the standard deviation is taken for wg+ and the covariance matrix is calculated for the multipoles.
+		"""Measures the jackknife realisations for the projected correlation functions in MeasureIALightcone using the
+		jackknife method. The area is already divided into patches; the correlation function is calculated omitting one
+		patch at a time. This method uses 1 or more CPUs.
 
 		Parameters
 		----------
-		rp_cut :
-			Limit for minimum r_p value for pairs to be included. (Needed for measure_projected_correlation_multipoles) Default is None
-		corr_type :
-			Array with two entries. For first choose from [gg, g+, both], for second from [w, multipoles] (Default value = ["both")
-		dataset_name :
-			Name of the dataset (Default value = "All_galaxies")
-		L_subboxes :
-			Integer by which the length of the side of the mox should be divided.
-		patches_pos :
-
-		patches_shape :
-
-		masks :
-			 Default is None
-		"multipoles"] :
-
-		over_h :
-			 (Default value = False)
-		cosmology :
-			 Default is None
-		count_pairs :
-			 (Default value = False)
-		data_suffix :
-			 (Default value = "")
-		num_sample_names :
-			 (Default value = ["S")
-		"D"] :
-
+		patches_pos : ndarray
+			Array with the patch numbers of each object in the position sample.
+		patches_shape : ndarray
+			Array with the patch numbers of each object in the shape sample.
+		dataset_name : str
+			Name of the dataset in the output file.
+		corr_type : iterable with 2 str entries
+			Array with two entries. For first choose from [gg, g+, both], for second from [w, multipoles].
+		masks : dict or NoneType, optional
+			See MeasureIALightcone methods. Default is None.
+		rp_cut : float or NoneType, optional
+			See MeasureIALightcone.measure_xi_multipoles. Default is None.
+		over_h : bool, optional
+			See MeasureIALightcone. Default value is False.
+		cosmology : pyccl cosmology object or NoneType, optional
+			See MeasureIALightcone. Default is None.
+		count_pairs : bool, optional
+			If True, only gg is measured, not g+. Default value is False.
+		data_suffix : str, optional
+			Addition to dataset name. Used to distinguish between DR,DD and RR measurements. Default value is "".
+		num_sample_names : list with two entries, optional
+			Keywords of the num_samples dictionary to access number of objects in position ond shape samples. Default
+			value is ["S", "D"].
 
 		Returns
 		-------
@@ -665,30 +678,23 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 			self, IA_estimator, corr_type, dataset_name, max_patch, min_patch=1,
 			randoms_suf="_randoms"
 	):
-		"""Measures the errors in the projected correlation function using the jackknife method.
-		The box is divided into L_subboxes^3 subboxes; the correlation function is calculated omitting one box at a time.
-		Then the standard deviation is taken for wg+ and the covariance matrix is calculated for the multipoles.
+		"""Combines the jackknife realisations measured with _measure_jackknife_realisations_obs or
+		_measure_jackknife_realisations_obs_multiprocessing into a covariance.
 
 		Parameters
 		----------
-		rp_cut :
-			Limit for minimum r_p value for pairs to be included. (Needed for measure_projected_correlation_multipoles)
-		corr_type :
-			Array with two entries. For first choose from [gg, g+, both], for second from [w, multipoles] (Default value = ["both")
-		dataset_name :
-			Name of the dataset (Default value = "All_galaxies")
-		L_subboxes :
-			Integer by which the length of the side of the mox should be divided.
-		IA_estimator :
-
-		max_patch :
-
-		min_patch :
-			 (Default value = 1)
-		"multipoles"] :
-
-		randoms_suf :
-			 (Default value = "_randoms")
+		IA_estimator : str
+			Choose which type of xi estimator is used. Choose from "clusters" or "galaxies".
+		dataset_name : str
+			Name of the dataset in the output file.
+		corr_type : iterable with 2 str entries
+			Array with two entries. For first choose from [gg, g+, both], for second from [w, multipoles].
+		max_patch : int
+			Maximum patch number used.
+		min_patch : int, optional
+			Minimum patch number used. Default value is 1.
+		randoms_suf : str, optional
+			Suffix used to denote the datasets that have been created using the randoms. Default value is "_randoms".
 
 		Returns
 		-------
@@ -765,43 +771,37 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 			rp_cut=None, over_h=False, num_nodes=4, cosmology=None, count_pairs=False, data_suffix="",
 			num_sample_names=["S", "D"]
 	):
-		"""Measures the errors in the projected correlation function using the jackknife method, using multiple CPU cores.
-		The box is divided into L_subboxes^3 subboxes; the correlation function is calculated omitting one box at a time.
-		Then the standard deviation is taken for wg+ and the covariance matrix is calculated for the multipoles.
+		"""Measures the jackknife realisations for the projected correlation functions in MeasureIALightcone using the
+		jackknife method. The area is already divided into patches; the correlation function is calculated omitting one
+		patch at a time. This method uses >1 CPUs.
 
 		Parameters
 		----------
-		twoD :
-			Divide box into L_subboxes^2, no division in z-direction.
-		num_nodes :
-			Number of CPU nodes to use in multiprocessing. (Default value = 4)
-		dataset_name :
-			Name of the dataset (Default value = "All_galaxies")
-		L_subboxes :
-			Integer by which the length of the side of the mox should be divided.
-		rp_cut :
-			Limit for minimum r_p value for pairs to be included. (Needed for measure_projected_correlation_multipoles) Default is None
-		corr_type :
-			Array with two entries. For first choose from [gg, g+, both], for second from [w, multipoles] (Default value = ["both")
-		patches_pos :
-
-		patches_shape :
-
-		masks :
-			 Default is None
-		"multipoles"] :
-
-		over_h :
-			 (Default value = False)
-		cosmology :
-			 Default is None
-		count_pairs :
-			 (Default value = False)
-		data_suffix :
-			 (Default value = "")
-		num_sample_names :
-			 (Default value = ["S")
-		"D"] :
+		patches_pos : ndarray
+			Array with the patch numbers of each object in the position sample.
+		patches_shape : ndarray
+			Array with the patch numbers of each object in the shape sample.
+		dataset_name : str
+			Name of the dataset in the output file.
+		corr_type : iterable with 2 str entries
+			Array with two entries. For first choose from [gg, g+, both], for second from [w, multipoles].
+		masks : dict or NoneType, optional
+			See MeasureIALightcone methods. Default is None.
+		rp_cut : float or NoneType, optional
+			See MeasureIALightcone.measure_xi_multipoles. Default is None.
+		over_h : bool, optional
+			See MeasureIALightcone. Default value is False.
+		num_nodes : int, optional
+			Number of cores to be used in multiprocessing. Default is 4.
+		cosmology : pyccl cosmology object or NoneType, optional
+			See MeasureIALightcone. Default is None.
+		count_pairs : bool, optional
+			If True, only gg is measured, not g+. Default value is False.
+		data_suffix : str, optional
+			Addition to dataset name. Used to distinguish between DR,DD and RR measurements. Default value is "".
+		num_sample_names : list with two entries, optional
+			Keywords of the num_samples dictionary to access number of objects in position ond shape samples. Default
+			value is ["S", "D"].
 
 
 		Returns
@@ -986,23 +986,25 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 		# 		self.measure_w_g_i(corr_type=args_multipoles[i, 0], dataset_name=args_multipoles[i, 1])
 		return
 
-	def measure_covariance_multiple_datasets(self, corr_type, dataset_names, num_box=3, return_output=False):
+	def measure_covariance_multiple_datasets(self, corr_type, dataset_names, num_box=27, return_output=False):
 		"""Combines the jackknife measurements for different datasets into one covariance matrix.
-		Author: Marta Garcia Escobar (starting from measure_jackknife_errors code); updated
+		Author: Marta Garcia Escobar (starting from measure_jackknife methods); updated
 
 		Parameters
 		----------
-		corr_type :
-			Takes "w_g_plus" or "multipoles_g_plus".
-		dataset_names :
+		corr_type : str
+			Which type of correlation is measured. Takes 'w_g_plus', 'w_gg', 'multipoles_g_plus' or 'multipoles_gg'.
+		dataset_names : list of str
 			List of the dataset names. If there is only one value, it calculates the covariance matrix with itself.
-		num_box :
-			Number of boxes. (Default value = 3)
-		return_output :
-			 (Default value = False)
+		num_box : int, optional
+			Number of jackknife realisations. Default value is 27.
+		return_output : bool, optional
+			If True, the output will be returned instead of written to a file. Default value is False.
 
 		Returns
 		-------
+		ndarray, ndarray
+			covariance, standard deviation
 
 		"""
 		# check if corr_type is valid
@@ -1073,27 +1075,25 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 			return cov, std
 
 	def create_full_cov_matrix_projections(self, corr_type, dataset_names=["LOS_x", "LOS_y", "LOS_z"], num_box=27,
-										   retun_output=False):
-		"""Function that creates the full covariance matrix for all 3 projections by combining previously obtained jackknife information.
-		Generalised from Marta Garcia Escobar's code.
+										   return_output=False):
+		"""Function that creates the full covariance matrix for all 3 projections and combined covariance for 2
+		projections by combining previously obtained jackknife information. Generalised from Marta Garcia Escobar's code.
 
 		Parameters
 		----------
-		corr_type :
-			param dataset_names:
-		num_box :
-			return: (Default value = 27)
-		dataset_names :
-			 (Default value = ["LOS_x")
-		"LOS_y" :
-
-		"LOS_z"] :
-
-		retun_output :
-			 (Default value = False)
+		corr_type : str
+			Which type of correlation is measured. Takes 'w_g_plus', 'w_gg', 'multipoles_g_plus' or 'multipoles_gg'.
+		num_box : int, optional
+			Number of jackknife realisations. Default value is 27.
+		dataset_names : list of str
+			Dataset names of projections to be combined. Default value is ["LOS_x","LOS_y","LOS_z"].
+		return_output : bool, optional
+			If True, the output will be returned instead of written to a file. Default value is False.
 
 		Returns
 		-------
+		ndarrays
+			covariance for 3 projections, covariance for x and y, covariance for x and z, covariance for y and z
 
 		"""
 		self.measure_covariance_multiple_datasets(corr_type=corr_type,
@@ -1134,7 +1134,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 		cov_middle = np.concatenate((cov_yz.T, cov_zz), axis=1)  # cov_xz.T = cov_zx
 		cov2yz = np.concatenate((cov_top, cov_middle), axis=0)
 
-		if retun_output:
+		if return_output:
 			return cov3, cov2xy, cov2xz, cov2yz
 		else:
 			write_dataset_hdf5(group,

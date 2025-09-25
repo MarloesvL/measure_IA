@@ -15,6 +15,20 @@ class MeasureMultipolesBox(MeasureIABase):
 	"""Class that contains all methods for the measurements of xi_gg and x_g+ for multipoles with carthesian
 	simulation data.
 
+	Methods
+	-------
+	_measure_xi_r_mur_sims_brute()
+		Measure xi_gg or xi_g+ in (r, mu_r) grid binning in a periodic box using 1 CPU.
+	_measure_xi_r_mur_sims_tree()
+		Measure xi_gg or xi_g+ in (r, mu_r) grid binning in a periodic box using 1 CPU and KDTree for extra speed.
+	_measure_xi_r_mur_sims_batch()
+		Measure xi_gg or xi_g+ in (r, mu_r) grid binning in a periodic box using 1 CPU for a batch of indices.
+		Support function of _measure_xi_r_mur_sims_multiprocessing().
+	_measure_xi_r_mur_sims_multiprocessing()
+		Measure xi_gg or xi_g+ in (r, mu_r) grid binning in a periodic box using >1 CPUs.
+	_measure_xi_r_pi_sims_brute()
+		Measure xi_gg or xi_g+ in (r, pi) grid binning in a periodic box using 1 CPU.
+
 	Notes
 	-----
 	Inherits attributes from 'SimInfo', where 'boxsize', 'L_0p5' and 'snap_group' are used in this class.
@@ -50,7 +64,7 @@ class MeasureMultipolesBox(MeasureIABase):
 		return
 
 	def _measure_xi_r_pi_sims_brute(
-			self, masks=None, rp_cut=None, dataset_name="All_galaxies", return_output=False, print_num=True,
+			self, dataset_name, masks=None, rp_cut=None, return_output=False, print_num=True,
 			jk_group_name=""
 	):
 		"""Measures the projected correlation function (xi_g_plus) for given coordinates of the position and shape sample
@@ -227,7 +241,7 @@ class MeasureMultipolesBox(MeasureIABase):
 			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus
 
 	def _measure_xi_r_mur_sims_brute(
-			self, masks=None, rp_cut=None, dataset_name="All_galaxies", return_output=False, print_num=True,
+			self, dataset_name,masks=None, rp_cut=None,  return_output=False, print_num=True,
 			jk_group_name=""
 	):
 		"""Measures the projected correlation function (xi_g_plus) for given coordinates of the position and shape sample
@@ -399,8 +413,8 @@ class MeasureMultipolesBox(MeasureIABase):
 		else:
 			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus
 
-	def _measure_xi_r_mur_sims_tree(self, tree_input=None, masks=None, rp_cut=None,
-									dataset_name="All_galaxies", return_output=False, print_num=True,
+	def _measure_xi_r_mur_sims_tree(self,dataset_name, tree_input=None, masks=None, rp_cut=None,
+									 return_output=False, print_num=True,
 									dataset_name_tree=None, save_tree=False, file_tree_path=None,
 									jk_group_name=""):
 		"""Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
@@ -699,8 +713,8 @@ class MeasureMultipolesBox(MeasureIABase):
 					del e_plus, e_cross, mask, separation_len
 		return Splus_D, Scross_D, DD
 
-	def _measure_xi_r_mur_sims_multiprocessing(self, num_nodes=9, masks=None,
-											   rp_cut=None, dataset_name="All_galaxies",
+	def _measure_xi_r_mur_sims_multiprocessing(self,dataset_name, num_nodes=9, masks=None,
+											   rp_cut=None,
 											   return_output=False, print_num=True, jk_group_name=""):
 		"""Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
