@@ -9,10 +9,6 @@ from .measure_w_lightcone import MeasureWLightcone
 from .measure_m_lightcone import MeasureMultipolesLightcone
 from astropy.cosmology import LambdaCDM
 
-cosmo = LambdaCDM(H0=69.6, Om0=0.286, Ode0=0.714)
-KPC_TO_KM = 3.086e16  # 1 kpc is 3.086e16 km
-
-
 class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 					   MeasureMultipolesLightcone):
 	"""Class that contains all methods for jackknife covariance measurements for IA correlation functions.
@@ -51,7 +47,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 		return
 
 	def _measure_jackknife_covariance_sims(
-			self, dataset_name, masks=None, corr_type=None, L_subboxes=3, rp_cut=None,
+			self, dataset_name, corr_type, masks=None, L_subboxes=3, rp_cut=None,
 			tree_saved=True, file_tree_path=None, remove_tree_file=True, num_nodes=None
 	):
 		"""Measures the errors in the projected correlation function using the jackknife method.
@@ -254,7 +250,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 			return covs, stds
 
 	def _measure_jackknife_covariance_sims_multiprocessing(
-			self, masks=None, corr_type=None, dataset_name="All_galaxies", L_subboxes=3, rp_cut=None,
+			self, dataset_name, corr_type, masks=None, L_subboxes=3, rp_cut=None,
 			num_nodes=4, twoD=False, tree=True, tree_saved=True, file_tree_path=None, remove_tree_file=True,
 			save_jk_terms=False
 	):
@@ -398,9 +394,9 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 						tree_args.append(tree_input)
 						args_xi_g_plus.append(
 							(
+								dataset_name + "_" + str(num_box),
 								masks_total,
 								rp_cut,
-								dataset_name + "_" + str(num_box),
 								True,
 								False,
 								f"m_{self.simname}_tree_{figname_dataset_name}",
@@ -412,8 +408,8 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 						tree_args.append(tree_input)
 						args_xi_g_plus.append(
 							(
-								masks_total,
 								dataset_name + "_" + str(num_box),
+								masks_total,
 								True,
 								False,
 								f"w_{self.simname}_tree_{figname_dataset_name}",
@@ -550,7 +546,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 			return covs, stds
 
 	def _measure_jackknife_realisations_obs(
-			self, patches_pos, patches_shape, masks=None, corr_type=None, dataset_name="All_galaxies",
+			self, patches_pos, patches_shape, corr_type, dataset_name, masks=None,
 			rp_cut=None, over_h=False, cosmology=None, count_pairs=False, data_suffix="", num_sample_names=["S", "D"]
 	):
 		"""Measures the errors in the projected correlation function using the jackknife method.
@@ -666,7 +662,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 		return
 
 	def _measure_jackknife_covariance_obs(
-			self, IA_estimator, max_patch, min_patch=1, corr_type=None, dataset_name="All_galaxies",
+			self, IA_estimator, corr_type, dataset_name, max_patch, min_patch=1,
 			randoms_suf="_randoms"
 	):
 		"""Measures the errors in the projected correlation function using the jackknife method.
@@ -765,7 +761,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 			return covs, stds
 
 	def _measure_jackknife_realisations_obs_multiprocessing(
-			self, patches_pos, patches_shape, masks=None, corr_type=None, dataset_name="All_galaxies",
+			self, patches_pos, patches_shape, corr_type, dataset_name, masks=None,
 			rp_cut=None, over_h=False, num_nodes=4, cosmology=None, count_pairs=False, data_suffix="",
 			num_sample_names=["S", "D"]
 	):
@@ -872,8 +868,8 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 			if corr_type[1] == "multipoles":
 				args_xi_g_plus.append(
 					(
-						masks_total,
 						dataset_name + "_" + str(i),
+						masks_total,
 						True,
 						False,
 						over_h,
@@ -885,8 +881,8 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 			else:
 				args_xi_g_plus.append(
 					(
-						masks_total,
 						dataset_name + "_" + str(i),
+						masks_total,
 						True,
 						False,
 						over_h,
