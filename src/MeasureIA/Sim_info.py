@@ -12,7 +12,7 @@ class SimInfo:
 		Number of the snapshot.
 	snap_group : str
 		Name of group in output file. Equal to 'Snapshot_[snapshot]' if snapshot is given, otherwise emtpy string.
-	boxsize :  int or float, default=None
+	boxsize :  int or float or NoneType, default=None
 		Size of simulation box. If simname is in SimInfo, units are cMpc/h. Otherwise, manual input.
 	L_0p5 : int or float, default=None
 		Half of the boxsize.

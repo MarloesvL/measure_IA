@@ -67,6 +67,20 @@ class ReadData(SimInfo):
 		self.sub_group = sub_group + "/"
 		self.data_path = data_path + "/"
 		self.output_file_name = output_file_name
+		self.r = None
+		self.rp = None
+		self.w_gg = None
+		self.w_gp = None
+		self.multipoles_gg = None
+		self.multipoles_gp = None
+		self.cov_multipoles_gg = None
+		self.errors_multipoles_gg = None
+		self.cov_multipoles_gp = None
+		self.errors_multipoles_gp = None
+		self.cov_w_gg = None
+		self.errors_w_gg = None
+		self.cov_w_gp = None
+		self.errors_w_gp = None
 		return
 
 	def read_cat(self, dataset_name, cut=None):
@@ -100,6 +114,7 @@ class ReadData(SimInfo):
 			data = file[self.snap_group + self.sub_group + dataset_name][:]
 		else:
 			data = file[self.snap_group + self.sub_group + dataset_name][cut[0]: cut[1]]
+		file.close()
 		return data
 
 	def read_subhalo(self, dataset_name, Nfiles=0):
@@ -285,6 +300,59 @@ class ReadData(SimInfo):
 			return
 		else:
 			return data
+
+	def read_MeasureIA_output(self, dataset_name, num_jk):
+		"""
+		Fills in the available w_gg, w_gp, multipoles_gg, multipoles_gp, r, rp, and associated cov and errors attributes
+		for a given dataset and num_jk from the output file of MeasureIA.
+
+		Parameters
+		----------
+		dataset_name: str
+			Name of the dataset in the output file of MeasureIA.
+		num_jk: int or str or NoneType
+			Number of jackknife patches to be generated internally. If None, the covariance will not be read.
+
+		Returns
+		-------
+
+		"""
+		file = h5py.File(f"{self.data_path}{self.catalogue}.hdf5", "r")
+		data_group = file[self.snap_group]
+		try:
+			self.multipoles_gg = data_group[f"multipoles_gg/{dataset_name}"][:]
+			self.r = data_group[f"multipoles_gg/{dataset_name}_r"][:]
+			if num_jk != None:
+				self.cov_multipoles_gg = data_group[f"multipoles_gg/{dataset_name}_jackknife_cov_{num_jk}"][:]
+				self.errors_multipoles_gg = data_group[f"multipoles_gg/{dataset_name}_jackknife_{num_jk}"][:]
+		except KeyError:
+			pass
+		try:
+			self.multipoles_gp = data_group[f"multipoles_g_plus/{dataset_name}"][:]
+			self.r = data_group[f"multipoles_g_plus/{dataset_name}_r"][:]
+			if num_jk != None:
+				self.cov_multipoles_gp = data_group[f"multipoles_g_plus/{dataset_name}_jackknife_cov_{num_jk}"][:]
+				self.errors_multipoles_gp = data_group[f"multipoles_g_plus/{dataset_name}_jackknife_{num_jk}"][:]
+		except KeyError:
+			pass
+		try:
+			self.w_gg = data_group[f"w_gg/{dataset_name}"][:]
+			self.rp = data_group[f"w_gg/{dataset_name}_rp"][:]
+			if num_jk != None:
+				self.cov_w_gg = data_group[f"w_gg/{dataset_name}_jackknife_cov_{num_jk}"][:]
+				self.errors_w_gg = data_group[f"w_gg/{dataset_name}_jackknife_{num_jk}"][:]
+		except KeyError:
+			pass
+		try:
+			self.w_gp = data_group[f"w_g_plus/{dataset_name}"][:]
+			self.rp = data_group[f"w_g_plus/{dataset_name}_rp"][:]
+			if num_jk != None:
+				self.cov_w_gp = data_group[f"w_g_plus/{dataset_name}_jackknife_cov_{num_jk}"][:]
+				self.errors_w_gp = data_group[f"w_g_plus/{dataset_name}_jackknife_{num_jk}"][:]
+		except KeyError:
+			pass
+		file.close()
+		return
 
 
 if __name__ == "__main__":
