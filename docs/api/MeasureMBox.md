@@ -1,6 +1,6 @@
-# MeasureIABase
+# MeasureMultipolesBox
 
-::: measureia.MeasureIABase
+::: measureia.MeasureMultipolesBox
     handler: python
     options:
       show_source: true
