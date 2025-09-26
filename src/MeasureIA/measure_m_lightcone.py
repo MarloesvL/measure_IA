@@ -3,10 +3,6 @@ import h5py
 import pyccl as ccl
 from .write_data import write_dataset_hdf5, create_group_hdf5
 from .measure_IA_base import MeasureIABase
-from astropy.cosmology import LambdaCDM
-
-cosmo = LambdaCDM(H0=69.6, Om0=0.286, Ode0=0.714)
-KPC_TO_KM = 3.086e16  # 1 kpc is 3.086e16 km
 
 
 class MeasureMultipolesLightcone(MeasureIABase):

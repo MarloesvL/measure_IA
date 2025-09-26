@@ -5,9 +5,9 @@ def write_dataset_hdf5(group, name, data):
 	----------
 	group : <class 'h5py._hl.group.Group'>
 		link to group in datafile
-	name :
+	name : str
 		name of desired dataset
-	data :
+	data : ndarray
 		the data
 
 	"""
