@@ -15,6 +15,18 @@ class MeasureWBox(MeasureIABase):
 	"""Class that contains all methods for the measurements of xi_gg and xi_g+ for w_gg and w_g+ with carthesian
 	simulation data.
 
+	Methods
+	-------
+	_measure_xi_rp_pi_sims_brute()
+		Measure xi_gg or xi_g+ in (rp, pi) grid binning in a periodic box using 1 CPU.
+	_measure_xi_rp_pi_sims_tree()
+		Measure xi_gg or xi_g+ in (rp, pi) grid binning in a periodic box using 1 CPU and KDTree for extra speed.
+	_measure_xi_rp_pi_sims_batch()
+		Measure xi_gg or xi_g+ in (rp, pi) grid binning in a periodic box using 1 CPU for a batch of indices.
+		Support function of _measure_xi_rp_pi_sims_multiprocessing().
+	_measure_xi_rp_pi_sims_multiprocessing()
+		Measure xi_gg or xi_g+ in (rp, pi) grid binning in a periodic box using >1 CPUs.
+
 	Notes
 	-----
 	Inherits attributes from 'SimInfo', where 'boxsize', 'L_0p5' and 'snap_group' are used in this class.
@@ -49,31 +61,31 @@ class MeasureWBox(MeasureIABase):
 						 pi_max, boxsize, periodicity)
 		return
 
-	def _measure_xi_rp_pi_sims_brute(self, masks=None, dataset_name="All_galaxies", return_output=False,
+	def _measure_xi_rp_pi_sims_brute(self, dataset_name, masks=None, return_output=False,
 									 print_num=True,
 									 jk_group_name=""):
-		"""Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
-		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
-		axes, q=b/a (q) and the index of the direction of the line of sight (LOS=2 for z axis).
-		Positions are assumed to be given in cMpc/h.
+		"""Measures the projected correlation functions, xi_g+ and xi_gg, in (rp, pi) bins for an object created with
+		MeasureIABox. Uses 1 CPU.
 
 		Parameters
 		----------
-		masks :
-		    the masks for the data to select only part of the data (Default value = None)
-		dataset_name :
-		    the dataset name given in the hdf5 file. (Default value = "All_galaxies")
-		return_output :
-		    Output is returned if True, saved to file if False. (Default value = False)
-		print_num :
-		     (Default value = True)
-		jk_group_name :
-		     (Default value = "")
+		dataset_name : str
+			Name of the dataset in the output file.
+		masks : dict or NoneType, optional
+			Dictionary with masks for the data to select only part of the data. Uses same keywords as data dictionary.
+			Default value = None.
+		return_output : bool, optional
+			If True, the output will be returned instead of written to a file. Default value is False.
+		print_num : bool, optional
+			If True, prints the number of objects in the shape and positon samples. Default value is True.
+		jk_group_name : str, optional
+			Group in output file (hdf5) where jackknife realisations are stored. Is used when this method is called in
+			MeasureJackknife. Default value is "".
 
 		Returns
 		-------
-		type
-		    xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
+		ndarrays
+			xi_g+, xi_gg, r_p bins, pi bins if no output file is specified
 
 		"""
 
@@ -217,39 +229,43 @@ class MeasureWBox(MeasureIABase):
 		else:
 			return correlation, (DD / RR_gg) - 1, separation_bins, pi_bins, Splus_D, DD, RR_g_plus
 
-	def _measure_xi_rp_pi_sims_tree(self, tree_input=None, masks=None, dataset_name="All_galaxies",
+	def _measure_xi_rp_pi_sims_tree(self, dataset_name, tree_input=None, masks=None,
 									return_output=False, print_num=True, dataset_name_tree=None, save_tree=False,
 									file_tree_path=None, jk_group_name=""):
-		"""Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
-		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
-		axes, q=b/a (q) and the index of the direction of the line of sight (LOS=2 for z axis).
-		Positions are assumed to be given in cMpc/h.
+		"""Measures the projected correlation functions, xi_g+ and xi_gg, in (rp, pi) bins for an object created with
+		MeasureIABox. Uses 1 CPU.
 
 		Parameters
 		----------
-		masks :
-		    the masks for the data to select only part of the data (Default value = None)
-		dataset_name :
-		    the dataset name given in the hdf5 file. (Default value = "All_galaxies")
-		return_output :
-		    Output is returned if True, saved to file if False. (Default value = False)
-		tree_input :
-		     (Default value = None)
-		print_num :
-		     (Default value = True)
-		dataset_name_tree :
-		     (Default value = None)
-		save_tree :
-		     (Default value = False)
-		file_tree_path :
-		     (Default value = None)
-		jk_group_name :
-		     (Default value = "")
+		dataset_name : str
+			Name of the dataset in the output file.
+		tree_input : list of 2 ndarrays or NoneType, optional
+			If provided, the first entry consists of the indices of objects to exclude from the position sample.
+			The second entry consists of the objects to include from the shape sample. Used in MeasureJackkknife.
+			Default value is None.
+		masks : dict or NoneType, optional
+			Dictionary with masks for the data to select only part of the data. Uses same keywords as data dictionary.
+			Default value = None.
+		dataset_name_tree : str or NoneType, optional
+			Name of the temporary pickle file where the tree information is stored. This is used in MeasureJackknife, as
+			the filename is generated automatically.
+			Default value is None.
+		save_tree : bool, optional
+			If True, tree information is stored in a pickle file for later access. Default value is False.
+		file_tree_path : str or NoneType, optional
+			Path to the file where tree information is stored. Default value is None.
+		return_output : bool, optional
+			If True, the output will be returned instead of written to a file. Default value is False.
+		print_num : bool, optional
+			If True, prints the number of objects in the shape and positon samples. Default value is True.
+		jk_group_name : str, optional
+			Group in output file (hdf5) where jackknife realisations are stored. Is used when this method is called in
+			MeasureJackknife. Default value is "".
 
 		Returns
 		-------
-		type
-		    xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
+		ndarrays
+			xi_g+, xi_gg, r_p bins, pi bins if no output file is specified
 
 		"""
 
@@ -428,15 +444,17 @@ class MeasureWBox(MeasureIABase):
 			return correlation, (DD / RR_gg) - 1, separation_bins, pi_bins, Splus_D, DD, RR_g_plus
 
 	def _measure_xi_rp_pi_sims_batch(self, indices):
-		"""
+		"""Support method of _measure_xi_rp_pi_sims_multiprocessing consisting of the 'forloop' part of the measurement.
 
 		Parameters
 		----------
-		indices :
-		    
+		indices : ndarray
+			Array of indices relating to the part of the position sample data that is measured in this batch.
 
 		Returns
 		-------
+		ndarrays
+			Splus_D, Scross_D, DD, variance for these objects
 
 		"""
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
@@ -499,33 +517,33 @@ class MeasureWBox(MeasureIABase):
 
 		return Splus_D, Scross_D, DD, variance
 
-	def _measure_xi_rp_pi_sims_multiprocessing(self, num_nodes=9, masks=None,
-											   dataset_name="All_galaxies", return_output=False,
+	def _measure_xi_rp_pi_sims_multiprocessing(self, dataset_name, num_nodes=9, masks=None,
+											   return_output=False,
 											   print_num=True, jk_group_name=""):
-		"""Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
-		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
-		axes, q=b/a (q) and the index of the direction of the line of sight (LOS=2 for z axis).
-		Positions are assumed to be given in cMpc/h.
+		"""Measures the projected correlation functions, xi_g+ and xi_gg, in (rp, pi) bins for an object created with
+		MeasureIABox. Uses >1 CPUs.
 
 		Parameters
 		----------
-		masks :
-		    the masks for the data to select only part of the data (Default value = None)
-		dataset_name :
-		    the dataset name given in the hdf5 file. (Default value = "All_galaxies")
-		return_output :
-		    Output is returned if True, saved to file if False. (Default value = False)
-		num_nodes :
-		     (Default value = 9)
-		print_num :
-		     (Default value = True)
-		jk_group_name :
-		     (Default value = "")
+		dataset_name : str
+			Name of the dataset in the output file.
+		num_nodes : int, optional
+			Number of CPUs to be used in the multiprocessing.
+		masks : dict or NoneType, optional
+			Dictionary with masks for the data to select only part of the data. Uses same keywords as data dictionary.
+			Default value = None.
+		return_output : bool, optional
+			If True, the output will be returned instead of written to a file. Default value is False.
+		print_num : bool, optional
+			If True, prints the number of objects in the shape and positon samples. Default value is True.
+		jk_group_name : str, optional
+			Group in output file (hdf5) where jackknife realisations are stored. Is used when this method is called in
+			MeasureJackknife. Default value is "".
 
 		Returns
 		-------
-		type
-		    xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
+		ndarrays
+		    xi_g+, xi_gg, r_p bins, pi bins if no output file is specified
 
 		"""
 

@@ -20,6 +20,18 @@ class ReadData(SimInfo):
 	data_path : str, optional
 		The path to where the data is saved. Default='./data/raw/
 
+	Methods
+	-------
+	read_cat()
+		Reads the data from the specified catalogue.
+	read_subhalo()
+		Read the data from the subhalo files.
+	read_snapshot()
+		Read the data from the snapshot files and optionally write to output file.
+	read_snapshot_multiple()
+		Read multiple datasets from the snapshot files for a specified shapshot number.
+
+
 	Notes
 	-----
 	Inherits attributes from 'SimInfo', where 'snap_group', 'snap_folder' and 'fof_folder' are used in this class.
@@ -229,7 +241,7 @@ class ReadData(SimInfo):
 
 		Returns
 		-------
-		type
+		ndarray
 			The requested datasets or nothing if output_file_name is specified
 
 		"""
@@ -325,7 +337,7 @@ class ReadData(SimInfo):
 			pass
 		try:
 			self.w_gg = data_group[f"w_gg/{dataset_name}"][:]
-			self.rp = data_group[f"w_gg/{dataset_name}_r"][:]
+			self.rp = data_group[f"w_gg/{dataset_name}_rp"][:]
 			if num_jk != None:
 				self.cov_w_gg = data_group[f"w_gg/{dataset_name}_jackknife_cov_{num_jk}"][:]
 				self.errors_w_gg = data_group[f"w_gg/{dataset_name}_jackknife_{num_jk}"][:]
@@ -333,7 +345,7 @@ class ReadData(SimInfo):
 			pass
 		try:
 			self.w_gp = data_group[f"w_g_plus/{dataset_name}"][:]
-			self.rp = data_group[f"w_g_plus/{dataset_name}_r"][:]
+			self.rp = data_group[f"w_g_plus/{dataset_name}_rp"][:]
 			if num_jk != None:
 				self.cov_w_gp = data_group[f"w_g_plus/{dataset_name}_jackknife_cov_{num_jk}"][:]
 				self.errors_w_gp = data_group[f"w_g_plus/{dataset_name}_jackknife_{num_jk}"][:]

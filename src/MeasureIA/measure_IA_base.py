@@ -27,6 +27,33 @@ class MeasureIABase(SimInfo):
 	mu_r_bins : ndarray
 		Bin edges of the mu_r.
 
+	Methods
+	-------
+	calculate_dot_product_arrays()
+		Calculates dot product of elements of two arrays
+	get_ellipticity()
+		Given e and phi, e_+ and e_x components of ellipticity are returned.
+	get_random_pairs()
+		Analytical RR for a (rp,pi) bin.
+	get_volume_spherical_cap()
+		Volume of an (r,mu_r) bin.
+	get_random_pairs_r_mur()
+		Analytical RR for a (r,mu_r) bin.
+	setdiff2D()
+		Compares each row of a1 and a2 and returns the elements that do not overlap.
+	setdiff_omit()
+		For rows in nested list a1, whose index is included in incl_ind, returns elements that do not overlap between
+		the row in a1 and a2.
+	_measure_w_g_i()
+		Measure wgg or wg+ from xi grid provided by MeasureWBox or MeasureWLightcone class methods.
+	_measure_multipoles()
+		Measure multipoles (gg or g+) from xi grid provided by MeasureMultipolesBox or MeasureMultipolesLightcone
+		class methods.
+	_obs_estimator()
+		Combines elements (DD, RR, etc) of xi estimators into xi_gg or xi_g+ for MeasureIALightcone.
+	assign_jackknife_patches()
+		Given positions of multiple samples, defines jackknife patches and returns index of every object in the sample.
+
 	Notes
 	-----
 	Inherits attributes from 'SimInfo', where 'boxsize', 'L_0p5' and 'snap_group' are used in this class.
@@ -158,19 +185,18 @@ class MeasureIABase(SimInfo):
 
 	@staticmethod
 	def calculate_dot_product_arrays(a1, a2):
-		"""Calculates the dot product over 2 2D arrays across axis 1 so that
-		dot_product[i] = np.dot(a1[i],a2[i])
+		"""Calculates the dot product over 2 2D arrays across axis 1 so that dot_product[i] = np.dot(a1[i],a2[i])
 
 		Parameters
 		----------
-		a1 :
+		a1 : ndarray
 			First array
-		a2 :
+		a2 : ndarray
 			Second array
 
 		Returns
 		-------
-		type
+		ndarray
 			Dot product of columns of arrays
 
 		"""
@@ -186,14 +212,14 @@ class MeasureIABase(SimInfo):
 
 		Parameters
 		----------
-		e :
+		e : ndarray
 			size of the ellipticity vector
-		phi :
+		phi : ndarray
 			angle between semimajor/semiminor axis and separation vector
 
 		Returns
 		-------
-		type
+		ndarray
 			e_+ and e_x
 
 		"""
@@ -207,26 +233,27 @@ class MeasureIABase(SimInfo):
 
 		Parameters
 		----------
-		rp_max :
-			upper bound of projected separation vector bin
-		rp_min :
-			lower bound of projected separation vector bin
-		pi_max :
-			upper bound of line of sight vector bin
-		pi_min :
-			lower bound of line of sight vector bin
-		L3 :
-			volume of the simulation box
-		corrtype :
+		rp_max : float
+			Upper bound of projected separation vector bin
+		rp_min : float
+			Lower bound of projected separation vector bin
+		pi_max : float
+			Upper bound of line of sight vector bin
+		pi_min : float
+			Lower bound of line of sight vector bin
+		L3 : float or int
+			Volume of the simulation box
+		corrtype : str
 			Correlation type, auto or cross. RR for auto is RR_cross/2.
-		Num_position :
-
-		Num_shape :
+		Num_position : int
+			Number of objects in the position sample.
+		Num_shape : int
+			Number of objects in the shape sample.
 
 
 		Returns
 		-------
-		type
+		float
 			number of pairs in r_p, pi bin
 
 		"""
@@ -250,45 +277,45 @@ class MeasureIABase(SimInfo):
 
 		Parameters
 		----------
-		mur :
+		mur : float
 			cos(theta), where theta is the polar angle between the apex and disk of the cap.
-		r :
+		r : float
 			radius
 
 		Returns
 		-------
-		type
+		float
 			Volume of the spherical cap.
 
 		"""
 		return np.pi / 3.0 * r ** 3 * (2 + mur) * (1 - mur) ** 2
 
 	def get_random_pairs_r_mur(self, r_max, r_min, mur_max, mur_min, L3, corrtype, Num_position, Num_shape):
-		"""Retruns analytical value of the number of pairs expected in an r_p, pi bin for a random uniform distribution.
-		(Singh et al. 2023)
+		"""Returns analytical value of the number of pairs expected in an r, mu_r bin for a random uniform distribution.
 
 		Parameters
 		----------
-		r_max :
-			upper bound of projected separation vector bin
-		r_min :
-			lower bound of projected separation vector bin
-		mur_max :
-			upper bound of mu_r bin
-		mur_min :
-			lower bound of mu_r bin
-		L3 :
-			volume of the simulation box
-		corrtype :
+		r_max : float
+			Upper bound of separation vector bin
+		r_min : float
+			Lower bound of separation vector bin
+		mur_max : float
+			Upper bound of mu_r bin
+		mur_min : float
+			Lower bound of mu_r bin
+		L3 : float
+			Volume of the simulation box
+		corrtype : str
 			Correlation type, auto or cross. RR for auto is RR_cross/2.
-		Num_position :
-
-		Num_shape :
+		Num_position : int
+			Number of objects in the position sample.
+		Num_shape : int
+			Number of objects in the shape sample.
 
 
 		Returns
 		-------
-		type
+		float
 			number of pairs in r, mu_r bin
 
 		"""
@@ -325,19 +352,21 @@ class MeasureIABase(SimInfo):
 
 	@staticmethod
 	def setdiff2D(a1, a2):
-		"""
+		"""Compares each row of a1 and a2 and returns the elements that do not overlap
 
 		Parameters
 		----------
-		a1 :
-
-		a2 :
-
+		a1 : nested list
+			List containing lists of elements to compare to a2
+		a2 : nested list
+			List containing lists of elements to compare to a1
 
 		Returns
 		-------
-
+		nested list
+			For each row, the not-overlapping elements between a1 and a2
 		"""
+		assert len(a1) == len(a2), "Lengths of lists where each row is to be compared, are not the same."
 		diff = []
 		for i in np.arange(0, len(a1)):
 			setdiff = np.setdiff1d(a1[i], a2[i])
@@ -347,20 +376,22 @@ class MeasureIABase(SimInfo):
 
 	@staticmethod
 	def setdiff_omit(a1, a2, incl_ind):
-		"""
+		"""For rows in nested list a1, whose index is included in incl_ind, returns elements that do not overlap between
+		the row in a1 and a2.
 
 		Parameters
 		----------
-		a1 :
-
-		a2 :
-
-		incl_ind :
-
+		a1 : nested list
+			List of lists or arrays where indicated rows need to be compared to a2
+		a2 : list or array
+			Elements to be compared to the row in a1 [and not included in return values].
+		incl_ind : list or array
+			Indices of rows in a1 to be compared to a2.
 
 		Returns
 		-------
-
+		nested list
+			For each included row in a1, the not-overlapping elements between a1 and a2
 		"""
 		diff = []
 		for i in np.arange(0, len(a1)):
@@ -370,24 +401,27 @@ class MeasureIABase(SimInfo):
 				del setdiff
 		return diff
 
+  
 
-	def _measure_w_g_i(self, corr_type="both", dataset_name="All_galaxies", return_output=False, jk_group_name=""):
-		"""Measures w_gi for a given xi_gi dataset that has been calculated with the measure projected correlation
-		method. Sums over pi values. Stores [rp, w_gi]. i can be + or g
+	def _measure_w_g_i(self, dataset_name, corr_type="both", return_output=False, jk_group_name=""):
+		"""Measures w_gg or w_g+ for a given xi_gi dataset that has been calculated with the _measure_xi_rp_pi_sims
+		methods. Integrates over pi bins via sum * dpi. Stores rp, and w_gg or w_g+.
 
 		Parameters
 		----------
-		dataset_name :
-			Name of xi_gi dataset and name given to w_gi dataset when stored. (Default value = "All_galaxies")
-		return_output :
-			Output is returned if True, saved to file if False. (Default value = False)
-		corr_type :
-			Type of correlation function. Choose from [g+,gg,both]. (Default value = "both")
-		jk_group_name :
-			 (Default value = "")
+		dataset_name : str
+			Name of xi_gg or xi_g+ dataset and name given to w_gg or w_g+ dataset when stored.
+		return_output : bool, optional
+			Output is returned if True, saved to file if False. Default value = False
+		corr_type : str, optional
+			Type of correlation function. Choose from [g+,gg,both]. Default value = "both"
+		jk_group_name : str, optional
+			Name of subgroup in hdf5 file where jackknife realisations are stored. Default value = ""
 
 		Returns
 		-------
+		ndarray
+			[rp, wgg] or [rp, wg+] if return_output is True
 
 		"""
 		if corr_type == "both":
@@ -431,25 +465,25 @@ class MeasureIABase(SimInfo):
 				correlation_data_file.close()
 		return
 
-	def _measure_multipoles(self, corr_type="both", dataset_name="All_galaxies", return_output=False, jk_group_name=""):
-		"""Measures multipoles for a given xi_g+ calculated by measure projected correlation.
-		The data assumes xi_g+ to be measured in bins of rp and pi. It measures mu_r and r
-		and saves the multipoles in the (r,mu_r) space. Should be binned into r bins.
+	def _measure_multipoles(self, dataset_name, corr_type="both", return_output=False, jk_group_name=""):
+		"""Measures multipoles for a given xi_g+ or xi_gg measured by _measure_xi_r_pi_sims methods.
+		The data assumes xi_g+ and xi_gg to be measured in bins of r and mu_r.
 
 		Parameters
 		----------
-		corr_type :
-			Default value of g+, ensuring correct dataset and sab and l to be 2.
-		dataset_name :
-			Name of the dataset of xi_g+ and multipoles. (Default value = "All_galaxies")
-		return_output :
-			Output is returned if True, saved to file if False. (Default value = False)
-		jk_group_name :
-			 (Default value = "")
+		dataset_name : str
+			Name of xi_gg or xi_g+ dataset and name given to multipoles dataset when stored.
+		corr_type : str, optional
+			Type of correlation function. Choose from [g+,gg,both]. Default value = "both"
+		return_output : bool, optional
+			Output is returned if True, saved to file if False. Default value = False.
+		jk_group_name : str, optional
+			Name of subgroup in hdf5 file where jackknife realisations are stored. Default value = ""
 
 		Returns
 		-------
-
+		ndarray
+			[r, multipoles_gg] or [r, multipoles_g+] if return_output is True
 		"""
 		correlation_data_file = h5py.File(self.output_file_name, "a")
 		if corr_type == "g+":  # todo: expand to include ++ option
@@ -526,22 +560,23 @@ class MeasureIABase(SimInfo):
 
 	def _obs_estimator(self, corr_type, IA_estimator, dataset_name, dataset_name_randoms, num_samples,
 					   jk_group_name=""):
-		"""Reads various components of xi and combines into correct estimator for cluster or galaxy observational alignments
+		"""Reads various components of xi and combines into correct estimator for cluster or galaxy
+		lightcone alignment correlations. It then writes the xi_gg or xi_g+ in the correct place in the output file.
 
 		Parameters
 		----------
-		corr_type :
-			w or multipoles
-		IA_estimator :
-			clusters or galaxies
-		dataset_name :
+		corr_type : list of 2 str elements
+			First element: ['gg', 'g+', 'both'], second: 'w' or 'multipoles'
+		IA_estimator : str
+			Chooser from 'clusters' or 'galaxies' for different estimator definition.
+		dataset_name : str
 			Name of the dataset
-		dataset_name_randoms :
+		dataset_name_randoms : str
 			Name of the dataset for data with randoms as positions
-		num_samples :
-
-		jk_group_name :
-			 (Default value = "")
+		num_samples : dict
+			Dictionary of samples sizes for position, shape and random samples. Keywords: D, S, R_D, R_S
+		jk_group_name : str
+			Name of subgroup in hdf5 file where jackknife realisations are stored. Default value = ""
 
 		Returns
 		-------
@@ -601,17 +636,20 @@ class MeasureIABase(SimInfo):
 
 		Parameters
 		----------
-		data :
-			directory containing position and shape sample data
-		randoms_data :
-			directory containing position and shape sample data of randoms
-		num_jk :
-			number of jackknife patches
+		data : dict
+			Dictionary containing position and shape sample data. Keywords: "RA", "DEC", "RA_shape_sample",
+			"DEC_shape_sample"
+		randoms_data : dict
+			Dictionary containing position and shape sample data of randoms. Keywords: "RA", "DEC", "RA_shape_sample",
+			"DEC_shape_sample"
+		num_jk : int
+			Number of jackknife patches
 
 		Returns
 		-------
-		type
-			directory with patch numbers for each sample
+		dict
+			Dictionary with patch numbers for each sample. Keywords: 'position', 'shape', 'randoms_position',
+			'randoms_shape'
 
 		"""
 
@@ -650,6 +688,6 @@ class MeasureIABase(SimInfo):
 		jk_patches['shape'] = jk_labels
 
 		return jk_patches
-
+  
 if __name__ == "__main__":
 	pass

@@ -4,9 +4,16 @@ from .measure_jackknife import MeasureJackknife
 
 
 class MeasureIABox(MeasureJackknife):
-	"""Manages the IA correlation function measurement methods used in the MeasureIA package based on speed and input.
+	r"""Manages the IA correlation function measurement methods used in the MeasureIA package based on speed and input.
 	This class is used to call the methods that measure w_gg, w_g+ and multipoles for simulations in cartesian coordinates.
 	Depending on the input parameters, various correlations incl covariance estimates are measured for given data.
+
+	Methods
+	-------
+	measure_xi_w()
+		Compute projected correlations $w_{gg}$ and/or $w_{g+}$.
+	measure_xi_multipoles()
+		Compute multipoles of the correlation functions, $\tilde{\xi}_{gg,0}$ and/or $\tilde{\xi}_{g+,2}$.
 
 	Notes
 	-----
@@ -293,9 +300,9 @@ class MeasureIABox(MeasureJackknife):
 
 
 class MeasureIALightcone(MeasureJackknife):
-	"""Manages the IA correlation function measurement methods used in the MeasureIA package based on speed and input.
+	r"""Manages the IA correlation function measurement methods used in the MeasureIA package based on speed and input.
 	This class is used to call the methods that measure w_gg, w_g+ and multipoles for simulations (and observations),
- 	with lightcone data.
+	with lightcone data.
 	Depending on the input parameters, various correlations incl covariance estimates are measured for given data.
 
 	Attributes
@@ -306,6 +313,13 @@ class MeasureIALightcone(MeasureJackknife):
 	num_samples : dict or NoneType
 		Dictionary containing the numbers of objects for each sample for lightcone-type measurements. Filled internally,
 		no input needed.
+
+	Methods
+	-------
+	measure_xi_w()
+		Compute projected correlations $w_{gg}$ and/or $w_{g+}$.
+	measure_xi_multipoles()
+		Compute multipoles of the correlation functions, $\tilde{\xi}_{gg,0}$ and/or $\tilde{\xi}_{g+,2}$.
 
 	Notes
 	-----
@@ -355,6 +369,7 @@ class MeasureIALightcone(MeasureJackknife):
 		self.num_samples = None
 
 		return
+
 	def measure_xi_w(self, IA_estimator, dataset_name, corr_type, jk_patches=None, num_jk=None,
 					 measure_cov=True, masks=None, masks_randoms=None, cosmology=None, over_h=False):
 		"""Measures xi_gg, xi_g+ and w_gg, w_g+ including jackknife covariance if desired for lightcone data.

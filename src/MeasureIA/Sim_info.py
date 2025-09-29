@@ -25,6 +25,13 @@ class SimInfo:
 	snap_folder : str, default=None
 		Name of folder where snapshot files are saved.
 
+	Methods
+	-------
+	get_specs()
+		Obtains the boxsize, L_0p5 and h parameters that are stored.
+	get_file_info()
+		Creates N_files, fof_folder and snap_folder attributed needed by ReadData class.
+
 	"""
 
 	def __init__(self, sim_name, snapshot, boxsize=None, h=None, file_info=False):
