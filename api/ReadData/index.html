@@ -1,0 +1,1449 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="author" content="Marloes van Heukelum" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>ReadData - MeasureIA Documentation</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../../assets/_mkdocstrings.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "ReadData";
+        var mkdocs_page_input_path = "api/ReadData.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> MeasureIA Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../installation/">Installation</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../usage/">Usage</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../output_structure/">Output</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../roadmap/">Roadmap</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">API Reference</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../measureIABox/">MeasureIABox</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../measureIALightcone/">MeasureIALightcone</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../MeasureIABase/">MeasureIABase</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../MeasureJackknife/">MeasureJackknife</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../MeasureWBox/">MeasureWBox</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../MeasureMBox/">MeasureMultipolesBox</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../SimInfo/">SimInfo</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">ReadData</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#measureia.ReadData">ReadData</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#measureia.ReadData.__init__">__init__</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#measureia.ReadData.read_cat">read_cat</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#measureia.ReadData.read_subhalo">read_subhalo</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#measureia.ReadData.read_snapshot">read_snapshot</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#measureia.ReadData.read_snapshot_multiple">read_snapshot_multiple</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#measureia.ReadData.read_MeasureIA_output">read_MeasureIA_output</a>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">MeasureIA Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">API Reference</li>
+      <li class="breadcrumb-item active">ReadData</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="readdata">ReadData</h1>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="measureia.ReadData" class="doc doc-heading">
+            <code>measureia.ReadData</code>
+
+
+</h2>
+
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="measureia.SimInfo (measureia.Sim_info.SimInfo)" href="../SimInfo/#measureia.SimInfo">SimInfo</a></code></p>
+
+
+        <p>Class to read different hdf5 data files.
+Assumes underlying file structures used in MeasureIA and MeasureSnapshotVariables classes.</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Attributes:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>catalogue</code></b>
+                  (<code><span title="str">str</span></code>)
+              –
+              <div class="doc-md-description">
+                <p>Catalogue name that contains the data.</p>
+              </div>
+            </li>
+            <li>
+              <b><code>sub_group</code></b>
+                  (<code>(<span title="str">str</span>, <span title="optional">optional</span>)</code>)
+              –
+              <div class="doc-md-description">
+                <p>Name of group(s)/structure within snap_group where dataset is found. Default is empty str.</p>
+              </div>
+            </li>
+            <li>
+              <b><code>output_file_name</code></b>
+                  (<code>(<span title="str">str</span>, <span title="optional">optional</span>)</code>)
+              –
+              <div class="doc-md-description">
+                <p>Name where output should be stored.</p>
+              </div>
+            </li>
+            <li>
+              <b><code>data_path</code></b>
+                  (<code>(<span title="str">str</span>, <span title="optional">optional</span>)</code>)
+              –
+              <div class="doc-md-description">
+                <p>The path to where the data is saved. Default='./data/raw/</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<p><span class="doc-section-title">Methods:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+            <tr class="doc-section-item">
+              <td><code><a class="autorefs autorefs-internal" title="read_cat(dataset_name, cut=None) (measureia.ReadData.read_cat)" href="#measureia.ReadData.read_cat">read_cat</a></code></td>
+              <td>
+                <div class="doc-md-description">
+                  <p>Reads the data from the specified catalogue.</p>
+                </div>
+              </td>
+            </tr>
+            <tr class="doc-section-item">
+              <td><code><a class="autorefs autorefs-internal" title="read_subhalo(dataset_name, Nfiles=0) (measureia.ReadData.read_subhalo)" href="#measureia.ReadData.read_subhalo">read_subhalo</a></code></td>
+              <td>
+                <div class="doc-md-description">
+                  <p>Read the data from the subhalo files.</p>
+                </div>
+              </td>
+            </tr>
+            <tr class="doc-section-item">
+              <td><code><a class="autorefs autorefs-internal" title="read_snapshot(dataset_name) (measureia.ReadData.read_snapshot)" href="#measureia.ReadData.read_snapshot">read_snapshot</a></code></td>
+              <td>
+                <div class="doc-md-description">
+                  <p>Read the data from the snapshot files and optionally write to output file.</p>
+                </div>
+              </td>
+            </tr>
+            <tr class="doc-section-item">
+              <td><code><a class="autorefs autorefs-internal" title="read_snapshot_multiple(dataset_name) (measureia.ReadData.read_snapshot_multiple)" href="#measureia.ReadData.read_snapshot_multiple">read_snapshot_multiple</a></code></td>
+              <td>
+                <div class="doc-md-description">
+                  <p>Read multiple datasets from the snapshot files for a specified shapshot number.</p>
+                </div>
+              </td>
+            </tr>
+      </tbody>
+    </table>
+
+
+<details class="note" open>
+  <summary>Notes</summary>
+  <p>Inherits attributes from 'SimInfo', where 'snap_group', 'snap_folder' and 'fof_folder' are used in this class.</p>
+</details>
+
+
+
+
+
+
+
+              <details class="quote">
+                <summary>Source code in <code>src/measureia/read_data.py</code></summary>
+                <pre class="highlight"><code class="language-python">class ReadData(SimInfo):
+	"""
+	Class to read different hdf5 data files.
+	Assumes underlying file structures used in MeasureIA and MeasureSnapshotVariables classes.
+
+	Attributes
+	----------
+	catalogue : str
+		Catalogue name that contains the data.
+	sub_group : str, optional
+			Name of group(s)/structure within snap_group where dataset is found. Default is empty str.
+	output_file_name : str, optional
+			Name where output should be stored.
+	data_path : str, optional
+		The path to where the data is saved. Default='./data/raw/
+
+	Methods
+	-------
+	read_cat()
+		Reads the data from the specified catalogue.
+	read_subhalo()
+		Read the data from the subhalo files.
+	read_snapshot()
+		Read the data from the snapshot files and optionally write to output file.
+	read_snapshot_multiple()
+		Read multiple datasets from the snapshot files for a specified shapshot number.
+
+
+	Notes
+	-----
+	Inherits attributes from 'SimInfo', where 'snap_group', 'snap_folder' and 'fof_folder' are used in this class.
+
+	"""
+
+	def __init__(
+			self, simulation, catalogue, snapshot, sub_group="", output_file_name=None, data_path="./data/raw/"
+	):
+		"""
+		The __init__ method of the ReadData class.
+
+		Parameters
+		----------
+		simulation : str
+			Identifier of the simulation, allowing for correct information to be obtained.
+			Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, FLAMINGO_L2p8].
+		catalogue : str
+			Catalogue name that contains the data. If groupcat file: 'Subhalo' (then use read_subhalo).
+			If snapshot file: enter 'PartTypeX' where X is the particle type number (then use read_snapshot).
+		snapshot : int or str or NoneType
+			Number of the snapshot.
+		sub_group : str, optional
+			Name of group(s)/structure within snap_group where dataset is found. Default is empty str.
+		output_file_name : str, optional
+			Name where output should be stored.
+		data_path : str, optional
+			The path to where the data is saved. Default='./data/raw/
+
+		"""
+		SimInfo.__init__(self, simulation, snapshot, boxsize=None, file_info=True)
+		self.catalogue = catalogue
+		self.sub_group = sub_group + "/"
+		self.data_path = data_path + "/"
+		self.output_file_name = output_file_name
+		self.r = None
+		self.rp = None
+		self.w_gg = None
+		self.w_gp = None
+		self.multipoles_gg = None
+		self.multipoles_gp = None
+		self.cov_multipoles_gg = None
+		self.errors_multipoles_gg = None
+		self.cov_multipoles_gp = None
+		self.errors_multipoles_gp = None
+		self.cov_w_gg = None
+		self.errors_w_gg = None
+		self.cov_w_gp = None
+		self.errors_w_gp = None
+		return
+
+	def read_cat(self, dataset_name, cut=None):
+		"""Reads the data from the specified catalogue.
+
+		Parameters
+		----------
+		dataset_name :
+			the dataset name for the requested data
+		cut : iterable with 2 entries
+			 Read dataset slice [cut[0]:cut[1]]. Default value = None
+
+		Returns
+		-------
+		ndarray
+			The requested dataset (slice)
+
+		Raises
+		------
+		KeyError
+			If catalogue=Subhalo or Snapshot.
+
+		"""
+		if self.catalogue == "Subhalo":
+			raise KeyError("Use read_subhalo method")
+		elif self.catalogue == "Snapshot":
+			raise KeyError("Use read_snapshot method")
+
+		file = h5py.File(f"{self.data_path}{self.catalogue}.hdf5", "r")
+		if cut == None:
+			data = file[self.snap_group + self.sub_group + dataset_name][:]
+		else:
+			data = file[self.snap_group + self.sub_group + dataset_name][cut[0]: cut[1]]
+		file.close()
+		return data
+
+	def read_subhalo(self, dataset_name, Nfiles=0):
+		"""Read the data from the subhalo files.
+
+		Parameters
+		----------
+		dataset_name :
+			The dataset name for the requested data
+		Nfiles : int, optional
+			 Number of files to read from. Default=0, in which case the number from SimInfo object is used.
+
+		Returns
+		-------
+		ndarray
+			The requested dataset
+
+		"""
+		subhalo_file = h5py.File(f"{self.data_path}{self.fof_folder}.0.hdf5", "r")
+		Subhalo = subhalo_file[self.catalogue]
+		try:
+			data = Subhalo[dataset_name][:]
+		except KeyError:
+			print("Variable not found in Subhalo files. Choose from ", Subhalo.keys())
+		if len(np.shape(data)) &gt; 1:
+			stack = True
+		else:
+			stack = False
+		subhalo_file.close()
+		if Nfiles == 0:
+			Nfiles = self.N_files
+
+		for n in np.arange(1, Nfiles):
+			subhalo_file = h5py.File(f"{self.data_path}{self.fof_folder}.{n}.hdf5", "r")
+			try:
+				Subhalo = subhalo_file[self.catalogue]
+				data_n = Subhalo[dataset_name][:]  # get data single file
+			except KeyError:
+				print("problem at file ", n)
+				subhalo_file.close()
+				continue
+			if stack:
+				data = np.vstack((data, data_n))
+			else:
+				data = np.append(data, data_n)
+			subhalo_file.close()
+		return data
+
+	def read_snapshot(self, dataset_name):
+		"""Read the data from the snapshot files and optionally write to output file.
+
+		Parameters
+		----------
+		dataset_name :
+			The dataset name for the requested data
+
+		Returns
+		-------
+		ndarray
+			The requested dataset or nothing if output_file_name is specified
+
+		"""
+		if self.output_file_name != None:
+			output_file = h5py.File(self.output_file_name, "a")
+			group_out = create_group_hdf5(output_file, self.snap_group)
+			write_output = True
+		else:
+			write_output = False
+		print(dataset_name)
+		snap_file = h5py.File(f"{self.data_path}{self.snap_folder}.0.hdf5", "r")
+		Snap_data = snap_file[self.catalogue]
+
+		try:
+			data = Snap_data[dataset_name][:]
+		except KeyError:
+			print(f"Variable not found in Snapshot files: {dataset_name}. Choose from ", Snap_data.keys())
+		if len(np.shape(data)) &gt; 1:
+			stack = True
+		else:
+			stack = False
+		if write_output:
+			try:
+				dataset = group_out[dataset_name]
+				del group_out[dataset_name]
+			except:
+				pass
+			if stack:
+				group_out.create_dataset(dataset_name, data=data, maxshape=(None, np.shape(data)[1]), chunks=True)
+			else:
+				group_out.create_dataset(dataset_name, data=data, maxshape=(None,), chunks=True)
+		snap_file.close()
+
+		for n in np.arange(1, self.N_files):
+			snap_file = h5py.File(f"{self.data_path}{self.snap_folder}.{n}.hdf5", "r")
+			try:
+				Snap_data = snap_file[self.catalogue]
+				data_n = Snap_data[dataset_name][:]  # get data single file
+			except KeyError:
+				print("problem at file ", n)
+				snap_file.close()
+				continue
+			if write_output:
+				group_out[dataset_name].resize((group_out[dataset_name].shape[0] + data_n.shape[0]), axis=0)
+				group_out[dataset_name][-data_n.shape[0]:] = data_n
+			else:
+				if stack:
+					data = np.vstack((data, data_n))
+				else:
+					data = np.append(data, data_n)
+			snap_file.close()
+		if write_output:
+			output_file.close()
+			return
+		else:
+			return data
+
+	def read_snapshot_multiple(self, dataset_name):
+		"""Read multiple datasets from the snapshot files for a specified shapshot number.
+
+		Parameters
+		----------
+		dataset_name : list or str
+			The dataset names for the requested data
+
+		Returns
+		-------
+		ndarray
+			The requested datasets or nothing if output_file_name is specified
+
+		"""
+		if self.output_file_name != None:
+			output_file = h5py.File(self.output_file_name, "a")
+			group_out = create_group_hdf5(output_file, self.snap_group)
+			write_output = True
+		else:
+			write_output = False
+		snap_file = h5py.File(f"{self.data_path}{self.snap_folder}.0.hdf5", "r")
+		Snap_data = snap_file[self.catalogue]
+		stack = []
+		for i, variable in enumerate(dataset_name):
+			try:
+				data = Snap_data[dataset_name[i]][:]
+			except KeyError:
+				print(f"Variable not found in Snapshot files {variable}. Choose from ", Snap_data.keys())
+			if len(np.shape(data)) &gt; 1:
+				stack.append(True)
+			else:
+				stack.append(False)
+			if write_output:
+				try:
+					dataset = group_out[variable]
+					del group_out[variable]
+				except:
+					pass
+				if stack[i]:
+					group_out.create_dataset(variable, data=data, maxshape=(None, np.shape(data)[1]), chunks=True)
+				else:
+					group_out.create_dataset(variable, data=data, maxshape=(None,), chunks=True)
+
+		snap_file.close()
+
+		for n in np.arange(1, self.N_files):
+			snap_file = h5py.File(f"{self.data_path}{self.snap_folder}.{n}.hdf5", "r")
+			for i, variable in enumerate(dataset_name):
+				try:
+					Snap_data = snap_file[self.catalogue]
+					data_n = Snap_data[variable][:]  # get data single file
+				except KeyError:
+					print("problem at file ", n)
+					snap_file.close()
+					continue
+				if write_output:
+					group_out[variable].resize((group_out[variable].shape[0] + data_n.shape[0]), axis=0)
+					group_out[variable][-data_n.shape[0]:] = data_n
+				else:
+					if stack[i]:
+						data = np.vstack((data, data_n))
+					else:
+						data = np.append(data, data_n)
+			snap_file.close()
+		if write_output:
+			output_file.close()
+			return
+		else:
+			return data
+
+	def read_MeasureIA_output(self, dataset_name, num_jk):
+		"""
+		Fills in the available w_gg, w_gp, multipoles_gg, multipoles_gp, r, rp, and associated cov and errors attributes
+		for a given dataset and num_jk from the output file of MeasureIA.
+
+		Parameters
+		----------
+		dataset_name: str
+			Name of the dataset in the output file of MeasureIA.
+		num_jk: int or str or NoneType
+			Number of jackknife patches to be generated internally. If None, the covariance will not be read.
+
+		Returns
+		-------
+
+		"""
+		file = h5py.File(f"{self.data_path}{self.catalogue}.hdf5", "r")
+		data_group = file[self.snap_group]
+		try:
+			self.multipoles_gg = data_group[f"multipoles_gg/{dataset_name}"][:]
+			self.r = data_group[f"multipoles_gg/{dataset_name}_r"][:]
+			if num_jk != None:
+				self.cov_multipoles_gg = data_group[f"multipoles_gg/{dataset_name}_jackknife_cov_{num_jk}"][:]
+				self.errors_multipoles_gg = data_group[f"multipoles_gg/{dataset_name}_jackknife_{num_jk}"][:]
+		except KeyError:
+			pass
+		try:
+			self.multipoles_gp = data_group[f"multipoles_g_plus/{dataset_name}"][:]
+			self.r = data_group[f"multipoles_g_plus/{dataset_name}_r"][:]
+			if num_jk != None:
+				self.cov_multipoles_gp = data_group[f"multipoles_g_plus/{dataset_name}_jackknife_cov_{num_jk}"][:]
+				self.errors_multipoles_gp = data_group[f"multipoles_g_plus/{dataset_name}_jackknife_{num_jk}"][:]
+		except KeyError:
+			pass
+		try:
+			self.w_gg = data_group[f"w_gg/{dataset_name}"][:]
+			self.rp = data_group[f"w_gg/{dataset_name}_rp"][:]
+			if num_jk != None:
+				self.cov_w_gg = data_group[f"w_gg/{dataset_name}_jackknife_cov_{num_jk}"][:]
+				self.errors_w_gg = data_group[f"w_gg/{dataset_name}_jackknife_{num_jk}"][:]
+		except KeyError:
+			pass
+		try:
+			self.w_gp = data_group[f"w_g_plus/{dataset_name}"][:]
+			self.rp = data_group[f"w_g_plus/{dataset_name}_rp"][:]
+			if num_jk != None:
+				self.cov_w_gp = data_group[f"w_g_plus/{dataset_name}_jackknife_cov_{num_jk}"][:]
+				self.errors_w_gp = data_group[f"w_g_plus/{dataset_name}_jackknife_{num_jk}"][:]
+		except KeyError:
+			pass
+		file.close()
+		return</code></pre>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="measureia.ReadData.__init__" class="doc doc-heading">
+            <code class="highlight language-python">__init__(simulation, catalogue, snapshot, sub_group='', output_file_name=None, data_path='./data/raw/')</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>The <strong>init</strong> method of the ReadData class.</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>simulation</code></b>
+                  (<code><span title="str">str</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>Identifier of the simulation, allowing for correct information to be obtained.
+Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, FLAMINGO_L2p8].
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>catalogue</code></b>
+                  (<code><span title="str">str</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>Catalogue name that contains the data. If groupcat file: 'Subhalo' (then use read_subhalo).
+If snapshot file: enter 'PartTypeX' where X is the particle type number (then use read_snapshot).
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>snapshot</code></b>
+                  (<code><span title="int">int</span> or <span title="str">str</span> or <span title="NoneType">NoneType</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>Number of the snapshot.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>sub_group</code></b>
+                  (<code><span title="str">str</span></code>, default:
+                      <code>&#39;&#39;</code>
+)
+              –
+              <div class="doc-md-description">
+                <pre><code>Name of group(s)/structure within snap_group where dataset is found. Default is empty str.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>output_file_name</code></b>
+                  (<code><span title="str">str</span></code>, default:
+                      <code>None</code>
+)
+              –
+              <div class="doc-md-description">
+                <pre><code>Name where output should be stored.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>data_path</code></b>
+                  (<code><span title="str">str</span></code>, default:
+                      <code>&#39;./data/raw/&#39;</code>
+)
+              –
+              <div class="doc-md-description">
+                <pre><code>The path to where the data is saved. Default='./data/raw/
+</code></pre>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+            <details class="quote">
+              <summary>Source code in <code>src/measureia/read_data.py</code></summary>
+              <pre class="highlight"><code class="language-python">def __init__(
+		self, simulation, catalogue, snapshot, sub_group="", output_file_name=None, data_path="./data/raw/"
+):
+	"""
+	The __init__ method of the ReadData class.
+
+	Parameters
+	----------
+	simulation : str
+		Identifier of the simulation, allowing for correct information to be obtained.
+		Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, FLAMINGO_L2p8].
+	catalogue : str
+		Catalogue name that contains the data. If groupcat file: 'Subhalo' (then use read_subhalo).
+		If snapshot file: enter 'PartTypeX' where X is the particle type number (then use read_snapshot).
+	snapshot : int or str or NoneType
+		Number of the snapshot.
+	sub_group : str, optional
+		Name of group(s)/structure within snap_group where dataset is found. Default is empty str.
+	output_file_name : str, optional
+		Name where output should be stored.
+	data_path : str, optional
+		The path to where the data is saved. Default='./data/raw/
+
+	"""
+	SimInfo.__init__(self, simulation, snapshot, boxsize=None, file_info=True)
+	self.catalogue = catalogue
+	self.sub_group = sub_group + "/"
+	self.data_path = data_path + "/"
+	self.output_file_name = output_file_name
+	self.r = None
+	self.rp = None
+	self.w_gg = None
+	self.w_gp = None
+	self.multipoles_gg = None
+	self.multipoles_gp = None
+	self.cov_multipoles_gg = None
+	self.errors_multipoles_gg = None
+	self.cov_multipoles_gp = None
+	self.errors_multipoles_gp = None
+	self.cov_w_gg = None
+	self.errors_w_gg = None
+	self.cov_w_gp = None
+	self.errors_w_gp = None
+	return</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="measureia.ReadData.read_cat" class="doc doc-heading">
+            <code class="highlight language-python">read_cat(dataset_name, cut=None)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Reads the data from the specified catalogue.</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>dataset_name</code></b>
+              –
+              <div class="doc-md-description">
+                <pre><code>the dataset name for the requested data
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>cut</code></b>
+                  (<code>iterable with 2 entries</code>, default:
+                      <code>None</code>
+)
+              –
+              <div class="doc-md-description">
+                <pre><code> Read dataset slice [cut[0]:cut[1]]. Default value = None
+</code></pre>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code><span title="ndarray">ndarray</span></code>
+              –
+              <div class="doc-md-description">
+                <p>The requested dataset (slice)</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Raises:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code><span title="KeyError">KeyError</span></code>
+              –
+              <div class="doc-md-description">
+                <p>If catalogue=Subhalo or Snapshot.</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+            <details class="quote">
+              <summary>Source code in <code>src/measureia/read_data.py</code></summary>
+              <pre class="highlight"><code class="language-python">def read_cat(self, dataset_name, cut=None):
+	"""Reads the data from the specified catalogue.
+
+	Parameters
+	----------
+	dataset_name :
+		the dataset name for the requested data
+	cut : iterable with 2 entries
+		 Read dataset slice [cut[0]:cut[1]]. Default value = None
+
+	Returns
+	-------
+	ndarray
+		The requested dataset (slice)
+
+	Raises
+	------
+	KeyError
+		If catalogue=Subhalo or Snapshot.
+
+	"""
+	if self.catalogue == "Subhalo":
+		raise KeyError("Use read_subhalo method")
+	elif self.catalogue == "Snapshot":
+		raise KeyError("Use read_snapshot method")
+
+	file = h5py.File(f"{self.data_path}{self.catalogue}.hdf5", "r")
+	if cut == None:
+		data = file[self.snap_group + self.sub_group + dataset_name][:]
+	else:
+		data = file[self.snap_group + self.sub_group + dataset_name][cut[0]: cut[1]]
+	file.close()
+	return data</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="measureia.ReadData.read_subhalo" class="doc doc-heading">
+            <code class="highlight language-python">read_subhalo(dataset_name, Nfiles=0)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Read the data from the subhalo files.</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>dataset_name</code></b>
+              –
+              <div class="doc-md-description">
+                <pre><code>The dataset name for the requested data
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>Nfiles</code></b>
+                  (<code><span title="int">int</span></code>, default:
+                      <code>0</code>
+)
+              –
+              <div class="doc-md-description">
+                <pre><code> Number of files to read from. Default=0, in which case the number from SimInfo object is used.
+</code></pre>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code><span title="ndarray">ndarray</span></code>
+              –
+              <div class="doc-md-description">
+                <p>The requested dataset</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+            <details class="quote">
+              <summary>Source code in <code>src/measureia/read_data.py</code></summary>
+              <pre class="highlight"><code class="language-python">def read_subhalo(self, dataset_name, Nfiles=0):
+	"""Read the data from the subhalo files.
+
+	Parameters
+	----------
+	dataset_name :
+		The dataset name for the requested data
+	Nfiles : int, optional
+		 Number of files to read from. Default=0, in which case the number from SimInfo object is used.
+
+	Returns
+	-------
+	ndarray
+		The requested dataset
+
+	"""
+	subhalo_file = h5py.File(f"{self.data_path}{self.fof_folder}.0.hdf5", "r")
+	Subhalo = subhalo_file[self.catalogue]
+	try:
+		data = Subhalo[dataset_name][:]
+	except KeyError:
+		print("Variable not found in Subhalo files. Choose from ", Subhalo.keys())
+	if len(np.shape(data)) &gt; 1:
+		stack = True
+	else:
+		stack = False
+	subhalo_file.close()
+	if Nfiles == 0:
+		Nfiles = self.N_files
+
+	for n in np.arange(1, Nfiles):
+		subhalo_file = h5py.File(f"{self.data_path}{self.fof_folder}.{n}.hdf5", "r")
+		try:
+			Subhalo = subhalo_file[self.catalogue]
+			data_n = Subhalo[dataset_name][:]  # get data single file
+		except KeyError:
+			print("problem at file ", n)
+			subhalo_file.close()
+			continue
+		if stack:
+			data = np.vstack((data, data_n))
+		else:
+			data = np.append(data, data_n)
+		subhalo_file.close()
+	return data</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="measureia.ReadData.read_snapshot" class="doc doc-heading">
+            <code class="highlight language-python">read_snapshot(dataset_name)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Read the data from the snapshot files and optionally write to output file.</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>dataset_name</code></b>
+              –
+              <div class="doc-md-description">
+                <pre><code>The dataset name for the requested data
+</code></pre>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code><span title="ndarray">ndarray</span></code>
+              –
+              <div class="doc-md-description">
+                <p>The requested dataset or nothing if output_file_name is specified</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+            <details class="quote">
+              <summary>Source code in <code>src/measureia/read_data.py</code></summary>
+              <pre class="highlight"><code class="language-python">def read_snapshot(self, dataset_name):
+	"""Read the data from the snapshot files and optionally write to output file.
+
+	Parameters
+	----------
+	dataset_name :
+		The dataset name for the requested data
+
+	Returns
+	-------
+	ndarray
+		The requested dataset or nothing if output_file_name is specified
+
+	"""
+	if self.output_file_name != None:
+		output_file = h5py.File(self.output_file_name, "a")
+		group_out = create_group_hdf5(output_file, self.snap_group)
+		write_output = True
+	else:
+		write_output = False
+	print(dataset_name)
+	snap_file = h5py.File(f"{self.data_path}{self.snap_folder}.0.hdf5", "r")
+	Snap_data = snap_file[self.catalogue]
+
+	try:
+		data = Snap_data[dataset_name][:]
+	except KeyError:
+		print(f"Variable not found in Snapshot files: {dataset_name}. Choose from ", Snap_data.keys())
+	if len(np.shape(data)) &gt; 1:
+		stack = True
+	else:
+		stack = False
+	if write_output:
+		try:
+			dataset = group_out[dataset_name]
+			del group_out[dataset_name]
+		except:
+			pass
+		if stack:
+			group_out.create_dataset(dataset_name, data=data, maxshape=(None, np.shape(data)[1]), chunks=True)
+		else:
+			group_out.create_dataset(dataset_name, data=data, maxshape=(None,), chunks=True)
+	snap_file.close()
+
+	for n in np.arange(1, self.N_files):
+		snap_file = h5py.File(f"{self.data_path}{self.snap_folder}.{n}.hdf5", "r")
+		try:
+			Snap_data = snap_file[self.catalogue]
+			data_n = Snap_data[dataset_name][:]  # get data single file
+		except KeyError:
+			print("problem at file ", n)
+			snap_file.close()
+			continue
+		if write_output:
+			group_out[dataset_name].resize((group_out[dataset_name].shape[0] + data_n.shape[0]), axis=0)
+			group_out[dataset_name][-data_n.shape[0]:] = data_n
+		else:
+			if stack:
+				data = np.vstack((data, data_n))
+			else:
+				data = np.append(data, data_n)
+		snap_file.close()
+	if write_output:
+		output_file.close()
+		return
+	else:
+		return data</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="measureia.ReadData.read_snapshot_multiple" class="doc doc-heading">
+            <code class="highlight language-python">read_snapshot_multiple(dataset_name)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Read multiple datasets from the snapshot files for a specified shapshot number.</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>dataset_name</code></b>
+                  (<code><span title="list">list</span> or <span title="str">str</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>The dataset names for the requested data
+</code></pre>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code><span title="ndarray">ndarray</span></code>
+              –
+              <div class="doc-md-description">
+                <p>The requested datasets or nothing if output_file_name is specified</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+            <details class="quote">
+              <summary>Source code in <code>src/measureia/read_data.py</code></summary>
+              <pre class="highlight"><code class="language-python">def read_snapshot_multiple(self, dataset_name):
+	"""Read multiple datasets from the snapshot files for a specified shapshot number.
+
+	Parameters
+	----------
+	dataset_name : list or str
+		The dataset names for the requested data
+
+	Returns
+	-------
+	ndarray
+		The requested datasets or nothing if output_file_name is specified
+
+	"""
+	if self.output_file_name != None:
+		output_file = h5py.File(self.output_file_name, "a")
+		group_out = create_group_hdf5(output_file, self.snap_group)
+		write_output = True
+	else:
+		write_output = False
+	snap_file = h5py.File(f"{self.data_path}{self.snap_folder}.0.hdf5", "r")
+	Snap_data = snap_file[self.catalogue]
+	stack = []
+	for i, variable in enumerate(dataset_name):
+		try:
+			data = Snap_data[dataset_name[i]][:]
+		except KeyError:
+			print(f"Variable not found in Snapshot files {variable}. Choose from ", Snap_data.keys())
+		if len(np.shape(data)) &gt; 1:
+			stack.append(True)
+		else:
+			stack.append(False)
+		if write_output:
+			try:
+				dataset = group_out[variable]
+				del group_out[variable]
+			except:
+				pass
+			if stack[i]:
+				group_out.create_dataset(variable, data=data, maxshape=(None, np.shape(data)[1]), chunks=True)
+			else:
+				group_out.create_dataset(variable, data=data, maxshape=(None,), chunks=True)
+
+	snap_file.close()
+
+	for n in np.arange(1, self.N_files):
+		snap_file = h5py.File(f"{self.data_path}{self.snap_folder}.{n}.hdf5", "r")
+		for i, variable in enumerate(dataset_name):
+			try:
+				Snap_data = snap_file[self.catalogue]
+				data_n = Snap_data[variable][:]  # get data single file
+			except KeyError:
+				print("problem at file ", n)
+				snap_file.close()
+				continue
+			if write_output:
+				group_out[variable].resize((group_out[variable].shape[0] + data_n.shape[0]), axis=0)
+				group_out[variable][-data_n.shape[0]:] = data_n
+			else:
+				if stack[i]:
+					data = np.vstack((data, data_n))
+				else:
+					data = np.append(data, data_n)
+		snap_file.close()
+	if write_output:
+		output_file.close()
+		return
+	else:
+		return data</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="measureia.ReadData.read_MeasureIA_output" class="doc doc-heading">
+            <code class="highlight language-python">read_MeasureIA_output(dataset_name, num_jk)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Fills in the available w_gg, w_gp, multipoles_gg, multipoles_gp, r, rp, and associated cov and errors attributes
+for a given dataset and num_jk from the output file of MeasureIA.</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>dataset_name</code></b>
+              –
+              <div class="doc-md-description">
+                <pre><code>Name of the dataset in the output file of MeasureIA.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>num_jk</code></b>
+              –
+              <div class="doc-md-description">
+                <pre><code>Number of jackknife patches to be generated internally. If None, the covariance will not be read.
+</code></pre>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+            <details class="quote">
+              <summary>Source code in <code>src/measureia/read_data.py</code></summary>
+              <pre class="highlight"><code class="language-python">def read_MeasureIA_output(self, dataset_name, num_jk):
+	"""
+	Fills in the available w_gg, w_gp, multipoles_gg, multipoles_gp, r, rp, and associated cov and errors attributes
+	for a given dataset and num_jk from the output file of MeasureIA.
+
+	Parameters
+	----------
+	dataset_name: str
+		Name of the dataset in the output file of MeasureIA.
+	num_jk: int or str or NoneType
+		Number of jackknife patches to be generated internally. If None, the covariance will not be read.
+
+	Returns
+	-------
+
+	"""
+	file = h5py.File(f"{self.data_path}{self.catalogue}.hdf5", "r")
+	data_group = file[self.snap_group]
+	try:
+		self.multipoles_gg = data_group[f"multipoles_gg/{dataset_name}"][:]
+		self.r = data_group[f"multipoles_gg/{dataset_name}_r"][:]
+		if num_jk != None:
+			self.cov_multipoles_gg = data_group[f"multipoles_gg/{dataset_name}_jackknife_cov_{num_jk}"][:]
+			self.errors_multipoles_gg = data_group[f"multipoles_gg/{dataset_name}_jackknife_{num_jk}"][:]
+	except KeyError:
+		pass
+	try:
+		self.multipoles_gp = data_group[f"multipoles_g_plus/{dataset_name}"][:]
+		self.r = data_group[f"multipoles_g_plus/{dataset_name}_r"][:]
+		if num_jk != None:
+			self.cov_multipoles_gp = data_group[f"multipoles_g_plus/{dataset_name}_jackknife_cov_{num_jk}"][:]
+			self.errors_multipoles_gp = data_group[f"multipoles_g_plus/{dataset_name}_jackknife_{num_jk}"][:]
+	except KeyError:
+		pass
+	try:
+		self.w_gg = data_group[f"w_gg/{dataset_name}"][:]
+		self.rp = data_group[f"w_gg/{dataset_name}_rp"][:]
+		if num_jk != None:
+			self.cov_w_gg = data_group[f"w_gg/{dataset_name}_jackknife_cov_{num_jk}"][:]
+			self.errors_w_gg = data_group[f"w_gg/{dataset_name}_jackknife_{num_jk}"][:]
+	except KeyError:
+		pass
+	try:
+		self.w_gp = data_group[f"w_g_plus/{dataset_name}"][:]
+		self.rp = data_group[f"w_g_plus/{dataset_name}_rp"][:]
+		if num_jk != None:
+			self.cov_w_gp = data_group[f"w_g_plus/{dataset_name}_jackknife_cov_{num_jk}"][:]
+			self.errors_w_gp = data_group[f"w_g_plus/{dataset_name}_jackknife_{num_jk}"][:]
+	except KeyError:
+		pass
+	file.close()
+	return</code></pre>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../SimInfo/" class="btn btn-neutral float-left" title="SimInfo"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../SimInfo/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

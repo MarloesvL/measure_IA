@@ -1,0 +1,2453 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="author" content="Marloes van Heukelum" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>MeasureIABase - MeasureIA Documentation</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../../assets/_mkdocstrings.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "MeasureIABase";
+        var mkdocs_page_input_path = "api/MeasureIABase.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> MeasureIA Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../installation/">Installation</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../usage/">Usage</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../output_structure/">Output</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../roadmap/">Roadmap</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">API Reference</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../measureIABox/">MeasureIABox</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../measureIALightcone/">MeasureIALightcone</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">MeasureIABase</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#measureia.MeasureIABase">MeasureIABase</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#measureia.MeasureIABase.__init__">__init__</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#measureia.MeasureIABase.calculate_dot_product_arrays">calculate_dot_product_arrays</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#measureia.MeasureIABase.get_ellipticity">get_ellipticity</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#measureia.MeasureIABase.get_random_pairs">get_random_pairs</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#measureia.MeasureIABase.get_volume_spherical_cap">get_volume_spherical_cap</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#measureia.MeasureIABase.get_random_pairs_r_mur">get_random_pairs_r_mur</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#measureia.MeasureIABase.setdiff2D">setdiff2D</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#measureia.MeasureIABase.setdiff_omit">setdiff_omit</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#measureia.MeasureIABase.assign_jackknife_patches">assign_jackknife_patches</a>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../MeasureJackknife/">MeasureJackknife</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../MeasureWBox/">MeasureWBox</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../MeasureMBox/">MeasureMultipolesBox</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../SimInfo/">SimInfo</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../ReadData/">ReadData</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">MeasureIA Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">API Reference</li>
+      <li class="breadcrumb-item active">MeasureIABase</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="measureiabase">MeasureIABase</h1>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="measureia.MeasureIABase" class="doc doc-heading">
+            <code>measureia.MeasureIABase</code>
+
+
+</h2>
+
+
+    <div class="doc doc-contents first">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="measureia.SimInfo (measureia.Sim_info.SimInfo)" href="../SimInfo/#measureia.SimInfo">SimInfo</a></code></p>
+
+
+        <p>Base class for MeasureIA package that includes some general methods used throughout the package.</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Attributes:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>Num_position</code></b>
+                  (<code><span title="int">int</span></code>)
+              –
+              <div class="doc-md-description">
+                <p>Number of objects in the position sample. This value is updated in jackknife realisations.</p>
+              </div>
+            </li>
+            <li>
+              <b><code>Num_shape</code></b>
+                  (<code><span title="int">int</span></code>)
+              –
+              <div class="doc-md-description">
+                <p>Number of objects in the shape sample. This value is updated in jackknife realisations.</p>
+              </div>
+            </li>
+            <li>
+              <b><code>r_min</code></b>
+                  (<code><span title="float">float</span></code>)
+              –
+              <div class="doc-md-description">
+                <p>Minimum bound of (projected) separation length; bin edge. Default is 0.1.</p>
+              </div>
+            </li>
+            <li>
+              <b><code>r_max</code></b>
+                  (<code><span title="float">float</span></code>)
+              –
+              <div class="doc-md-description">
+                <p>Maximum bound of (projected) separation length; bin edge. Default is 20.</p>
+              </div>
+            </li>
+            <li>
+              <b><code>r_bins</code></b>
+                  (<code><span title="ndarray">ndarray</span></code>)
+              –
+              <div class="doc-md-description">
+                <p>Bin edges of the (projected) separation length (r_p or r).</p>
+              </div>
+            </li>
+            <li>
+              <b><code>pi_bins</code></b>
+                  (<code><span title="ndarray">ndarray</span></code>)
+              –
+              <div class="doc-md-description">
+                <p>Bin edges of the line of sight (pi).</p>
+              </div>
+            </li>
+            <li>
+              <b><code>mu_r_bins</code></b>
+                  (<code><span title="ndarray">ndarray</span></code>)
+              –
+              <div class="doc-md-description">
+                <p>Bin edges of the mu_r.</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<p><span class="doc-section-title">Methods:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+            <tr class="doc-section-item">
+              <td><code><a class="autorefs autorefs-internal" title="calculate_dot_product_arrays(a1, a2)
+
+  
+      staticmethod
+   (measureia.MeasureIABase.calculate_dot_product_arrays)" href="#measureia.MeasureIABase.calculate_dot_product_arrays">calculate_dot_product_arrays</a></code></td>
+              <td>
+                <div class="doc-md-description">
+                  <p>Calculates dot product of elements of two arrays</p>
+                </div>
+              </td>
+            </tr>
+            <tr class="doc-section-item">
+              <td><code><a class="autorefs autorefs-internal" title="get_ellipticity(e, phi)
+
+  
+      staticmethod
+   (measureia.MeasureIABase.get_ellipticity)" href="#measureia.MeasureIABase.get_ellipticity">get_ellipticity</a></code></td>
+              <td>
+                <div class="doc-md-description">
+                  <p>Given e and phi, e_+ and e_x components of ellipticity are returned.</p>
+                </div>
+              </td>
+            </tr>
+            <tr class="doc-section-item">
+              <td><code><a class="autorefs autorefs-internal" title="get_random_pairs(rp_max, rp_min, pi_max, pi_min, L3, corrtype, Num_position, Num_shape)
+
+  
+      staticmethod
+   (measureia.MeasureIABase.get_random_pairs)" href="#measureia.MeasureIABase.get_random_pairs">get_random_pairs</a></code></td>
+              <td>
+                <div class="doc-md-description">
+                  <p>Analytical RR for a (rp,pi) bin.</p>
+                </div>
+              </td>
+            </tr>
+            <tr class="doc-section-item">
+              <td><code><a class="autorefs autorefs-internal" title="get_volume_spherical_cap(mur, r)
+
+  
+      staticmethod
+   (measureia.MeasureIABase.get_volume_spherical_cap)" href="#measureia.MeasureIABase.get_volume_spherical_cap">get_volume_spherical_cap</a></code></td>
+              <td>
+                <div class="doc-md-description">
+                  <p>Volume of an (r,mu_r) bin.</p>
+                </div>
+              </td>
+            </tr>
+            <tr class="doc-section-item">
+              <td><code><a class="autorefs autorefs-internal" title="get_random_pairs_r_mur(r_max, r_min, mur_max, mur_min, L3, corrtype, Num_position, Num_shape) (measureia.MeasureIABase.get_random_pairs_r_mur)" href="#measureia.MeasureIABase.get_random_pairs_r_mur">get_random_pairs_r_mur</a></code></td>
+              <td>
+                <div class="doc-md-description">
+                  <p>Analytical RR for a (r,mu_r) bin.</p>
+                </div>
+              </td>
+            </tr>
+            <tr class="doc-section-item">
+              <td><code><a class="autorefs autorefs-internal" title="setdiff2D(a1, a2)
+
+  
+      staticmethod
+   (measureia.MeasureIABase.setdiff2D)" href="#measureia.MeasureIABase.setdiff2D">setdiff2D</a></code></td>
+              <td>
+                <div class="doc-md-description">
+                  <p>Compares each row of a1 and a2 and returns the elements that do not overlap.</p>
+                </div>
+              </td>
+            </tr>
+            <tr class="doc-section-item">
+              <td><code><a class="autorefs autorefs-internal" title="setdiff_omit(a1, a2, incl_ind)
+
+  
+      staticmethod
+   (measureia.MeasureIABase.setdiff_omit)" href="#measureia.MeasureIABase.setdiff_omit">setdiff_omit</a></code></td>
+              <td>
+                <div class="doc-md-description">
+                  <p>For rows in nested list a1, whose index is included in incl_ind, returns elements that do not overlap between
+the row in a1 and a2.</p>
+                </div>
+              </td>
+            </tr>
+            <tr class="doc-section-item">
+              <td><code><span title="measureia.MeasureIABase._measure_w_g_i">_measure_w_g_i</span></code></td>
+              <td>
+                <div class="doc-md-description">
+                  <p>Measure wgg or wg+ from xi grid provided by MeasureWBox or MeasureWLightcone class methods.</p>
+                </div>
+              </td>
+            </tr>
+            <tr class="doc-section-item">
+              <td><code><span title="measureia.MeasureIABase._measure_multipoles">_measure_multipoles</span></code></td>
+              <td>
+                <div class="doc-md-description">
+                  <p>Measure multipoles (gg or g+) from xi grid provided by MeasureMultipolesBox or MeasureMultipolesLightcone
+class methods.</p>
+                </div>
+              </td>
+            </tr>
+            <tr class="doc-section-item">
+              <td><code><span title="measureia.MeasureIABase._obs_estimator">_obs_estimator</span></code></td>
+              <td>
+                <div class="doc-md-description">
+                  <p>Combines elements (DD, RR, etc) of xi estimators into xi_gg or xi_g+ for MeasureIALightcone.</p>
+                </div>
+              </td>
+            </tr>
+            <tr class="doc-section-item">
+              <td><code><a class="autorefs autorefs-internal" title="assign_jackknife_patches(data, randoms_data, num_jk) (measureia.MeasureIABase.assign_jackknife_patches)" href="#measureia.MeasureIABase.assign_jackknife_patches">assign_jackknife_patches</a></code></td>
+              <td>
+                <div class="doc-md-description">
+                  <p>Given positions of multiple samples, defines jackknife patches and returns index of every object in the sample.</p>
+                </div>
+              </td>
+            </tr>
+      </tbody>
+    </table>
+
+
+<details class="note" open>
+  <summary>Notes</summary>
+  <p>Inherits attributes from 'SimInfo', where 'boxsize', 'L_0p5' and 'snap_group' are used in this class.</p>
+</details>
+
+
+
+
+
+
+
+              <details class="quote">
+                <summary>Source code in <code>src/measureia/measure_IA_base.py</code></summary>
+                <pre class="highlight"><code class="language-python">class MeasureIABase(SimInfo):
+	"""Base class for MeasureIA package that includes some general methods used throughout the package.
+
+	Attributes
+	----------
+	Num_position : int
+		Number of objects in the position sample. This value is updated in jackknife realisations.
+	Num_shape : int
+		Number of objects in the shape sample. This value is updated in jackknife realisations.
+	r_min : float
+		Minimum bound of (projected) separation length; bin edge. Default is 0.1.
+	r_max : float
+		Maximum bound of (projected) separation length; bin edge. Default is 20.
+	r_bins : ndarray
+		Bin edges of the (projected) separation length (r_p or r).
+	pi_bins : ndarray
+		Bin edges of the line of sight (pi).
+	mu_r_bins : ndarray
+		Bin edges of the mu_r.
+
+	Methods
+	-------
+	calculate_dot_product_arrays()
+		Calculates dot product of elements of two arrays
+	get_ellipticity()
+		Given e and phi, e_+ and e_x components of ellipticity are returned.
+	get_random_pairs()
+		Analytical RR for a (rp,pi) bin.
+	get_volume_spherical_cap()
+		Volume of an (r,mu_r) bin.
+	get_random_pairs_r_mur()
+		Analytical RR for a (r,mu_r) bin.
+	setdiff2D()
+		Compares each row of a1 and a2 and returns the elements that do not overlap.
+	setdiff_omit()
+		For rows in nested list a1, whose index is included in incl_ind, returns elements that do not overlap between
+		the row in a1 and a2.
+	_measure_w_g_i()
+		Measure wgg or wg+ from xi grid provided by MeasureWBox or MeasureWLightcone class methods.
+	_measure_multipoles()
+		Measure multipoles (gg or g+) from xi grid provided by MeasureMultipolesBox or MeasureMultipolesLightcone
+		class methods.
+	_obs_estimator()
+		Combines elements (DD, RR, etc) of xi estimators into xi_gg or xi_g+ for MeasureIALightcone.
+	assign_jackknife_patches()
+		Given positions of multiple samples, defines jackknife patches and returns index of every object in the sample.
+
+	Notes
+	-----
+	Inherits attributes from 'SimInfo', where 'boxsize', 'L_0p5' and 'snap_group' are used in this class.
+
+	"""
+
+	def __init__(
+			self,
+			data,
+			output_file_name,
+			simulation=None,
+			snapshot=None,
+			separation_limits=[0.1, 20.0],
+			num_bins_r=8,
+			num_bins_pi=20,
+			pi_max=None,
+			boxsize=None,
+			periodicity=True,
+	):
+		"""
+		The __init__ method of the MeasureIABase class.
+
+		Parameters
+		----------
+		data : dict or NoneType
+			Dictionary with data needed for calculations.
+			For cartesian coordinates, the keywords are:
+			'Position' and 'Position_shape_sample': (N_p,3), (N_s,3) ndarrays with the x, y, z coordinates
+			of the N_p, N_s objects in the position and shape samples, respectively.
+			'Axis_Direction': (N_s,2) ndarray with the two elements of the unit vectors describing the
+			axis direction of the projected axis of the object shape.
+			'LOS': index referring back to the column number in the 'Position' samples that contains the
+			line-of-sight coordinate. (e.g. if the shapes are projected over the z-axis, LOS=2)
+			'q': (N_s) array containing the axis ratio q=b/a for each object in the shape sample.
+			For lightcone coordinates, the keywords are:
+			'Redshift' and 'Redshift_shape_sample': (N_p) and (N_s) ndarray with redshifts of position and shape samples.
+			'RA' and 'RA_shape_sample': (N_p) and (N_s) ndarray with RA coordinate of position and shape samples.
+			'DEC' and 'DEC_shape_sample': (N_p) and (N_s) ndarray with DEC coordinate of position and shape samples.
+			'e1' and 'e2': (N_s) arrays with the two ellipticity components e1 and e2 of the shape sample objects.
+		output_file_name : str
+			Name and filepath of the file where the output should be stored. Needs to be hdf5-type.
+		simulation : str or NoneType, optional
+			Indicator of simulation, obtaining correct boxsize in cMpc/h automatically. 
+			Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, FLAMINGO_L2p8].
+			Default is None, in which case boxsize needs to be added manually; or in the case of observational data, 
+			the pi_max.
+		snapshot : int or str or NoneType, optional
+			Number of the snapshot, which, if given, will ensure that the output file to contains a group
+			'Snapshot_[snapshot]'. If None, the group is omitted from the output file structure. Default is None.
+		separation_limits : iterable of 2 entries, optional
+			Bounds of the (projected) separation vector length bins in cMpc/h (so, r or r_p). Default is [0.1,20].
+		num_bins_r : int, optional
+			Number of bins for (projected) separation vector. Default is 8.
+		num_bins_pi : int, optional
+			Number of bins for line of sight (LOS) vector, pi or mu_r when multipoles are measured. Default is 20.
+		pi_max : int or float, optional
+			Bound for line of sight bins. Bounds will be [-pi_max, pi_max]. Default is None, in which case half the
+			boxsize will be used.
+		boxsize : int or float or NoneType, optional
+			If simulation is not included in SimInfo, a manual boxsize can be added here. Make sure simulation=None
+			and the boxsize units are equal to those in the data dictionary. Default is None.
+		periodicity : bool, optional
+			If True, the periodic boundary conditions of the simulation box are taken into account. If False, they are
+			ignored. Note that because this code used analytical randoms for the simulations, the correlations will not
+			be correct in this case and only DD and S+D terms should be studied. Non-periodic randoms can be measured by
+			providing random data to the code and considering the DD term that is measured. Correlations and covariance
+			matrix will need to be reconstructed from parts. [Please add a request for teh integration of this method of
+			this if you would like to use this option often.] Default is True.
+
+		"""
+		SimInfo.__init__(self, simulation, snapshot, boxsize)
+		self.data = data
+		self.output_file_name = output_file_name
+		self.periodicity = periodicity
+		if periodicity:
+			periodic = "periodic "
+		else:
+			periodic = ""
+		try:
+			self.Num_position = len(data["Position"])  # number of halos in position sample
+			self.Num_shape = len(data["Position_shape_sample"])  # number of halos in shape sample
+		except:
+			try:
+				self.Num_position = len(data["RA"])
+				self.Num_shape = len(data["RA_shape_sample"])
+			except:
+				self.Num_position = 0
+				self.Num_shape = 0
+				print("Warning: no Postion or Position_shape_sample given.")
+		if self.Num_position &gt; 0:
+			try:
+				weight = self.data["weight"]
+			except:
+				self.data["weight"] = np.ones(self.Num_position)
+			try:
+				weight = self.data["weight_shape_sample"]
+			except:
+				self.data["weight_shape_sample"] = np.ones(self.Num_shape)
+		self.r_min = separation_limits[0]  # cMpc/h
+		self.r_max = separation_limits[1]  # cMpc/h
+		self.num_bins_r = num_bins_r
+		self.num_bins_pi = num_bins_pi
+		self.r_bins = np.logspace(np.log10(self.r_min), np.log10(self.r_max), self.num_bins_r + 1)
+		if pi_max == None:
+			if self.L_0p5 is None:
+				raise ValueError(
+					"Both pi_max and boxsize are None. Provide input on one of them to determine the integration limit pi_max.")
+			else:
+				pi_max = self.L_0p5
+		self.pi_bins = np.linspace(-pi_max, pi_max, self.num_bins_pi + 1)
+		self.mu_r_bins = np.linspace(-1, 1, self.num_bins_pi + 1)
+		if simulation == False:
+			print(f"MeasureIA object initialised with:\n \
+					observational data.\n \
+					There are {self.Num_shape} galaxies in the shape sample and {self.Num_position} galaxies in the position sample.\n\
+					The separation bin edges are given by {self.r_bins} Mpc.\n \
+					There are {num_bins_r} r or r_p bins and {num_bins_pi} pi bins.\n \
+					The maximum pi used for binning is {pi_max}.\n \
+					The data will be written to {self.output_file_name}")
+		else:
+			print(f"MeasureIA object initialised with:\n \
+			simulation {simulation} that has a {periodic}boxsize of {self.boxsize} cMpc/h.\n \
+			There are {self.Num_shape} galaxies in the shape sample and {self.Num_position} galaxies in the position sample.\n\
+			The separation bin edges are given by {self.r_bins} cMpc/h.\n \
+			There are {num_bins_r} r or r_p bins and {num_bins_pi} pi bins.\n \
+			The maximum pi used for binning is {pi_max}.\n \
+			The data will be written to {self.output_file_name}")
+		return
+
+	@staticmethod
+	def calculate_dot_product_arrays(a1, a2):
+		"""Calculates the dot product over 2 2D arrays across axis 1 so that dot_product[i] = np.dot(a1[i],a2[i])
+
+		Parameters
+		----------
+		a1 : ndarray
+			First array
+		a2 : ndarray
+			Second array
+
+		Returns
+		-------
+		ndarray
+			Dot product of columns of arrays
+
+		"""
+		dot_product = np.zeros(np.shape(a1)[0])
+		for i in np.arange(0, np.shape(a1)[1]):
+			dot_product += a1[:, i] * a2[:, i]
+		return dot_product
+
+	@staticmethod
+	def get_ellipticity(e, phi):
+		"""Calculates the radial and tangential components of the ellipticity, given the size of the ellipticty vector
+		and the angle between the semimajor or semiminor axis and the separation vector.
+
+		Parameters
+		----------
+		e : ndarray
+			size of the ellipticity vector
+		phi : ndarray
+			angle between semimajor/semiminor axis and separation vector
+
+		Returns
+		-------
+		ndarray
+			e_+ and e_x
+
+		"""
+		e_plus, e_cross = e * np.cos(2 * phi), e * np.sin(2 * phi)
+		return e_plus, e_cross
+
+	@staticmethod
+	def get_random_pairs(rp_max, rp_min, pi_max, pi_min, L3, corrtype, Num_position, Num_shape):
+		"""Returns analytical value of the number of pairs expected in an r_p, pi bin for a random uniform distribution.
+		(Singh et al. 2023)
+
+		Parameters
+		----------
+		rp_max : float
+			Upper bound of projected separation vector bin
+		rp_min : float
+			Lower bound of projected separation vector bin
+		pi_max : float
+			Upper bound of line of sight vector bin
+		pi_min : float
+			Lower bound of line of sight vector bin
+		L3 : float or int
+			Volume of the simulation box
+		corrtype : str
+			Correlation type, auto or cross. RR for auto is RR_cross/2.
+		Num_position : int
+			Number of objects in the position sample.
+		Num_shape : int
+			Number of objects in the shape sample.
+
+
+		Returns
+		-------
+		float
+			number of pairs in r_p, pi bin
+
+		"""
+		if corrtype == "auto":
+			RR = (
+					(Num_position - 1.0) * Num_shape / 2.0
+					* np.pi
+					* (rp_max ** 2 - rp_min ** 2)
+					* abs(pi_max - pi_min)
+					/ L3
+			)  # volume is cylindrical pi*dr^2 * height
+		elif corrtype == "cross":
+			RR = Num_position * Num_shape * np.pi * (rp_max ** 2 - rp_min ** 2) * abs(pi_max - pi_min) / L3
+		else:
+			raise ValueError("Unknown input for corrtype, choose from auto or cross.")
+		return RR
+
+	@staticmethod
+	def get_volume_spherical_cap(mur, r):
+		"""Calculate the volume of a spherical cap.
+
+		Parameters
+		----------
+		mur : float
+			cos(theta), where theta is the polar angle between the apex and disk of the cap.
+		r : float
+			radius
+
+		Returns
+		-------
+		float
+			Volume of the spherical cap.
+
+		"""
+		return np.pi / 3.0 * r ** 3 * (2 + mur) * (1 - mur) ** 2
+
+	def get_random_pairs_r_mur(self, r_max, r_min, mur_max, mur_min, L3, corrtype, Num_position, Num_shape):
+		"""Returns analytical value of the number of pairs expected in an r, mu_r bin for a random uniform distribution.
+
+		Parameters
+		----------
+		r_max : float
+			Upper bound of separation vector bin
+		r_min : float
+			Lower bound of separation vector bin
+		mur_max : float
+			Upper bound of mu_r bin
+		mur_min : float
+			Lower bound of mu_r bin
+		L3 : float
+			Volume of the simulation box
+		corrtype : str
+			Correlation type, auto or cross. RR for auto is RR_cross/2.
+		Num_position : int
+			Number of objects in the position sample.
+		Num_shape : int
+			Number of objects in the shape sample.
+
+
+		Returns
+		-------
+		float
+			number of pairs in r, mu_r bin
+
+		"""
+
+		if corrtype == "auto":
+			RR = (
+					(Num_position - 1.0)
+					/ 2.0
+					* Num_shape
+					* (
+							self.get_volume_spherical_cap(mur_min, r_max)
+							- self.get_volume_spherical_cap(mur_max, r_max)
+							- (self.get_volume_spherical_cap(mur_min, r_min) - self.get_volume_spherical_cap(mur_max,
+																											 r_min))
+					)
+					/ L3
+			)
+		# volume is big cap - small cap for large - small radius
+		elif corrtype == "cross":
+			RR = (
+					(Num_position - 1.0)
+					* Num_shape
+					* (
+							self.get_volume_spherical_cap(mur_min, r_max)
+							- self.get_volume_spherical_cap(mur_max, r_max)
+							- (self.get_volume_spherical_cap(mur_min, r_min) - self.get_volume_spherical_cap(mur_max,
+																											 r_min))
+					)
+					/ L3
+			)
+		else:
+			raise ValueError("Unknown input for corrtype, choose from auto or cross.")
+		return abs(RR)
+
+	@staticmethod
+	def setdiff2D(a1, a2):
+		"""Compares each row of a1 and a2 and returns the elements that do not overlap
+
+		Parameters
+		----------
+		a1 : nested list
+			List containing lists of elements to compare to a2
+		a2 : nested list
+			List containing lists of elements to compare to a1
+
+		Returns
+		-------
+		nested list
+			For each row, the not-overlapping elements between a1 and a2
+		"""
+		assert len(a1) == len(a2), "Lengths of lists where each row is to be compared, are not the same."
+		diff = []
+		for i in np.arange(0, len(a1)):
+			setdiff = np.setdiff1d(a1[i], a2[i])
+			diff.append(setdiff)
+			del setdiff
+		return diff
+
+	@staticmethod
+	def setdiff_omit(a1, a2, incl_ind):
+		"""For rows in nested list a1, whose index is included in incl_ind, returns elements that do not overlap between
+		the row in a1 and a2.
+
+		Parameters
+		----------
+		a1 : nested list
+			List of lists or arrays where indicated rows need to be compared to a2
+		a2 : list or array
+			Elements to be compared to the row in a1 [and not included in return values].
+		incl_ind : list or array
+			Indices of rows in a1 to be compared to a2.
+
+		Returns
+		-------
+		nested list
+			For each included row in a1, the not-overlapping elements between a1 and a2
+		"""
+		diff = []
+		for i in np.arange(0, len(a1)):
+			if np.isin(i, incl_ind):
+				setdiff = np.setdiff1d(a1[i], a2)
+				diff.append(setdiff)
+				del setdiff
+		return diff
+
+
+
+	def _measure_w_g_i(self, dataset_name, corr_type="both", return_output=False, jk_group_name=""):
+		"""Measures w_gg or w_g+ for a given xi_gi dataset that has been calculated with the _measure_xi_rp_pi_sims
+		methods. Integrates over pi bins via sum * dpi. Stores rp, and w_gg or w_g+.
+
+		Parameters
+		----------
+		dataset_name : str
+			Name of xi_gg or xi_g+ dataset and name given to w_gg or w_g+ dataset when stored.
+		return_output : bool, optional
+			Output is returned if True, saved to file if False. Default value = False
+		corr_type : str, optional
+			Type of correlation function. Choose from [g+,gg,both]. Default value = "both"
+		jk_group_name : str, optional
+			Name of subgroup in hdf5 file where jackknife realisations are stored. Default value = ""
+
+		Returns
+		-------
+		ndarray
+			[rp, wgg] or [rp, wg+] if return_output is True
+
+		"""
+		if corr_type == "both":
+			xi_data = ["xi_g_plus", "xi_gg"]
+			wg_data = ["w_g_plus", "w_gg"]
+		elif corr_type == "g+":
+			xi_data = ["xi_g_plus"]
+			wg_data = ["w_g_plus"]
+		elif corr_type == "gg":
+			xi_data = ["xi_gg"]
+			wg_data = ["w_gg"]
+		else:
+			raise KeyError("Unknown value for corr_type. Choose from [g+, gg, both]")
+		for i in np.arange(0, len(xi_data)):
+			correlation_data_file = h5py.File(self.output_file_name, "a")
+			group = correlation_data_file[f"{self.snap_group}/w/{xi_data[i]}/{jk_group_name}"]
+			correlation_data = group[dataset_name][:]
+			pi = group[dataset_name + "_pi"]
+			rp = group[dataset_name + "_rp"]
+			dpi = (self.pi_bins[1:] - self.pi_bins[:-1])
+			pi_bins = self.pi_bins[:-1] + abs(dpi) / 2.0  # middle of bins
+			# variance = group[dataset_name + "_sigmasq"][:]
+			if sum(np.isin(pi, pi_bins)) == len(pi):
+				dpi = np.array([dpi] * len(correlation_data[:, 0]))
+				correlation_data = correlation_data * abs(dpi)
+			# sigsq_el = variance * dpi ** 2
+			else:
+				raise ValueError("Update pi bins in initialisation of object to match xi_g_plus dataset.")
+			w_g_i = np.sum(correlation_data, axis=1)  # sum over pi values
+			# sigsq = np.sum(sigsq_el, axis=1)
+			if return_output:
+				output_data = np.array([rp, w_g_i]).transpose()
+				correlation_data_file.close()
+				return output_data
+			else:
+				group_out = create_group_hdf5(correlation_data_file,
+											  f"{self.snap_group}/{wg_data[i]}/{jk_group_name}")
+				write_dataset_hdf5(group_out, dataset_name + "_rp", data=rp)
+				write_dataset_hdf5(group_out, dataset_name, data=w_g_i)
+				# write_dataset_hdf5(group_out, dataset_name + "_sigma", data=np.sqrt(sigsq))
+				correlation_data_file.close()
+		return
+
+	def _measure_multipoles(self, dataset_name, corr_type="both", return_output=False, jk_group_name=""):
+		"""Measures multipoles for a given xi_g+ or xi_gg measured by _measure_xi_r_pi_sims methods.
+		The data assumes xi_g+ and xi_gg to be measured in bins of r and mu_r.
+
+		Parameters
+		----------
+		dataset_name : str
+			Name of xi_gg or xi_g+ dataset and name given to multipoles dataset when stored.
+		corr_type : str, optional
+			Type of correlation function. Choose from [g+,gg,both]. Default value = "both"
+		return_output : bool, optional
+			Output is returned if True, saved to file if False. Default value = False.
+		jk_group_name : str, optional
+			Name of subgroup in hdf5 file where jackknife realisations are stored. Default value = ""
+
+		Returns
+		-------
+		ndarray
+			[r, multipoles_gg] or [r, multipoles_g+] if return_output is True
+		"""
+		correlation_data_file = h5py.File(self.output_file_name, "a")
+		if corr_type == "g+":  # todo: expand to include ++ option
+			group = correlation_data_file[f"{self.snap_group}/multipoles/xi_g_plus/{jk_group_name}"]
+			correlation_data_list = [group[dataset_name][:]]  # xi_g+ in grid of r,mur
+			r_list = [group[dataset_name + "_r"][:]]
+			mu_r_list = [group[dataset_name + "_mu_r"][:]]
+			sab_list = [2]
+			l_list = sab_list
+			corr_type_list = ["g_plus"]
+		elif corr_type == "gg":
+			group = correlation_data_file[f"{self.snap_group}/multipoles/xi_gg/{jk_group_name}"]
+			correlation_data_list = [group[dataset_name][:]]  # xi_g+ in grid of rp,pi
+			r_list = [group[dataset_name + "_r"][:]]
+			mu_r_list = [group[dataset_name + "_mu_r"][:]]
+			sab_list = [0]
+			l_list = sab_list
+			corr_type_list = ["gg"]
+		elif corr_type == "both":
+			group = correlation_data_file[f"{self.snap_group}/multipoles/xi_g_plus/{jk_group_name}"]
+			correlation_data_list = [group[dataset_name][:]]  # xi_g+ in grid of rp,pi
+			r_list = [group[dataset_name + "_r"][:]]
+			mu_r_list = [group[dataset_name + "_mu_r"][:]]
+			group = correlation_data_file[f"{self.snap_group}/multipoles/xi_gg/{jk_group_name}"]
+			correlation_data_list.append(group[dataset_name][:])  # xi_g+ in grid of rp,pi
+			r_list.append(group[dataset_name + "_r"][:])
+			mu_r_list.append(group[dataset_name + "_mu_r"][:])
+			sab_list = [2, 0]
+			l_list = sab_list
+			corr_type_list = ["g_plus", "gg"]
+		else:
+			raise KeyError("Unknown value for corr_type. Choose from [g+, gg, both]")
+		for i in np.arange(0, len(sab_list)):
+			corr_type_i = corr_type_list[i]
+			correlation_data = correlation_data_list[i]
+			r = r_list[i]
+			mu_r = mu_r_list[i]
+			sab = sab_list[i]
+			l = l_list[i]
+			L = np.zeros((len(r), len(mu_r)))
+			mu_r = np.array(list(mu_r) * len(r)).reshape((len(r), len(mu_r)))  # make pi into grid for mu
+
+			r = np.array(list(r) * len(mu_r)).reshape((len(r), len(mu_r)))
+			r = r.transpose()
+			for n in np.arange(0, len(mu_r[:, 0])):
+				for m in np.arange(0, len(mu_r[0])):
+					L_m, dL = lpmn(l, sab, mu_r[n, m])  # make associated Legendre polynomial grid
+					L[n, m] = L_m[-1, -1]  # grid ranges from 0 to sab and 0 to l, so last element is what we seek
+			dmur = (self.mu_r_bins[1:] - self.mu_r_bins[:-1])
+			dmu_r_array = np.array(list(dmur) * len(r)).reshape((len(r), len(dmur)))
+			multipoles = (
+					(2 * l + 1)
+					/ 2.0
+					* math.factorial(l - sab)
+					/ math.factorial(l + sab)
+					* L
+					* correlation_data
+					* dmu_r_array
+			)
+			multipoles = np.sum(multipoles, axis=1)
+			dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
+			separation = self.r_bins[:-1] + abs(dsep)  # middle of bins
+			if return_output:
+				correlation_data_file.close()
+				np.array([separation, multipoles]).transpose()
+			else:
+				group_out = create_group_hdf5(
+					correlation_data_file, f"{self.snap_group}/multipoles_{corr_type_i}/{jk_group_name}"
+				)
+				write_dataset_hdf5(group_out, dataset_name + "_r", data=separation)
+				write_dataset_hdf5(group_out, dataset_name, data=multipoles)
+		correlation_data_file.close()
+		return
+
+	def _obs_estimator(self, corr_type, IA_estimator, dataset_name, dataset_name_randoms, num_samples,
+					   jk_group_name=""):
+		"""Reads various components of xi and combines into correct estimator for cluster or galaxy
+		lightcone alignment correlations. It then writes the xi_gg or xi_g+ in the correct place in the output file.
+
+		Parameters
+		----------
+		corr_type : list of 2 str elements
+			First element: ['gg', 'g+', 'both'], second: 'w' or 'multipoles'
+		IA_estimator : str
+			Chooser from 'clusters' or 'galaxies' for different estimator definition.
+		dataset_name : str
+			Name of the dataset
+		dataset_name_randoms : str
+			Name of the dataset for data with randoms as positions
+		num_samples : dict
+			Dictionary of samples sizes for position, shape and random samples. Keywords: D, S, R_D, R_S
+		jk_group_name : str
+			Name of subgroup in hdf5 file where jackknife realisations are stored. Default value = ""
+
+		Returns
+		-------
+
+		"""
+		output_file = h5py.File(self.output_file_name, "a")
+		if corr_type[0] == "g+" or corr_type[0] == "both":
+			group_gp = output_file[
+				f"{self.snap_group}/{corr_type[1]}/xi_g_plus/{jk_group_name}"]  # /w/xi_g_plus/
+			SpD = group_gp[f"{dataset_name}_SplusD"][:]
+			SpR = group_gp[f"{dataset_name_randoms}_SplusD"][:]
+		group_gg = output_file[f"{self.snap_group}/{corr_type[1]}/xi_gg/{jk_group_name}"]
+		DD = group_gg[f"{dataset_name}_DD"][:]
+
+		if IA_estimator == "clusters":
+			if corr_type[0] == "gg":
+				SR = group_gg[f"{dataset_name}_SR"][:]
+			else:
+				SR = group_gg[f"{dataset_name_randoms}_DD"][:]
+			SR *= num_samples["D"] / num_samples["R_D"]
+			if corr_type[0] == "g+" or corr_type[0] == "both":
+				SpR *= num_samples["D"] / num_samples["R_D"]
+				correlation_gp = SpD / DD - SpR / SR
+				write_dataset_hdf5(group_gp, dataset_name, correlation_gp)
+			if corr_type[0] == "gg" or corr_type[0] == "both":
+				RD = group_gg[f"{dataset_name}_RD"][:]
+				RR = group_gg[f"{dataset_name}_RR"][:]
+				RD *= num_samples["S"] / num_samples["R_S"]
+				RR *= (num_samples["S"] / num_samples["R_S"]) * (num_samples["D"] / num_samples["R_D"])
+				correlation_gg = (DD - RD - SR) / RR - 1
+				write_dataset_hdf5(group_gg, dataset_name, correlation_gg)
+		elif IA_estimator == "galaxies":
+			RR = group_gg[f"{dataset_name}_RR"][:]
+			RR *= (num_samples["S"] / num_samples["R_S"]) * (num_samples["D"] / num_samples["R_D"])
+			if corr_type[0] == "g+" or corr_type[0] == "both":
+				SpR *= num_samples["D"] / num_samples["R_D"]
+				correlation_gp = (SpD - SpR) / RR
+				write_dataset_hdf5(group_gp, dataset_name, correlation_gp)
+			if corr_type[0] == "gg" or corr_type[0] == "both":
+				RD = group_gg[f"{dataset_name}_RD"][:]
+				if corr_type[0] == "gg":
+					SR = group_gg[f"{dataset_name}_SR"][:]
+				else:
+					SR = group_gg[f"{dataset_name_randoms}_DD"][:]
+				RD *= num_samples["S"] / num_samples["R_S"]
+				SR *= num_samples["D"] / num_samples["R_D"]
+				correlation_gg = (DD - RD - SR) / RR - 1
+				write_dataset_hdf5(group_gg, dataset_name, correlation_gg)
+		else:
+			raise ValueError("Unknown input for IA_estimator, choose from [clusters, galaxies].")
+		output_file.close()
+		return
+
+	def assign_jackknife_patches(self, data, randoms_data, num_jk):
+		"""Assigns jackknife patches to data and randoms given a number of patches.
+		Based on https://github.com/esheldon/kmeans_radec
+
+		Parameters
+		----------
+		data : dict
+			Dictionary containing position and shape sample data. Keywords: "RA", "DEC", "RA_shape_sample",
+			"DEC_shape_sample"
+		randoms_data : dict
+			Dictionary containing position and shape sample data of randoms. Keywords: "RA", "DEC", "RA_shape_sample",
+			"DEC_shape_sample"
+		num_jk : int
+			Number of jackknife patches
+
+		Returns
+		-------
+		dict
+			Dictionary with patch numbers for each sample. Keywords: 'position', 'shape', 'randoms_position',
+			'randoms_shape'
+
+		"""
+
+		jk_patches = {}
+
+		# Read the randoms file from which the jackknife regions will be created
+		RA = randoms_data['RA']
+		DEC = randoms_data['DEC']
+
+		# Define a number of jaccknife regions and find their centres using kmans
+		X = np.column_stack((RA, DEC))
+		km = kmeans_sample(X, num_jk, maxiter=100, tol=1.0e-5)
+		jk_labels = km.labels
+
+		jk_patches['randoms_position'] = jk_labels
+
+		RA = randoms_data['RA_shape_sample']
+		DEC = randoms_data['DEC_shape_sample']
+		X2 = np.column_stack((RA, DEC))
+		jk_labels = km.find_nearest(X2)
+
+		jk_patches['randoms_shape'] = jk_labels
+
+		RA = data['RA']
+		DEC = data['DEC']
+		X2 = np.column_stack((RA, DEC))
+		jk_labels = km.find_nearest(X2)
+
+		jk_patches['position'] = jk_labels
+
+		RA = data['RA_shape_sample']
+		DEC = data['DEC_shape_sample']
+		X2 = np.column_stack((RA, DEC))
+		jk_labels = km.find_nearest(X2)
+
+		jk_patches['shape'] = jk_labels
+
+		return jk_patches</code></pre>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="measureia.MeasureIABase.__init__" class="doc doc-heading">
+            <code class="highlight language-python">__init__(data, output_file_name, simulation=None, snapshot=None, separation_limits=[0.1, 20.0], num_bins_r=8, num_bins_pi=20, pi_max=None, boxsize=None, periodicity=True)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>The <strong>init</strong> method of the MeasureIABase class.</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>data</code></b>
+                  (<code><span title="dict">dict</span> or <span title="NoneType">NoneType</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>Dictionary with data needed for calculations.
+For cartesian coordinates, the keywords are:
+'Position' and 'Position_shape_sample': (N_p,3), (N_s,3) ndarrays with the x, y, z coordinates
+of the N_p, N_s objects in the position and shape samples, respectively.
+'Axis_Direction': (N_s,2) ndarray with the two elements of the unit vectors describing the
+axis direction of the projected axis of the object shape.
+'LOS': index referring back to the column number in the 'Position' samples that contains the
+line-of-sight coordinate. (e.g. if the shapes are projected over the z-axis, LOS=2)
+'q': (N_s) array containing the axis ratio q=b/a for each object in the shape sample.
+For lightcone coordinates, the keywords are:
+'Redshift' and 'Redshift_shape_sample': (N_p) and (N_s) ndarray with redshifts of position and shape samples.
+'RA' and 'RA_shape_sample': (N_p) and (N_s) ndarray with RA coordinate of position and shape samples.
+'DEC' and 'DEC_shape_sample': (N_p) and (N_s) ndarray with DEC coordinate of position and shape samples.
+'e1' and 'e2': (N_s) arrays with the two ellipticity components e1 and e2 of the shape sample objects.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>output_file_name</code></b>
+                  (<code><span title="str">str</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>Name and filepath of the file where the output should be stored. Needs to be hdf5-type.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>simulation</code></b>
+                  (<code><span title="str">str</span> or <span title="NoneType">NoneType</span></code>, default:
+                      <code>None</code>
+)
+              –
+              <div class="doc-md-description">
+                <pre><code>Indicator of simulation, obtaining correct boxsize in cMpc/h automatically. 
+Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, FLAMINGO_L2p8].
+Default is None, in which case boxsize needs to be added manually; or in the case of observational data, 
+the pi_max.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>snapshot</code></b>
+                  (<code><span title="int">int</span> or <span title="str">str</span> or <span title="NoneType">NoneType</span></code>, default:
+                      <code>None</code>
+)
+              –
+              <div class="doc-md-description">
+                <pre><code>Number of the snapshot, which, if given, will ensure that the output file to contains a group
+'Snapshot_[snapshot]'. If None, the group is omitted from the output file structure. Default is None.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>separation_limits</code></b>
+                  (<code>iterable of 2 entries</code>, default:
+                      <code>[0.1, 20.0]</code>
+)
+              –
+              <div class="doc-md-description">
+                <pre><code>Bounds of the (projected) separation vector length bins in cMpc/h (so, r or r_p). Default is [0.1,20].
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>num_bins_r</code></b>
+                  (<code><span title="int">int</span></code>, default:
+                      <code>8</code>
+)
+              –
+              <div class="doc-md-description">
+                <pre><code>Number of bins for (projected) separation vector. Default is 8.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>num_bins_pi</code></b>
+                  (<code><span title="int">int</span></code>, default:
+                      <code>20</code>
+)
+              –
+              <div class="doc-md-description">
+                <pre><code>Number of bins for line of sight (LOS) vector, pi or mu_r when multipoles are measured. Default is 20.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>pi_max</code></b>
+                  (<code><span title="int">int</span> or <span title="float">float</span></code>, default:
+                      <code>None</code>
+)
+              –
+              <div class="doc-md-description">
+                <pre><code>Bound for line of sight bins. Bounds will be [-pi_max, pi_max]. Default is None, in which case half the
+boxsize will be used.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>boxsize</code></b>
+                  (<code><span title="int">int</span> or <span title="float">float</span> or <span title="NoneType">NoneType</span></code>, default:
+                      <code>None</code>
+)
+              –
+              <div class="doc-md-description">
+                <pre><code>If simulation is not included in SimInfo, a manual boxsize can be added here. Make sure simulation=None
+and the boxsize units are equal to those in the data dictionary. Default is None.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>periodicity</code></b>
+                  (<code><span title="bool">bool</span></code>, default:
+                      <code>True</code>
+)
+              –
+              <div class="doc-md-description">
+                <pre><code>If True, the periodic boundary conditions of the simulation box are taken into account. If False, they are
+ignored. Note that because this code used analytical randoms for the simulations, the correlations will not
+be correct in this case and only DD and S+D terms should be studied. Non-periodic randoms can be measured by
+providing random data to the code and considering the DD term that is measured. Correlations and covariance
+matrix will need to be reconstructed from parts. [Please add a request for teh integration of this method of
+this if you would like to use this option often.] Default is True.
+</code></pre>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+            <details class="quote">
+              <summary>Source code in <code>src/measureia/measure_IA_base.py</code></summary>
+              <pre class="highlight"><code class="language-python">def __init__(
+		self,
+		data,
+		output_file_name,
+		simulation=None,
+		snapshot=None,
+		separation_limits=[0.1, 20.0],
+		num_bins_r=8,
+		num_bins_pi=20,
+		pi_max=None,
+		boxsize=None,
+		periodicity=True,
+):
+	"""
+	The __init__ method of the MeasureIABase class.
+
+	Parameters
+	----------
+	data : dict or NoneType
+		Dictionary with data needed for calculations.
+		For cartesian coordinates, the keywords are:
+		'Position' and 'Position_shape_sample': (N_p,3), (N_s,3) ndarrays with the x, y, z coordinates
+		of the N_p, N_s objects in the position and shape samples, respectively.
+		'Axis_Direction': (N_s,2) ndarray with the two elements of the unit vectors describing the
+		axis direction of the projected axis of the object shape.
+		'LOS': index referring back to the column number in the 'Position' samples that contains the
+		line-of-sight coordinate. (e.g. if the shapes are projected over the z-axis, LOS=2)
+		'q': (N_s) array containing the axis ratio q=b/a for each object in the shape sample.
+		For lightcone coordinates, the keywords are:
+		'Redshift' and 'Redshift_shape_sample': (N_p) and (N_s) ndarray with redshifts of position and shape samples.
+		'RA' and 'RA_shape_sample': (N_p) and (N_s) ndarray with RA coordinate of position and shape samples.
+		'DEC' and 'DEC_shape_sample': (N_p) and (N_s) ndarray with DEC coordinate of position and shape samples.
+		'e1' and 'e2': (N_s) arrays with the two ellipticity components e1 and e2 of the shape sample objects.
+	output_file_name : str
+		Name and filepath of the file where the output should be stored. Needs to be hdf5-type.
+	simulation : str or NoneType, optional
+		Indicator of simulation, obtaining correct boxsize in cMpc/h automatically. 
+		Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, FLAMINGO_L2p8].
+		Default is None, in which case boxsize needs to be added manually; or in the case of observational data, 
+		the pi_max.
+	snapshot : int or str or NoneType, optional
+		Number of the snapshot, which, if given, will ensure that the output file to contains a group
+		'Snapshot_[snapshot]'. If None, the group is omitted from the output file structure. Default is None.
+	separation_limits : iterable of 2 entries, optional
+		Bounds of the (projected) separation vector length bins in cMpc/h (so, r or r_p). Default is [0.1,20].
+	num_bins_r : int, optional
+		Number of bins for (projected) separation vector. Default is 8.
+	num_bins_pi : int, optional
+		Number of bins for line of sight (LOS) vector, pi or mu_r when multipoles are measured. Default is 20.
+	pi_max : int or float, optional
+		Bound for line of sight bins. Bounds will be [-pi_max, pi_max]. Default is None, in which case half the
+		boxsize will be used.
+	boxsize : int or float or NoneType, optional
+		If simulation is not included in SimInfo, a manual boxsize can be added here. Make sure simulation=None
+		and the boxsize units are equal to those in the data dictionary. Default is None.
+	periodicity : bool, optional
+		If True, the periodic boundary conditions of the simulation box are taken into account. If False, they are
+		ignored. Note that because this code used analytical randoms for the simulations, the correlations will not
+		be correct in this case and only DD and S+D terms should be studied. Non-periodic randoms can be measured by
+		providing random data to the code and considering the DD term that is measured. Correlations and covariance
+		matrix will need to be reconstructed from parts. [Please add a request for teh integration of this method of
+		this if you would like to use this option often.] Default is True.
+
+	"""
+	SimInfo.__init__(self, simulation, snapshot, boxsize)
+	self.data = data
+	self.output_file_name = output_file_name
+	self.periodicity = periodicity
+	if periodicity:
+		periodic = "periodic "
+	else:
+		periodic = ""
+	try:
+		self.Num_position = len(data["Position"])  # number of halos in position sample
+		self.Num_shape = len(data["Position_shape_sample"])  # number of halos in shape sample
+	except:
+		try:
+			self.Num_position = len(data["RA"])
+			self.Num_shape = len(data["RA_shape_sample"])
+		except:
+			self.Num_position = 0
+			self.Num_shape = 0
+			print("Warning: no Postion or Position_shape_sample given.")
+	if self.Num_position &gt; 0:
+		try:
+			weight = self.data["weight"]
+		except:
+			self.data["weight"] = np.ones(self.Num_position)
+		try:
+			weight = self.data["weight_shape_sample"]
+		except:
+			self.data["weight_shape_sample"] = np.ones(self.Num_shape)
+	self.r_min = separation_limits[0]  # cMpc/h
+	self.r_max = separation_limits[1]  # cMpc/h
+	self.num_bins_r = num_bins_r
+	self.num_bins_pi = num_bins_pi
+	self.r_bins = np.logspace(np.log10(self.r_min), np.log10(self.r_max), self.num_bins_r + 1)
+	if pi_max == None:
+		if self.L_0p5 is None:
+			raise ValueError(
+				"Both pi_max and boxsize are None. Provide input on one of them to determine the integration limit pi_max.")
+		else:
+			pi_max = self.L_0p5
+	self.pi_bins = np.linspace(-pi_max, pi_max, self.num_bins_pi + 1)
+	self.mu_r_bins = np.linspace(-1, 1, self.num_bins_pi + 1)
+	if simulation == False:
+		print(f"MeasureIA object initialised with:\n \
+				observational data.\n \
+				There are {self.Num_shape} galaxies in the shape sample and {self.Num_position} galaxies in the position sample.\n\
+				The separation bin edges are given by {self.r_bins} Mpc.\n \
+				There are {num_bins_r} r or r_p bins and {num_bins_pi} pi bins.\n \
+				The maximum pi used for binning is {pi_max}.\n \
+				The data will be written to {self.output_file_name}")
+	else:
+		print(f"MeasureIA object initialised with:\n \
+		simulation {simulation} that has a {periodic}boxsize of {self.boxsize} cMpc/h.\n \
+		There are {self.Num_shape} galaxies in the shape sample and {self.Num_position} galaxies in the position sample.\n\
+		The separation bin edges are given by {self.r_bins} cMpc/h.\n \
+		There are {num_bins_r} r or r_p bins and {num_bins_pi} pi bins.\n \
+		The maximum pi used for binning is {pi_max}.\n \
+		The data will be written to {self.output_file_name}")
+	return</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="measureia.MeasureIABase.calculate_dot_product_arrays" class="doc doc-heading">
+            <code class="highlight language-python">calculate_dot_product_arrays(a1, a2)</code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-staticmethod"><code>staticmethod</code></small>
+  </span>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Calculates the dot product over 2 2D arrays across axis 1 so that dot_product[i] = np.dot(a1[i],a2[i])</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>a1</code></b>
+                  (<code><span title="ndarray">ndarray</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>First array
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>a2</code></b>
+                  (<code><span title="ndarray">ndarray</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>Second array
+</code></pre>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code><span title="ndarray">ndarray</span></code>
+              –
+              <div class="doc-md-description">
+                <p>Dot product of columns of arrays</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+            <details class="quote">
+              <summary>Source code in <code>src/measureia/measure_IA_base.py</code></summary>
+              <pre class="highlight"><code class="language-python">@staticmethod
+def calculate_dot_product_arrays(a1, a2):
+	"""Calculates the dot product over 2 2D arrays across axis 1 so that dot_product[i] = np.dot(a1[i],a2[i])
+
+	Parameters
+	----------
+	a1 : ndarray
+		First array
+	a2 : ndarray
+		Second array
+
+	Returns
+	-------
+	ndarray
+		Dot product of columns of arrays
+
+	"""
+	dot_product = np.zeros(np.shape(a1)[0])
+	for i in np.arange(0, np.shape(a1)[1]):
+		dot_product += a1[:, i] * a2[:, i]
+	return dot_product</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="measureia.MeasureIABase.get_ellipticity" class="doc doc-heading">
+            <code class="highlight language-python">get_ellipticity(e, phi)</code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-staticmethod"><code>staticmethod</code></small>
+  </span>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Calculates the radial and tangential components of the ellipticity, given the size of the ellipticty vector
+and the angle between the semimajor or semiminor axis and the separation vector.</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>e</code></b>
+                  (<code><span title="ndarray">ndarray</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>size of the ellipticity vector
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>phi</code></b>
+                  (<code><span title="ndarray">ndarray</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>angle between semimajor/semiminor axis and separation vector
+</code></pre>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code><span title="ndarray">ndarray</span></code>
+              –
+              <div class="doc-md-description">
+                <p>e_+ and e_x</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+            <details class="quote">
+              <summary>Source code in <code>src/measureia/measure_IA_base.py</code></summary>
+              <pre class="highlight"><code class="language-python">@staticmethod
+def get_ellipticity(e, phi):
+	"""Calculates the radial and tangential components of the ellipticity, given the size of the ellipticty vector
+	and the angle between the semimajor or semiminor axis and the separation vector.
+
+	Parameters
+	----------
+	e : ndarray
+		size of the ellipticity vector
+	phi : ndarray
+		angle between semimajor/semiminor axis and separation vector
+
+	Returns
+	-------
+	ndarray
+		e_+ and e_x
+
+	"""
+	e_plus, e_cross = e * np.cos(2 * phi), e * np.sin(2 * phi)
+	return e_plus, e_cross</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="measureia.MeasureIABase.get_random_pairs" class="doc doc-heading">
+            <code class="highlight language-python">get_random_pairs(rp_max, rp_min, pi_max, pi_min, L3, corrtype, Num_position, Num_shape)</code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-staticmethod"><code>staticmethod</code></small>
+  </span>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Returns analytical value of the number of pairs expected in an r_p, pi bin for a random uniform distribution.
+(Singh et al. 2023)</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>rp_max</code></b>
+                  (<code><span title="float">float</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>Upper bound of projected separation vector bin
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>rp_min</code></b>
+                  (<code><span title="float">float</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>Lower bound of projected separation vector bin
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>pi_max</code></b>
+                  (<code><span title="float">float</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>Upper bound of line of sight vector bin
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>pi_min</code></b>
+                  (<code><span title="float">float</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>Lower bound of line of sight vector bin
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>L3</code></b>
+                  (<code><span title="float">float</span> or <span title="int">int</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>Volume of the simulation box
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>corrtype</code></b>
+                  (<code><span title="str">str</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>Correlation type, auto or cross. RR for auto is RR_cross/2.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>Num_position</code></b>
+                  (<code><span title="int">int</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>Number of objects in the position sample.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>Num_shape</code></b>
+                  (<code><span title="int">int</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>Number of objects in the shape sample.
+</code></pre>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code><span title="float">float</span></code>
+              –
+              <div class="doc-md-description">
+                <p>number of pairs in r_p, pi bin</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+            <details class="quote">
+              <summary>Source code in <code>src/measureia/measure_IA_base.py</code></summary>
+              <pre class="highlight"><code class="language-python">@staticmethod
+def get_random_pairs(rp_max, rp_min, pi_max, pi_min, L3, corrtype, Num_position, Num_shape):
+	"""Returns analytical value of the number of pairs expected in an r_p, pi bin for a random uniform distribution.
+	(Singh et al. 2023)
+
+	Parameters
+	----------
+	rp_max : float
+		Upper bound of projected separation vector bin
+	rp_min : float
+		Lower bound of projected separation vector bin
+	pi_max : float
+		Upper bound of line of sight vector bin
+	pi_min : float
+		Lower bound of line of sight vector bin
+	L3 : float or int
+		Volume of the simulation box
+	corrtype : str
+		Correlation type, auto or cross. RR for auto is RR_cross/2.
+	Num_position : int
+		Number of objects in the position sample.
+	Num_shape : int
+		Number of objects in the shape sample.
+
+
+	Returns
+	-------
+	float
+		number of pairs in r_p, pi bin
+
+	"""
+	if corrtype == "auto":
+		RR = (
+				(Num_position - 1.0) * Num_shape / 2.0
+				* np.pi
+				* (rp_max ** 2 - rp_min ** 2)
+				* abs(pi_max - pi_min)
+				/ L3
+		)  # volume is cylindrical pi*dr^2 * height
+	elif corrtype == "cross":
+		RR = Num_position * Num_shape * np.pi * (rp_max ** 2 - rp_min ** 2) * abs(pi_max - pi_min) / L3
+	else:
+		raise ValueError("Unknown input for corrtype, choose from auto or cross.")
+	return RR</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="measureia.MeasureIABase.get_volume_spherical_cap" class="doc doc-heading">
+            <code class="highlight language-python">get_volume_spherical_cap(mur, r)</code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-staticmethod"><code>staticmethod</code></small>
+  </span>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Calculate the volume of a spherical cap.</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>mur</code></b>
+                  (<code><span title="float">float</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>cos(theta), where theta is the polar angle between the apex and disk of the cap.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>r</code></b>
+                  (<code><span title="float">float</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>radius
+</code></pre>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code><span title="float">float</span></code>
+              –
+              <div class="doc-md-description">
+                <p>Volume of the spherical cap.</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+            <details class="quote">
+              <summary>Source code in <code>src/measureia/measure_IA_base.py</code></summary>
+              <pre class="highlight"><code class="language-python">@staticmethod
+def get_volume_spherical_cap(mur, r):
+	"""Calculate the volume of a spherical cap.
+
+	Parameters
+	----------
+	mur : float
+		cos(theta), where theta is the polar angle between the apex and disk of the cap.
+	r : float
+		radius
+
+	Returns
+	-------
+	float
+		Volume of the spherical cap.
+
+	"""
+	return np.pi / 3.0 * r ** 3 * (2 + mur) * (1 - mur) ** 2</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="measureia.MeasureIABase.get_random_pairs_r_mur" class="doc doc-heading">
+            <code class="highlight language-python">get_random_pairs_r_mur(r_max, r_min, mur_max, mur_min, L3, corrtype, Num_position, Num_shape)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Returns analytical value of the number of pairs expected in an r, mu_r bin for a random uniform distribution.</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>r_max</code></b>
+                  (<code><span title="float">float</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>Upper bound of separation vector bin
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>r_min</code></b>
+                  (<code><span title="float">float</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>Lower bound of separation vector bin
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>mur_max</code></b>
+                  (<code><span title="float">float</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>Upper bound of mu_r bin
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>mur_min</code></b>
+                  (<code><span title="float">float</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>Lower bound of mu_r bin
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>L3</code></b>
+                  (<code><span title="float">float</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>Volume of the simulation box
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>corrtype</code></b>
+                  (<code><span title="str">str</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>Correlation type, auto or cross. RR for auto is RR_cross/2.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>Num_position</code></b>
+                  (<code><span title="int">int</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>Number of objects in the position sample.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>Num_shape</code></b>
+                  (<code><span title="int">int</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>Number of objects in the shape sample.
+</code></pre>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code><span title="float">float</span></code>
+              –
+              <div class="doc-md-description">
+                <p>number of pairs in r, mu_r bin</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+            <details class="quote">
+              <summary>Source code in <code>src/measureia/measure_IA_base.py</code></summary>
+              <pre class="highlight"><code class="language-python">def get_random_pairs_r_mur(self, r_max, r_min, mur_max, mur_min, L3, corrtype, Num_position, Num_shape):
+	"""Returns analytical value of the number of pairs expected in an r, mu_r bin for a random uniform distribution.
+
+	Parameters
+	----------
+	r_max : float
+		Upper bound of separation vector bin
+	r_min : float
+		Lower bound of separation vector bin
+	mur_max : float
+		Upper bound of mu_r bin
+	mur_min : float
+		Lower bound of mu_r bin
+	L3 : float
+		Volume of the simulation box
+	corrtype : str
+		Correlation type, auto or cross. RR for auto is RR_cross/2.
+	Num_position : int
+		Number of objects in the position sample.
+	Num_shape : int
+		Number of objects in the shape sample.
+
+
+	Returns
+	-------
+	float
+		number of pairs in r, mu_r bin
+
+	"""
+
+	if corrtype == "auto":
+		RR = (
+				(Num_position - 1.0)
+				/ 2.0
+				* Num_shape
+				* (
+						self.get_volume_spherical_cap(mur_min, r_max)
+						- self.get_volume_spherical_cap(mur_max, r_max)
+						- (self.get_volume_spherical_cap(mur_min, r_min) - self.get_volume_spherical_cap(mur_max,
+																										 r_min))
+				)
+				/ L3
+		)
+	# volume is big cap - small cap for large - small radius
+	elif corrtype == "cross":
+		RR = (
+				(Num_position - 1.0)
+				* Num_shape
+				* (
+						self.get_volume_spherical_cap(mur_min, r_max)
+						- self.get_volume_spherical_cap(mur_max, r_max)
+						- (self.get_volume_spherical_cap(mur_min, r_min) - self.get_volume_spherical_cap(mur_max,
+																										 r_min))
+				)
+				/ L3
+		)
+	else:
+		raise ValueError("Unknown input for corrtype, choose from auto or cross.")
+	return abs(RR)</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="measureia.MeasureIABase.setdiff2D" class="doc doc-heading">
+            <code class="highlight language-python">setdiff2D(a1, a2)</code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-staticmethod"><code>staticmethod</code></small>
+  </span>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Compares each row of a1 and a2 and returns the elements that do not overlap</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>a1</code></b>
+                  (<code>nested list</code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>List containing lists of elements to compare to a2
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>a2</code></b>
+                  (<code>nested list</code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>List containing lists of elements to compare to a1
+</code></pre>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code>nested list</code>
+              –
+              <div class="doc-md-description">
+                <p>For each row, the not-overlapping elements between a1 and a2</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+            <details class="quote">
+              <summary>Source code in <code>src/measureia/measure_IA_base.py</code></summary>
+              <pre class="highlight"><code class="language-python">@staticmethod
+def setdiff2D(a1, a2):
+	"""Compares each row of a1 and a2 and returns the elements that do not overlap
+
+	Parameters
+	----------
+	a1 : nested list
+		List containing lists of elements to compare to a2
+	a2 : nested list
+		List containing lists of elements to compare to a1
+
+	Returns
+	-------
+	nested list
+		For each row, the not-overlapping elements between a1 and a2
+	"""
+	assert len(a1) == len(a2), "Lengths of lists where each row is to be compared, are not the same."
+	diff = []
+	for i in np.arange(0, len(a1)):
+		setdiff = np.setdiff1d(a1[i], a2[i])
+		diff.append(setdiff)
+		del setdiff
+	return diff</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="measureia.MeasureIABase.setdiff_omit" class="doc doc-heading">
+            <code class="highlight language-python">setdiff_omit(a1, a2, incl_ind)</code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-staticmethod"><code>staticmethod</code></small>
+  </span>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>For rows in nested list a1, whose index is included in incl_ind, returns elements that do not overlap between
+the row in a1 and a2.</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>a1</code></b>
+                  (<code>nested list</code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>List of lists or arrays where indicated rows need to be compared to a2
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>a2</code></b>
+                  (<code><span title="list">list</span> or <span title="array">array</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>Elements to be compared to the row in a1 [and not included in return values].
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>incl_ind</code></b>
+                  (<code><span title="list">list</span> or <span title="array">array</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>Indices of rows in a1 to be compared to a2.
+</code></pre>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code>nested list</code>
+              –
+              <div class="doc-md-description">
+                <p>For each included row in a1, the not-overlapping elements between a1 and a2</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+            <details class="quote">
+              <summary>Source code in <code>src/measureia/measure_IA_base.py</code></summary>
+              <pre class="highlight"><code class="language-python">@staticmethod
+def setdiff_omit(a1, a2, incl_ind):
+	"""For rows in nested list a1, whose index is included in incl_ind, returns elements that do not overlap between
+	the row in a1 and a2.
+
+	Parameters
+	----------
+	a1 : nested list
+		List of lists or arrays where indicated rows need to be compared to a2
+	a2 : list or array
+		Elements to be compared to the row in a1 [and not included in return values].
+	incl_ind : list or array
+		Indices of rows in a1 to be compared to a2.
+
+	Returns
+	-------
+	nested list
+		For each included row in a1, the not-overlapping elements between a1 and a2
+	"""
+	diff = []
+	for i in np.arange(0, len(a1)):
+		if np.isin(i, incl_ind):
+			setdiff = np.setdiff1d(a1[i], a2)
+			diff.append(setdiff)
+			del setdiff
+	return diff</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="measureia.MeasureIABase.assign_jackknife_patches" class="doc doc-heading">
+            <code class="highlight language-python">assign_jackknife_patches(data, randoms_data, num_jk)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Assigns jackknife patches to data and randoms given a number of patches.
+Based on https://github.com/esheldon/kmeans_radec</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>data</code></b>
+                  (<code><span title="dict">dict</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>Dictionary containing position and shape sample data. Keywords: "RA", "DEC", "RA_shape_sample",
+"DEC_shape_sample"
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>randoms_data</code></b>
+                  (<code><span title="dict">dict</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>Dictionary containing position and shape sample data of randoms. Keywords: "RA", "DEC", "RA_shape_sample",
+"DEC_shape_sample"
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>num_jk</code></b>
+                  (<code><span title="int">int</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>Number of jackknife patches
+</code></pre>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code><span title="dict">dict</span></code>
+              –
+              <div class="doc-md-description">
+                <p>Dictionary with patch numbers for each sample. Keywords: 'position', 'shape', 'randoms_position',
+'randoms_shape'</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+            <details class="quote">
+              <summary>Source code in <code>src/measureia/measure_IA_base.py</code></summary>
+              <pre class="highlight"><code class="language-python">def assign_jackknife_patches(self, data, randoms_data, num_jk):
+	"""Assigns jackknife patches to data and randoms given a number of patches.
+	Based on https://github.com/esheldon/kmeans_radec
+
+	Parameters
+	----------
+	data : dict
+		Dictionary containing position and shape sample data. Keywords: "RA", "DEC", "RA_shape_sample",
+		"DEC_shape_sample"
+	randoms_data : dict
+		Dictionary containing position and shape sample data of randoms. Keywords: "RA", "DEC", "RA_shape_sample",
+		"DEC_shape_sample"
+	num_jk : int
+		Number of jackknife patches
+
+	Returns
+	-------
+	dict
+		Dictionary with patch numbers for each sample. Keywords: 'position', 'shape', 'randoms_position',
+		'randoms_shape'
+
+	"""
+
+	jk_patches = {}
+
+	# Read the randoms file from which the jackknife regions will be created
+	RA = randoms_data['RA']
+	DEC = randoms_data['DEC']
+
+	# Define a number of jaccknife regions and find their centres using kmans
+	X = np.column_stack((RA, DEC))
+	km = kmeans_sample(X, num_jk, maxiter=100, tol=1.0e-5)
+	jk_labels = km.labels
+
+	jk_patches['randoms_position'] = jk_labels
+
+	RA = randoms_data['RA_shape_sample']
+	DEC = randoms_data['DEC_shape_sample']
+	X2 = np.column_stack((RA, DEC))
+	jk_labels = km.find_nearest(X2)
+
+	jk_patches['randoms_shape'] = jk_labels
+
+	RA = data['RA']
+	DEC = data['DEC']
+	X2 = np.column_stack((RA, DEC))
+	jk_labels = km.find_nearest(X2)
+
+	jk_patches['position'] = jk_labels
+
+	RA = data['RA_shape_sample']
+	DEC = data['DEC_shape_sample']
+	X2 = np.column_stack((RA, DEC))
+	jk_labels = km.find_nearest(X2)
+
+	jk_patches['shape'] = jk_labels
+
+	return jk_patches</code></pre>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../measureIALightcone/" class="btn btn-neutral float-left" title="MeasureIALightcone"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../MeasureJackknife/" class="btn btn-neutral float-right" title="MeasureJackknife">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../measureIALightcone/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../MeasureJackknife/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

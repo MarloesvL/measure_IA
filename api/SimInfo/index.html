@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="author" content="Marloes van Heukelum" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>SimInfo - MeasureIA Documentation</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../../assets/_mkdocstrings.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "SimInfo";
+        var mkdocs_page_input_path = "api/SimInfo.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> MeasureIA Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../installation/">Installation</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../usage/">Usage</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../output_structure/">Output</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../roadmap/">Roadmap</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">API Reference</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../measureIABox/">MeasureIABox</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../measureIALightcone/">MeasureIALightcone</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../MeasureIABase/">MeasureIABase</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../MeasureJackknife/">MeasureJackknife</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../MeasureWBox/">MeasureWBox</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../MeasureMBox/">MeasureMultipolesBox</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">SimInfo</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#measureia.SimInfo">SimInfo</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#measureia.SimInfo.__init__">__init__</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#measureia.SimInfo.get_specs">get_specs</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#measureia.SimInfo.get_file_info">get_file_info</a>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../ReadData/">ReadData</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">MeasureIA Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">API Reference</li>
+      <li class="breadcrumb-item active">SimInfo</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="siminfo">SimInfo</h1>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="measureia.SimInfo" class="doc doc-heading">
+            <code>measureia.SimInfo</code>
+
+
+</h2>
+
+
+    <div class="doc doc-contents first">
+
+
+        <p>Class that stores simulation information in an object to be inherited by other classes.
+        Simulation information is hard coded and therefore uses are limited. However, can easily be expanded.
+        Currently, these simulations are available: [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1,
+        FLAMINGO_L2p8].</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Attributes:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>simname</code></b>
+                  (<code><span title="str">str</span> or <span title="NoneType">NoneType</span></code>)
+              –
+              <div class="doc-md-description">
+                <p>Identifier of the simulation, allowing for correct information to be obtained.</p>
+              </div>
+            </li>
+            <li>
+              <b><code>snapshot</code></b>
+                  (<code><span title="int">int</span> or <span title="str">str</span> or <span title="NoneType">NoneType</span></code>)
+              –
+              <div class="doc-md-description">
+                <p>Number of the snapshot.</p>
+              </div>
+            </li>
+            <li>
+              <b><code>snap_group</code></b>
+                  (<code><span title="str">str</span></code>)
+              –
+              <div class="doc-md-description">
+                <p>Name of group in output file. Equal to 'Snapshot_[snapshot]' if snapshot is given, otherwise emtpy string.</p>
+              </div>
+            </li>
+            <li>
+              <b><code>boxsize</code></b>
+                  (<code>int or float or NoneType, default=None</code>)
+              –
+              <div class="doc-md-description">
+                <p>Size of simulation box. If simname is in SimInfo, units are cMpc/h. Otherwise, manual input.</p>
+              </div>
+            </li>
+            <li>
+              <b><code>L_0p5</code></b>
+                  (<code>int or float, default=None</code>)
+              –
+              <div class="doc-md-description">
+                <p>Half of the boxsize.</p>
+              </div>
+            </li>
+            <li>
+              <b><code>h</code></b>
+                  (<code>float, default=None</code>)
+              –
+              <div class="doc-md-description">
+                <p>Value of cosmological h parameter, for easy access to convert units.</p>
+              </div>
+            </li>
+            <li>
+              <b><code>N_files</code></b>
+                  (<code>int, default=None</code>)
+              –
+              <div class="doc-md-description">
+                <p>Number of files of snapshot or subhalo data. Used in ReadData class.</p>
+              </div>
+            </li>
+            <li>
+              <b><code>fof_folder</code></b>
+                  (<code>str, default=None</code>)
+              –
+              <div class="doc-md-description">
+                <p>Name of folder where fof files are saved (only available for TNG).</p>
+              </div>
+            </li>
+            <li>
+              <b><code>snap_folder</code></b>
+                  (<code>str, default=None</code>)
+              –
+              <div class="doc-md-description">
+                <p>Name of folder where snapshot files are saved.</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<p><span class="doc-section-title">Methods:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+            <tr class="doc-section-item">
+              <td><code><a class="autorefs autorefs-internal" title="get_specs() (measureia.SimInfo.get_specs)" href="#measureia.SimInfo.get_specs">get_specs</a></code></td>
+              <td>
+                <div class="doc-md-description">
+                  <p>Obtains the boxsize, L_0p5 and h parameters that are stored.</p>
+                </div>
+              </td>
+            </tr>
+            <tr class="doc-section-item">
+              <td><code><a class="autorefs autorefs-internal" title="get_file_info() (measureia.SimInfo.get_file_info)" href="#measureia.SimInfo.get_file_info">get_file_info</a></code></td>
+              <td>
+                <div class="doc-md-description">
+                  <p>Creates N_files, fof_folder and snap_folder attributed needed by ReadData class.</p>
+                </div>
+              </td>
+            </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+
+              <details class="quote">
+                <summary>Source code in <code>src/measureia/Sim_info.py</code></summary>
+                <pre class="highlight"><code class="language-python">class SimInfo:
+	"""Class that stores simulation information in an object to be inherited by other classes.
+		Simulation information is hard coded and therefore uses are limited. However, can easily be expanded.
+		Currently, these simulations are available: [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1,
+		FLAMINGO_L2p8].
+
+	Attributes
+	----------
+	simname : str or NoneType
+		Identifier of the simulation, allowing for correct information to be obtained.
+	snapshot : int or str or NoneType
+		Number of the snapshot.
+	snap_group : str
+		Name of group in output file. Equal to 'Snapshot_[snapshot]' if snapshot is given, otherwise emtpy string.
+	boxsize :  int or float or NoneType, default=None
+		Size of simulation box. If simname is in SimInfo, units are cMpc/h. Otherwise, manual input.
+	L_0p5 : int or float, default=None
+		Half of the boxsize.
+	h : float, default=None
+		Value of cosmological h parameter, for easy access to convert units.
+	N_files : int, default=None
+		Number of files of snapshot or subhalo data. Used in ReadData class.
+	fof_folder : str, default=None
+		Name of folder where fof files are saved (only available for TNG).
+	snap_folder : str, default=None
+		Name of folder where snapshot files are saved.
+
+	Methods
+	-------
+	get_specs()
+		Obtains the boxsize, L_0p5 and h parameters that are stored.
+	get_file_info()
+		Creates N_files, fof_folder and snap_folder attributed needed by ReadData class.
+
+	"""
+
+	def __init__(self, sim_name, snapshot, boxsize=None, h=None, file_info=False):
+		"""
+		The __init__ method of SimInfo class.
+		Creates all attributes and obtains information that is hardcoded in the class.
+
+		Parameters
+		----------
+		sim_name : str or NoneType
+			Identifier of the simulation, allowing for correct information to be obtained.
+			Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, FLAMINGO_L2p8].
+			If None, no information will be returned that is not already given as input.
+		snapshot : int or str or NoneType
+			Number of the snapshot, which, if given, will ensure that the output file to contains a group
+			'Snapshot_[snapshot]'. If None, the group is omitted from the output file structure. Default is None.
+		boxsize : int or float, default=None
+			Size of simulation box. Use if your simulation information is not provided by SimInfo.
+			Make sure that the boxsize is in the same units as your position coordinates.
+		h : float, default=None
+			Value of cosmological h parameter, for easy access to convert units.
+		file_info : bool, default=False
+			If True, calls get_file_info method
+
+		"""
+		self.simname = sim_name
+		self.N_files = None
+		self.fof_folder = None
+		self.snap_folder = None
+		if snapshot is None:
+			self.snapshot = None
+			self.snap_group = ""
+		else:
+			self.snapshot = str(snapshot)
+			self.snap_group = f"Snapshot_{self.snapshot}/"
+		if type(sim_name) == str:
+			self.get_specs()
+			if file_info:
+				self.get_file_info()
+		else:
+			self.boxsize = boxsize
+			self.h = h
+			if boxsize is None:
+				self.L_0p5 = None
+			else:
+				self.L_0p5 = boxsize / 2.
+		return
+
+	def get_specs(self):
+		"""Obtains the boxsize, L_0p5 and h parameters that are stored for [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN,
+		FLAMINGO_L1, FLAMINGO_L2p8].
+
+		Raises
+		------
+		KeyError
+			If unknown simname is given.
+
+		"""
+		if self.simname == "TNG100":
+			self.boxsize = 75.0  # cMpc/h
+			self.L_0p5 = self.boxsize / 2.0
+			self.h = 0.6774
+		elif self.simname == "TNG100_2":
+			self.boxsize = 75.0  # cMpc/h
+			self.L_0p5 = self.boxsize / 2.0
+			self.h = 0.6774
+		elif self.simname == "TNG300":
+			self.boxsize = 205.0  # cMpc/h
+			self.L_0p5 = self.boxsize / 2.0
+			self.h = 0.6774
+		elif self.simname == "EAGLE":
+			self.boxsize = 100.0 * 0.6777  # cMpc/h
+			self.L_0p5 = self.boxsize / 2.0
+			self.h = 0.6777
+		elif self.simname == "HorizonAGN":
+			self.boxsize = 100.0  # cMpc/h
+			self.L_0p5 = self.boxsize / 2.0
+			self.h = 0.704
+		elif "FLAMINGO" in self.simname:
+			if "L1" in self.simname:
+				self.boxsize = 1000.0 * 0.681  # cMpc/h
+			elif "L2p8" in self.simname:
+				self.boxsize = 2800.0 * 0.681  # cMpc/h
+			else:
+				raise KeyError("Add an L1 or L2p8 suffix to your simname to specify which boxsize is used")
+			self.L_0p5 = self.boxsize / 2.0
+			self.h = 0.681
+		else:
+			raise KeyError(
+				"Simulation name not recognised. Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, "
+				"FLAMINGO_L2p8].")
+		return
+
+	def get_file_info(self):
+		"""Creates N_files, fof_folder and snap_folder attributed needed by ReadData class.
+		"""
+
+		if self.simname == "TNG100":
+			self.fof_folder = f"/fof_subhalo_tab_0{self.snapshot}/fof_subhalo_tab_0{self.snapshot}"
+			self.snap_folder = f"/snap_0{self.snapshot}/snap_0{self.snapshot}"
+			self.N_files = 448
+		elif self.simname == "TNG100_2":
+			self.fof_folder = f"/fof_subhalo_tab_0{self.snapshot}/fof_subhalo_tab_0{self.snapshot}"
+			self.snap_folder = f"/snap_0{self.snapshot}/snap_0{self.snapshot}"
+			self.N_files = 56
+		elif self.simname == "TNG300":
+			self.fof_folder = f"/fof_subhalo_tab_0{self.snapshot}/fof_subhalo_tab_0{self.snapshot}"
+			self.snap_folder = f"/snap_0{self.snapshot}/snap_0{self.snapshot}"
+			self.N_files = 600
+		elif self.simname == "EAGLE":
+			znames = {"28": "z000p000", "17": "z001p487", "19": "z001p004", "21": "z000p736", "23": "z000p503",
+					  "25": "z000p271"}
+			zname = znames[self.snapshot]
+			self.snap_folder = f"/snap_0{self.snapshot}/RefL0100N1504/snapshot_0{self.snapshot}_{zname}/snap_0{self.snapshot}_{zname}"  # update for different z?
+			self.fof_folder = None
+			self.N_files = 256
+		elif self.simname == "HorizonAGN":
+			self.fof_folder = None
+			self.snap_folder = None
+			self.N_files = 1.
+		elif "FLAMINGO" in self.simname:
+			self.fof_folder = None
+			self.snap_folder = None
+			self.N_files = 1
+		else:
+			raise KeyError(
+				"Simulation name not recognised. Choose from [TNG100, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1_m8, FLAMINGO_L1_m9, FLAMINGO_L1_m10, FLAMINGO_L2p8_m9].")
+		return</code></pre>
+              </details>
+
+
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="measureia.SimInfo.__init__" class="doc doc-heading">
+            <code class="highlight language-python">__init__(sim_name, snapshot, boxsize=None, h=None, file_info=False)</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>The <strong>init</strong> method of SimInfo class.
+Creates all attributes and obtains information that is hardcoded in the class.</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>sim_name</code></b>
+                  (<code><span title="str">str</span> or <span title="NoneType">NoneType</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>Identifier of the simulation, allowing for correct information to be obtained.
+Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, FLAMINGO_L2p8].
+If None, no information will be returned that is not already given as input.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>snapshot</code></b>
+                  (<code><span title="int">int</span> or <span title="str">str</span> or <span title="NoneType">NoneType</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>Number of the snapshot, which, if given, will ensure that the output file to contains a group
+'Snapshot_[snapshot]'. If None, the group is omitted from the output file structure. Default is None.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>boxsize</code></b>
+                  (<code><span title="int">int</span> or <span title="float">float</span></code>, default:
+                      <code>None</code>
+)
+              –
+              <div class="doc-md-description">
+                <pre><code>Size of simulation box. Use if your simulation information is not provided by SimInfo.
+Make sure that the boxsize is in the same units as your position coordinates.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>h</code></b>
+                  (<code><span title="float">float</span></code>, default:
+                      <code>None</code>
+)
+              –
+              <div class="doc-md-description">
+                <pre><code>Value of cosmological h parameter, for easy access to convert units.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>file_info</code></b>
+                  (<code><span title="bool">bool</span></code>, default:
+                      <code>False</code>
+)
+              –
+              <div class="doc-md-description">
+                <pre><code>If True, calls get_file_info method
+</code></pre>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+            <details class="quote">
+              <summary>Source code in <code>src/measureia/Sim_info.py</code></summary>
+              <pre class="highlight"><code class="language-python">def __init__(self, sim_name, snapshot, boxsize=None, h=None, file_info=False):
+	"""
+	The __init__ method of SimInfo class.
+	Creates all attributes and obtains information that is hardcoded in the class.
+
+	Parameters
+	----------
+	sim_name : str or NoneType
+		Identifier of the simulation, allowing for correct information to be obtained.
+		Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, FLAMINGO_L2p8].
+		If None, no information will be returned that is not already given as input.
+	snapshot : int or str or NoneType
+		Number of the snapshot, which, if given, will ensure that the output file to contains a group
+		'Snapshot_[snapshot]'. If None, the group is omitted from the output file structure. Default is None.
+	boxsize : int or float, default=None
+		Size of simulation box. Use if your simulation information is not provided by SimInfo.
+		Make sure that the boxsize is in the same units as your position coordinates.
+	h : float, default=None
+		Value of cosmological h parameter, for easy access to convert units.
+	file_info : bool, default=False
+		If True, calls get_file_info method
+
+	"""
+	self.simname = sim_name
+	self.N_files = None
+	self.fof_folder = None
+	self.snap_folder = None
+	if snapshot is None:
+		self.snapshot = None
+		self.snap_group = ""
+	else:
+		self.snapshot = str(snapshot)
+		self.snap_group = f"Snapshot_{self.snapshot}/"
+	if type(sim_name) == str:
+		self.get_specs()
+		if file_info:
+			self.get_file_info()
+	else:
+		self.boxsize = boxsize
+		self.h = h
+		if boxsize is None:
+			self.L_0p5 = None
+		else:
+			self.L_0p5 = boxsize / 2.
+	return</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="measureia.SimInfo.get_specs" class="doc doc-heading">
+            <code class="highlight language-python">get_specs()</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Obtains the boxsize, L_0p5 and h parameters that are stored for [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN,
+FLAMINGO_L1, FLAMINGO_L2p8].</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Raises:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code><span title="KeyError">KeyError</span></code>
+              –
+              <div class="doc-md-description">
+                <p>If unknown simname is given.</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+            <details class="quote">
+              <summary>Source code in <code>src/measureia/Sim_info.py</code></summary>
+              <pre class="highlight"><code class="language-python">def get_specs(self):
+	"""Obtains the boxsize, L_0p5 and h parameters that are stored for [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN,
+	FLAMINGO_L1, FLAMINGO_L2p8].
+
+	Raises
+	------
+	KeyError
+		If unknown simname is given.
+
+	"""
+	if self.simname == "TNG100":
+		self.boxsize = 75.0  # cMpc/h
+		self.L_0p5 = self.boxsize / 2.0
+		self.h = 0.6774
+	elif self.simname == "TNG100_2":
+		self.boxsize = 75.0  # cMpc/h
+		self.L_0p5 = self.boxsize / 2.0
+		self.h = 0.6774
+	elif self.simname == "TNG300":
+		self.boxsize = 205.0  # cMpc/h
+		self.L_0p5 = self.boxsize / 2.0
+		self.h = 0.6774
+	elif self.simname == "EAGLE":
+		self.boxsize = 100.0 * 0.6777  # cMpc/h
+		self.L_0p5 = self.boxsize / 2.0
+		self.h = 0.6777
+	elif self.simname == "HorizonAGN":
+		self.boxsize = 100.0  # cMpc/h
+		self.L_0p5 = self.boxsize / 2.0
+		self.h = 0.704
+	elif "FLAMINGO" in self.simname:
+		if "L1" in self.simname:
+			self.boxsize = 1000.0 * 0.681  # cMpc/h
+		elif "L2p8" in self.simname:
+			self.boxsize = 2800.0 * 0.681  # cMpc/h
+		else:
+			raise KeyError("Add an L1 or L2p8 suffix to your simname to specify which boxsize is used")
+		self.L_0p5 = self.boxsize / 2.0
+		self.h = 0.681
+	else:
+		raise KeyError(
+			"Simulation name not recognised. Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, "
+			"FLAMINGO_L2p8].")
+	return</code></pre>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="measureia.SimInfo.get_file_info" class="doc doc-heading">
+            <code class="highlight language-python">get_file_info()</code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Creates N_files, fof_folder and snap_folder attributed needed by ReadData class.</p>
+
+
+            <details class="quote">
+              <summary>Source code in <code>src/measureia/Sim_info.py</code></summary>
+              <pre class="highlight"><code class="language-python">def get_file_info(self):
+	"""Creates N_files, fof_folder and snap_folder attributed needed by ReadData class.
+	"""
+
+	if self.simname == "TNG100":
+		self.fof_folder = f"/fof_subhalo_tab_0{self.snapshot}/fof_subhalo_tab_0{self.snapshot}"
+		self.snap_folder = f"/snap_0{self.snapshot}/snap_0{self.snapshot}"
+		self.N_files = 448
+	elif self.simname == "TNG100_2":
+		self.fof_folder = f"/fof_subhalo_tab_0{self.snapshot}/fof_subhalo_tab_0{self.snapshot}"
+		self.snap_folder = f"/snap_0{self.snapshot}/snap_0{self.snapshot}"
+		self.N_files = 56
+	elif self.simname == "TNG300":
+		self.fof_folder = f"/fof_subhalo_tab_0{self.snapshot}/fof_subhalo_tab_0{self.snapshot}"
+		self.snap_folder = f"/snap_0{self.snapshot}/snap_0{self.snapshot}"
+		self.N_files = 600
+	elif self.simname == "EAGLE":
+		znames = {"28": "z000p000", "17": "z001p487", "19": "z001p004", "21": "z000p736", "23": "z000p503",
+				  "25": "z000p271"}
+		zname = znames[self.snapshot]
+		self.snap_folder = f"/snap_0{self.snapshot}/RefL0100N1504/snapshot_0{self.snapshot}_{zname}/snap_0{self.snapshot}_{zname}"  # update for different z?
+		self.fof_folder = None
+		self.N_files = 256
+	elif self.simname == "HorizonAGN":
+		self.fof_folder = None
+		self.snap_folder = None
+		self.N_files = 1.
+	elif "FLAMINGO" in self.simname:
+		self.fof_folder = None
+		self.snap_folder = None
+		self.N_files = 1
+	else:
+		raise KeyError(
+			"Simulation name not recognised. Choose from [TNG100, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1_m8, FLAMINGO_L1_m9, FLAMINGO_L1_m10, FLAMINGO_L2p8_m9].")
+	return</code></pre>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../MeasureMBox/" class="btn btn-neutral float-left" title="MeasureMultipolesBox"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../ReadData/" class="btn btn-neutral float-right" title="ReadData">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../MeasureMBox/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../ReadData/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="../../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
