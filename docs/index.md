@@ -44,3 +44,12 @@ Pull requests that have not been discussed beforehand will not be accepted.
 
 Note that the issues on GitHub contain a priority. Please comment on those you would like to have added, if there is 
 enough interest, I will consider increasing the priority status.
+
+## Citation
+
+Please use the [CITATION](https://github.com/MarloesvL/measure_IA/blob/main/CITATION.cff) file to cite this package 
+properly. Note that a DOI will be added to this soon. If you would like to cite this package and teh DOI is not there,
+please contact me.
+
+## Licence
+[MIT](https://choosealicense.com/licenses/mit/)
