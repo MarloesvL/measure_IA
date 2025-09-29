@@ -48,7 +48,7 @@ enough interest, I will consider increasing the priority status.
 ## Citation
 
 Please use the [CITATION](https://github.com/MarloesvL/measure_IA/blob/main/CITATION.cff) file to cite this package 
-properly. Note that a DOI will be added to this soon. If you would like to cite this package and teh DOI is not there,
+properly. Note that a DOI will be added to this soon. If you would like to cite this package and the DOI is not there,
 please contact me.
 
 ## Licence
