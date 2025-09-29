@@ -36,10 +36,10 @@ git clone git@github.com:MarloesvL/measure_IA.git
 git clone https://github.com/MarloesvL/measure_IA.git
 ```
 
-Next, navigate into the directory in your terminal (using cd).
-Then run the command:
+Next, navigate into the directory in your terminal and create the virtual environment:
 
 ```angular2html
+cd measure_IA
 uv sync
 ```
 
