@@ -7,9 +7,9 @@ The correlation functions are measured for simulations in cartesian coordinates 
 Furthermore, the jackknife method is used to estimate the covariance matrix.
 Outputs are saved in hdf5 files.
 
-[//]: # (This package was developed for [link to paper].)
-
 #### WARNING: This package is still in a development phase and this is therefore a beta-version.
+
+You can find a documentation site [here](https://marloesvl.github.io/measure_IA/) (under development).
 
 ## Installation
  
