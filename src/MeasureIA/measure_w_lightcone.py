@@ -3,10 +3,6 @@ import h5py
 import pyccl as ccl
 from .write_data import write_dataset_hdf5, create_group_hdf5
 from .measure_IA_base import MeasureIABase
-from astropy.cosmology import WMAP9 as cosmo
-import astropy.units as u
-from astropy import coordinates
-from astropy.cosmology import LambdaCDM, FlatLambdaCDM
 
 
 class MeasureWLightcone(MeasureIABase):

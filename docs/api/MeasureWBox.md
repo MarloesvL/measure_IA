@@ -1,6 +1,6 @@
-# MeasureIABase
+# MeasureWBox
 
-::: measureia.MeasureIABase
+::: measureia.MeasureWBox
     handler: python
     options:
       show_source: true

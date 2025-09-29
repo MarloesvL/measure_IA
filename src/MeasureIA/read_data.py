@@ -20,6 +20,18 @@ class ReadData(SimInfo):
 	data_path : str, optional
 		The path to where the data is saved. Default='./data/raw/
 
+	Methods
+	-------
+	read_cat()
+		Reads the data from the specified catalogue.
+	read_subhalo()
+		Read the data from the subhalo files.
+	read_snapshot()
+		Read the data from the snapshot files and optionally write to output file.
+	read_snapshot_multiple()
+		Read multiple datasets from the snapshot files for a specified shapshot number.
+
+
 	Notes
 	-----
 	Inherits attributes from 'SimInfo', where 'snap_group', 'snap_folder' and 'fof_folder' are used in this class.
