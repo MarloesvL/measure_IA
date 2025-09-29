@@ -1,5 +1,5 @@
 import numpy as np
-from MeasureIA.read_data import ReadData
+from measureia import ReadData
 
 
 def test_weights_w(IA_mock_TNG300_n8):
