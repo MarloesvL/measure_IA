@@ -1,6 +1,6 @@
 import h5py
 import numpy as np
-from MeasureIA.read_data import ReadData
+from measureia import ReadData
 
 
 def test_masks_w(IA_mock_TNG300_n8):

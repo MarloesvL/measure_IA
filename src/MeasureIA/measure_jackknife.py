@@ -447,8 +447,8 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 				if tree:
 					result = ProcessingPool(nodes=len(chunck)).map(
 						self._measure_xi_r_mur_sims_tree,
-						tree_args[min(chunck):max(chunck) + 1],
 						args_xi_g_plus[chunck][:, 0],
+						tree_args[min(chunck):max(chunck) + 1],
 						args_xi_g_plus[chunck][:, 1],
 						args_xi_g_plus[chunck][:, 2],
 						args_xi_g_plus[chunck][:, 3],
@@ -470,8 +470,8 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 				if tree:
 					result = ProcessingPool(nodes=len(chunck)).map(
 						self._measure_xi_rp_pi_sims_tree,
-						tree_args[min(chunck):max(chunck) + 1],
 						args_xi_g_plus[chunck][:, 0],
+						tree_args[min(chunck):max(chunck) + 1],
 						args_xi_g_plus[chunck][:, 1],
 						args_xi_g_plus[chunck][:, 2],
 						args_xi_g_plus[chunck][:, 3],

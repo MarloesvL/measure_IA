@@ -1,6 +1,6 @@
 import pytest
 import h5py
-from MeasureIA import MeasureIABox
+from measureia import MeasureIABox
 
 
 # this file has to be called conftest otherwise the fixtures will not work
