@@ -63,7 +63,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 						 pi_max, boxsize, periodicity)
 		return
 
-	def _measure_jackknife_covariance_sims(
+	def _measure_jackknife_covariance_box(
 			self, dataset_name, corr_type, masks=None, L_subboxes=3, rp_cut=None,
 			tree_saved=True, file_tree_path=None, remove_tree_file=True, num_nodes=None
 	):
@@ -175,7 +175,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 						}
 					if corr_type[1] == "multipoles":
 						if num_nodes == None:
-							self._measure_xi_r_mur_sims_tree(
+							self._measure_xi_r_mur_box_tree(
 								tree_input=tree_input,
 								masks=masks_total,
 								rp_cut=rp_cut,
@@ -187,7 +187,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 								jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}",
 							)
 						else:
-							self._measure_xi_r_mur_sims_multiprocessing(
+							self._measure_xi_r_mur_box_multiprocessing(
 								masks=masks_total,
 								rp_cut=rp_cut,
 								dataset_name=dataset_name + "_" + str(num_box),
@@ -199,7 +199,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 												 jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}")
 					else:
 						if num_nodes == None:
-							self._measure_xi_rp_pi_sims_tree(
+							self._measure_xi_rp_pi_box_tree(
 								tree_input=tree_input,
 								masks=masks_total,
 								dataset_name=dataset_name + "_" + str(num_box),
@@ -210,7 +210,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 								jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}",
 							)
 						else:
-							self._measure_xi_rp_pi_sims_multiprocessing(
+							self._measure_xi_rp_pi_box_multiprocessing(
 								masks=masks_total,
 								dataset_name=dataset_name + "_" + str(num_box),
 								print_num=False,
@@ -266,7 +266,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 		else:
 			return covs, stds
 
-	def _measure_jackknife_covariance_sims_multiprocessing(
+	def _measure_jackknife_covariance_box_multiprocessing(
 			self, dataset_name, corr_type, masks=None, L_subboxes=3, rp_cut=None,
 			num_nodes=4, twoD=False, tree=True, tree_saved=True, file_tree_path=None, remove_tree_file=True,
 			save_jk_terms=False
@@ -446,7 +446,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 			if corr_type[1] == "multipoles":
 				if tree:
 					result = ProcessingPool(nodes=len(chunck)).map(
-						self._measure_xi_r_mur_sims_tree,
+						self._measure_xi_r_mur_box_tree,
 						args_xi_g_plus[chunck][:, 0],
 						tree_args[min(chunck):max(chunck) + 1],
 						args_xi_g_plus[chunck][:, 1],
@@ -459,7 +459,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 					)
 				else:
 					result = ProcessingPool(nodes=len(chunck)).map(
-						self._measure_xi_r_mur_sims_brute,
+						self._measure_xi_r_mur_box_brute,
 						args_xi_g_plus[chunck][:, 0],
 						args_xi_g_plus[chunck][:, 1],
 						args_xi_g_plus[chunck][:, 2],
@@ -469,7 +469,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 			else:
 				if tree:
 					result = ProcessingPool(nodes=len(chunck)).map(
-						self._measure_xi_rp_pi_sims_tree,
+						self._measure_xi_rp_pi_box_tree,
 						args_xi_g_plus[chunck][:, 0],
 						tree_args[min(chunck):max(chunck) + 1],
 						args_xi_g_plus[chunck][:, 1],
@@ -482,7 +482,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 
 				else:
 					result = ProcessingPool(nodes=len(chunck)).map(
-						self._measure_xi_rp_pi_sims_brute,
+						self._measure_xi_rp_pi_box_brute,
 						args_xi_g_plus[chunck][:, 0],
 						args_xi_g_plus[chunck][:, 1],
 						args_xi_g_plus[chunck][:, 2],
@@ -563,7 +563,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 		else:
 			return covs, stds
 
-	def _measure_jackknife_realisations_obs(
+	def _measure_jackknife_realisations_lightcone(
 			self, patches_pos, patches_shape, corr_type, dataset_name, masks=None,
 			rp_cut=None, over_h=False, cosmology=None, count_pairs=False, data_suffix="", num_sample_names=["S", "D"]
 	):
@@ -642,12 +642,13 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 			}
 			if corr_type[1] == "multipoles":
 				if count_pairs:
-					self._count_pairs_xi_r_mur_obs_brute(masks=masks_total, dataset_name=dataset_name + "_" + str(i),
-														 over_h=over_h, cosmology=cosmology, print_num=False,
-														 data_suffix=data_suffix, rp_cut=rp_cut,
-														 jk_group_name=f"{dataset_name}_jk{num_patches}")
+					self._count_pairs_xi_r_mur_lightcone_brute(masks=masks_total,
+															   dataset_name=dataset_name + "_" + str(i),
+															   over_h=over_h, cosmology=cosmology, print_num=False,
+															   data_suffix=data_suffix, rp_cut=rp_cut,
+															   jk_group_name=f"{dataset_name}_jk{num_patches}")
 				else:
-					self._measure_xi_r_mur_obs_brute(
+					self._measure_xi_r_mur_lightcone_brute(
 						masks=masks_total,
 						rp_cut=rp_cut,
 						dataset_name=dataset_name + "_" + str(i),
@@ -659,12 +660,13 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 
 			else:
 				if count_pairs:
-					self._count_pairs_xi_rp_pi_obs_brute(masks=masks_total, dataset_name=dataset_name + "_" + str(i),
-														 over_h=over_h, cosmology=cosmology, print_num=False,
-														 data_suffix=data_suffix,
-														 jk_group_name=f"{dataset_name}_jk{num_patches}")
+					self._count_pairs_xi_rp_pi_lightcone_brute(masks=masks_total,
+															   dataset_name=dataset_name + "_" + str(i),
+															   over_h=over_h, cosmology=cosmology, print_num=False,
+															   data_suffix=data_suffix,
+															   jk_group_name=f"{dataset_name}_jk{num_patches}")
 				else:
-					self._measure_xi_rp_pi_obs_brute(
+					self._measure_xi_rp_pi_lightcone_brute(
 						masks=masks_total,
 						dataset_name=dataset_name + "_" + str(i),
 						print_num=False,
@@ -674,7 +676,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 					)
 		return
 
-	def _measure_jackknife_covariance_obs(
+	def _measure_jackknife_covariance_lightcone(
 			self, IA_estimator, corr_type, dataset_name, max_patch, min_patch=1,
 			randoms_suf="_randoms"
 	):
@@ -766,7 +768,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 		else:
 			return covs, stds
 
-	def _measure_jackknife_realisations_obs_multiprocessing(
+	def _measure_jackknife_realisations_lightcone_multiprocessing(
 			self, patches_pos, patches_shape, corr_type, dataset_name, masks=None,
 			rp_cut=None, over_h=False, num_nodes=4, cosmology=None, count_pairs=False, data_suffix="",
 			num_sample_names=["S", "D"]
@@ -809,9 +811,9 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 
 		"""
 		if num_nodes == 1:
-			self._measure_jackknife_realisations_obs(patches_pos, patches_shape, masks, corr_type, dataset_name,
-													 rp_cut, over_h, cosmology, count_pairs, data_suffix,
-													 num_sample_names)
+			self._measure_jackknife_realisations_lightcone(patches_pos, patches_shape, masks, corr_type, dataset_name,
+														   rp_cut, over_h, cosmology, count_pairs, data_suffix,
+														   num_sample_names)
 			return
 
 		if count_pairs == False:
@@ -898,7 +900,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 			if corr_type[1] == "multipoles":
 				if count_pairs:
 					result = ProcessingPool(nodes=len(chunck)).map(
-						self._count_pairs_xi_r_mur_obs_brute,
+						self._count_pairs_xi_r_mur_lightcone_brute,
 						args_xi_g_plus[chunck][:, 0],
 						args_xi_g_plus[chunck][:, 1],
 						args_xi_g_plus[chunck][:, 2],
@@ -910,7 +912,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 					)
 				else:
 					result = ProcessingPool(nodes=len(chunck)).map(
-						self._measure_xi_r_mur_obs_brute,
+						self._measure_xi_r_mur_lightcone_brute,
 						args_xi_g_plus[chunck][:, 0],
 						args_xi_g_plus[chunck][:, 1],
 						args_xi_g_plus[chunck][:, 2],
@@ -922,7 +924,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 			else:
 				if count_pairs:
 					result = ProcessingPool(nodes=len(chunck)).map(
-						self._count_pairs_xi_rp_pi_obs_brute,
+						self._count_pairs_xi_rp_pi_lightcone_brute,
 						args_xi_g_plus[chunck][:, 0],
 						args_xi_g_plus[chunck][:, 1],
 						args_xi_g_plus[chunck][:, 2],
@@ -933,7 +935,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 					)
 				else:
 					result = ProcessingPool(nodes=len(chunck)).map(
-						self._measure_xi_rp_pi_obs_brute,
+						self._measure_xi_rp_pi_lightcone_brute,
 						args_xi_g_plus[chunck][:, 0],
 						args_xi_g_plus[chunck][:, 1],
 						args_xi_g_plus[chunck][:, 2],

@@ -61,9 +61,9 @@ class MeasureWBox(MeasureIABase):
 						 pi_max, boxsize, periodicity)
 		return
 
-	def _measure_xi_rp_pi_sims_brute(self, dataset_name, masks=None, return_output=False,
-									 print_num=True,
-									 jk_group_name=""):
+	def _measure_xi_rp_pi_box_brute(self, dataset_name, masks=None, return_output=False,
+									print_num=True,
+									jk_group_name=""):
 		"""Measures the projected correlation functions, xi_g+ and xi_gg, in (rp, pi) bins for an object created with
 		MeasureIABox. Uses 1 CPU.
 
@@ -229,9 +229,9 @@ class MeasureWBox(MeasureIABase):
 		else:
 			return correlation, (DD / RR_gg) - 1, separation_bins, pi_bins, Splus_D, DD, RR_g_plus
 
-	def _measure_xi_rp_pi_sims_tree(self, dataset_name, tree_input=None, masks=None,
-									return_output=False, print_num=True, dataset_name_tree=None, save_tree=False,
-									file_tree_path=None, jk_group_name=""):
+	def _measure_xi_rp_pi_box_tree(self, dataset_name, tree_input=None, masks=None,
+								   return_output=False, print_num=True, dataset_name_tree=None, save_tree=False,
+								   file_tree_path=None, jk_group_name=""):
 		"""Measures the projected correlation functions, xi_g+ and xi_gg, in (rp, pi) bins for an object created with
 		MeasureIABox. Uses 1 CPU.
 
@@ -443,7 +443,7 @@ class MeasureWBox(MeasureIABase):
 		else:
 			return correlation, (DD / RR_gg) - 1, separation_bins, pi_bins, Splus_D, DD, RR_g_plus
 
-	def _measure_xi_rp_pi_sims_batch(self, indices):
+	def _measure_xi_rp_pi_box_batch(self, indices):
 		"""Support method of _measure_xi_rp_pi_sims_multiprocessing consisting of the 'forloop' part of the measurement.
 
 		Parameters
@@ -517,9 +517,9 @@ class MeasureWBox(MeasureIABase):
 
 		return Splus_D, Scross_D, DD, variance
 
-	def _measure_xi_rp_pi_sims_multiprocessing(self, dataset_name, num_nodes=9, masks=None,
-											   return_output=False,
-											   print_num=True, jk_group_name=""):
+	def _measure_xi_rp_pi_box_multiprocessing(self, dataset_name, num_nodes=9, masks=None,
+											  return_output=False,
+											  print_num=True, jk_group_name=""):
 		"""Measures the projected correlation functions, xi_g+ and xi_gg, in (rp, pi) bins for an object created with
 		MeasureIABox. Uses >1 CPUs.
 
@@ -601,7 +601,7 @@ class MeasureWBox(MeasureIABase):
 
 		self.multiproc_chuncks = np.array_split(np.arange(len(self.positions_shape_sample)), num_nodes)
 		result = ProcessingPool(nodes=num_nodes).map(
-			self._measure_xi_rp_pi_sims_batch,
+			self._measure_xi_rp_pi_box_batch,
 			self.multiproc_chuncks,
 		)
 		for i in np.arange(num_nodes):
