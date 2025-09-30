@@ -1,7 +1,7 @@
 import numpy as np
 import h5py
 import pickle
-from pathos.multiprocessing import ProcessingPool
+import concurrent.futures
 from scipy.spatial import KDTree
 from .write_data import write_dataset_hdf5, create_group_hdf5
 from .measure_IA_base import MeasureIABase
@@ -801,15 +801,16 @@ class MeasureMultipolesBox(MeasureIABase):
 
 		self.pos_tree = KDTree(self.positions, boxsize=self.boxsize)
 
-		self.multiproc_chuncks = np.array_split(np.arange(len(self.positions_shape_sample)), num_nodes)
-		result = ProcessingPool(nodes=num_nodes).map(
-			self._measure_xi_r_mur_sims_batch,
-			self.multiproc_chuncks,
-		)
-		for i in np.arange(num_nodes):
-			Splus_D += result[i][0]
-			Scross_D += result[i][1]
-			DD += result[i][2]
+		multiproc_chuncks = np.array_split(np.arange(len(self.positions_shape_sample)), num_nodes)
+		if __name__ == "measureia.measure_m_box":
+			result = concurrent.futures.ProcessPoolExecutor(max_workers=num_nodes).map(
+				self._measure_xi_r_mur_sims_batch,
+				multiproc_chuncks
+			)
+		for res in result:
+			Splus_D += res[0]
+			Scross_D += res[1]
+			DD += res[2]
 
 		# if Num_position == Num_shape:
 		# 	corrtype = "auto"

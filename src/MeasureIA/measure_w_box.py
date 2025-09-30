@@ -1,7 +1,7 @@
 import numpy as np
 import h5py
 import pickle
-from pathos.multiprocessing import ProcessingPool
+import concurrent.futures
 from scipy.spatial import KDTree
 from .write_data import write_dataset_hdf5, create_group_hdf5
 from .measure_IA_base import MeasureIABase
@@ -599,16 +599,16 @@ class MeasureWBox(MeasureIABase):
 
 		self.pos_tree = KDTree(self.positions[:, self.not_LOS], boxsize=self.boxsize)
 
-		self.multiproc_chuncks = np.array_split(np.arange(len(self.positions_shape_sample)), num_nodes)
-		result = ProcessingPool(nodes=num_nodes).map(
-			self._measure_xi_rp_pi_sims_batch,
-			self.multiproc_chuncks,
-		)
-		for i in np.arange(num_nodes):
-			Splus_D += result[i][0]
-			Scross_D += result[i][1]
-			DD += result[i][2]
-			variance += result[i][3]
+		multiproc_chuncks = np.array_split(np.arange(len(self.positions_shape_sample)), num_nodes)
+		if __name__ == "measureia.measure_w_box":
+			result = concurrent.futures.ProcessPoolExecutor(max_workers=num_nodes).map(
+				self._measure_xi_rp_pi_sims_batch,
+				multiproc_chuncks
+			)
+		for res in result:
+			Splus_D += res[0]
+			Scross_D += res[1]
+			DD += res[2]
 
 		# if Num_position == Num_shape:
 		# 	corrtype = "auto"
@@ -626,7 +626,7 @@ class MeasureWBox(MeasureIABase):
 					Num_position, Num_shape)
 		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
 		xi_g_cross = Scross_D / RR_g_plus  # (Scross_D - Scross_R) / RR_g_plus
-		sigsq = variance / RR_g_plus ** 2
+		# sigsq = variance / RR_g_plus ** 2
 		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
 		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
 		dpi = (self.pi_bins[1:] - self.pi_bins[:-1]) / 2.0
@@ -638,21 +638,21 @@ class MeasureWBox(MeasureIABase):
 			write_dataset_hdf5(group, dataset_name, data=correlation)
 			write_dataset_hdf5(group, dataset_name + "_SplusD", data=Splus_D)
 			write_dataset_hdf5(group, dataset_name + "_RR_g_plus", data=RR_g_plus)
-			write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
+			# write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_g_cross/{jk_group_name}")
 			write_dataset_hdf5(group, dataset_name + "_ScrossD", data=Scross_D)
 			write_dataset_hdf5(group, dataset_name, data=xi_g_cross)
 			write_dataset_hdf5(group, dataset_name + "_RR_g_cross", data=RR_g_plus)
-			write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
+			# write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_gg/{jk_group_name}")
 			write_dataset_hdf5(group, dataset_name, data=(DD / RR_gg) - 1)
 			write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
 			write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
-			write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
+			# write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
 			output_file.close()
