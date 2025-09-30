@@ -42,9 +42,9 @@ class MeasureWLightcone(MeasureIABase):
 						 pi_max, boxsize, periodicity)
 		return
 
-	def _measure_xi_rp_pi_obs_brute(self, dataset_name, masks=None, return_output=False,
-									print_num=True, over_h=False, cosmology=None, jk_group_name=""
-									):
+	def _measure_xi_rp_pi_lightcone_brute(self, dataset_name, masks=None, return_output=False,
+										  print_num=True, over_h=False, cosmology=None, jk_group_name=""
+										  ):
 		"""Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
 		axes, q=b/a (q) and the index of the direction of the line of sight (LOS=2 for z axis).
@@ -213,10 +213,10 @@ class MeasureWLightcone(MeasureIABase):
 		else:
 			return Splus_D, DD, separation_bins, pi_bins
 
-	def _count_pairs_xi_rp_pi_obs_brute(self, dataset_name, masks=None, return_output=False,
-										print_num=True, over_h=False, cosmology=None, data_suffix="_DD",
-										jk_group_name=""
-										):
+	def _count_pairs_xi_rp_pi_lightcone_brute(self, dataset_name, masks=None, return_output=False,
+											  print_num=True, over_h=False, cosmology=None, data_suffix="_DD",
+											  jk_group_name=""
+											  ):
 		"""Measures the projected clustering (xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample) and the index of the direction of the line of sight (LOS=2 for z axis).
 		Positions are assumed to be given in cMpc/h.

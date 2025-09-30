@@ -63,7 +63,7 @@ class MeasureMultipolesBox(MeasureIABase):
 						 pi_max, boxsize, periodicity)
 		return
 
-	def _measure_xi_r_pi_sims_brute(
+	def _measure_xi_r_pi_box_brute(
 			self, dataset_name, masks=None, rp_cut=None, return_output=False, print_num=True,
 			jk_group_name=""
 	):
@@ -239,7 +239,7 @@ class MeasureMultipolesBox(MeasureIABase):
 		else:
 			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus
 
-	def _measure_xi_r_mur_sims_brute(
+	def _measure_xi_r_mur_box_brute(
 			self, dataset_name,masks=None, rp_cut=None,  return_output=False, print_num=True,
 			jk_group_name=""
 	):
@@ -411,10 +411,10 @@ class MeasureMultipolesBox(MeasureIABase):
 		else:
 			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus
 
-	def _measure_xi_r_mur_sims_tree(self,dataset_name, tree_input=None, masks=None, rp_cut=None,
-									 return_output=False, print_num=True,
-									dataset_name_tree=None, save_tree=False, file_tree_path=None,
-									jk_group_name=""):
+	def _measure_xi_r_mur_box_tree(self, dataset_name, tree_input=None, masks=None, rp_cut=None,
+								   return_output=False, print_num=True,
+								   dataset_name_tree=None, save_tree=False, file_tree_path=None,
+								   jk_group_name=""):
 		"""Measures the projected correlation functions, xi_g+ and xi_gg, in (r, mu_r) bins for an object created with
 		MeasureIABox. Uses 1 CPU.
 
@@ -638,7 +638,7 @@ class MeasureMultipolesBox(MeasureIABase):
 		else:
 			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus
 
-	def _measure_xi_r_mur_sims_batch(self, indices):
+	def _measure_xi_r_mur_box_batch(self, indices):
 		"""Support method of _measure_xi_r_mur_sims_multiprocessing consisting of the 'forloop' part of the measurement.
 
 		Parameters
@@ -717,9 +717,9 @@ class MeasureMultipolesBox(MeasureIABase):
 					del e_plus, e_cross, mask, separation_len
 		return Splus_D, Scross_D, DD
 
-	def _measure_xi_r_mur_sims_multiprocessing(self,dataset_name, num_nodes=9, masks=None,
-											   rp_cut=None,
-											   return_output=False, print_num=True, jk_group_name=""):
+	def _measure_xi_r_mur_box_multiprocessing(self, dataset_name, num_nodes=9, masks=None,
+											  rp_cut=None,
+											  return_output=False, print_num=True, jk_group_name=""):
 		"""Measures the projected correlation functions, xi_g+ and xi_gg, in (r, mu_r) bins for an object created with
 		MeasureIABox. Uses >1 CPUs.
 
@@ -807,7 +807,7 @@ class MeasureMultipolesBox(MeasureIABase):
 
 		self.multiproc_chuncks = np.array_split(np.arange(len(self.positions_shape_sample)), num_nodes)
 		result = ProcessingPool(nodes=num_nodes).map(
-			self._measure_xi_r_mur_sims_batch,
+			self._measure_xi_r_mur_box_batch,
 			self.multiproc_chuncks,
 		)
 		for i in np.arange(num_nodes):
