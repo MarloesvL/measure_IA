@@ -1,13 +1,12 @@
 import numpy as np
 import h5py
 import os
-from pathos.multiprocessing import ProcessingPool
+import concurrent.futures
 from .write_data import write_dataset_hdf5, create_group_hdf5
 from .measure_w_box import MeasureWBox
 from .measure_m_box import MeasureMultipolesBox
 from .measure_w_lightcone import MeasureWLightcone
 from .measure_m_lightcone import MeasureMultipolesLightcone
-from astropy.cosmology import LambdaCDM
 
 class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 					   MeasureMultipolesLightcone):
@@ -63,7 +62,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 						 pi_max, boxsize, periodicity)
 		return
 
-	def _measure_jackknife_covariance_sims(
+	def _measure_jackknife_covariance_box(
 			self, dataset_name, corr_type, masks=None, L_subboxes=3, rp_cut=None,
 			tree_saved=True, file_tree_path=None, remove_tree_file=True, num_nodes=None
 	):
@@ -266,7 +265,20 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 		else:
 			return covs, stds
 
-	def _measure_jackknife_covariance_sims_multiprocessing(
+	def _unpack_args_box(self, args):
+		tree_input, args_method, tree, corrtype = args[0], args[1], args[2], args[3]
+		if corrtype == "multipoles":
+			if tree:
+				return self._measure_xi_r_mur_sims_tree(args_method[0], tree_input, *args_method[1:])
+			else:
+				return self._measure_xi_r_mur_sims_brute(*args_method[:-2])
+		else:
+			if tree:
+				return self._measure_xi_rp_pi_sims_tree(args_method[0], tree_input, *args_method[1:])
+			else:
+				return self._measure_xi_rp_pi_sims_brute(*args_method[:-2])
+
+	def _measure_jackknife_covariance_box_multiprocessing(
 			self, dataset_name, corr_type, masks=None, L_subboxes=3, rp_cut=None,
 			num_nodes=4, twoD=False, tree=True, tree_saved=True, file_tree_path=None, remove_tree_file=True,
 			save_jk_terms=False
@@ -345,7 +357,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 		if "." in dataset_name:
 			figname_dataset_name = figname_dataset_name.replace(".", "p")
 		num_box = 0
-		args_xi_g_plus, args_multipoles, tree_args = [], [], []
+		args_xi_g_plus, args_multipoles = [], []
 		for i in np.arange(0, L_subboxes):
 			for j in np.arange(0, L_subboxes):
 				for k in np.arange(0, z_L_sub):
@@ -409,108 +421,75 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 							"weight_shape_sample": mask_shape,
 						}
 					if corr_type[1] == "multipoles":
-						tree_args.append(tree_input)
 						args_xi_g_plus.append(
 							(
-								dataset_name + "_" + str(num_box),
-								masks_total,
-								rp_cut,
-								True,
-								False,
-								f"m_{self.simname}_tree_{figname_dataset_name}",
-								False,
-								file_tree_path,
+								tree_input,
+								(
+									dataset_name + "_" + str(num_box),
+									masks_total,
+									rp_cut,
+									True,
+									False,
+									f"m_{self.simname}_tree_{figname_dataset_name}",
+									False,
+									file_tree_path,
+								),
+								tree,
+								corr_type[1]
 							)
 						)
 					else:
-						tree_args.append(tree_input)
 						args_xi_g_plus.append(
 							(
-								dataset_name + "_" + str(num_box),
-								masks_total,
-								True,
-								False,
-								f"w_{self.simname}_tree_{figname_dataset_name}",
-								False,
-								file_tree_path,
+								tree_input,
+								(
+									dataset_name + "_" + str(num_box),
+									masks_total,
+									True,
+									False,
+									f"w_{self.simname}_tree_{figname_dataset_name}",
+									False,
+									file_tree_path,
+								),
+								tree,
+								corr_type[1]
 							)
 						)
 					args_multipoles.append([corr_type[0], dataset_name + "_" + str(num_box)])
 
 					num_box += 1
-		args_xi_g_plus = np.array(args_xi_g_plus)
 		args_multipoles = np.array(args_multipoles)
-		multiproc_chuncks = np.array_split(np.arange(num_box), np.ceil(num_box / num_nodes))
-		for chunck in multiproc_chuncks:
-			chunck = np.array(chunck, dtype=int)
-			if corr_type[1] == "multipoles":
-				if tree:
-					result = ProcessingPool(nodes=len(chunck)).map(
-						self._measure_xi_r_mur_sims_tree,
-						args_xi_g_plus[chunck][:, 0],
-						tree_args[min(chunck):max(chunck) + 1],
-						args_xi_g_plus[chunck][:, 1],
-						args_xi_g_plus[chunck][:, 2],
-						args_xi_g_plus[chunck][:, 3],
-						args_xi_g_plus[chunck][:, 4],
-						args_xi_g_plus[chunck][:, 5],
-						args_xi_g_plus[chunck][:, 6],
-						args_xi_g_plus[chunck][:, 7],
-					)
-				else:
-					result = ProcessingPool(nodes=len(chunck)).map(
-						self._measure_xi_r_mur_sims_brute,
-						args_xi_g_plus[chunck][:, 0],
-						args_xi_g_plus[chunck][:, 1],
-						args_xi_g_plus[chunck][:, 2],
-						args_xi_g_plus[chunck][:, 3],
-						args_xi_g_plus[chunck][:, 4],
-					)
-			else:
-				if tree:
-					result = ProcessingPool(nodes=len(chunck)).map(
-						self._measure_xi_rp_pi_sims_tree,
-						args_xi_g_plus[chunck][:, 0],
-						tree_args[min(chunck):max(chunck) + 1],
-						args_xi_g_plus[chunck][:, 1],
-						args_xi_g_plus[chunck][:, 2],
-						args_xi_g_plus[chunck][:, 3],
-						args_xi_g_plus[chunck][:, 4],
-						args_xi_g_plus[chunck][:, 5],
-						args_xi_g_plus[chunck][:, 6],
-					)
+		if __name__ == "measureia.measure_jackknife":
+			result = concurrent.futures.ProcessPoolExecutor(max_workers=num_nodes).map(
+				self._unpack_args_box,
+				args_xi_g_plus
+			)
 
-				else:
-					result = ProcessingPool(nodes=len(chunck)).map(
-						self._measure_xi_rp_pi_sims_brute,
-						args_xi_g_plus[chunck][:, 0],
-						args_xi_g_plus[chunck][:, 1],
-						args_xi_g_plus[chunck][:, 2],
-						args_xi_g_plus[chunck][:, 3],
-					)
+		output_file = h5py.File(self.output_file_name, "a")
+		i = 0
+		for res in result:
+			for j, data_j in enumerate(data):
+				group_xigplus = create_group_hdf5(
+					output_file,
+					f"{self.snap_group}/{corr_type[1]}/xi{corr_type_suff[j]}/{dataset_name}_jk{L_subboxes ** 3}"
+				)
+				# correlation, (DD / RR_gg) - 1, separation_bins, pi_bins, Splus_D, DD, RR_g_plus
+				write_dataset_hdf5(group_xigplus, f"{dataset_name}_{i}", data=res[j])
+				write_dataset_hdf5(
+					group_xigplus, f"{dataset_name}_{i}_{bin_var_names[0]}", data=res[2]
+				)
+				write_dataset_hdf5(
+					group_xigplus, f"{dataset_name}_{i}_{bin_var_names[1]}", data=res[3]
+				)
+				if save_jk_terms:
+					write_dataset_hdf5(group_xigplus, f"{dataset_name}_{i}_{jk_terms[j]}",
+									   data=res[4 + j])
+					write_dataset_hdf5(group_xigplus, f"{dataset_name}_{i}_RR{corr_type_suff[j]}",
+									   data=res[6])
+			i += 1
+		# write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i]}_sigmasq", data=result[i][3])
+		output_file.close()
 
-			output_file = h5py.File(self.output_file_name, "a")
-			for i in np.arange(0, len(chunck)):
-				for j, data_j in enumerate(data):
-					group_xigplus = create_group_hdf5(
-						output_file,
-						f"{self.snap_group}/{corr_type[1]}/xi{corr_type_suff[j]}/{dataset_name}_jk{L_subboxes ** 3}"
-					)
-					# correlation, (DD / RR_gg) - 1, separation_bins, pi_bins, Splus_D, DD, RR_g_plus
-					write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i]}", data=result[i][j])
-					write_dataset_hdf5(
-						group_xigplus, f"{dataset_name}_{chunck[i]}_{bin_var_names[0]}", data=result[i][2]
-					)
-					write_dataset_hdf5(
-						group_xigplus, f"{dataset_name}_{chunck[i]}_{bin_var_names[1]}", data=result[i][3]
-					)
-					if save_jk_terms:
-						write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i]}_{jk_terms[j]}",
-										   data=result[i][4 + j])
-						write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i]}_RR{corr_type_suff[j]}",
-										   data=result[i][6])
-			# write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i]}_sigmasq", data=result[i][3])
-			output_file.close()
 		if remove_tree_file and tree_saved:
 			if corr_type[1] == "multipoles":
 				os.remove(
@@ -563,7 +542,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 		else:
 			return covs, stds
 
-	def _measure_jackknife_realisations_obs(
+	def _measure_jackknife_realisations_lightcone(
 			self, patches_pos, patches_shape, corr_type, dataset_name, masks=None,
 			rp_cut=None, over_h=False, cosmology=None, count_pairs=False, data_suffix="", num_sample_names=["S", "D"]
 	):
@@ -674,7 +653,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 					)
 		return
 
-	def _measure_jackknife_covariance_obs(
+	def _measure_jackknife_covariance_lightcone(
 			self, IA_estimator, corr_type, dataset_name, max_patch, min_patch=1,
 			randoms_suf="_randoms"
 	):
@@ -766,7 +745,20 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 		else:
 			return covs, stds
 
-	def _measure_jackknife_realisations_obs_multiprocessing(
+	def _unpack_args_lightcone(self, args):
+		args_method, count_pairs, corr_type = args[0], args[1], args[2]
+		if corr_type == "multipoles":
+			if count_pairs:
+				return self._count_pairs_xi_r_mur_obs_brute(*args_method)
+			else:
+				return self._measure_xi_r_mur_obs_brute(*args_method)
+		else:
+			if count_pairs:
+				return self._count_pairs_xi_rp_pi_obs_brute(*args_method)
+			else:
+				return self._measure_xi_rp_pi_obs_brute(*args_method)
+
+	def _measure_jackknife_realisations_lightcone_multiprocessing(
 			self, patches_pos, patches_shape, corr_type, dataset_name, masks=None,
 			rp_cut=None, over_h=False, num_nodes=4, cosmology=None, count_pairs=False, data_suffix="",
 			num_sample_names=["S", "D"]
@@ -809,9 +801,9 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 
 		"""
 		if num_nodes == 1:
-			self._measure_jackknife_realisations_obs(patches_pos, patches_shape, masks, corr_type, dataset_name,
-													 rp_cut, over_h, cosmology, count_pairs, data_suffix,
-													 num_sample_names)
+			self._measure_jackknife_realisations_lightcone(patches_pos, patches_shape, masks, corr_type, dataset_name,
+														   rp_cut, over_h, cosmology, count_pairs, data_suffix,
+														   num_sample_names)
 			return
 
 		if count_pairs == False:
@@ -868,122 +860,84 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 			if corr_type[1] == "multipoles":
 				args_xi_g_plus.append(
 					(
-						dataset_name + "_" + str(i),
-						masks_total,
-						True,
-						False,
-						over_h,
-						cosmology,
-						rp_cut,
-						data_suffix
+						(
+							dataset_name + "_" + str(i),
+							masks_total,
+							True,
+							False,
+							over_h,
+							cosmology,
+							rp_cut,
+							data_suffix
+						),
+						count_pairs,
+						corr_type[1]
 					)
 				)
 			else:
 				args_xi_g_plus.append(
 					(
-						dataset_name + "_" + str(i),
-						masks_total,
-						True,
-						False,
-						over_h,
-						cosmology,
-						data_suffix
+						(
+							dataset_name + "_" + str(i),
+							masks_total,
+							True,
+							False,
+							over_h,
+							cosmology,
+							data_suffix
+						),
+						count_pairs,
+						corr_type[1]
 					)
 				)
 
 		args_xi_g_plus = np.array(args_xi_g_plus)
-		multiproc_chuncks = np.array_split(np.arange(num_patches), np.ceil(num_patches / num_nodes))
-		for chunck in multiproc_chuncks:
-			chunck = np.array(chunck, dtype=int)
-			if corr_type[1] == "multipoles":
-				if count_pairs:
-					result = ProcessingPool(nodes=len(chunck)).map(
-						self._count_pairs_xi_r_mur_obs_brute,
-						args_xi_g_plus[chunck][:, 0],
-						args_xi_g_plus[chunck][:, 1],
-						args_xi_g_plus[chunck][:, 2],
-						args_xi_g_plus[chunck][:, 3],
-						args_xi_g_plus[chunck][:, 4],
-						args_xi_g_plus[chunck][:, 5],
-						args_xi_g_plus[chunck][:, 6],
-						args_xi_g_plus[chunck][:, 7],
-					)
-				else:
-					result = ProcessingPool(nodes=len(chunck)).map(
-						self._measure_xi_r_mur_obs_brute,
-						args_xi_g_plus[chunck][:, 0],
-						args_xi_g_plus[chunck][:, 1],
-						args_xi_g_plus[chunck][:, 2],
-						args_xi_g_plus[chunck][:, 3],
-						args_xi_g_plus[chunck][:, 4],
-						args_xi_g_plus[chunck][:, 5],
-						args_xi_g_plus[chunck][:, 6],
-					)
-			else:
-				if count_pairs:
-					result = ProcessingPool(nodes=len(chunck)).map(
-						self._count_pairs_xi_rp_pi_obs_brute,
-						args_xi_g_plus[chunck][:, 0],
-						args_xi_g_plus[chunck][:, 1],
-						args_xi_g_plus[chunck][:, 2],
-						args_xi_g_plus[chunck][:, 3],
-						args_xi_g_plus[chunck][:, 4],
-						args_xi_g_plus[chunck][:, 5],
-						args_xi_g_plus[chunck][:, 6],
-					)
-				else:
-					result = ProcessingPool(nodes=len(chunck)).map(
-						self._measure_xi_rp_pi_obs_brute,
-						args_xi_g_plus[chunck][:, 0],
-						args_xi_g_plus[chunck][:, 1],
-						args_xi_g_plus[chunck][:, 2],
-						args_xi_g_plus[chunck][:, 3],
-						args_xi_g_plus[chunck][:, 4],
-						args_xi_g_plus[chunck][:, 5],
-					)
+		if __name__ == "measureia.measure_jackknife":
+			result = concurrent.futures.ProcessPoolExecutor(max_workers=num_nodes).map(
+				self._unpack_args_lightcone,
+				args_xi_g_plus
+			)
 
-			output_file = h5py.File(self.output_file_name, "a")
-			if count_pairs:
-				for i in np.arange(0, len(chunck)):
-					for j, data_j in enumerate(data):
-						group_xigplus = create_group_hdf5(
-							output_file, f"{self.snap_group}/{corr_type[1]}/xi_gg/{dataset_name}_jk{num_patches}"
-						)
-						write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i] + min_patch}{data_suffix}",
-										   data=result[i][j])
-						write_dataset_hdf5(
-							group_xigplus, f"{dataset_name}_{chunck[i] + min_patch}_{bin_var_names[0]}",
-							data=result[i][1]
-						)
-						write_dataset_hdf5(
-							group_xigplus, f"{dataset_name}_{chunck[i] + min_patch}_{bin_var_names[1]}",
-							data=result[i][2]
-						)
-			else:
-				for i in np.arange(0, len(chunck)):
-					for j, data_j in enumerate(data):
-						group_xigplus = create_group_hdf5(
-							output_file,
-							f"{self.snap_group}/{corr_type[1]}/xi{corr_type_suff[j]}/{dataset_name}_jk{num_patches}"
-						)
-						write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i] + min_patch}_{xi_suff[j]}",
-										   data=result[i][j])
-						write_dataset_hdf5(
-							group_xigplus, f"{dataset_name}_{chunck[i] + min_patch}_{bin_var_names[0]}",
-							data=result[i][2]
-						)
-						write_dataset_hdf5(
-							group_xigplus, f"{dataset_name}_{chunck[i] + min_patch}_{bin_var_names[1]}",
-							data=result[i][3]
-						)
-			# write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i]}_sigmasq", data=result[i][3])
-			output_file.close()
+		output_file = h5py.File(self.output_file_name, "a")
+		if count_pairs:
+			i = 0
+			for res in result:
+				for j, data_j in enumerate(data):
+					group_xigplus = create_group_hdf5(
+						output_file, f"{self.snap_group}/{corr_type[1]}/xi_gg/{dataset_name}_jk{num_patches}"
+					)
+					write_dataset_hdf5(group_xigplus, f"{dataset_name}_{i + min_patch}{data_suffix}",
+									   data=res[j])
+					write_dataset_hdf5(
+						group_xigplus, f"{dataset_name}_{i + min_patch}_{bin_var_names[0]}",
+						data=res[1]
+					)
+					write_dataset_hdf5(
+						group_xigplus, f"{dataset_name}_{i + min_patch}_{bin_var_names[1]}",
+						data=res[2]
+					)
+				i += 1
+		else:
+			i = 0
+			for res in result:
+				for j, data_j in enumerate(data):
+					group_xigplus = create_group_hdf5(
+						output_file,
+						f"{self.snap_group}/{corr_type[1]}/xi{corr_type_suff[j]}/{dataset_name}_jk{num_patches}"
+					)
+					write_dataset_hdf5(group_xigplus, f"{dataset_name}_{i + min_patch}_{xi_suff[j]}",
+									   data=res[j])
+					write_dataset_hdf5(
+						group_xigplus, f"{dataset_name}_{i + min_patch}_{bin_var_names[0]}",
+						data=res[2]
+					)
+					write_dataset_hdf5(
+						group_xigplus, f"{dataset_name}_{i + min_patch}_{bin_var_names[1]}",
+						data=res[3]
+					)
+				i += 1
+		output_file.close()
 
-		# for i in np.arange(0, num_patches):
-		# 	if corr_type[1] == "multipoles":
-		# 		self.measure_multipoles(corr_type=args_multipoles[i, 0], dataset_name=args_multipoles[i, 1])
-		# 	else:
-		# 		self.measure_w_g_i(corr_type=args_multipoles[i, 0], dataset_name=args_multipoles[i, 1])
 		return
 
 	def measure_covariance_multiple_datasets(self, corr_type, dataset_names, num_box=27, return_output=False):

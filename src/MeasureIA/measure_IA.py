@@ -136,25 +136,25 @@ class MeasureIABox(MeasureJackknife):
 												 save_tree=save_tree, file_tree_path=file_tree_path)
 				self._measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
 				if measure_cov:
-					self._measure_jackknife_covariance_sims_multiprocessing(masks=masks, corr_type=[corr_type, "w"],
-																			dataset_name=dataset_name, L_subboxes=L,
-																			rp_cut=None,
-																			num_nodes=self.num_nodes, twoD=False,
-																			tree=True,
-																			tree_saved=True,
-																			file_tree_path=file_tree_path,
-																			remove_tree_file=remove_tree_file,
-																			save_jk_terms=save_jk_terms)
+					self._measure_jackknife_covariance_box_multiprocessing(masks=masks, corr_type=[corr_type, "w"],
+																		   dataset_name=dataset_name, L_subboxes=L,
+																		   rp_cut=None,
+																		   num_nodes=self.num_nodes, twoD=False,
+																		   tree=True,
+																		   tree_saved=True,
+																		   file_tree_path=file_tree_path,
+																		   remove_tree_file=remove_tree_file,
+																		   save_jk_terms=save_jk_terms)
 			elif not multiproc_bool and save_tree:
 				self._measure_xi_rp_pi_sims_tree(tree_input=None, masks=masks, dataset_name=dataset_name,
 												 return_output=False, print_num=True, dataset_name_tree=None,
 												 save_tree=save_tree, file_tree_path=file_tree_path)
 				self._measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
 				if measure_cov:
-					self._measure_jackknife_covariance_sims(masks=masks, corr_type=[corr_type, "w"],
-															dataset_name=dataset_name, L_subboxes=L, rp_cut=None,
-															tree_saved=True, file_tree_path=file_tree_path,
-															remove_tree_file=remove_tree_file)
+					self._measure_jackknife_covariance_box(masks=masks, corr_type=[corr_type, "w"],
+														   dataset_name=dataset_name, L_subboxes=L, rp_cut=None,
+														   tree_saved=True, file_tree_path=file_tree_path,
+														   remove_tree_file=remove_tree_file)
 			elif multiproc_bool and not save_tree:
 				print("yes")
 				self._measure_xi_rp_pi_sims_multiprocessing(num_nodes=self.num_nodes, masks=masks,
@@ -162,17 +162,17 @@ class MeasureIABox(MeasureJackknife):
 															print_num=True)
 				self._measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
 				if measure_cov:
-					self._measure_jackknife_covariance_sims(masks=masks, corr_type=[corr_type, "w"],
-															dataset_name=dataset_name, L_subboxes=L, rp_cut=None,
-															num_nodes=self.num_nodes, tree_saved=False)
+					self._measure_jackknife_covariance_box(masks=masks, corr_type=[corr_type, "w"],
+														   dataset_name=dataset_name, L_subboxes=L, rp_cut=None,
+														   num_nodes=self.num_nodes, tree_saved=False)
 			else:
 				self._measure_xi_rp_pi_sims_brute(masks=masks, dataset_name=dataset_name,
 												  return_output=False, print_num=True)
 				self._measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
 				if measure_cov:
-					self._measure_jackknife_covariance_sims(masks=masks, corr_type=[corr_type, "w"],
-															dataset_name=dataset_name, L_subboxes=L, rp_cut=None,
-															num_nodes=self.num_nodes, tree_saved=False)
+					self._measure_jackknife_covariance_box(masks=masks, corr_type=[corr_type, "w"],
+														   dataset_name=dataset_name, L_subboxes=L, rp_cut=None,
+														   num_nodes=self.num_nodes, tree_saved=False)
 
 		return
 
@@ -251,15 +251,15 @@ class MeasureIABox(MeasureJackknife):
 											 save_tree=save_tree, file_tree_path=file_tree_path)
 			self._measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
 			if measure_cov:
-				self._measure_jackknife_covariance_sims_multiprocessing(masks=masks,
-																		corr_type=[corr_type, "multipoles"],
-																		dataset_name=dataset_name, L_subboxes=L,
-																		rp_cut=rp_cut,
-																		num_nodes=self.num_nodes, twoD=False,
-																		tree=True,
-																		tree_saved=True,
-																		file_tree_path=file_tree_path,
-																		remove_tree_file=remove_tree_file)
+				self._measure_jackknife_covariance_box_multiprocessing(masks=masks,
+																	   corr_type=[corr_type, "multipoles"],
+																	   dataset_name=dataset_name, L_subboxes=L,
+																	   rp_cut=rp_cut,
+																	   num_nodes=self.num_nodes, twoD=False,
+																	   tree=True,
+																	   tree_saved=True,
+																	   file_tree_path=file_tree_path,
+																	   remove_tree_file=remove_tree_file)
 		elif not multiproc_bool and save_tree:
 			self._measure_xi_r_mur_sims_tree(tree_input=None, masks=masks,
 											 dataset_name=dataset_name,
@@ -268,10 +268,10 @@ class MeasureIABox(MeasureJackknife):
 											 save_tree=save_tree, file_tree_path=file_tree_path)
 			self._measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
 			if measure_cov:
-				self._measure_jackknife_covariance_sims(masks=masks, corr_type=[corr_type, "multipoles"],
-														dataset_name=dataset_name, L_subboxes=L, rp_cut=rp_cut,
-														tree_saved=True, file_tree_path=file_tree_path,
-														remove_tree_file=remove_tree_file)
+				self._measure_jackknife_covariance_box(masks=masks, corr_type=[corr_type, "multipoles"],
+													   dataset_name=dataset_name, L_subboxes=L, rp_cut=rp_cut,
+													   tree_saved=True, file_tree_path=file_tree_path,
+													   remove_tree_file=remove_tree_file)
 		elif multiproc_bool and not save_tree:
 			self._measure_xi_r_mur_sims_multiprocessing(num_nodes=self.num_nodes,
 														masks=masks,
@@ -280,10 +280,10 @@ class MeasureIABox(MeasureJackknife):
 														print_num=True)
 			self._measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
 			if measure_cov:
-				self._measure_jackknife_covariance_sims(masks=masks, corr_type=[corr_type, "multipoles"],
-														dataset_name=dataset_name, L_subboxes=L,
-														rp_cut=rp_cut, num_nodes=self.num_nodes,
-														tree_saved=False)
+				self._measure_jackknife_covariance_box(masks=masks, corr_type=[corr_type, "multipoles"],
+													   dataset_name=dataset_name, L_subboxes=L,
+													   rp_cut=rp_cut, num_nodes=self.num_nodes,
+													   tree_saved=False)
 		else:
 			self._measure_xi_r_mur_sims_brute(masks=masks,
 											  dataset_name=dataset_name,
@@ -291,10 +291,10 @@ class MeasureIABox(MeasureJackknife):
 											  rp_cut=rp_cut)
 			self._measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
 			if measure_cov:
-				self._measure_jackknife_covariance_sims(masks=masks, corr_type=[corr_type, "multipoles"],
-														dataset_name=dataset_name, L_subboxes=L,
-														rp_cut=rp_cut, num_nodes=self.num_nodes,
-														tree_saved=False)
+				self._measure_jackknife_covariance_box(masks=masks, corr_type=[corr_type, "multipoles"],
+													   dataset_name=dataset_name, L_subboxes=L,
+													   rp_cut=rp_cut, num_nodes=self.num_nodes,
+													   tree_saved=False)
 
 		return
 
@@ -596,13 +596,13 @@ class MeasureIALightcone(MeasureJackknife):
 			if corr_type == "g+" or corr_type == "both":
 				# S+D
 				self.data = self.data_dir
-				self._measure_jackknife_realisations_obs_multiprocessing(patches_pos=jk_patches["position"],
-																		 patches_shape=jk_patches["shape"],
-																		 corr_type=[corr_type, "w"], masks=masks,
-																		 dataset_name=dataset_name,
-																		 num_nodes=self.num_nodes, over_h=over_h,
-																		 cosmology=cosmology, count_pairs=False,
-																		 num_sample_names=["S", "D"])
+				self._measure_jackknife_realisations_lightcone_multiprocessing(patches_pos=jk_patches["position"],
+																			   patches_shape=jk_patches["shape"],
+																			   corr_type=[corr_type, "w"], masks=masks,
+																			   dataset_name=dataset_name,
+																			   num_nodes=self.num_nodes, over_h=over_h,
+																			   cosmology=cosmology, count_pairs=False,
+																			   num_sample_names=["S", "D"])
 				# S+R
 				self.data = {
 					"Redshift": self.randoms_data["Redshift"],
@@ -617,13 +617,14 @@ class MeasureIALightcone(MeasureJackknife):
 					"weight_shape_sample": self.data_dir["weight_shape_sample"]
 				}
 				# print(self.data)
-				self._measure_jackknife_realisations_obs_multiprocessing(patches_pos=jk_patches["randoms_position"],
-																		 patches_shape=jk_patches["shape"],
-																		 corr_type=[corr_type, "w"], masks=masks,
-																		 dataset_name=f"{dataset_name}_randoms",
-																		 num_nodes=self.num_nodes, over_h=over_h,
-																		 cosmology=cosmology, count_pairs=False,
-																		 num_sample_names=["S", "R_D"])
+				self._measure_jackknife_realisations_lightcone_multiprocessing(
+					patches_pos=jk_patches["randoms_position"],
+					patches_shape=jk_patches["shape"],
+					corr_type=[corr_type, "w"], masks=masks,
+					dataset_name=f"{dataset_name}_randoms",
+					num_nodes=self.num_nodes, over_h=over_h,
+					cosmology=cosmology, count_pairs=False,
+					num_sample_names=["S", "R_D"])
 
 			# Position-position combinations:
 			# SD (Cgg, Ggg)
@@ -643,13 +644,14 @@ class MeasureIALightcone(MeasureJackknife):
 					"weight": self.data_dir["weight"],
 					"weight_shape_sample": self.data_dir["weight_shape_sample"]
 				}
-				self._measure_jackknife_realisations_obs_multiprocessing(patches_pos=jk_patches["position"],
-																		 patches_shape=jk_patches["shape"],
-																		 corr_type=["gg", "w"],
-																		 dataset_name=dataset_name,
-																		 num_nodes=self.num_nodes, over_h=over_h,
-																		 cosmology=cosmology, count_pairs=True,
-																		 data_suffix="_DD", num_sample_names=["S", "D"])
+				self._measure_jackknife_realisations_lightcone_multiprocessing(patches_pos=jk_patches["position"],
+																			   patches_shape=jk_patches["shape"],
+																			   corr_type=["gg", "w"],
+																			   dataset_name=dataset_name,
+																			   num_nodes=self.num_nodes, over_h=over_h,
+																			   cosmology=cosmology, count_pairs=True,
+																			   data_suffix="_DD",
+																			   num_sample_names=["S", "D"])
 
 				# SR (Cg+, Cgg, Ggg) - watch name (Obs estimator) # if g+ or both, already have it
 				self.data = {
@@ -662,14 +664,15 @@ class MeasureIALightcone(MeasureJackknife):
 					"weight": self.randoms_data["weight"],
 					"weight_shape_sample": self.data_dir["weight_shape_sample"]
 				}
-				self._measure_jackknife_realisations_obs_multiprocessing(patches_pos=jk_patches["randoms_position"],
-																		 patches_shape=jk_patches["shape"],
-																		 corr_type=["gg", "w"],
-																		 dataset_name=dataset_name,
-																		 num_nodes=self.num_nodes, over_h=over_h,
-																		 cosmology=cosmology, count_pairs=True,
-																		 data_suffix="_SR",
-																		 num_sample_names=["S", "R_D"])
+				self._measure_jackknife_realisations_lightcone_multiprocessing(
+					patches_pos=jk_patches["randoms_position"],
+					patches_shape=jk_patches["shape"],
+					corr_type=["gg", "w"],
+					dataset_name=dataset_name,
+					num_nodes=self.num_nodes, over_h=over_h,
+					cosmology=cosmology, count_pairs=True,
+					data_suffix="_SR",
+					num_sample_names=["S", "R_D"])
 
 			if corr_type == "gg" or corr_type == "both":
 				# RD (Cgg, Ggg)
@@ -683,14 +686,15 @@ class MeasureIALightcone(MeasureJackknife):
 					"weight": self.data_dir["weight"],
 					"weight_shape_sample": self.randoms_data["weight_shape_sample"]
 				}
-				self._measure_jackknife_realisations_obs_multiprocessing(patches_pos=jk_patches["position"],
-																		 patches_shape=jk_patches["randoms_shape"],
-																		 corr_type=["gg", "w"],
-																		 dataset_name=dataset_name,
-																		 num_nodes=self.num_nodes, over_h=over_h,
-																		 cosmology=cosmology, count_pairs=True,
-																		 data_suffix="_RD",
-																		 num_sample_names=["R_S", "D"])
+				self._measure_jackknife_realisations_lightcone_multiprocessing(patches_pos=jk_patches["position"],
+																			   patches_shape=jk_patches[
+																				   "randoms_shape"],
+																			   corr_type=["gg", "w"],
+																			   dataset_name=dataset_name,
+																			   num_nodes=self.num_nodes, over_h=over_h,
+																			   cosmology=cosmology, count_pairs=True,
+																			   data_suffix="_RD",
+																			   num_sample_names=["R_S", "D"])
 
 			if IA_estimator == "galaxies" or corr_type == "gg" or corr_type == "both":
 				# RR (Cgg, Gg+, Ggg)
@@ -704,18 +708,19 @@ class MeasureIALightcone(MeasureJackknife):
 					"weight": self.randoms_data["weight"],
 					"weight_shape_sample": self.randoms_data["weight_shape_sample"]
 				}
-				self._measure_jackknife_realisations_obs_multiprocessing(patches_pos=jk_patches["randoms_position"],
-																		 patches_shape=jk_patches["randoms_shape"],
-																		 corr_type=["gg", "w"],
-																		 dataset_name=dataset_name,
-																		 num_nodes=self.num_nodes, over_h=over_h,
-																		 cosmology=cosmology, count_pairs=True,
-																		 data_suffix="_RR",
-																		 num_sample_names=["R_S", "R_D"])
+				self._measure_jackknife_realisations_lightcone_multiprocessing(
+					patches_pos=jk_patches["randoms_position"],
+					patches_shape=jk_patches["randoms_shape"],
+					corr_type=["gg", "w"],
+					dataset_name=dataset_name,
+					num_nodes=self.num_nodes, over_h=over_h,
+					cosmology=cosmology, count_pairs=True,
+					data_suffix="_RR",
+					num_sample_names=["R_S", "R_D"])
 
-			self._measure_jackknife_covariance_obs(IA_estimator=IA_estimator, max_patch=max(jk_patches['shape']),
-												   min_patch=min(jk_patches["shape"]), corr_type=[corr_type, "w"],
-												   dataset_name=dataset_name, randoms_suf="_randoms")
+			self._measure_jackknife_covariance_lightcone(IA_estimator=IA_estimator, max_patch=max(jk_patches['shape']),
+														 min_patch=min(jk_patches["shape"]), corr_type=[corr_type, "w"],
+														 dataset_name=dataset_name, randoms_suf="_randoms")
 		self.data = data
 		return
 
@@ -953,15 +958,15 @@ class MeasureIALightcone(MeasureJackknife):
 			if corr_type == "g+" or corr_type == "both":
 				# S+D
 				self.data = self.data_dir
-				self._measure_jackknife_realisations_obs_multiprocessing(patches_pos=jk_patches["position"],
-																		 patches_shape=jk_patches["shape"],
-																		 corr_type=[corr_type, "multipoles"],
-																		 masks=masks,
-																		 dataset_name=dataset_name,
-																		 num_nodes=self.num_nodes, over_h=over_h,
-																		 rp_cut=rp_cut,
-																		 cosmology=cosmology, count_pairs=False,
-																		 num_sample_names=["S", "D"])
+				self._measure_jackknife_realisations_lightcone_multiprocessing(patches_pos=jk_patches["position"],
+																			   patches_shape=jk_patches["shape"],
+																			   corr_type=[corr_type, "multipoles"],
+																			   masks=masks,
+																			   dataset_name=dataset_name,
+																			   num_nodes=self.num_nodes, over_h=over_h,
+																			   rp_cut=rp_cut,
+																			   cosmology=cosmology, count_pairs=False,
+																			   num_sample_names=["S", "D"])
 				# S+R
 				self.data = {
 					"Redshift": self.randoms_data["Redshift"],
@@ -975,15 +980,16 @@ class MeasureIALightcone(MeasureJackknife):
 					"weight": self.randoms_data["weight"],
 					"weight_shape_sample": self.data_dir["weight_shape_sample"]
 				}
-				self._measure_jackknife_realisations_obs_multiprocessing(patches_pos=jk_patches["randoms_position"],
-																		 patches_shape=jk_patches["shape"],
-																		 corr_type=[corr_type, "multipoles"],
-																		 masks=masks,
-																		 dataset_name=f"{dataset_name}_randoms",
-																		 num_nodes=self.num_nodes, over_h=over_h,
-																		 rp_cut=rp_cut,
-																		 cosmology=cosmology, count_pairs=False,
-																		 num_sample_names=["S", "R_D"])
+				self._measure_jackknife_realisations_lightcone_multiprocessing(
+					patches_pos=jk_patches["randoms_position"],
+					patches_shape=jk_patches["shape"],
+					corr_type=[corr_type, "multipoles"],
+					masks=masks,
+					dataset_name=f"{dataset_name}_randoms",
+					num_nodes=self.num_nodes, over_h=over_h,
+					rp_cut=rp_cut,
+					cosmology=cosmology, count_pairs=False,
+					num_sample_names=["S", "R_D"])
 
 			# Position-position combinations:
 			# SD (Cgg, Ggg)
@@ -1003,14 +1009,15 @@ class MeasureIALightcone(MeasureJackknife):
 					"weight": self.data_dir["weight"],
 					"weight_shape_sample": self.data_dir["weight_shape_sample"]
 				}
-				self._measure_jackknife_realisations_obs_multiprocessing(patches_pos=jk_patches["position"],
-																		 patches_shape=jk_patches["shape"],
-																		 corr_type=["gg", "multipoles"],
-																		 dataset_name=dataset_name,
-																		 num_nodes=self.num_nodes, over_h=over_h,
-																		 cosmology=cosmology, count_pairs=True,
-																		 rp_cut=rp_cut,
-																		 data_suffix="_DD", num_sample_names=["S", "D"])
+				self._measure_jackknife_realisations_lightcone_multiprocessing(patches_pos=jk_patches["position"],
+																			   patches_shape=jk_patches["shape"],
+																			   corr_type=["gg", "multipoles"],
+																			   dataset_name=dataset_name,
+																			   num_nodes=self.num_nodes, over_h=over_h,
+																			   cosmology=cosmology, count_pairs=True,
+																			   rp_cut=rp_cut,
+																			   data_suffix="_DD",
+																			   num_sample_names=["S", "D"])
 
 				# SR (Cg+, Cgg, Ggg) - watch name (Obs estimator) # if g+ or both, already have it
 				self.data = {
@@ -1023,15 +1030,16 @@ class MeasureIALightcone(MeasureJackknife):
 					"weight": self.randoms_data["weight"],
 					"weight_shape_sample": self.data_dir["weight_shape_sample"]
 				}
-				self._measure_jackknife_realisations_obs_multiprocessing(patches_pos=jk_patches["randoms_position"],
-																		 patches_shape=jk_patches["shape"],
-																		 corr_type=["gg", "multipoles"],
-																		 dataset_name=dataset_name,
-																		 num_nodes=self.num_nodes, over_h=over_h,
-																		 cosmology=cosmology, count_pairs=True,
-																		 rp_cut=rp_cut,
-																		 data_suffix="_SR",
-																		 num_sample_names=["S", "R_D"])
+				self._measure_jackknife_realisations_lightcone_multiprocessing(
+					patches_pos=jk_patches["randoms_position"],
+					patches_shape=jk_patches["shape"],
+					corr_type=["gg", "multipoles"],
+					dataset_name=dataset_name,
+					num_nodes=self.num_nodes, over_h=over_h,
+					cosmology=cosmology, count_pairs=True,
+					rp_cut=rp_cut,
+					data_suffix="_SR",
+					num_sample_names=["S", "R_D"])
 
 			if corr_type == "gg" or corr_type == "both":
 				# RD (Cgg, Ggg)
@@ -1045,15 +1053,16 @@ class MeasureIALightcone(MeasureJackknife):
 					"weight": self.data_dir["weight"],
 					"weight_shape_sample": self.randoms_data["weight_shape_sample"]
 				}
-				self._measure_jackknife_realisations_obs_multiprocessing(patches_pos=jk_patches["position"],
-																		 patches_shape=jk_patches["randoms_shape"],
-																		 corr_type=["gg", "multipoles"],
-																		 dataset_name=dataset_name,
-																		 num_nodes=self.num_nodes, over_h=over_h,
-																		 cosmology=cosmology, count_pairs=True,
-																		 rp_cut=rp_cut,
-																		 data_suffix="_RD",
-																		 num_sample_names=["R_S", "D"])
+				self._measure_jackknife_realisations_lightcone_multiprocessing(patches_pos=jk_patches["position"],
+																			   patches_shape=jk_patches[
+																				   "randoms_shape"],
+																			   corr_type=["gg", "multipoles"],
+																			   dataset_name=dataset_name,
+																			   num_nodes=self.num_nodes, over_h=over_h,
+																			   cosmology=cosmology, count_pairs=True,
+																			   rp_cut=rp_cut,
+																			   data_suffix="_RD",
+																			   num_sample_names=["R_S", "D"])
 
 			if IA_estimator == "galaxies" or corr_type == "gg" or corr_type == "both":
 				# RR (Cgg, Gg+, Ggg)
@@ -1067,20 +1076,21 @@ class MeasureIALightcone(MeasureJackknife):
 					"weight": self.randoms_data["weight"],
 					"weight_shape_sample": self.randoms_data["weight_shape_sample"]
 				}
-				self._measure_jackknife_realisations_obs_multiprocessing(patches_pos=jk_patches["randoms_position"],
-																		 patches_shape=jk_patches["randoms_shape"],
-																		 corr_type=["gg", "multipoles"],
-																		 dataset_name=dataset_name,
-																		 num_nodes=self.num_nodes, over_h=over_h,
-																		 cosmology=cosmology, count_pairs=True,
-																		 rp_cut=rp_cut,
-																		 data_suffix="_RR",
-																		 num_sample_names=["R_S", "R_D"])
+				self._measure_jackknife_realisations_lightcone_multiprocessing(
+					patches_pos=jk_patches["randoms_position"],
+					patches_shape=jk_patches["randoms_shape"],
+					corr_type=["gg", "multipoles"],
+					dataset_name=dataset_name,
+					num_nodes=self.num_nodes, over_h=over_h,
+					cosmology=cosmology, count_pairs=True,
+					rp_cut=rp_cut,
+					data_suffix="_RR",
+					num_sample_names=["R_S", "R_D"])
 
-			self._measure_jackknife_covariance_obs(IA_estimator=IA_estimator, max_patch=max(jk_patches['shape']),
-												   min_patch=min(jk_patches["shape"]),
-												   corr_type=[corr_type, "multipoles"],
-												   dataset_name=dataset_name, randoms_suf="_randoms")
+			self._measure_jackknife_covariance_lightcone(IA_estimator=IA_estimator, max_patch=max(jk_patches['shape']),
+														 min_patch=min(jk_patches["shape"]),
+														 corr_type=[corr_type, "multipoles"],
+														 dataset_name=dataset_name, randoms_suf="_randoms")
 		self.data = data
 		return
 
