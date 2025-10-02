@@ -9,6 +9,7 @@ from .measure_w_lightcone import MeasureWLightcone
 from .measure_m_lightcone import MeasureMultipolesLightcone
 from astropy.cosmology import LambdaCDM
 
+
 class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 					   MeasureMultipolesLightcone):
 	"""Class that contains all methods for jackknife covariance measurements for IA correlation functions.
