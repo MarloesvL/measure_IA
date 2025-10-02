@@ -453,7 +453,7 @@ class MeasureMultipolesBox(MeasureIABase):
 			xi_g+, xi_gg, r bins, mu_r bins if no output file is specified
 
 		"""
-
+		print("clone works")
 		if masks == None:
 			positions = self.data["Position"]
 			positions_shape_sample = self.data["Position_shape_sample"]
@@ -582,6 +582,10 @@ class MeasureMultipolesBox(MeasureIABase):
 						mu_r[mask] / sub_box_len_mu_r - self.mu_r_bins[0] / sub_box_len_mu_r
 					)  # need length of LOS, so only positive values
 					ind_mu_r = np.array(ind_mu_r, dtype=int)
+					if np.any(ind_mu_r >= self.num_bins_pi):
+						print("ind_mu_r", ind_mu_r[ind_mu_r >= self.num_bins_pi])
+					if np.any(ind_r >= self.num_bins_r):
+						print("ind_r", ind_r[ind_r >= self.num_bins_r])
 					np.add.at(Splus_D, (ind_r, ind_mu_r),
 							  (weight[ind_rbin_i[n]][mask] * weight_shape_i[n] * e_plus[mask]) / (2 * R))
 					np.add.at(Scross_D, (ind_r, ind_mu_r),
