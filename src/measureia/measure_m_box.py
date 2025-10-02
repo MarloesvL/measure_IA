@@ -182,7 +182,10 @@ class MeasureMultipolesBox(MeasureIABase):
 				LOS[mask] / sub_box_len_pi - self.pi_bins[0] / sub_box_len_pi
 			)  # need length of LOS, so only positive values
 			ind_mu_r = np.array(ind_mu_r, dtype=int)
-
+			if np.any(ind_mu_r == self.num_bins_pi):
+				ind_mu_r[ind_mu_r >= self.num_bins_pi] -= 1
+			if np.any(ind_r == self.num_bins_r):
+				ind_r[ind_r >= self.num_bins_r] -= 1
 			np.add.at(Splus_D, (ind_r, ind_mu_r), (weight[n] * weight_shape[mask] * e_plus[mask]) / (2 * R))
 			np.add.at(Scross_D, (ind_r, ind_mu_r), (weight[n] * weight_shape[mask] * e_cross[mask]) / (2 * R))
 			del e_plus, e_cross, LOS
@@ -357,7 +360,10 @@ class MeasureMultipolesBox(MeasureIABase):
 				mu_r[mask] / sub_box_len_mu_r - self.mu_r_bins[0] / sub_box_len_mu_r
 			)  # need length of LOS, so only positive values
 			ind_mu_r = np.array(ind_mu_r, dtype=int)
-
+			if np.any(ind_mu_r == self.num_bins_pi):
+				ind_mu_r[ind_mu_r >= self.num_bins_pi] -= 1
+			if np.any(ind_r == self.num_bins_r):
+				ind_r[ind_r >= self.num_bins_r] -= 1
 			np.add.at(Splus_D, (ind_r, ind_mu_r), (weight[n] * weight_shape[mask] * e_plus[mask]) / (2 * R))
 			np.add.at(Scross_D, (ind_r, ind_mu_r), (weight[n] * weight_shape[mask] * e_cross[mask]) / (2 * R))
 			del e_plus, e_cross, mu_r
@@ -712,6 +718,10 @@ class MeasureMultipolesBox(MeasureIABase):
 						mu_r[mask] / self.sub_box_len_mu_r - self.mu_r_bins[0] / self.sub_box_len_mu_r
 					)  # need length of LOS, so only positive values
 					ind_mu_r = np.array(ind_mu_r, dtype=int)
+					if np.any(ind_mu_r == self.num_bins_pi):
+						ind_mu_r[ind_mu_r >= self.num_bins_pi] -= 1
+					if np.any(ind_r == self.num_bins_r):
+						ind_r[ind_r >= self.num_bins_r] -= 1
 					np.add.at(Splus_D, (ind_r, ind_mu_r),
 							  (self.weight[ind_rbin_i[n]][mask] * weight_shape_i[n] * e_plus[mask]) / (2 * self.R))
 					np.add.at(Scross_D, (ind_r, ind_mu_r),
