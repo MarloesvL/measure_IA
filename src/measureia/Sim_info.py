@@ -119,6 +119,15 @@ class SimInfo:
 				raise KeyError("Add an L1 or L2p8 suffix to your simname to specify which boxsize is used")
 			self.L_0p5 = self.boxsize / 2.0
 			self.h = 0.681
+		elif "COLIBRE" in self.simname:
+			if "L4" in self.simname:
+				self.boxsize = 400.0 * 0.681  # cMpc/h
+			elif "L2" in self.simname:
+				self.boxsize = 200.0 * 0.681  # cMpc/h
+			else:
+				raise KeyError("Add an L4 or L2 suffix to your simname to specify which boxsize is used")
+			self.L_0p5 = self.boxsize / 2.0
+			self.h = 0.681
 		else:
 			raise KeyError(
 				"Simulation name not recognised. Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, "
@@ -153,6 +162,10 @@ class SimInfo:
 			self.snap_folder = None
 			self.N_files = 1.
 		elif "FLAMINGO" in self.simname:
+			self.fof_folder = None
+			self.snap_folder = None
+			self.N_files = 1
+		elif "COLIBRE" in self.simname:
 			self.fof_folder = None
 			self.snap_folder = None
 			self.N_files = 1
