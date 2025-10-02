@@ -240,7 +240,7 @@ class MeasureMultipolesBox(MeasureIABase):
 			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus
 
 	def _measure_xi_r_mur_box_brute(
-			self, dataset_name,masks=None, rp_cut=None,  return_output=False, print_num=True,
+			self, dataset_name, masks=None, rp_cut=None, return_output=False, print_num=True,
 			jk_group_name=""
 	):
 		"""Measures the projected correlation functions, xi_g+ and xi_gg, in (r, mu_r) bins for an object created with
