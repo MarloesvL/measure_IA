@@ -401,8 +401,6 @@ class MeasureIABase(SimInfo):
 				del setdiff
 		return diff
 
-  
-
 	def _measure_w_g_i(self, dataset_name, corr_type="both", return_output=False, jk_group_name=""):
 		"""Measures w_gg or w_g+ for a given xi_gi dataset that has been calculated with the _measure_xi_rp_pi_sims
 		methods. Integrates over pi bins via sum * dpi. Stores rp, and w_gg or w_g+.
@@ -688,6 +686,7 @@ class MeasureIABase(SimInfo):
 		jk_patches['shape'] = jk_labels
 
 		return jk_patches
-  
+
+
 if __name__ == "__main__":
 	pass
