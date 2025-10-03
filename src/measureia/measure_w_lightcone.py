@@ -342,7 +342,7 @@ class MeasureWLightcone(MeasureIABase):
 		else:
 			return DD, separation_bins, pi_bins
 
-	def get_cosmo_points(self, data, cosmology=cosmo):
+	def get_cosmo_points(self, data, cosmology=None):
 		"""convert from astropy table of RA, DEC, and redshift to 3D cartesian coordinates in Mpc/h
 		Assumes col0=RA, col1=DEC, col2=Z
 
@@ -363,7 +363,7 @@ class MeasureWLightcone(MeasureIABase):
 													np.asarray(data[:, 0]) * u.deg)  # in Mpc
 		return np.asarray(points).transpose() * cosmology.h  # in Mpc/h
 
-	def get_pair_coords(self, obs_pos1, obs_pos2, use_center_origin=True, cosmology=cosmo):
+	def get_pair_coords(self, obs_pos1, obs_pos2, use_center_origin=True, cosmology=None):
 		"""Takes in observed positions of galaxy pairs and returns comoving coordinates, in Mpc/h, with the orgin at the center of the pair.
 		The first coordinate (x-axis) is along the LOS
 		The second coordinate (y-axis) is along 'RA'
