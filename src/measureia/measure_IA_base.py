@@ -557,7 +557,7 @@ class MeasureIABase(SimInfo):
 		return
 
 	def _obs_estimator(self, corr_type, IA_estimator, dataset_name, dataset_name_randoms, num_samples,
-					   jk_group_name=""):
+					   jk_group_name="", jk_group_name_randoms=""):
 		"""Reads various components of xi and combines into correct estimator for cluster or galaxy
 		lightcone alignment correlations. It then writes the xi_gg or xi_g+ in the correct place in the output file.
 
@@ -583,17 +583,20 @@ class MeasureIABase(SimInfo):
 		output_file = h5py.File(self.output_file_name, "a")
 		if corr_type[0] == "g+" or corr_type[0] == "both":
 			group_gp = output_file[
-				f"{self.snap_group}/{corr_type[1]}/xi_g_plus/{jk_group_name}"]  # /w/xi_g_plus/
+				f"{self.snap_group}/{corr_type[1]}/xi_g_plus/{jk_group_name}"]
+			group_gp_r = output_file[
+				f"{self.snap_group}/{corr_type[1]}/xi_g_plus/{jk_group_name_randoms}"]
 			SpD = group_gp[f"{dataset_name}_SplusD"][:]
-			SpR = group_gp[f"{dataset_name_randoms}_SplusD"][:]
+			SpR = group_gp_r[f"{dataset_name_randoms}_SplusD"][:]
 		group_gg = output_file[f"{self.snap_group}/{corr_type[1]}/xi_gg/{jk_group_name}"]
+		group_gg_r = output_file[f"{self.snap_group}/{corr_type[1]}/xi_gg/{jk_group_name_randoms}"]
 		DD = group_gg[f"{dataset_name}_DD"][:]
 
 		if IA_estimator == "clusters":
 			if corr_type[0] == "gg":
 				SR = group_gg[f"{dataset_name}_SR"][:]
 			else:
-				SR = group_gg[f"{dataset_name_randoms}_DD"][:]
+				SR = group_gg_r[f"{dataset_name_randoms}_DD"][:]
 			SR *= num_samples["D"] / num_samples["R_D"]
 			if corr_type[0] == "g+" or corr_type[0] == "both":
 				SpR *= num_samples["D"] / num_samples["R_D"]
@@ -618,7 +621,7 @@ class MeasureIABase(SimInfo):
 				if corr_type[0] == "gg":
 					SR = group_gg[f"{dataset_name}_SR"][:]
 				else:
-					SR = group_gg[f"{dataset_name_randoms}_DD"][:]
+					SR = group_gg_r[f"{dataset_name_randoms}_DD"][:]
 				RD *= num_samples["S"] / num_samples["R_S"]
 				SR *= num_samples["D"] / num_samples["R_D"]
 				correlation_gg = (DD - RD - SR) / RR - 1
