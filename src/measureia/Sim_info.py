@@ -131,7 +131,7 @@ class SimInfo:
 		else:
 			raise KeyError(
 				"Simulation name not recognised. Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, "
-				"FLAMINGO_L2p8].")
+				"FLAMINGO_L2p8, COLIBRE_L400, COLIBRE_L200].")
 		return
 
 	def get_file_info(self):
@@ -171,7 +171,7 @@ class SimInfo:
 			self.N_files = 1
 		else:
 			raise KeyError(
-				"Simulation name not recognised. Choose from [TNG100, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1_m8, FLAMINGO_L1_m9, FLAMINGO_L1_m10, FLAMINGO_L2p8_m9].")
+				"Simulation name not recognised. Choose from [TNG100, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1_m8, FLAMINGO_L1_m9, FLAMINGO_L1_m10, FLAMINGO_L2p8_m9,, COLIBRE_L400, COLIBRE_L200].")
 		return
 
 
