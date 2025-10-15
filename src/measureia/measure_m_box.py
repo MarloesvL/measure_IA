@@ -136,7 +136,10 @@ class MeasureMultipolesBox(MeasureIABase):
 		# R = 1 - np.mean(e ** 2) / 2.0  # responsivity factor
 		L3 = self.boxsize ** 3  # box volume
 		sub_box_len_logr = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
-		sub_box_len_pi = (self.pi_bins[-1] - self.pi_bins[0]) / self.num_bins_pi
+		pi_bins = np.zeros((self.num_bins_r + 1, self.num_bins_pi + 1))
+		for i in np.arange(self.num_bins_r + 1):
+			pi_bins[i] = np.linspace(-self.r_bins[i], self.r_bins[i], self.num_bins_pi + 1)
+		sub_box_len_pi = (pi_bins[:, -1] - pi_bins[:, 0]) / self.num_bins_pi
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
@@ -171,25 +174,25 @@ class MeasureMultipolesBox(MeasureIABase):
 					(projected_separation_len > rp_cut)
 					* (separation_len >= self.r_bins[0])
 					* (separation_len < self.r_bins[-1])
-					* (LOS >= self.pi_bins[0]) * (LOS < self.pi_bins[-1])
+					* (LOS >= -self.r_bins[-1]) * (LOS < self.r_bins[-1])
 			)
 			ind_r = np.floor(
 				np.log10(separation_len[mask]) / sub_box_len_logr - np.log10(self.r_bins[0]) / sub_box_len_logr
 			)
 			del separation_len, projected_separation_len
 			ind_r = np.array(ind_r, dtype=int)
-			ind_mu_r = np.floor(
-				LOS[mask] / sub_box_len_pi - self.pi_bins[0] / sub_box_len_pi
-			)  # need length of LOS, so only positive values
-			ind_mu_r = np.array(ind_mu_r, dtype=int)
-			if np.any(ind_mu_r == self.num_bins_pi):
-				ind_mu_r[ind_mu_r >= self.num_bins_pi] -= 1
-			if np.any(ind_r == self.num_bins_r):
-				ind_r[ind_r >= self.num_bins_r] -= 1
-			np.add.at(Splus_D, (ind_r, ind_mu_r), (weight[n] * weight_shape[mask] * e_plus[mask]) / (2 * R))
-			np.add.at(Scross_D, (ind_r, ind_mu_r), (weight[n] * weight_shape[mask] * e_cross[mask]) / (2 * R))
+			for r_bin in np.arange(min(ind_r), max(ind_r) + 1):
+				ind_mu_r = np.floor(
+					LOS[mask] / sub_box_len_pi[r_bin] - pi_bins[r_bin, 0] / sub_box_len_pi[r_bin]
+				)  # need length of LOS, so only positive values
+				ind_mu_r = np.array(ind_mu_r, dtype=int)
+				mask2 = (ind_mu_r >= 0) * (ind_mu_r < self.num_bins_pi)
+				np.add.at(Splus_D, ([r_bin] * sum(mask2), ind_mu_r[mask2]),
+						  (weight[n] * weight_shape[mask][mask2] * e_plus[mask][mask2]) / (2 * R))
+				np.add.at(Scross_D, ([r_bin] * sum(mask2), ind_mu_r[mask2]),
+						  (weight[n] * weight_shape[mask][mask2] * e_cross[mask][mask2]) / (2 * R))
+				np.add.at(DD, ([r_bin] * sum(mask2), ind_mu_r[mask2]), weight[n] * weight_shape[mask][mask2])
 			del e_plus, e_cross, LOS
-			np.add.at(DD, (ind_r, ind_mu_r), weight[n] * weight_shape[mask])
 
 		# if Num_position == Num_shape:
 		# 	corrtype = "auto"
@@ -200,19 +203,22 @@ class MeasureMultipolesBox(MeasureIABase):
 		# analytical calc is much more difficult for (r,mu_r) bins
 		for i in np.arange(0, self.num_bins_r):
 			for p in np.arange(0, self.num_bins_pi):
-				RR_g_plus[i, p] = self.get_random_pairs_r_mur(
-					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "cross",
+				RR_g_plus[i, p] = self.get_random_pairs(
+					self.r_bins[i + 1], self.r_bins[i], pi_bins[i, p + 1], pi_bins[i, p], L3, "cross",
 					Num_position, Num_shape)
-				RR_gg[i, p] = self.get_random_pairs_r_mur(
-					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, corrtype,
+				RR_gg[i, p] = self.get_random_pairs(
+					self.r_bins[i + 1], self.r_bins[i], pi_bins[i, p + 1], pi_bins[i, p], L3, corrtype,
 					Num_position, Num_shape)
 
 		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
 		xi_g_cross = Scross_D / RR_g_plus  # (Scross_D - Scross_R) / RR_g_plus
 		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
 		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
-		dmur = (self.pi_bins[1:] - self.pi_bins[:-1]) / 2.0
-		mu_r_bins = self.pi_bins[:-1] + abs(dmur)  # middle of bins
+		# mu_r_bins=[]
+		# for i in np.arange(0, self.num_bins_pi):
+		dmur = (pi_bins[:, 1:] - pi_bins[:, :-1]) / 2.0
+		mu_r_bins = pi_bins[:, :-1] + abs(dmur)  # middle of bins
+		# mu_r_bins = np.array(mu_r_bins, dtype=float)
 
 		if (self.output_file_name != None) & return_output == False:
 			output_file = h5py.File(self.output_file_name, "a")
