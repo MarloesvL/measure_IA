@@ -63,7 +63,7 @@ class MeasureWBox(MeasureIABase):
 
 	def _measure_xi_rp_pi_box_brute(self, dataset_name, masks=None, return_output=False,
 									print_num=True,
-									jk_group_name=""):
+									jk_group_name="", ellipticity='distortion'):
 		"""Measures the projected correlation functions, xi_g+ and xi_gg, in (rp, pi) bins for an object created with
 		MeasureIABox. Uses 1 CPU.
 
@@ -81,6 +81,9 @@ class MeasureWBox(MeasureIABase):
 		jk_group_name : str, optional
 			Group in output file (hdf5) where jackknife realisations are stored. Is used when this method is called in
 			MeasureJackknife. Default value is "".
+		ellipticity : str, optional
+			Definition of ellipticity. Choose from 'distortion', defined as (1-q^2)/(1+q^2), or 'ellipticity', defined
+			 as (1-q)/(1+q). Default is 'distortion'.
 
 		Returns
 		-------
@@ -125,7 +128,12 @@ class MeasureWBox(MeasureIABase):
 
 		LOS_ind = self.data["LOS"]  # eg 2 for z axis
 		not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], LOS_ind, invert=True)]  # eg 0,1 for x&y
-		e = (1 - q ** 2) / (1 + q ** 2)  # size of ellipticity
+		if ellipticity == 'distortion':
+			e = (1 - q ** 2) / (1 + q ** 2)  # size of ellipticity
+		elif ellipticity == 'ellipticity':
+			e = (1 - q) / (1 + q)
+		else:
+			raise ValueError("Invalid value for ellipticity. Choose 'distortion' or 'ellipticity'.")
 		del q
 		R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape)
 		# R = 1 - np.mean(e ** 2) / 2.0  # responsitivity factor
@@ -235,7 +243,7 @@ class MeasureWBox(MeasureIABase):
 
 	def _measure_xi_rp_pi_box_tree(self, dataset_name, tree_input=None, masks=None,
 								   return_output=False, print_num=True, dataset_name_tree=None, save_tree=False,
-								   file_tree_path=None, jk_group_name=""):
+								   file_tree_path=None, jk_group_name="", ellipticity='distortion'):
 		"""Measures the projected correlation functions, xi_g+ and xi_gg, in (rp, pi) bins for an object created with
 		MeasureIABox. Uses 1 CPU.
 
@@ -265,6 +273,9 @@ class MeasureWBox(MeasureIABase):
 		jk_group_name : str, optional
 			Group in output file (hdf5) where jackknife realisations are stored. Is used when this method is called in
 			MeasureJackknife. Default value is "".
+		ellipticity : str, optional
+			Definition of ellipticity. Choose from 'distortion', defined as (1-q^2)/(1+q^2), or 'ellipticity', defined
+			 as (1-q)/(1+q). Default is 'distortion'.
 
 		Returns
 		-------
@@ -306,7 +317,12 @@ class MeasureWBox(MeasureIABase):
 		Num_shape = len(positions_shape_sample)  # number of halos in shape sample
 		LOS_ind = self.data["LOS"]  # eg 2 for z axis
 		not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], LOS_ind, invert=True)]  # eg 0,1 for x&y
-		e = (1 - q ** 2) / (1 + q ** 2)  # size of ellipticity
+		if ellipticity == 'distortion':
+			e = (1 - q ** 2) / (1 + q ** 2)  # size of ellipticity
+		elif ellipticity == 'ellipticity':
+			e = (1 - q) / (1 + q)
+		else:
+			raise ValueError("Invalid value for ellipticity. Choose 'distortion' or 'ellipticity'.")
 		del q
 		R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape)
 		# R = 1 - np.mean(e ** 2) / 2.0  # responsitivity factor
@@ -531,7 +547,7 @@ class MeasureWBox(MeasureIABase):
 
 	def _measure_xi_rp_pi_box_multiprocessing(self, dataset_name, num_nodes=9, masks=None,
 											  return_output=False,
-											  print_num=True, jk_group_name=""):
+											  print_num=True, jk_group_name="", ellipticity='distortion'):
 		"""Measures the projected correlation functions, xi_g+ and xi_gg, in (rp, pi) bins for an object created with
 		MeasureIABox. Uses >1 CPUs.
 
@@ -551,6 +567,9 @@ class MeasureWBox(MeasureIABase):
 		jk_group_name : str, optional
 			Group in output file (hdf5) where jackknife realisations are stored. Is used when this method is called in
 			MeasureJackknife. Default value is "".
+		ellipticity : str, optional
+			Definition of ellipticity. Choose from 'distortion', defined as (1-q^2)/(1+q^2), or 'ellipticity', defined
+			 as (1-q)/(1+q). Default is 'distortion'.
 
 		Returns
 		-------
@@ -596,7 +615,12 @@ class MeasureWBox(MeasureIABase):
 
 		self.LOS_ind = self.data["LOS"]  # eg 2 for z axis
 		self.not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], self.LOS_ind, invert=True)]  # eg 0,1 for x&y
-		self.e = (1 - q ** 2) / (1 + q ** 2)  # size of ellipticity
+		if ellipticity == 'distortion':
+			self.e = (1 - q ** 2) / (1 + q ** 2)  # size of ellipticity
+		elif ellipticity == 'ellipticity':
+			self.e = (1 - q) / (1 + q)
+		else:
+			raise ValueError("Invalid value for ellipticity. Choose 'distortion' or 'ellipticity'.")
 		self.R = sum(self.weight_shape * (1 - self.e ** 2 / 2.0)) / sum(self.weight_shape)
 		# self.R = 1 - np.mean(self.e ** 2) / 2.0  # responsitivity factor
 		L3 = self.boxsize ** 3  # box volume
