@@ -209,10 +209,6 @@ class MeasureWBoxJackknife(MeasureIABase):
 		num_box = L_subboxes ** 3
 		DD_jk = np.zeros((num_box, self.num_bins_r, self.num_bins_pi))
 		Splus_D_jk = np.zeros((num_box, self.num_bins_r, self.num_bins_pi))
-		# print(np.shape(jackknife_region_indices_pos),np.shape(jackknife_region_indices_shape)) #(766,) (766,)
-		# print(Num_position,Num_shape) #766 766
-		# print(np.shape(DD_jk),np.shape(Splus_D_jk)) #(8, 10, 8) (8, 10, 8)
-		# print(np.shape(DD),np.shape(Splus_D)) #((10, 8) (10, 8)
 
 		for n in np.arange(0, len(positions)):
 			# for Splus_D (calculate ellipticities around position sample)
@@ -254,22 +250,26 @@ class MeasureWBoxJackknife(MeasureIABase):
 			np.add.at(Splus_D, (ind_r, ind_pi), (weight[n] * weight_shape[mask] * e_plus[mask]) / (2 * R))
 			np.add.at(Scross_D, (ind_r, ind_pi), (weight[n] * weight_shape[mask] * e_cross[mask]) / (2 * R))
 			np.add.at(variance, (ind_r, ind_pi), ((weight[n] * weight_shape[mask] * e_plus[mask]) / (2 * R)) ** 2)
+
+			shape_mask = np.where(jackknife_region_indices_shape[mask] != jackknife_region_indices_pos[n])[0]
 			np.add.at(Splus_D_jk, (jackknife_region_indices_pos[n], ind_r, ind_pi),
-					  (weight[n] * weight_shape[mask] * e_plus[mask]) / (2 * R))
-			np.add.at(Splus_D_jk, (jackknife_region_indices_shape[mask], ind_r, ind_pi),
-					  (weight[n] * weight_shape[mask] * e_plus[mask]) / (2 * R))
+					  (weight[n] * weight_shape[mask] * e_plus[mask]))  # responsivity added later
+			np.add.at(Splus_D_jk,
+					  (jackknife_region_indices_shape[mask][shape_mask], ind_r[shape_mask], ind_pi[shape_mask]),
+					  (weight[n] * weight_shape[mask][shape_mask] * e_plus[mask][
+						  shape_mask]))  # responsivity added later
 
 			del e_plus, e_cross
 			np.add.at(DD, (ind_r, ind_pi), weight[n] * weight_shape[mask])
-			np.add.at(Splus_D_jk, (jackknife_region_indices_pos[n], ind_r, ind_pi),
+			np.add.at(DD_jk, (jackknife_region_indices_pos[n], ind_r, ind_pi),
 					  (weight[n] * weight_shape[mask]))
-			np.add.at(Splus_D_jk, (jackknife_region_indices_shape[mask], ind_r, ind_pi),
-					  (weight[n] * weight_shape[mask]))
+			np.add.at(DD_jk, (jackknife_region_indices_shape[mask][shape_mask], ind_r[shape_mask], ind_pi[shape_mask]),
+					  (weight[n] * weight_shape[mask][shape_mask]))
 
-		# if Num_position == Num_shape:
-		# 	corrtype = "auto"
-		# 	DD = DD / 2.0  # auto correlation, all pairs are double
-		# else:
+		R_jk = np.zeros(num_box)
+		for i in np.arange(num_box):
+			jk_mask = np.where(jackknife_region_indices_shape != i)
+			R_jk[i] = sum(weight_shape[jk_mask] * (1 - e[jk_mask] ** 2 / 2.0)) / sum(weight_shape[jk_mask])
 
 		corrtype = "cross"
 
@@ -281,9 +281,19 @@ class MeasureWBoxJackknife(MeasureIABase):
 				RR_gg[i, p] = self.get_random_pairs(
 					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, corrtype,
 					Num_position, Num_shape)
+
+		RR_jk = np.zeros((num_box, self.num_bins_r, self.num_bins_pi))
+		for jk in np.arange(num_box):
+			Num_position_jk, Num_shape_jk = len(np.where(jackknife_region_indices_pos != jk)[0]), len(
+				np.where(jackknife_region_indices_shape != jk)[0])
+			for i in np.arange(0, self.num_bins_r):
+				for p in np.arange(0, self.num_bins_pi):
+					RR_jk[jk, i, p] = self.get_random_pairs(
+						self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "cross",
+						Num_position_jk, Num_shape_jk)
+
 		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
 		xi_g_cross = Scross_D / RR_g_plus  # (Scross_D - Scross_R) / RR_g_plus
-		RR_jk = (num_box - 1) / num_box * RR_g_plus
 		sigsq = variance / RR_g_plus ** 2
 		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
 		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
@@ -301,7 +311,12 @@ class MeasureWBoxJackknife(MeasureIABase):
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_g_plus/{jk_group_name}")
 			for i in np.arange(0, num_box):
-				write_dataset_hdf5(group, dataset_name + f"_{i}", data=(Splus_D - Splus_D_jk[i]) / RR_jk)
+				corr = (Splus_D * (2 * R) - Splus_D_jk[i]) / (
+							RR_jk[i] * 2 * R_jk[i])  # Responsivity will be different for each realisation
+				write_dataset_hdf5(group, dataset_name + f"_{i}", data=corr)
+				write_dataset_hdf5(group, dataset_name + f"_{i}_SplusD", data=(Splus_D * (2 * R) - Splus_D_jk[i]) / (
+							2 * R_jk[i]))  # Splus_D_jk[i]/(2*R_jk[i]))
+				write_dataset_hdf5(group, dataset_name + f"_{i}_RR", data=RR_jk[i])
 				write_dataset_hdf5(group, dataset_name + f"_{i}_rp", data=separation_bins)
 				write_dataset_hdf5(group, dataset_name + f"_{i}_pi", data=pi_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_g_cross/{jk_group_name}")
@@ -320,7 +335,9 @@ class MeasureWBoxJackknife(MeasureIABase):
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_gg/{jk_group_name}")
 			for i in np.arange(0, num_box):
-				write_dataset_hdf5(group, dataset_name + f"_{i}", data=((DD - DD_jk[i]) / RR_jk) - 1)
+				write_dataset_hdf5(group, dataset_name + f"_{i}", data=((DD - DD_jk[i]) / RR_jk[i]) - 1)
+				write_dataset_hdf5(group, dataset_name + f"_{i}_DD", data=(DD - DD_jk[i]))
+				write_dataset_hdf5(group, dataset_name + f"_{i}_RR", data=RR_jk[i])
 				write_dataset_hdf5(group, dataset_name + f"_{i}_rp", data=separation_bins)
 				write_dataset_hdf5(group, dataset_name + f"_{i}_pi", data=pi_bins)
 			output_file.close()
@@ -422,6 +439,7 @@ class MeasureWBoxJackknife(MeasureIABase):
 			axis_direction_i = axis_direction[i:i2]
 			e_i = e[i:i2]
 			weight_shape_i = weight_shape[i:i2]
+			jackknife_region_indices_shape_i = jackknife_region_indices_shape[i:i2]
 			shape_tree = KDTree(positions_shape_sample_i[:, not_LOS], boxsize=self.boxsize)
 			ind_min_i = shape_tree.query_ball_tree(pos_tree, self.r_min)
 			ind_max_i = shape_tree.query_ball_tree(pos_tree, self.r_max)
@@ -432,63 +450,71 @@ class MeasureWBoxJackknife(MeasureIABase):
 			for n in np.arange(0, len(positions_shape_sample_i)):  # CHANGE2: loop now over shapes, not positions
 				if len(ind_rbin_i[n]) > 0:
 					# for Splus_D (calculate ellipticities around position sample)
-					separation = positions_shape_sample_i[n] - positions[ind_rbin_i[n]]
-				if self.periodicity:
-					separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
-					separation[separation < -self.L_0p5] += self.boxsize
-				projected_sep = separation[:, not_LOS]
-				LOS = separation[:, LOS_ind]
-				del separation
-				separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
-				with np.errstate(invalid='ignore'):
-					separation_dir = (projected_sep.transpose() / separation_len).transpose()  # normalisation of rp
-					del projected_sep
-					phi = np.arccos(self.calculate_dot_product_arrays(separation_dir, axis_direction))  # [0,pi]
-				del separation_dir
-				e_plus, e_cross = self.get_ellipticity(e, phi)
-				del phi
-				e_plus[np.isnan(e_plus)] = 0.0
-				e_cross[np.isnan(e_cross)] = 0.0
+					separation = positions_shape_sample_i[n] - positions[ind_rbin_i[n]]  # CHANGE1 & CHANGE2
+					if self.periodicity:
+						separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
+						separation[separation < -self.L_0p5] += self.boxsize
+					projected_sep = separation[:, not_LOS]
+					LOS = separation[:, LOS_ind]
+					separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
+					with np.errstate(invalid='ignore'):
+						separation_dir = (projected_sep.transpose() / separation_len).transpose()  # normalisation of rp
+						del projected_sep, separation
+						phi = np.arccos(
+							separation_dir[:, 0] * axis_direction_i[n, 0] + separation_dir[:, 1] * axis_direction_i[
+								n, 1])  # CHANGE2
+					e_plus, e_cross = self.get_ellipticity(e_i[n], phi)  # CHANGE2
+					del phi, separation_dir
+					e_plus[np.isnan(e_plus)] = 0.0
+					e_cross[np.isnan(e_cross)] = 0.0
 
-				# get the indices for the binning
-				mask = (separation_len >= self.r_bins[0]) * (separation_len < self.r_bins[-1]) * (
-						LOS >= self.pi_bins[0]) * (LOS < self.pi_bins[-1])
-				ind_r = np.floor(
-					np.log10(separation_len[mask]) / sub_box_len_logrp - np.log10(self.r_bins[0]) / sub_box_len_logrp
-				)
-				del separation_len
-				ind_r = np.array(ind_r, dtype=int)
-				ind_pi = np.floor(
-					LOS[mask] / sub_box_len_pi - self.pi_bins[0] / sub_box_len_pi
-				)  # need length of LOS, so only positive values
-				del LOS
-				ind_pi = np.array(ind_pi, dtype=int)
-				if np.any(ind_pi == self.num_bins_pi):
-					ind_pi[ind_pi >= self.num_bins_pi] -= 1
-				if np.any(ind_r == self.num_bins_r):
-					ind_r[ind_r >= self.num_bins_r] -= 1
-				np.add.at(Splus_D, (ind_r, ind_pi),
-						  (weight[ind_rbin_i[n]] * weight_shape[mask] * e_plus[mask]) / (2 * R))
-				np.add.at(Scross_D, (ind_r, ind_pi),
-						  (weight[ind_rbin_i[n]] * weight_shape[mask] * e_cross[mask]) / (2 * R))
-				np.add.at(variance, (ind_r, ind_pi),
-						  ((weight[ind_rbin_i[n]] * weight_shape[mask] * e_plus[mask]) / (2 * R)) ** 2)
-				np.add.at(Splus_D_jk, (jackknife_region_indices_pos[ind_rbin_i[n]], ind_r, ind_pi),
-						  (weight[ind_rbin_i[n]] * weight_shape[mask] * e_plus[mask]) / (2 * R))
-				np.add.at(Splus_D_jk, (jackknife_region_indices_shape[mask], ind_r, ind_pi),
-						  (weight[n] * weight_shape[mask] * e_plus[mask]) / (2 * R))
+					# get the indices for the binning
+					mask = (separation_len >= self.r_bins[0]) * (separation_len < self.r_bins[-1]) * (
+							LOS >= self.pi_bins[0]) * (LOS < self.pi_bins[-1])
+					ind_r = np.floor(
+						np.log10(separation_len[mask]) / sub_box_len_logrp - np.log10(
+							self.r_bins[0]) / sub_box_len_logrp
+					)
+					ind_r = np.array(ind_r, dtype=int)
+					ind_pi = np.floor(
+						LOS[mask] / sub_box_len_pi - self.pi_bins[0] / sub_box_len_pi
+					)  # need length of LOS, so only positive values
+					ind_pi = np.array(ind_pi, dtype=int)
+					if np.any(ind_pi == self.num_bins_pi):
+						ind_pi[ind_pi >= self.num_bins_pi] -= 1
+					if np.any(ind_r == self.num_bins_r):
+						ind_r[ind_r >= self.num_bins_r] -= 1
+					np.add.at(Splus_D, (ind_r, ind_pi),
+							  (weight[ind_rbin_i[n]][mask] * weight_shape_i[n] * e_plus[mask]) / (2 * R))
+					np.add.at(Scross_D, (ind_r, ind_pi),
+							  (weight[ind_rbin_i[n]][mask] * weight_shape_i[n] * e_cross[mask]) / (2 * R))
+					del separation_len
+					np.add.at(DD, (ind_r, ind_pi), weight[ind_rbin_i[n]][mask] * weight_shape_i[n])
 
-				del e_plus, e_cross
-				np.add.at(DD, (ind_r, ind_pi), weight[ind_rbin_i[n]] * weight_shape[mask])
-				np.add.at(Splus_D_jk, (jackknife_region_indices_pos[ind_rbin_i[n]], ind_r, ind_pi),
-						  (weight[ind_rbin_i[n]] * weight_shape[mask]))
-				np.add.at(Splus_D_jk, (jackknife_region_indices_shape[mask], ind_r, ind_pi),
-						  (weight[ind_rbin_i[n]] * weight_shape[mask]))
+					pos_mask = \
+					np.where(jackknife_region_indices_pos[ind_rbin_i[n]][mask] != jackknife_region_indices_shape_i[n])[
+						0]
+					np.add.at(Splus_D_jk, (jackknife_region_indices_shape_i[n], ind_r, ind_pi),
+							  (weight[ind_rbin_i[n]][mask] * weight_shape_i[n] * e_plus[
+								  mask]))  # responsivity added later
+					np.add.at(Splus_D_jk,
+							  (jackknife_region_indices_pos[ind_rbin_i[n]][mask][pos_mask], ind_r[pos_mask],
+							   ind_pi[pos_mask]),
+							  (weight[ind_rbin_i[n]][mask][pos_mask] * weight_shape_i[n] * e_plus[mask][
+								  pos_mask]))  # responsivity added later
 
-		# if Num_position == Num_shape:
-		# 	corrtype = "auto"
-		# 	DD = DD / 2.0  # auto correlation, all pairs are double
-		# else:
+					del e_plus, e_cross
+					np.add.at(DD_jk, (jackknife_region_indices_shape_i[n], ind_r, ind_pi),
+							  (weight[ind_rbin_i[n]][mask] * weight_shape_i[n]))  # responsivity added later
+					np.add.at(DD_jk,
+							  (jackknife_region_indices_pos[ind_rbin_i[n]][mask][pos_mask], ind_r[pos_mask],
+							   ind_pi[pos_mask]),
+							  (weight[ind_rbin_i[n]][mask][pos_mask] * weight_shape_i[n]))  # responsivity added later
+
+		R_jk = np.zeros(num_box)
+		for i in np.arange(num_box):
+			jk_mask = np.where(jackknife_region_indices_shape != i)
+			R_jk[i] = sum(weight_shape[jk_mask] * (1 - e[jk_mask] ** 2 / 2.0)) / sum(weight_shape[jk_mask])
 
 		corrtype = "cross"
 
@@ -500,9 +526,19 @@ class MeasureWBoxJackknife(MeasureIABase):
 				RR_gg[i, p] = self.get_random_pairs(
 					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, corrtype,
 					Num_position, Num_shape)
+
+		RR_jk = np.zeros((num_box, self.num_bins_r, self.num_bins_pi))
+		for jk in np.arange(num_box):
+			Num_position_jk, Num_shape_jk = len(np.where(jackknife_region_indices_pos != jk)[0]), len(
+				np.where(jackknife_region_indices_shape != jk)[0])
+			for i in np.arange(0, self.num_bins_r):
+				for p in np.arange(0, self.num_bins_pi):
+					RR_jk[jk, i, p] = self.get_random_pairs(
+						self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "cross",
+						Num_position_jk, Num_shape_jk)
+
 		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
 		xi_g_cross = Scross_D / RR_g_plus  # (Scross_D - Scross_R) / RR_g_plus
-		RR_jk = (num_box - 1) / num_box * RR_g_plus
 		sigsq = variance / RR_g_plus ** 2
 		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
 		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
@@ -520,7 +556,12 @@ class MeasureWBoxJackknife(MeasureIABase):
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_g_plus/{jk_group_name}")
 			for i in np.arange(0, num_box):
-				write_dataset_hdf5(group, dataset_name + f"_{i}", data=(Splus_D - Splus_D_jk[i]) / RR_jk)
+				corr = (Splus_D * (2 * R) - Splus_D_jk[i]) / (
+						RR_jk[i] * 2 * R_jk[i])  # Responsivity will be different for each realisation
+				write_dataset_hdf5(group, dataset_name + f"_{i}", data=corr)
+				write_dataset_hdf5(group, dataset_name + f"_{i}_SplusD", data=(Splus_D * (2 * R) - Splus_D_jk[i]) / (
+						2 * R_jk[i]))  # Splus_D_jk[i]/(2*R_jk[i]))
+				write_dataset_hdf5(group, dataset_name + f"_{i}_RR", data=RR_jk[i])
 				write_dataset_hdf5(group, dataset_name + f"_{i}_rp", data=separation_bins)
 				write_dataset_hdf5(group, dataset_name + f"_{i}_pi", data=pi_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_g_cross/{jk_group_name}")
@@ -539,7 +580,9 @@ class MeasureWBoxJackknife(MeasureIABase):
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_gg/{jk_group_name}")
 			for i in np.arange(0, num_box):
-				write_dataset_hdf5(group, dataset_name + f"_{i}", data=((DD - DD_jk[i]) / RR_jk) - 1)
+				write_dataset_hdf5(group, dataset_name + f"_{i}", data=((DD - DD_jk[i]) / RR_jk[i]) - 1)
+				write_dataset_hdf5(group, dataset_name + f"_{i}_DD", data=(DD - DD_jk[i]))
+				write_dataset_hdf5(group, dataset_name + f"_{i}_RR", data=RR_jk[i])
 				write_dataset_hdf5(group, dataset_name + f"_{i}_rp", data=separation_bins)
 				write_dataset_hdf5(group, dataset_name + f"_{i}_pi", data=pi_bins)
 			output_file.close()
@@ -550,7 +593,7 @@ class MeasureWBoxJackknife(MeasureIABase):
 
 # jk realisation = sum of all regions - any pairs with either shape or pos in sub region
 # or
-# jk realistation = sum of all included subregions where neither shape or position is in subregion
+# jk realisation = sum of all included subregions where neither shape or position is in subregion
 # save DD with either shape or pos in subregion and subtract for n1
 #
 
