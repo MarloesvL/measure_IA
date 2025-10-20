@@ -130,7 +130,7 @@ def IA_mock_TNG300_jk():
 
 
 @pytest.fixture()
-def IA_mock_TNG300_jk_tree():
+def IA_mock_TNG300_jk_n8():
 	data_file = h5py.File('./data/raw/TNG300/mock_TNG300.hdf5', 'a')
 	COM = data_file["COM"][:]
 	Semimajor_Axis_Direction = data_file["Semimajor_Axis_Direction"][:]
@@ -145,4 +145,4 @@ def IA_mock_TNG300_jk_tree():
 	}
 	return MeasureIABox(data_dir, f"./data/processed/TNG300/test_IA_mock_TNG300_jk.hdf5",
 						"TNG300", 99, [0.1, 20], 10,
-						8, None, )
+						8, None, num_nodes=8)
