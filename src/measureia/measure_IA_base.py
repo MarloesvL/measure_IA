@@ -401,6 +401,78 @@ class MeasureIABase(SimInfo):
 				del setdiff
 		return diff
 
+	def _get_jackknife_region_indices(self, masks, L_subboxes):
+		if masks == None:
+			positions = self.data["Position"]
+			positions_shape_sample = self.data["Position_shape_sample"]
+		else:
+			positions = self.data["Position"][masks["Position"]]
+			positions_shape_sample = self.data["Position_shape_sample"][masks["Position_shape_sample"]]
+		L_sub = self.L_0p5 * 2.0 / L_subboxes
+		jackknife_region_indices_pos = np.zeros(len(positions))
+		jackknife_region_indices_shape = np.zeros(len(positions_shape_sample))
+		num_box = 0
+		for i in np.arange(0, L_subboxes):
+			for j in np.arange(0, L_subboxes):
+				for k in np.arange(0, L_subboxes):
+					x_bounds = [i * L_sub, (i + 1) * L_sub]
+					y_bounds = [j * L_sub, (j + 1) * L_sub]
+					z_bounds = [k * L_sub, (k + 1) * L_sub]
+					x_mask = (positions[:, 0] > x_bounds[0]) * (positions[:, 0] < x_bounds[1])
+					y_mask = (positions[:, 1] > y_bounds[0]) * (positions[:, 1] < y_bounds[1])
+					z_mask = (positions[:, 2] > z_bounds[0]) * (positions[:, 2] < z_bounds[1])
+					x_mask_shape = (positions_shape_sample[:, 0] > x_bounds[0]) * (
+								positions_shape_sample[:, 0] < x_bounds[1])
+					y_mask_shape = (positions_shape_sample[:, 1] > y_bounds[0]) * (
+								positions_shape_sample[:, 1] < y_bounds[1])
+					z_mask_shape = (positions_shape_sample[:, 2] > z_bounds[0]) * (
+								positions_shape_sample[:, 2] < z_bounds[1])
+					mask_position = x_mask * y_mask * z_mask  # mask that is True for all positions in the subbox
+					mask_shape = x_mask_shape * y_mask_shape * z_mask_shape  # mask that is True for all positions not in the subbox
+					jackknife_region_indices_pos[mask_position] = num_box
+					jackknife_region_indices_shape[mask_shape] = num_box
+					num_box += 1
+		return np.array(jackknife_region_indices_pos, dtype=int), np.array(jackknife_region_indices_shape, dtype=int)
+
+	def _combine_jackknife_information(self, dataset_name, jk_group_name, data, num_box, return_output=False):
+		covs, stds = [], []
+		for d in np.arange(0, len(data)):
+			data_file = h5py.File(self.output_file_name, "a")
+			group_multipoles = data_file[f"{self.snap_group}/{data[d]}/{jk_group_name}/"]
+			# calculating mean of the datavectors
+			mean_multipoles = np.zeros(self.num_bins_r)
+			for b in np.arange(0, num_box):
+				mean_multipoles += group_multipoles[dataset_name + "_" + str(b)][:]
+			mean_multipoles /= num_box
+
+			# calculation the covariance matrix (multipoles) and the standard deviation (sqrt of diag of cov)
+			cov = np.zeros((self.num_bins_r, self.num_bins_r))
+			std = np.zeros(self.num_bins_r)
+			for b in np.arange(0, num_box):
+				std += (group_multipoles[dataset_name + "_" + str(b)][:] - mean_multipoles) ** 2
+				for i in np.arange(self.num_bins_r):
+					cov[:, i] += (group_multipoles[dataset_name + "_" + str(b)][:] - mean_multipoles) * (
+							group_multipoles[dataset_name + "_" + str(b)][i] - mean_multipoles[i]
+					)
+			std *= (num_box - 1) / num_box  # see Singh 2023
+			std = np.sqrt(std)  # size of errorbars
+			cov *= (num_box - 1) / num_box  # cov not sqrt so to get std, sqrt of diag would need to be taken
+			data_file.close()
+			if return_output:
+				covs.append(cov)
+				stds.append(std)
+			else:
+				output_file = h5py.File(self.output_file_name, "a")
+				group_multipoles = create_group_hdf5(output_file, f"{self.snap_group}/" + data[d])
+				write_dataset_hdf5(group_multipoles, dataset_name + "_mean_" + str(num_box), data=mean_multipoles)
+				write_dataset_hdf5(group_multipoles, dataset_name + "_jackknife_" + str(num_box), data=std)
+				write_dataset_hdf5(group_multipoles, dataset_name + "_jackknife_cov_" + str(num_box), data=cov)
+				output_file.close()
+		if return_output:
+			return covs, stds
+		else:
+			return
+
 	def _measure_w_g_i(self, dataset_name, corr_type="both", return_output=False, jk_group_name=""):
 		"""Measures w_gg or w_g+ for a given xi_gi dataset that has been calculated with the _measure_xi_rp_pi_sims
 		methods. Integrates over pi bins via sum * dpi. Stores rp, and w_gg or w_g+.
