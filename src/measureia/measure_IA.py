@@ -474,9 +474,15 @@ class MeasureIABox(MeasureJackknife, MeasureWBoxJackknife, MeasureMBoxJackknife)
 			print("Given data is observational, use measure_xi_w_obs method instead.")
 		else:
 			if save_tree:
-				self._measure_xi_r_mur_box_jk_tree(masks=masks, L_subboxes=L, dataset_name=dataset_name,
-												   return_output=False, print_num=True, rp_cut=rp_cut,
-												   jk_group_name=f"{dataset_name}_jk{num_jk}", save_tree=False)
+				if multiproc_bool:
+					self._measure_xi_r_mur_box_jk_multiprocessing(masks=masks, L_subboxes=L, dataset_name=dataset_name,
+																  return_output=False, print_num=True, rp_cut=rp_cut,
+																  jk_group_name=f"{dataset_name}_jk{num_jk}",
+																  file_tree_path=file_tree_path)
+				else:
+					self._measure_xi_r_mur_box_jk_tree(masks=masks, L_subboxes=L, dataset_name=dataset_name,
+													   return_output=False, print_num=True, rp_cut=rp_cut,
+													   jk_group_name=f"{dataset_name}_jk{num_jk}", save_tree=False)
 			else:
 				self._measure_xi_r_mur_box_jk_brute(masks=masks, L_subboxes=L, dataset_name=dataset_name,
 													return_output=False, print_num=True, rp_cut=rp_cut,

@@ -699,10 +699,8 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 		self.chunck_size = chunck_size
 		with Pool(self.num_nodes) as p:
 			result = p.map(self._measure_xi_rp_pi_box_jk_batch, indices)
-		print(len(result), self.num_nodes)
 
 		for i in np.arange(self.num_nodes):
-			print(i, len(result[i]))
 			Splus_D += result[i][0]
 			Scross_D += result[i][1]
 			DD += result[i][2]

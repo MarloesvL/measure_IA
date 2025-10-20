@@ -142,8 +142,8 @@ def test_compare_saved_output_realisations(IA_mock_TNG300_jk, IA_mock_TNG300_n8)
 		wgg = output_wgg.read_cat(f"All_both_{i}")
 		a_wgp = available_out_wgp.read_cat(f"All_both_{i}")
 		a_wgg = available_out_wgg.read_cat(f"All_both_{i}")
-		print(wgg / a_wgg)
-		print(wgp / a_wgp)
+		# print(wgg / a_wgg)
+		# print(wgp / a_wgp)
 		np.testing.assert_allclose(wgg, a_wgg, rtol=1e-5)
 		np.testing.assert_allclose(wgp, a_wgp, rtol=1e-5)
 
@@ -189,8 +189,41 @@ def test_compare_saved_output(IA_mock_TNG300_jk):
 	return
 
 
-def test_tree_version(IA_mock_TNG300_jk_tree):
-	IA_mock_TNG300_jk_tree.measure_xi_multipoles_jk("All_both", 'both', 8, file_tree_path='./data/processed/')
+def test_tree_version(IA_mock_TNG300_jk):
+	IA_mock_TNG300_jk.measure_xi_multipoles_jk("All_both", 'both', 8, file_tree_path='./data/processed/')
+	output_wgp = ReadData("TNG300", "test_IA_mock_TNG300", 99, "multipoles_g_plus/",
+						  data_path='./data/processed/TNG300/')
+	output_wgg = ReadData("TNG300", "test_IA_mock_TNG300", 99, "multipoles_gg/", data_path='./data/processed/TNG300/')
+	wgp = output_wgp.read_cat("All_both")
+	rp_wgp = output_wgp.read_cat("All_both_r")
+	cov_wgp = output_wgp.read_cat("All_both_jackknife_cov_8")
+	wgg = output_wgg.read_cat("All_both")
+	rp_wgg = output_wgg.read_cat("All_both_r")
+	cov_wgg = output_wgg.read_cat("All_both_jackknife_cov_8")
+
+	available_out_wgp = ReadData("TNG300", "mock_IA_TNG300", 99, "multipoles_g_plus/",
+								 data_path='./data/processed/TNG300/')
+	available_out_wgg = ReadData("TNG300", "mock_IA_TNG300", 99, "multipoles_gg/", data_path='./data/processed/TNG300/')
+	a_wgp = available_out_wgp.read_cat("All")
+	a_rp_wgp = available_out_wgp.read_cat("All_r")
+	a_cov_wgp = available_out_wgp.read_cat("All_jackknife_cov_8")
+	a_wgg = available_out_wgg.read_cat("All")
+	a_rp_wgg = available_out_wgg.read_cat("All_r")
+	a_cov_wgg = available_out_wgg.read_cat("All_jackknife_cov_8")
+
+	np.testing.assert_allclose(wgp, a_wgp, rtol=1e-5)
+	np.testing.assert_allclose(wgg, a_wgg, rtol=1e-5)
+
+	np.testing.assert_array_equal(rp_wgp, a_rp_wgp)
+	np.testing.assert_array_equal(rp_wgg, a_rp_wgg)
+
+	np.testing.assert_allclose(cov_wgg, a_cov_wgg, rtol=1e-5)
+	np.testing.assert_allclose(cov_wgp, a_cov_wgp, rtol=1e-5)
+	return
+
+
+def test_multiproc_version(IA_mock_TNG300_jk_n8):
+	IA_mock_TNG300_jk_n8.measure_xi_multipoles_jk("All_both", 'both', 8, file_tree_path='./data/processed/')
 	output_wgp = ReadData("TNG300", "test_IA_mock_TNG300", 99, "multipoles_g_plus/",
 						  data_path='./data/processed/TNG300/')
 	output_wgg = ReadData("TNG300", "test_IA_mock_TNG300", 99, "multipoles_gg/", data_path='./data/processed/TNG300/')
