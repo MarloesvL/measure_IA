@@ -1,6 +1,7 @@
 import numpy as np
 import h5py
 import pickle
+import os
 # from pathos.multiprocessing import ProcessingPool
 from multiprocessing import Pool
 from scipy.spatial import KDTree
@@ -699,6 +700,8 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 		self.chunck_size = chunck_size
 		with Pool(self.num_nodes) as p:
 			result = p.map(self._measure_xi_rp_pi_box_jk_batch, indices)
+		os.remove(
+			f"{file_tree_path}/w_{self.simname}_temp_data_{figname_dataset_name}.hdf5")
 
 		for i in np.arange(self.num_nodes):
 			Splus_D += result[i][0]
