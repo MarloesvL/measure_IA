@@ -332,7 +332,7 @@ class ReadData(SimInfo):
 		self.errors_w_gg = None
 		self.cov_w_gp = None
 		self.errors_w_gp = None
-		
+
 		file = h5py.File(f"{self.data_path}{self.catalogue}.hdf5", "r")
 		if self.snap_group != "":
 			data_group = file[self.snap_group]

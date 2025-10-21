@@ -66,7 +66,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 
 	def _measure_jackknife_covariance_box(
 			self, dataset_name, corr_type, masks=None, L_subboxes=3, rp_cut=None,
-			tree_saved=True, file_tree_path=None, remove_tree_file=True, num_nodes=None
+			tree_saved=True, file_tree_path=None, remove_tree_file=True, num_nodes=None, ellipticity='distortion'
 	):
 		"""Measures the covariance in the projected correlation functions using the jackknife method.
 		The box is divided into L_subboxes^3 subboxes; the correlation function is calculated omitting one box at a time.
@@ -95,6 +95,9 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 			If True, the tree information file is removed after the jackknife covariance is measured. Default is True.
 		num_nodes : int or NoneType, optional
 			Number of cores to be used in multiprocessing. Default is None.
+		ellipticity : str, optional
+			Definition of ellipticity. Choose from 'distortion', defined as (1-q^2)/(1+q^2), or 'ellipticity', defined
+			 as (1-q)/(1+q). Default is 'distortion'.
 
 		"""
 		if corr_type is None:
@@ -186,6 +189,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 								dataset_name_tree=f"m_{self.simname}_tree_{figname_dataset_name}",
 								file_tree_path=file_tree_path,
 								jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}",
+								ellipticity=ellipticity,
 							)
 						else:
 							self._measure_xi_r_mur_box_multiprocessing(
@@ -195,6 +199,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 								print_num=False,
 								num_nodes=num_nodes,
 								jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}",
+								ellipticity=ellipticity,
 							)
 						self._measure_multipoles(corr_type=corr_type[0], dataset_name=dataset_name + "_" + str(num_box),
 												 jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}")
@@ -209,6 +214,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 								dataset_name_tree=f"w_{self.simname}_tree_{figname_dataset_name}",
 								file_tree_path=file_tree_path,
 								jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}",
+								ellipticity=ellipticity,
 							)
 						else:
 							self._measure_xi_rp_pi_box_multiprocessing(
@@ -217,6 +223,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 								print_num=False,
 								num_nodes=num_nodes,
 								jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}",
+								ellipticity=ellipticity,
 							)
 						self._measure_w_g_i(corr_type=corr_type[0], dataset_name=dataset_name + "_" + str(num_box),
 											jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}")
@@ -270,7 +277,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 	def _measure_jackknife_covariance_box_multiprocessing(
 			self, dataset_name, corr_type, masks=None, L_subboxes=3, rp_cut=None,
 			num_nodes=4, twoD=False, tree=True, tree_saved=True, file_tree_path=None, remove_tree_file=True,
-			save_jk_terms=False
+			save_jk_terms=False, ellipticity='distortion'
 	):
 		"""Measures the covariance in the projected correlation functions using the jackknife method.
 		The box is divided into L_subboxes^3 subboxes; the correlation function is calculated omitting one box at a time.
@@ -305,6 +312,9 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 			Manually determine if trees should be used in measurement. Default is True
 		save_jk_terms : bool, optional
 			If True, DD, and S+D terms are saved for each realisation. Default value is False.
+		ellipticity : str, optional
+			Definition of ellipticity. Choose from 'distortion', defined as (1-q^2)/(1+q^2), or 'ellipticity', defined
+			 as (1-q)/(1+q). Default is 'distortion'.
 
 		Returns
 		-------
@@ -421,6 +431,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 								f"m_{self.simname}_tree_{figname_dataset_name}",
 								False,
 								file_tree_path,
+								ellipticity,
 							)
 						)
 					else:
@@ -434,6 +445,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 								f"w_{self.simname}_tree_{figname_dataset_name}",
 								False,
 								file_tree_path,
+								ellipticity,
 							)
 						)
 					args_multipoles.append([corr_type[0], dataset_name + "_" + str(num_box)])
@@ -457,6 +469,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 						args_xi_g_plus[chunck][:, 5],
 						args_xi_g_plus[chunck][:, 6],
 						args_xi_g_plus[chunck][:, 7],
+						args_xi_g_plus[chunck][:, 8],
 					)
 				else:
 					result = ProcessingPool(nodes=len(chunck)).map(
@@ -466,6 +479,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 						args_xi_g_plus[chunck][:, 2],
 						args_xi_g_plus[chunck][:, 3],
 						args_xi_g_plus[chunck][:, 4],
+						args_xi_g_plus[chunck][:, 5],
 					)
 			else:
 				if tree:
@@ -479,6 +493,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 						args_xi_g_plus[chunck][:, 4],
 						args_xi_g_plus[chunck][:, 5],
 						args_xi_g_plus[chunck][:, 6],
+						args_xi_g_plus[chunck][:, 7],
 					)
 
 				else:
@@ -488,6 +503,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 						args_xi_g_plus[chunck][:, 1],
 						args_xi_g_plus[chunck][:, 2],
 						args_xi_g_plus[chunck][:, 3],
+						args_xi_g_plus[chunck][:, 4],
 					)
 
 			output_file = h5py.File(self.output_file_name, "a")
