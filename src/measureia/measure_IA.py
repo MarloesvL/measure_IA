@@ -186,8 +186,8 @@ class MeasureIABox(MeasureJackknife, MeasureWBoxJackknife, MeasureMBoxJackknife)
 
 		return
 
-	def measure_xi_w_jk(self, dataset_name, corr_type, num_jk=0, measure_cov=True, file_tree_path=None, masks=None,
-						remove_tree_file=True, save_jk_terms=False, chunk_size=100):
+	def measure_xi_w_jk(self, dataset_name, corr_type, num_jk, temp_file_path, measure_cov=True, masks=None,
+						chunk_size=1000, ellipticity='distortion'):
 		"""Measures xi_gg, xi_g+ and w_gg, w_g+ including jackknife covariance if desired.
 		Manages the various _measure_xi_rp_pi_sims and _measure_jackknife_covariance_sims options in MeasureWSimulations
 		and MeasureJackknife.
@@ -262,15 +262,15 @@ class MeasureIABox(MeasureJackknife, MeasureWBoxJackknife, MeasureMBoxJackknife)
 																  return_output=False, print_num=True,
 																  num_nodes=self.num_nodes,
 																  jk_group_name=f"{dataset_name}_jk{num_jk}",
-																  chunk_size=chunk_size,
-																  file_tree_path=file_tree_path)
+																  chunk_size=chunk_size, ellipticity=ellipticity,
+																  file_tree_path=temp_file_path)
 				else:
 					self._measure_xi_rp_pi_box_jk_tree(masks=masks, L_subboxes=L, dataset_name=dataset_name,
-													   return_output=False, print_num=True,
+													   return_output=False, print_num=True, ellipticity=ellipticity,
 													   jk_group_name=f"{dataset_name}_jk{num_jk}", save_tree=False)
 			else:
 				self._measure_xi_rp_pi_box_jk_brute(masks=masks, L_subboxes=L, dataset_name=dataset_name,
-													return_output=False, print_num=True,
+													return_output=False, print_num=True, ellipticity=ellipticity,
 													jk_group_name=f"{dataset_name}_jk{num_jk}")
 			self._measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
 			for i in np.arange(num_jk):
@@ -418,7 +418,7 @@ class MeasureIABox(MeasureJackknife, MeasureWBoxJackknife, MeasureMBoxJackknife)
 		return
 
 	def measure_xi_multipoles_jk(self, dataset_name, corr_type, num_jk=0, measure_cov=True, file_tree_path=None,
-								 masks=None, chunk_size=100,
+								 masks=None, chunk_size=100, ellipticity='distortion',
 								 remove_tree_file=True, save_jk_terms=False, rp_cut=None):
 		"""Measures xi_gg, xi_g+ and w_gg, w_g+ including jackknife covariance if desired.
 		Manages the various _measure_xi_rp_pi_sims and _measure_jackknife_covariance_sims options in MeasureWSimulations
@@ -446,6 +446,9 @@ class MeasureIABox(MeasureJackknife, MeasureWBoxJackknife, MeasureMBoxJackknife)
 		save_jk_terms : bool, optional
 			If True, DD and S+D terms of the jackknife realisations are also saved in the output file.
 			These terms are automatically saved when only 1 core is used in the measurements. Default is False.
+		ellipticity : str, optional
+			Definition of ellipticity. Choose from 'distortion', defined as (1-q^2)/(1+q^2), or 'ellipticity', defined
+			 as (1-q)/(1+q). Default is 'distortion'.
 
 		"""
 		if measure_cov:
@@ -493,16 +496,18 @@ class MeasureIABox(MeasureJackknife, MeasureWBoxJackknife, MeasureMBoxJackknife)
 					self._measure_xi_r_mur_box_jk_multiprocessing(masks=masks, L_subboxes=L, dataset_name=dataset_name,
 																  return_output=False, print_num=True, rp_cut=rp_cut,
 																  jk_group_name=f"{dataset_name}_jk{num_jk}",
-																  chunk_size=chunk_size,
+																  chunk_size=chunk_size, ellipticity=ellipticity,
 																  file_tree_path=file_tree_path,
 																  num_nodes=self.num_nodes)
 				else:
 					self._measure_xi_r_mur_box_jk_tree(masks=masks, L_subboxes=L, dataset_name=dataset_name,
 													   return_output=False, print_num=True, rp_cut=rp_cut,
+													   ellipticity=ellipticity,
 													   jk_group_name=f"{dataset_name}_jk{num_jk}", save_tree=False)
 			else:
 				self._measure_xi_r_mur_box_jk_brute(masks=masks, L_subboxes=L, dataset_name=dataset_name,
 													return_output=False, print_num=True, rp_cut=rp_cut,
+													ellipticity=ellipticity,
 													jk_group_name=f"{dataset_name}_jk{num_jk}")
 			self._measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
 			for i in np.arange(num_jk):
