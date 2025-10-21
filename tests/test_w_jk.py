@@ -136,15 +136,15 @@ def test_compare_saved_output(IA_mock_TNG300_jk):
 
 
 def test_tree_version(IA_mock_TNG300_jk):
-	IA_mock_TNG300_jk.measure_xi_w_jk("All_both", 'both', 8, file_tree_path='./data/processed/')
-	output_wgp = ReadData("TNG300", "test_IA_mock_TNG300", 99, "w_g_plus/", data_path='./data/processed/TNG300/')
-	output_wgg = ReadData("TNG300", "test_IA_mock_TNG300", 99, "w_gg/", data_path='./data/processed/TNG300/')
-	wgp = output_wgp.read_cat("All_both")
-	rp_wgp = output_wgp.read_cat("All_both_rp")
-	cov_wgp = output_wgp.read_cat("All_both_jackknife_cov_8")
-	wgg = output_wgg.read_cat("All_both")
-	rp_wgg = output_wgg.read_cat("All_both_rp")
-	cov_wgg = output_wgg.read_cat("All_both_jackknife_cov_8")
+	IA_mock_TNG300_jk.measure_xi_w_jk("All_tree", 'both', 8, file_tree_path='./data/processed/')
+	output_wgp = ReadData("TNG300", "test_IA_mock_TNG300_jk", 99, "w_g_plus/", data_path='./data/processed/TNG300/')
+	output_wgg = ReadData("TNG300", "test_IA_mock_TNG300_jk", 99, "w_gg/", data_path='./data/processed/TNG300/')
+	wgp = output_wgp.read_cat("All_tree")
+	rp_wgp = output_wgp.read_cat("All_tree_rp")
+	cov_wgp = output_wgp.read_cat("All_tree_jackknife_cov_8")
+	wgg = output_wgg.read_cat("All_tree")
+	rp_wgg = output_wgg.read_cat("All_tree_rp")
+	cov_wgg = output_wgg.read_cat("All_tree_jackknife_cov_8")
 
 	available_out_wgp = ReadData("TNG300", "mock_IA_TNG300", 99, "w_g_plus/", data_path='./data/processed/TNG300/')
 	available_out_wgg = ReadData("TNG300", "mock_IA_TNG300", 99, "w_gg/", data_path='./data/processed/TNG300/')
@@ -167,15 +167,15 @@ def test_tree_version(IA_mock_TNG300_jk):
 
 
 def test_multiproc_version(IA_mock_TNG300_jk_n8):
-	IA_mock_TNG300_jk_n8.measure_xi_w_jk("All_both", 'both', 8, file_tree_path='./data/processed/')
-	output_wgp = ReadData("TNG300", "test_IA_mock_TNG300", 99, "w_g_plus/", data_path='./data/processed/TNG300/')
-	output_wgg = ReadData("TNG300", "test_IA_mock_TNG300", 99, "w_gg/", data_path='./data/processed/TNG300/')
-	wgp = output_wgp.read_cat("All_both")
-	rp_wgp = output_wgp.read_cat("All_both_rp")
-	cov_wgp = output_wgp.read_cat("All_both_jackknife_cov_8")
-	wgg = output_wgg.read_cat("All_both")
-	rp_wgg = output_wgg.read_cat("All_both_rp")
-	cov_wgg = output_wgg.read_cat("All_both_jackknife_cov_8")
+	IA_mock_TNG300_jk_n8.measure_xi_w_jk("All_multiproc", 'both', 8, file_tree_path='./data/processed/')
+	output_wgp = ReadData("TNG300", "test_IA_mock_TNG300_jk", 99, "w_g_plus/", data_path='./data/processed/TNG300/')
+	output_wgg = ReadData("TNG300", "test_IA_mock_TNG300_jk", 99, "w_gg/", data_path='./data/processed/TNG300/')
+	wgp = output_wgp.read_cat("All_multiproc")
+	rp_wgp = output_wgp.read_cat("All_multiproc_rp")
+	cov_wgp = output_wgp.read_cat("All_multiproc_jackknife_cov_8")
+	wgg = output_wgg.read_cat("All_multiproc")
+	rp_wgg = output_wgg.read_cat("All_multiproc_rp")
+	cov_wgg = output_wgg.read_cat("All_multiproc_jackknife_cov_8")
 
 	available_out_wgp = ReadData("TNG300", "mock_IA_TNG300", 99, "w_g_plus/", data_path='./data/processed/TNG300/')
 	available_out_wgg = ReadData("TNG300", "mock_IA_TNG300", 99, "w_gg/", data_path='./data/processed/TNG300/')
