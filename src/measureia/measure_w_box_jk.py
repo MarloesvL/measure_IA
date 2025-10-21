@@ -220,13 +220,14 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 					Num_position, Num_shape)
 
 		RR_jk = np.zeros((num_box, self.num_bins_r, self.num_bins_pi))
+		volume_jk = L3  # (num_box - 1) / (num_box) *
 		for jk in np.arange(num_box):
 			Num_position_jk, Num_shape_jk = len(np.where(jackknife_region_indices_pos != jk)[0]), len(
 				np.where(jackknife_region_indices_shape != jk)[0])
 			for i in np.arange(0, self.num_bins_r):
 				for p in np.arange(0, self.num_bins_pi):
 					RR_jk[jk, i, p] = self.get_random_pairs(
-						self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "cross",
+						self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], volume_jk, "cross",
 						Num_position_jk, Num_shape_jk)
 
 		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
@@ -529,10 +530,10 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 			return correlation, (DD / RR_gg) - 1, separation_bins, pi_bins, Splus_D, DD, RR_g_plus
 
 	def _measure_xi_rp_pi_box_jk_batch(self, i):
-		if i + self.chunck_size > self.Num_shape_masked:
+		if i + self.chunk_size > self.Num_shape_masked:
 			i2 = self.Num_shape_masked
 		else:
-			i2 = i + self.chunck_size
+			i2 = i + self.chunk_size
 
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
@@ -621,7 +622,7 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 
 	def _measure_xi_rp_pi_box_jk_multiprocessing(self, dataset_name, L_subboxes, file_tree_path,
 												 masks=None, return_output=False, print_num=True, jk_group_name="",
-												 chunck_size=100,
+												 chunk_size=100, num_nodes=1,
 												 ):
 		if masks == None:
 			positions = self.data["Position"]
@@ -696,14 +697,14 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 		Splus_D_jk = np.zeros((self.num_box, self.num_bins_r, self.num_bins_pi))
 
 		self.pos_tree = KDTree(positions[:, self.not_LOS], boxsize=self.boxsize)
-		indices = np.arange(0, len(positions_shape_sample), chunck_size)
-		self.chunck_size = chunck_size
-		with Pool(self.num_nodes) as p:
+		indices = np.arange(0, len(positions_shape_sample), chunk_size)
+		self.chunk_size = chunk_size
+		with Pool(num_nodes) as p:
 			result = p.map(self._measure_xi_rp_pi_box_jk_batch, indices)
 		os.remove(
 			f"{file_tree_path}/w_{self.simname}_temp_data_{figname_dataset_name}.hdf5")
 
-		for i in np.arange(self.num_nodes):
+		for i in np.arange(num_nodes):
 			Splus_D += result[i][0]
 			Scross_D += result[i][1]
 			DD += result[i][2]
@@ -796,4 +797,5 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 #
 
 if __name__ == "__main__":
+	freeze_support()
 	pass

@@ -402,6 +402,7 @@ class MeasureIABase(SimInfo):
 		return diff
 
 	def _get_jackknife_region_indices(self, masks, L_subboxes):
+
 		if masks == None:
 			positions = self.data["Position"]
 			positions_shape_sample = self.data["Position_shape_sample"]

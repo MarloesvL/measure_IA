@@ -179,7 +179,7 @@ class MeasureIABox(MeasureJackknife, MeasureWBoxJackknife, MeasureMBoxJackknife)
 		return
 
 	def measure_xi_w_jk(self, dataset_name, corr_type, num_jk=0, measure_cov=True, file_tree_path=None, masks=None,
-						remove_tree_file=True, save_jk_terms=False):
+						remove_tree_file=True, save_jk_terms=False, chunk_size=100):
 		"""Measures xi_gg, xi_g+ and w_gg, w_g+ including jackknife covariance if desired.
 		Manages the various _measure_xi_rp_pi_sims and _measure_jackknife_covariance_sims options in MeasureWSimulations
 		and MeasureJackknife.
@@ -252,7 +252,9 @@ class MeasureIABox(MeasureJackknife, MeasureWBoxJackknife, MeasureMBoxJackknife)
 				if multiproc_bool:
 					self._measure_xi_rp_pi_box_jk_multiprocessing(masks=masks, L_subboxes=L, dataset_name=dataset_name,
 																  return_output=False, print_num=True,
+																  num_nodes=self.num_nodes,
 																  jk_group_name=f"{dataset_name}_jk{num_jk}",
+																  chunk_size=chunk_size,
 																  file_tree_path=file_tree_path)
 				else:
 					self._measure_xi_rp_pi_box_jk_tree(masks=masks, L_subboxes=L, dataset_name=dataset_name,
@@ -403,7 +405,7 @@ class MeasureIABox(MeasureJackknife, MeasureWBoxJackknife, MeasureMBoxJackknife)
 		return
 
 	def measure_xi_multipoles_jk(self, dataset_name, corr_type, num_jk=0, measure_cov=True, file_tree_path=None,
-								 masks=None,
+								 masks=None, chunk_size=100,
 								 remove_tree_file=True, save_jk_terms=False, rp_cut=None):
 		"""Measures xi_gg, xi_g+ and w_gg, w_g+ including jackknife covariance if desired.
 		Manages the various _measure_xi_rp_pi_sims and _measure_jackknife_covariance_sims options in MeasureWSimulations
@@ -478,7 +480,9 @@ class MeasureIABox(MeasureJackknife, MeasureWBoxJackknife, MeasureMBoxJackknife)
 					self._measure_xi_r_mur_box_jk_multiprocessing(masks=masks, L_subboxes=L, dataset_name=dataset_name,
 																  return_output=False, print_num=True, rp_cut=rp_cut,
 																  jk_group_name=f"{dataset_name}_jk{num_jk}",
-																  file_tree_path=file_tree_path)
+																  chunk_size=chunk_size,
+																  file_tree_path=file_tree_path,
+																  num_nodes=self.num_nodes)
 				else:
 					self._measure_xi_r_mur_box_jk_tree(masks=masks, L_subboxes=L, dataset_name=dataset_name,
 													   return_output=False, print_num=True, rp_cut=rp_cut,
