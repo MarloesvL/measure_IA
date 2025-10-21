@@ -741,7 +741,8 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 			for b in np.arange(min_patch, max_patch + 1):
 				self._obs_estimator(corr_type, IA_estimator, f"{dataset_name}_{b}",
 									f"{dataset_name}{randoms_suf}_{b}", self.num_samples[f"{b}"],
-									jk_group_name=f"{dataset_name}_jk{num_patches}")
+									jk_group_name=f"{dataset_name}_jk{num_patches}",
+									jk_group_name_randoms=f"{dataset_name}{randoms_suf}_jk{num_patches}")
 				if "w" in data[d]:
 					self._measure_w_g_i(corr_type=corr_type[0], dataset_name=f"{dataset_name}_{b}",
 										jk_group_name=f"{dataset_name}_jk{num_patches}")
