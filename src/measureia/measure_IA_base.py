@@ -402,7 +402,23 @@ class MeasureIABase(SimInfo):
 		return diff
 
 	def _get_jackknife_region_indices(self, masks, L_subboxes):
+		"""
+		Split the box in L_subboxes^3 subboxes and return indices of which subbox objects are in for position and
+		shape sample.
 
+		Parameters
+		----------
+		masks: dict or NoneType
+			Input in methods in MeasureIABox that masks the input data dictionary.
+		L_subboxes: int
+			Number of subboxes on one side of the box. L_subboxes^3 is the total number of jackknife realisations.
+
+		Returns
+		-------
+		ndarrays
+			indices of jackknife region of position sample and indices of jackknife region of shape sample
+
+		"""
 		if masks == None:
 			positions = self.data["Position"]
 			positions_shape_sample = self.data["Position_shape_sample"]
@@ -435,11 +451,33 @@ class MeasureIABase(SimInfo):
 					num_box += 1
 		return np.array(jackknife_region_indices_pos, dtype=int), np.array(jackknife_region_indices_shape, dtype=int)
 
-	def _combine_jackknife_information(self, dataset_name, jk_group_name, data, num_box, return_output=False):
+	def _combine_jackknife_information(self, dataset_name, jk_group_name, corr_group, num_box, return_output=False):
+		"""
+		Combine jackknife realisations into a covariance matrix.
+
+		Parameters
+		----------
+		dataset_name: str
+			Name of the dataset in the output file.
+		jk_group_name: str
+			Name of the subgroup in the output file where the jackknife realisations are saved.
+		corr_group: list of str
+			Name of the subgroups in the output file denoting the correlation (e.g. w_g_plus, multipoles_gg etc).
+		num_box: int
+			Number of jackknife realisations.
+		return_output: bool, optional
+			When True, returns output, otherwise saves to output file.
+
+		Returns
+		-------
+		list of ndarrays
+			list of covariances for each entry in corr_group and list of standard deviations for each entry in corr_group
+
+		"""
 		covs, stds = [], []
-		for d in np.arange(0, len(data)):
+		for d in np.arange(0, len(corr_group)):
 			data_file = h5py.File(self.output_file_name, "a")
-			group_multipoles = data_file[f"{self.snap_group}/{data[d]}/{jk_group_name}/"]
+			group_multipoles = data_file[f"{self.snap_group}/{corr_group[d]}/{jk_group_name}/"]
 			# calculating mean of the datavectors
 			mean_multipoles = np.zeros(self.num_bins_r)
 			for b in np.arange(0, num_box):
@@ -464,7 +502,7 @@ class MeasureIABase(SimInfo):
 				stds.append(std)
 			else:
 				output_file = h5py.File(self.output_file_name, "a")
-				group_multipoles = create_group_hdf5(output_file, f"{self.snap_group}/" + data[d])
+				group_multipoles = create_group_hdf5(output_file, f"{self.snap_group}/" + corr_group[d])
 				write_dataset_hdf5(group_multipoles, dataset_name + "_mean_" + str(num_box), data=mean_multipoles)
 				write_dataset_hdf5(group_multipoles, dataset_name + "_jackknife_" + str(num_box), data=std)
 				write_dataset_hdf5(group_multipoles, dataset_name + "_jackknife_cov_" + str(num_box), data=cov)

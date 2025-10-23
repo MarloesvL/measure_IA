@@ -18,17 +18,17 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 
 	Methods
 	-------
-	_measure_xi_r_mur_sims_brute()
-		Measure xi_gg or xi_g+ in (r, mu_r) grid binning in a periodic box using 1 CPU.
-	_measure_xi_r_mur_sims_tree()
-		Measure xi_gg or xi_g+ in (r, mu_r) grid binning in a periodic box using 1 CPU and KDTree for extra speed.
-	_measure_xi_r_mur_sims_batch()
-		Measure xi_gg or xi_g+ in (r, mu_r) grid binning in a periodic box using 1 CPU for a batch of indices.
-		Support function of _measure_xi_r_mur_sims_multiprocessing().
-	_measure_xi_r_mur_sims_multiprocessing()
-		Measure xi_gg or xi_g+ in (r, mu_r) grid binning in a periodic box using >1 CPUs.
-	_measure_xi_r_pi_sims_brute()
-		Measure xi_gg or xi_g+ in (r, pi) grid binning in a periodic box using 1 CPU.
+	_measure_xi_r_mur_box_brute()
+		Measure $\xi_{gg}$ and $\xi_{g+}$ in (r, mu_r) grid binning in a periodic box using 1 CPU.
+	_measure_xi_r_mur_box_tree()
+		Measure $\xi_{gg}$ and $\xi_{g+}$ in (r, mu_r) grid binning in a periodic box using 1 CPU and KDTree for extra speed.
+	_measure_xi_r_mur_box_batch()
+		Measure $\xi_{gg}$ and $\xi_{g+}$ in (r, mu_r) grid binning in a periodic box using 1 CPU for a batch of indices.
+		Support function of _measure_xi_r_mur_box_multiprocessing().
+	_measure_xi_r_mur_box_multiprocessing()
+		Measure $\xi_{gg}$ and $\xi_{g+}$ in (r, mu_r) grid binning in a periodic box using >1 CPUs.
+	_measure_xi_r_pi_box_brute()
+		Measure $\xi_{gg}$ and $\xi_{g+}$ in (r, pi) grid binning in a periodic box using 1 CPU.
 
 	Notes
 	-----
@@ -64,12 +64,10 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 						 pi_max, boxsize, periodicity)
 		return
 
-	def _measure_xi_r_pi_box_brute(
-			self, dataset_name, masks=None, rp_cut=None, return_output=False, print_num=True,
-			jk_group_name="", ellipticity='distortion'
-	):
-		"""Measures the projected correlation functions, xi_g+ and xi_gg, in (r, pi) bins for an object created with
-		MeasureIABox. Uses 1 CPU.
+	def _measure_xi_r_pi_box_brute(self, dataset_name, masks=None, rp_cut=None, return_output=False,
+								   jk_group_name="", ellipticity='distortion'):
+		r"""Measures the projected correlation functions, $\xi_{gg}$ and $\xi_{g+}$, in (r, pi) bins for an object
+		created with MeasureIABox. Uses 1 CPU. For each r bin, the pin bins are spaced between -r_max and r_max.
 
 		Parameters
 		----------
@@ -77,16 +75,13 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 			Name of the dataset in the output file.
 		masks : dict or NoneType, optional
 			Dictionary with masks for the data to select only part of the data. Uses same keywords as data dictionary.
-			Default value = None.
-		rp_cut :
+			Default value is None.
+		rp_cut : float, optional
 			Limit for minimum r_p value for pairs to be included. Default value is None.
 		return_output : bool, optional
 			If True, the output will be returned instead of written to a file. Default value is False.
-		print_num : bool, optional
-			If True, prints the number of objects in the shape and positon samples. Default value is True.
 		jk_group_name : str, optional
-			Group in output file (hdf5) where jackknife realisations are stored. Is used when this method is called in
-			MeasureJackknife. Default value is "".
+			Group in output file (hdf5) where jackknife realisations are stored. Default value is "".
 		ellipticity : str, optional
 			Definition of ellipticity. Choose from 'distortion', defined as (1-q^2)/(1+q^2), or 'ellipticity', defined
 			 as (1-q)/(1+q). Default is 'distortion'.
@@ -94,8 +89,9 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 		Returns
 		-------
 		ndarrays
-			xi_g+, xi_gg, r bins, pi bins if no output file is specified
+			$\xi_{gg}$ and $\xi_{g+}$, r bins, mu_r bins, S+D, DD, RR (if no output file is specified)
 		"""
+
 		if masks == None:
 			positions = self.data["Position"]
 			positions_shape_sample = self.data["Position_shape_sample"]
@@ -126,9 +122,8 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		Num_position = len(positions)
 		Num_shape = len(positions_shape_sample)
-		if print_num:
-			print(
-				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
+		print(
+			f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
 
 		if rp_cut == None:
 			rp_cut = 0.0
@@ -257,12 +252,10 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 		else:
 			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus
 
-	def _measure_xi_r_mur_box_brute(
-			self, dataset_name, masks=None, rp_cut=None, return_output=False, print_num=True,
-			jk_group_name="", ellipticity='distortion'
-	):
-		"""Measures the projected correlation functions, xi_g+ and xi_gg, in (r, mu_r) bins for an object created with
-		MeasureIABox. Uses 1 CPU.
+	def _measure_xi_r_mur_box_brute(self, dataset_name, masks=None, rp_cut=None, return_output=False, jk_group_name="",
+									ellipticity='distortion'):
+		r"""Measures the projected correlation functions, $\xi_{gg}$ and $\xi_{g+}$, in (r, mu_r) bins for an object
+		created with MeasureIABox. Uses 1 CPU.
 
 		Parameters
 		----------
@@ -270,16 +263,13 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 			Name of the dataset in the output file.
 		masks : dict or NoneType, optional
 			Dictionary with masks for the data to select only part of the data. Uses same keywords as data dictionary.
-			Default value = None.
-		rp_cut :
+			Default value is None.
+		rp_cut : float, optional
 			Limit for minimum r_p value for pairs to be included. Default value is None.
 		return_output : bool, optional
 			If True, the output will be returned instead of written to a file. Default value is False.
-		print_num : bool, optional
-			If True, prints the number of objects in the shape and positon samples. Default value is True.
 		jk_group_name : str, optional
-			Group in output file (hdf5) where jackknife realisations are stored. Is used when this method is called in
-			MeasureJackknife. Default value is "".
+			Group in output file (hdf5) where jackknife realisations are stored. Default value is "".
 		ellipticity : str, optional
 			Definition of ellipticity. Choose from 'distortion', defined as (1-q^2)/(1+q^2), or 'ellipticity', defined
 			 as (1-q)/(1+q). Default is 'distortion'.
@@ -287,8 +277,9 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 		Returns
 		-------
 		ndarrays
-			xi_g+, xi_gg, r bins, mu_r bins if no output file is specified
+			$\xi_{gg}$ and $\xi_{g+}$, r bins, mu_r bins, S+D, DD, RR (if no output file is specified)
 		"""
+
 		if masks == None:
 			positions = self.data["Position"]
 			positions_shape_sample = self.data["Position_shape_sample"]
@@ -319,9 +310,8 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		Num_position = len(positions)
 		Num_shape = len(positions_shape_sample)
-		if print_num:
-			print(
-				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
+		print(
+			f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
 
 		if rp_cut == None:
 			rp_cut = 0.0
@@ -440,41 +430,24 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 		else:
 			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus
 
-	def _measure_xi_r_mur_box_tree(self, dataset_name, tree_input=None, masks=None, rp_cut=None,
-								   return_output=False, print_num=True,
-								   dataset_name_tree=None, save_tree=False, file_tree_path=None,
-								   jk_group_name="", ellipticity='distortion'):
-		"""Measures the projected correlation functions, xi_g+ and xi_gg, in (r, mu_r) bins for an object created with
-		MeasureIABox. Uses 1 CPU.
+	def _measure_xi_r_mur_box_tree(self, dataset_name, masks=None, rp_cut=None, return_output=False, jk_group_name="",
+								   ellipticity='distortion'):
+		r"""Measures the projected correlation functions, $\xi_{gg}$ and $\xi_{g+}$, in (r, mu_r) bins for an object
+		created with MeasureIABox. Uses 1 CPU. Uses KDTree for speedup.
 
 		Parameters
 		----------
 		dataset_name : str
 			Name of the dataset in the output file.
-		tree_input : list of 2 ndarrays or NoneType, optional
-			If provided, the first entry consists of the indices of objects to exclude from the position sample.
-			The second entry consists of the objects to include from the shape sample. Used in MeasureJackkknife.
-			Default value is None.
 		masks : dict or NoneType, optional
 			Dictionary with masks for the data to select only part of the data. Uses same keywords as data dictionary.
-			Default value = None.
-		rp_cut :
-			Limit for minimum r_p value for pairs to be included. Default value is None.
-		dataset_name_tree : str or NoneType, optional
-			Name of the temporary pickle file where the tree information is stored. This is used in MeasureJackknife, as
-			the filename is generated automatically.
 			Default value is None.
-		save_tree : bool, optional
-			If True, tree information is stored in a pickle file for later access. Default value is False.
-		file_tree_path : str or NoneType, optional
-			Path to the file where tree information is stored. Default value is None.
+		rp_cut : float, optional
+			Limit for minimum r_p value for pairs to be included. Default value is None.
 		return_output : bool, optional
 			If True, the output will be returned instead of written to a file. Default value is False.
-		print_num : bool, optional
-			If True, prints the number of objects in the shape and positon samples. Default value is True.
 		jk_group_name : str, optional
-			Group in output file (hdf5) where jackknife realisations are stored. Is used when this method is called in
-			MeasureJackknife. Default value is "".
+			Group in output file (hdf5) where jackknife realisations are stored. Default value is "".
 		ellipticity : str, optional
 			Definition of ellipticity. Choose from 'distortion', defined as (1-q^2)/(1+q^2), or 'ellipticity', defined
 			 as (1-q)/(1+q). Default is 'distortion'.
@@ -482,9 +455,9 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 		Returns
 		-------
 		ndarrays
-			xi_g+, xi_gg, r bins, mu_r bins if no output file is specified
-
+			$\xi_{gg}$ and $\xi_{g+}$, r bins, mu_r bins, S+D, DD, RR (if no output file is specified)
 		"""
+
 		if masks == None:
 			positions = self.data["Position"]
 			positions_shape_sample = self.data["Position_shape_sample"]
@@ -538,20 +511,9 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 		RR_g_plus = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		RR_gg = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 
-		if tree_input != None:
-			indices_not_position, indices_shape = tree_input[0], tree_input[1]
-			Num_position -= len(indices_not_position)
-			Num_shape = len(indices_shape)
-			R = 1 - np.mean(e[indices_shape] ** 2) / 2.0
-			tree_file = open(f"{file_tree_path}/{dataset_name_tree}.pickle", 'rb')
-		if print_num:
-			print(
-				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
-		figname_dataset_name = dataset_name
-		if "/" in dataset_name:
-			figname_dataset_name = figname_dataset_name.replace("/", "_")
-		if "." in dataset_name:
-			figname_dataset_name = figname_dataset_name.replace(".", "p")
+		print(
+			f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
+
 		pos_tree = KDTree(positions, boxsize=self.boxsize)
 		for i in np.arange(0, len(positions_shape_sample), 100):
 			i2 = min(len(positions_shape_sample), i + 100)
@@ -559,23 +521,10 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 			axis_direction_i = axis_direction[i:i2]
 			e_i = e[i:i2]
 			weight_shape_i = weight_shape[i:i2]
-
-			if tree_input != None:
-				ind_rbin = pickle.load(tree_file)
-				indices_shape_i = indices_shape[(indices_shape >= i) * (indices_shape < i2)] - i
-				ind_rbin_i = self.setdiff_omit(ind_rbin, indices_not_position, indices_shape_i)
-				positions_shape_sample_i = positions_shape_sample_i[indices_shape_i]
-				axis_direction_i = axis_direction_i[indices_shape_i]
-				e_i = e_i[indices_shape_i]
-				weight_shape_i = weight_shape_i[indices_shape_i]
-			else:
-				shape_tree = KDTree(positions_shape_sample_i, boxsize=self.boxsize)
-				ind_min_i = shape_tree.query_ball_tree(pos_tree, self.r_min)
-				ind_max_i = shape_tree.query_ball_tree(pos_tree, self.r_max)
-				ind_rbin_i = self.setdiff2D(ind_max_i, ind_min_i)
-				if save_tree:
-					with open(f"{file_tree_path}/m_{self.simname}_tree_{figname_dataset_name}.pickle", 'ab') as handle:
-						pickle.dump(ind_rbin_i, handle, protocol=pickle.HIGHEST_PROTOCOL)
+			shape_tree = KDTree(positions_shape_sample_i, boxsize=self.boxsize)
+			ind_min_i = shape_tree.query_ball_tree(pos_tree, self.r_min)
+			ind_max_i = shape_tree.query_ball_tree(pos_tree, self.r_max)
+			ind_rbin_i = self.setdiff2D(ind_max_i, ind_min_i)
 			for n in np.arange(0, len(positions_shape_sample_i)):
 				if len(ind_rbin_i[n]) > 0:
 					# for Splus_D (calculate ellipticities around position sample)
@@ -628,8 +577,7 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 							  (weight[ind_rbin_i[n]][mask] * weight_shape_i[n] * e_cross[mask]) / (2 * R))
 					np.add.at(DD, (ind_r, ind_mu_r), weight[ind_rbin_i[n]][mask] * weight_shape_i[n])
 					del e_plus, e_cross, mask, separation_len
-		if tree_input != None:
-			tree_file.close()
+
 		# if Num_position == Num_shape:
 		# 	corrtype = "auto"
 		# 	DD = DD / 2.0  # auto correlation, all pairs are double
@@ -684,14 +632,14 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 
 		Parameters
 		----------
-		indices : ndarray
-			Array of indices relating to the part of the position sample data that is measured in this batch.
+		i: int
+			Start index of the batch.
 
 		Returns
 		-------
 		ndarrays
-			Splus_D, Scross_D, DD, variance for these objects
-
+			S+D, SxD, DD, DD_jk, S+D_jk where the _jk versions store the necessary information of DD of S+D for
+			each jackknife realisation.
 		"""
 		if i + self.chunk_size > self.Num_shape_masked:
 			i2 = self.Num_shape_masked
@@ -778,20 +726,19 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 		----------
 		dataset_name : str
 			Name of the dataset in the output file.
+		temp_file_path : str or NoneType, optional
+			Path to where the data is temporarily stored [file name generated automatically].
 		num_nodes : int, optional
-			Number of CPUs to be used in the multiprocessing.
+			Number of CPUs used in the multiprocessing. Default is 1.
 		masks : dict or NoneType, optional
 			Dictionary with masks for the data to select only part of the data. Uses same keywords as data dictionary.
 			Default value = None.
-		rp_cut :
+		rp_cut : float, optional
 			Limit for minimum r_p value for pairs to be included. Default value is None.
 		return_output : bool, optional
 			If True, the output will be returned instead of written to a file. Default value is False.
-		print_num : bool, optional
-			If True, prints the number of objects in the shape and positon samples. Default value is True.
 		jk_group_name : str, optional
-			Group in output file (hdf5) where jackknife realisations are stored. Is used when this method is called in
-			MeasureJackknife. Default value is "".
+			Group in output file (hdf5) where jackknife realisations are stored. Default value is "".
 		ellipticity : str, optional
 			Definition of ellipticity. Choose from 'distortion', defined as (1-q^2)/(1+q^2), or 'ellipticity', defined
 			 as (1-q)/(1+q). Default is 'distortion'.
@@ -799,8 +746,7 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 		Returns
 		-------
 		ndarrays
-			xi_g+, xi_gg, r bins, mu_r bins if no output file is specified
-
+			$\xi_{gg}$ and $\xi_{g+}$, r bins, mu_r bins, S+D, DD, RR (if no output file is specified)
 		"""
 
 		if masks == None:

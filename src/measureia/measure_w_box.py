@@ -18,15 +18,15 @@ class MeasureWBox(MeasureIABase, ReadData):
 
 	Methods
 	-------
-	_measure_xi_rp_pi_sims_brute()
-		Measure xi_gg or xi_g+ in (rp, pi) grid binning in a periodic box using 1 CPU.
-	_measure_xi_rp_pi_sims_tree()
-		Measure xi_gg or xi_g+ in (rp, pi) grid binning in a periodic box using 1 CPU and KDTree for extra speed.
-	_measure_xi_rp_pi_sims_batch()
-		Measure xi_gg or xi_g+ in (rp, pi) grid binning in a periodic box using 1 CPU for a batch of indices.
-		Support function of _measure_xi_rp_pi_sims_multiprocessing().
-	_measure_xi_rp_pi_sims_multiprocessing()
-		Measure xi_gg or xi_g+ in (rp, pi) grid binning in a periodic box using >1 CPUs.
+	_measure_xi_rp_pi_box_brute()
+		Measure $\xi_{gg}$ and $\xi_{g+}$ in (rp, pi) grid binning in a periodic box using 1 CPU.
+	_measure_xi_rp_pi_box_tree()
+		Measure $\xi_{gg}$ and $\xi_{g+}$ in (rp, pi) grid binning in a periodic box using 1 CPU and KDTree for extra speed.
+	_measure_xi_rp_pi_box_batch()
+		Measure $\xi_{gg}$ and $\xi_{g+}$ in (rp, pi) grid binning in a periodic box using 1 CPU for a batch of indices.
+		Support function of _measure_xi_rp_pi_box_multiprocessing().
+	_measure_xi_rp_pi_box_multiprocessing()
+		Measure $\xi_{gg}$ and $\xi_{g+}$ in (rp, pi) grid binning in a periodic box using >1 CPUs.
 
 	Notes
 	-----
@@ -63,10 +63,9 @@ class MeasureWBox(MeasureIABase, ReadData):
 		return
 
 	def _measure_xi_rp_pi_box_brute(self, dataset_name, masks=None, return_output=False,
-									print_num=True,
 									jk_group_name="", ellipticity='distortion'):
-		"""Measures the projected correlation functions, xi_g+ and xi_gg, in (rp, pi) bins for an object created with
-		MeasureIABox. Uses 1 CPU.
+		r"""Measures the projected correlation functions, $\xi_{gg}$ and $\xi_{g+}$, in (rp, pi) bins for an object
+		created with MeasureIABox. Uses 1 CPU.
 
 		Parameters
 		----------
@@ -77,11 +76,8 @@ class MeasureWBox(MeasureIABase, ReadData):
 			Default value = None.
 		return_output : bool, optional
 			If True, the output will be returned instead of written to a file. Default value is False.
-		print_num : bool, optional
-			If True, prints the number of objects in the shape and positon samples. Default value is True.
 		jk_group_name : str, optional
-			Group in output file (hdf5) where jackknife realisations are stored. Is used when this method is called in
-			MeasureJackknife. Default value is "".
+			Group in output file (hdf5) where jackknife realisations are stored. Default value is "".
 		ellipticity : str, optional
 			Definition of ellipticity. Choose from 'distortion', defined as (1-q^2)/(1+q^2), or 'ellipticity', defined
 			 as (1-q)/(1+q). Default is 'distortion'.
@@ -89,8 +85,7 @@ class MeasureWBox(MeasureIABase, ReadData):
 		Returns
 		-------
 		ndarrays
-			xi_g+, xi_gg, r_p bins, pi bins if no output file is specified
-
+			$\xi_{gg}$ and $\xi_{g+}$, r_p bins, pi bins, S+D, DD, RR (if no output file is specified)
 		"""
 
 		if masks == None:
@@ -123,9 +118,8 @@ class MeasureWBox(MeasureIABase, ReadData):
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		Num_position = len(positions)
 		Num_shape = len(positions_shape_sample)
-		if print_num:
-			print(
-				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
+		print(
+			f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
 
 		LOS_ind = self.data["LOS"]  # eg 2 for z axis
 		not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], LOS_ind, invert=True)]  # eg 0,1 for x&y
@@ -146,7 +140,6 @@ class MeasureWBox(MeasureIABase, ReadData):
 		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		RR_g_plus = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		RR_gg = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
-		variance = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 
 		for n in np.arange(0, len(positions)):
 			# for Splus_D (calculate ellipticities around position sample)
@@ -187,7 +180,6 @@ class MeasureWBox(MeasureIABase, ReadData):
 				ind_r[ind_r >= self.num_bins_r] -= 1
 			np.add.at(Splus_D, (ind_r, ind_pi), (weight[n] * weight_shape[mask] * e_plus[mask]) / (2 * R))
 			np.add.at(Scross_D, (ind_r, ind_pi), (weight[n] * weight_shape[mask] * e_cross[mask]) / (2 * R))
-			np.add.at(variance, (ind_r, ind_pi), ((weight[n] * weight_shape[mask] * e_plus[mask]) / (2 * R)) ** 2)
 			del e_plus, e_cross
 			np.add.at(DD, (ind_r, ind_pi), weight[n] * weight_shape[mask])
 
@@ -208,7 +200,6 @@ class MeasureWBox(MeasureIABase, ReadData):
 					Num_position, Num_shape)
 		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
 		xi_g_cross = Scross_D / RR_g_plus  # (Scross_D - Scross_R) / RR_g_plus
-		sigsq = variance / RR_g_plus ** 2
 		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
 		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
 		dpi = (self.pi_bins[1:] - self.pi_bins[:-1]) / 2.0
@@ -220,21 +211,18 @@ class MeasureWBox(MeasureIABase, ReadData):
 			write_dataset_hdf5(group, dataset_name, data=correlation)
 			write_dataset_hdf5(group, dataset_name + "_SplusD", data=Splus_D)
 			write_dataset_hdf5(group, dataset_name + "_RR_g_plus", data=RR_g_plus)
-			write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_g_cross/{jk_group_name}")
 			write_dataset_hdf5(group, dataset_name + "_ScrossD", data=Scross_D)
 			write_dataset_hdf5(group, dataset_name, data=xi_g_cross)
 			write_dataset_hdf5(group, dataset_name + "_RR_g_cross", data=RR_g_plus)
-			write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_gg/{jk_group_name}")
 			write_dataset_hdf5(group, dataset_name, data=(DD / RR_gg) - 1)
 			write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
 			write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
-			write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
 			output_file.close()
@@ -242,38 +230,22 @@ class MeasureWBox(MeasureIABase, ReadData):
 		else:
 			return correlation, (DD / RR_gg) - 1, separation_bins, pi_bins, Splus_D, DD, RR_g_plus
 
-	def _measure_xi_rp_pi_box_tree(self, dataset_name, tree_input=None, masks=None,
-								   return_output=False, print_num=True, dataset_name_tree=None, save_tree=False,
-								   file_tree_path=None, jk_group_name="", ellipticity='distortion'):
-		"""Measures the projected correlation functions, xi_g+ and xi_gg, in (rp, pi) bins for an object created with
-		MeasureIABox. Uses 1 CPU.
+	def _measure_xi_rp_pi_box_tree(self, dataset_name, masks=None,
+								   return_output=False, jk_group_name="", ellipticity='distortion'):
+		r"""Measures the projected correlation functions, $\xi_{gg}$ and $\xi_{g+}$, in (rp, pi) bins for an object
+		created with MeasureIABox. Uses 1 CPU. Uses KDTree for speedup.
 
 		Parameters
 		----------
 		dataset_name : str
 			Name of the dataset in the output file.
-		tree_input : list of 2 ndarrays or NoneType, optional
-			If provided, the first entry consists of the indices of objects to exclude from the position sample.
-			The second entry consists of the objects to include from the shape sample. Used in MeasureJackkknife.
-			Default value is None.
 		masks : dict or NoneType, optional
 			Dictionary with masks for the data to select only part of the data. Uses same keywords as data dictionary.
 			Default value = None.
-		dataset_name_tree : str or NoneType, optional
-			Name of the temporary pickle file where the tree information is stored. This is used in MeasureJackknife, as
-			the filename is generated automatically.
-			Default value is None.
-		save_tree : bool, optional
-			If True, tree information is stored in a pickle file for later access. Default value is False.
-		file_tree_path : str or NoneType, optional
-			Path to the file where tree information is stored. Default value is None.
 		return_output : bool, optional
 			If True, the output will be returned instead of written to a file. Default value is False.
-		print_num : bool, optional
-			If True, prints the number of objects in the shape and positon samples. Default value is True.
 		jk_group_name : str, optional
-			Group in output file (hdf5) where jackknife realisations are stored. Is used when this method is called in
-			MeasureJackknife. Default value is "".
+			Group in output file (hdf5) where jackknife realisations are stored. Default value is "".
 		ellipticity : str, optional
 			Definition of ellipticity. Choose from 'distortion', defined as (1-q^2)/(1+q^2), or 'ellipticity', defined
 			 as (1-q)/(1+q). Default is 'distortion'.
@@ -281,8 +253,7 @@ class MeasureWBox(MeasureIABase, ReadData):
 		Returns
 		-------
 		ndarrays
-			xi_g+, xi_gg, r_p bins, pi bins if no output file is specified
-
+			$\xi_{gg}$ and $\xi_{g+}$, r_p bins, pi bins, S+D, DD, RR (if no output file is specified)
 		"""
 
 		if masks == None:
@@ -335,21 +306,9 @@ class MeasureWBox(MeasureIABase, ReadData):
 		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		RR_g_plus = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		RR_gg = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
-		variance = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
-		if tree_input != None:
-			indices_not_position, indices_shape = tree_input[0], tree_input[1]
-			Num_position -= len(indices_not_position)
-			Num_shape = len(indices_shape)
-			R = 1 - np.mean(e[indices_shape] ** 2) / 2.0
-			tree_file = open(f"{file_tree_path}/{dataset_name_tree}.pickle", 'rb')
-		if print_num:
-			print(
-				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
-		figname_dataset_name = dataset_name
-		if "/" in dataset_name:
-			figname_dataset_name = figname_dataset_name.replace("/", "_")
-		if "." in dataset_name:
-			figname_dataset_name = figname_dataset_name.replace(".", "p")
+
+		print(
+			f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
 		pos_tree = KDTree(positions[:, not_LOS], boxsize=self.boxsize)
 		for i in np.arange(0, len(positions_shape_sample), 100):
 			i2 = min(len(positions_shape_sample), i + 100)
@@ -357,22 +316,10 @@ class MeasureWBox(MeasureIABase, ReadData):
 			axis_direction_i = axis_direction[i:i2]
 			e_i = e[i:i2]
 			weight_shape_i = weight_shape[i:i2]
-			if tree_input != None:
-				ind_rbin = pickle.load(tree_file)
-				indices_shape_i = indices_shape[(indices_shape >= i) * (indices_shape < i2)] - i
-				ind_rbin_i = self.setdiff_omit(ind_rbin, indices_not_position, indices_shape_i)
-				positions_shape_sample_i = positions_shape_sample_i[indices_shape_i]
-				axis_direction_i = axis_direction_i[indices_shape_i]
-				e_i = e_i[indices_shape_i]
-				weight_shape_i = weight_shape_i[indices_shape_i]
-			else:
-				shape_tree = KDTree(positions_shape_sample_i[:, not_LOS], boxsize=self.boxsize)
-				ind_min_i = shape_tree.query_ball_tree(pos_tree, self.r_min)
-				ind_max_i = shape_tree.query_ball_tree(pos_tree, self.r_max)
-				ind_rbin_i = self.setdiff2D(ind_max_i, ind_min_i)
-				if save_tree:
-					with open(f"{file_tree_path}/w_{self.simname}_tree_{figname_dataset_name}.pickle", 'ab') as handle:
-						pickle.dump(ind_rbin_i, handle, protocol=pickle.HIGHEST_PROTOCOL)
+			shape_tree = KDTree(positions_shape_sample_i[:, not_LOS], boxsize=self.boxsize)
+			ind_min_i = shape_tree.query_ball_tree(pos_tree, self.r_min)
+			ind_max_i = shape_tree.query_ball_tree(pos_tree, self.r_max)
+			ind_rbin_i = self.setdiff2D(ind_max_i, ind_min_i)
 			for n in np.arange(0, len(positions_shape_sample_i)):  # CHANGE2: loop now over shapes, not positions
 				if len(ind_rbin_i[n]) > 0:
 					# for Splus_D (calculate ellipticities around position sample)
@@ -417,8 +364,6 @@ class MeasureWBox(MeasureIABase, ReadData):
 					del e_plus, e_cross, separation_len
 					np.add.at(DD, (ind_r, ind_pi), weight[ind_rbin_i[n]][mask] * weight_shape_i[n])
 
-		if tree_input != None:
-			tree_file.close()
 		# if Num_position == Num_shape:
 		# 	corrtype = "auto"
 		# 	DD = DD / 2.0  # auto correlation, all pairs are double
@@ -434,7 +379,6 @@ class MeasureWBox(MeasureIABase, ReadData):
 					Num_position, Num_shape)
 		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
 		xi_g_cross = Scross_D / RR_g_plus  # (Scross_D - Scross_R) / RR_g_plus
-		sigsq = variance / RR_g_plus ** 2
 		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
 		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
 		dpi = (self.pi_bins[1:] - self.pi_bins[:-1]) / 2.0
@@ -446,21 +390,18 @@ class MeasureWBox(MeasureIABase, ReadData):
 			write_dataset_hdf5(group, dataset_name, data=correlation)
 			write_dataset_hdf5(group, dataset_name + "_SplusD", data=Splus_D)
 			write_dataset_hdf5(group, dataset_name + "_RR_g_plus", data=RR_g_plus)
-			write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_g_cross/{jk_group_name}")
 			write_dataset_hdf5(group, dataset_name + "_ScrossD", data=Scross_D)
 			write_dataset_hdf5(group, dataset_name, data=xi_g_cross)
 			write_dataset_hdf5(group, dataset_name + "_RR_g_cross", data=RR_g_plus)
-			write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_gg/{jk_group_name}")
 			write_dataset_hdf5(group, dataset_name, data=(DD / RR_gg) - 1)
 			write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
 			write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
-			write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
 			output_file.close()
@@ -474,14 +415,14 @@ class MeasureWBox(MeasureIABase, ReadData):
 
 		Parameters
 		----------
-		indices : ndarray
-			Array of indices relating to the part of the position sample data that is measured in this batch.
+		i: int
+			Start index of the batch.
 
 		Returns
 		-------
 		ndarrays
-			Splus_D, Scross_D, DD, variance for these objects
-
+			S+D, SxD, DD, DD_jk, S+D_jk where the _jk versions store the necessary information of DD of S+D for
+			each jackknife realisation.
 		"""
 		if i + self.chunk_size > self.Num_shape_masked:
 			i2 = self.Num_shape_masked
@@ -559,18 +500,17 @@ class MeasureWBox(MeasureIABase, ReadData):
 		----------
 		dataset_name : str
 			Name of the dataset in the output file.
+		temp_file_path : str or NoneType, optional
+			Path to where the data is temporarily stored [file name generated automatically].
 		num_nodes : int, optional
-			Number of CPUs to be used in the multiprocessing.
+			Number of CPUs used in the multiprocessing. Default is 1.
 		masks : dict or NoneType, optional
 			Dictionary with masks for the data to select only part of the data. Uses same keywords as data dictionary.
 			Default value = None.
 		return_output : bool, optional
 			If True, the output will be returned instead of written to a file. Default value is False.
-		print_num : bool, optional
-			If True, prints the number of objects in the shape and positon samples. Default value is True.
 		jk_group_name : str, optional
-			Group in output file (hdf5) where jackknife realisations are stored. Is used when this method is called in
-			MeasureJackknife. Default value is "".
+			Group in output file (hdf5) where jackknife realisations are stored. Default value is "".
 		ellipticity : str, optional
 			Definition of ellipticity. Choose from 'distortion', defined as (1-q^2)/(1+q^2), or 'ellipticity', defined
 			 as (1-q)/(1+q). Default is 'distortion'.
@@ -578,8 +518,7 @@ class MeasureWBox(MeasureIABase, ReadData):
 		Returns
 		-------
 		ndarrays
-		    xi_g+, xi_gg, r_p bins, pi bins if no output file is specified
-
+			$\xi_{gg}$ and $\xi_{g+}$, r_p bins, pi bins, S+D, DD, RR (if no output file is specified)
 		"""
 
 		if masks == None:

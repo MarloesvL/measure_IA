@@ -9,8 +9,9 @@ from .measure_m_box import MeasureMultipolesBox
 
 class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, MeasureMBoxJackknife):
 	r"""Manages the IA correlation function measurement methods used in the MeasureIA package based on speed and input.
-	This class is used to call the methods that measure w_gg, w_g+ and multipoles for simulations in cartesian coordinates.
-	Depending on the input parameters, various correlations incl covariance estimates are measured for given data.
+	This class is used to call the methods that measure $w_{gg}$, $w_{g+}$ and multipoles for simulations in cartesian
+	coordinates. Depending on the input parameters, various correlations incl covariance estimates are measured for
+	given data.
 
 	Methods
 	-------
@@ -76,21 +77,16 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 		corr_type : str
 			Type of correlation to be measured. Choose from [g+, gg, both].
 		num_jk : int, optional
-			Number of jackknife regions (needs to be x^3, with x an int) for the covariance measurement. Default is 0.
-		measure_cov : bool, optional
-			If True, jackknife covariance is measured. Default is True
-		file_tree_path : str or NoneType, optional
-			Path to where the tree information is temporarily stored [file name generated automatically].
-			If None (default), no trees are used in the calculation.
-			Note that the use of trees speeds up the calculations significantly.
+			Number of jackknife regions (needs to be x^3, with x an int) for the covariance measurement.
+			Default is 0 (no covariance).
+		temp_file_path : str or NoneType, optional
+			Path to where the data is temporarily stored [file name generated automatically].
 		masks : dict or NoneType, optional
 			Directory of mask information in the same form as the data dictionary, where the masks are placed over
 			the data to apply selections. Default is None.
-		remove_tree_file : bool, optional
-			If True (default), the file that stores the tree information is removed after the measurements.
-		save_jk_terms : bool, optional
-			If True, DD and S+D terms of the jackknife realisations are also saved in the output file.
-			These terms are automatically saved when only 1 core is used in the measurements. Default is False.
+		chunk_size: int, optional
+			Size of the chunks of data sent to each multiprocessing node. If larger, more RAM is needed per node.
+			Default is 1000.
 		ellipticity : str, optional
 			Definition of ellipticity. Choose from 'distortion', defined as (1-q^2)/(1+q^2), or 'ellipticity', defined
 			 as (1-q)/(1+q). Default is 'distortion'.
@@ -166,11 +162,11 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 
 		return
 
-	def measure_xi_multipoles(self, dataset_name, corr_type, num_jk, measure_cov=True, file_tree_path=None, masks=None,
-							  remove_tree_file=True, rp_cut=None, ellipticity='distortion',save_jk_terms=False):
-		"""Measures multipoles including jackknife covariance if desired.
-		Manages the various _measure_xi_r_mu_r_sims and _measure_jackknife_covariance_sims options in
-		MeasureMultipolesSimulations and MeasureJackknife.
+	def measure_xi_multipoles(self, dataset_name, corr_type, num_jk=0, temp_file_path=None, masks=None, rp_cut=None,
+							  ellipticity='distortion', chunk_size=1000):
+		r"""Measures $\xi_{gg}$, $\xi_{g+}$ and $\tilde{\xi}_{gg,0}$, $\tilde{\xi}_{g+,2}$ including jackknife covariance
+		if desired. Manages the various _measure_xi_r_mur_box method options in MeasureMultipolesBox and
+		MeasureMultipolesBoxJackknife.
 
 		Parameters
 		----------
@@ -179,23 +175,20 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 		corr_type : str
 			Type of correlation to be measured. Choose from [g+, gg, both].
 		num_jk : int, optional
-			Number of jackknife regions (needs to be x^3, with x an int) for the covariance measurement. Default is 0.
-		measure_cov : bool, optional
-			If True, jackknife covariance is measured. Default is True
-		file_tree_path : str or NoneType, optional
-			Path to where the tree information is temporarily stored [file name generated automatically].
-			If None (default), no trees are used in the calculation.
-			Note that the use of trees speeds up the calculations significantly.
+			Number of jackknife regions (needs to be x^3, with x an int) for the covariance measurement. Default is 0 (no covariance).
+		temp_file_path : str or NoneType, optional
+			Path to where the data is temporarily stored [file name generated automatically].
 		masks : dict or NoneType, optional
 			Directory of mask information in the same form as the data dictionary, where the masks are placed over
 			the data to apply selections. Default is None.
-		remove_tree_file : bool, optional
-			If True (default), the file that stores the tree information is removed after the measurements.
 		rp_cut : float or NoneType, optional
 			Applies a minimum r_p value condition for pairs to be included. Default is None.
+		chunck_size: int, optional
+			Size of the chunks of data sent to each multiprocessing node. If larger, more RAM is needed per node.
 		ellipticity : str, optional
 			Definition of ellipticity. Choose from 'distortion', defined as (1-q^2)/(1+q^2), or 'ellipticity', defined
 			 as (1-q)/(1+q). Default is 'distortion'.
+		"""
 
 		if num_jk > 0:
 			try:
