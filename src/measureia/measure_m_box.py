@@ -1,19 +1,20 @@
 import numpy as np
 import h5py
-import pickle
-from pathos.multiprocessing import ProcessingPool
+import os
+from multiprocessing import Pool
 from scipy.spatial import KDTree
 from .write_data import write_dataset_hdf5, create_group_hdf5
 from .measure_IA_base import MeasureIABase
+from .read_data import ReadData
 from astropy.cosmology import LambdaCDM
 
 cosmo = LambdaCDM(H0=69.6, Om0=0.286, Ode0=0.714)
 KPC_TO_KM = 3.086e16  # 1 kpc is 3.086e16 km
 
 
-class MeasureMultipolesBox(MeasureIABase):
-	"""Class that contains all methods for the measurements of xi_gg and x_g+ for multipoles with carthesian
-	simulation data.
+class MeasureMultipolesBox(MeasureIABase, ReadData):
+	r"""Class that contains all methods for the measurements of $\xi_{gg}$ and $\xi_{g+}$ for $\tilde{\xi}_{gg,0}$ and
+	$\tilde{\xi}_{g+,2}$ with Cartesian simulation data.
 
 	Methods
 	-------
@@ -677,8 +678,9 @@ class MeasureMultipolesBox(MeasureIABase):
 		else:
 			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus
 
-	def _measure_xi_r_mur_box_batch(self, indices):
-		"""Support method of _measure_xi_r_mur_sims_multiprocessing consisting of the 'forloop' part of the measurement.
+	def _measure_xi_r_mur_box_batch(self, i):
+		r"""Measures components of $\xi_{gg}$ and $\xi_{g+}$ in (r, mu_r) bins including jackknife realisations for a
+		batch of indices from i to i+chunk_size. Support function for _measure_xi_r_mu_r_box_jk_multiprocessing().
 
 		Parameters
 		----------
@@ -691,81 +693,86 @@ class MeasureMultipolesBox(MeasureIABase):
 			Splus_D, Scross_D, DD, variance for these objects
 
 		"""
+		if i + self.chunk_size > self.Num_shape_masked:
+			i2 = self.Num_shape_masked
+		else:
+			i2 = i + self.chunk_size
+
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
-		for j in np.arange(0, len(indices), 100):
-			i = indices[j]
-			i2 = min(indices[-1], i + 100)
-			positions_shape_sample_i = self.positions_shape_sample[i:i2]
-			axis_direction_i = self.axis_direction[i:i2]
-			e_i = self.e[i:i2]
-			weight_shape_i = self.weight_shape[i:i2]
 
-			shape_tree = KDTree(positions_shape_sample_i, boxsize=self.boxsize)
-			ind_min_i = shape_tree.query_ball_tree(self.pos_tree, self.r_min)
-			ind_max_i = shape_tree.query_ball_tree(self.pos_tree, self.r_max)
-			ind_rbin_i = self.setdiff2D(ind_max_i, ind_min_i)
-			for n in np.arange(0, len(positions_shape_sample_i)):
-				if len(ind_rbin_i[n]) > 0:
-					# for Splus_D (calculate ellipticities around position sample)
-					separation = positions_shape_sample_i[n] - self.positions[ind_rbin_i[n]]
-					if self.periodicity:
-						separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
-						separation[separation < -self.L_0p5] += self.boxsize
-					projected_sep = separation[:, self.not_LOS]
-					LOS = separation[:, self.LOS_ind]
-					projected_separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
-					with np.errstate(invalid='ignore'):
-						separation_dir = (
-								projected_sep.transpose() / projected_separation_len).transpose()  # normalisation of rp
-					separation_len = np.sqrt(np.sum(separation ** 2, axis=1))
-					del separation, projected_sep
-					with np.errstate(invalid='ignore'):
-						mu_r = LOS / separation_len
-						phi = np.arccos(
-							separation_dir[:, 0] * axis_direction_i[n, 0] + separation_dir[:, 1] * axis_direction_i[
-								n, 1])  # [0,pi]
-					e_plus, e_cross = self.get_ellipticity(e_i[n], phi)
-					del phi, LOS, separation_dir
+		positions_shape_sample_i = self.temp_data_obj_m.read_cat("positions_shape_sample", [i, i2])
+		axis_direction_i = self.temp_data_obj_m.read_cat("axis_direction", [i, i2])
+		weight_shape_i = self.temp_data_obj_m.read_cat("weight_shape", [i, i2])
+		positions = self.temp_data_obj_m.read_cat("positions")
+		weight = self.temp_data_obj_m.read_cat("weight")
+		e_i = self.e[i:i2]
 
-					e_plus[np.isnan(e_plus)] = 0.0
-					mu_r[np.isnan(e_plus)] = 0.0
-					e_cross[np.isnan(e_cross)] = 0.0
+		shape_tree = KDTree(positions_shape_sample_i, boxsize=self.boxsize)
+		ind_min_i = shape_tree.query_ball_tree(self.pos_tree, self.r_min)
+		ind_max_i = shape_tree.query_ball_tree(self.pos_tree, self.r_max)
+		ind_rbin_i = self.setdiff2D(ind_max_i, ind_min_i)
+		for n in np.arange(0, len(positions_shape_sample_i)):
+			if len(ind_rbin_i[n]) > 0:
+				# for Splus_D (calculate ellipticities around position sample)
+				separation = positions_shape_sample_i[n] - positions[ind_rbin_i[n]]
+				if self.periodicity:
+					separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
+					separation[separation < -self.L_0p5] += self.boxsize
+				projected_sep = separation[:, self.not_LOS]
+				LOS = separation[:, self.LOS_ind]
+				projected_separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
+				with np.errstate(invalid='ignore'):
+					separation_dir = (
+							projected_sep.transpose() / projected_separation_len).transpose()  # normalisation of rp
+				separation_len = np.sqrt(np.sum(separation ** 2, axis=1))
+				del separation, projected_sep
+				with np.errstate(invalid='ignore'):
+					mu_r = LOS / separation_len
+					phi = np.arccos(
+						separation_dir[:, 0] * axis_direction_i[n, 0] + separation_dir[:, 1] * axis_direction_i[
+							n, 1])  # [0,pi]
+				e_plus, e_cross = self.get_ellipticity(e_i[n], phi)
+				del phi, LOS, separation_dir
 
-					# get the indices for the binning
-					mask = (
-							(projected_separation_len > self.rp_cut)
-							* (separation_len >= self.r_bins[0])
-							* (separation_len < self.r_bins[-1])
-					)
-					ind_r = np.floor(
-						np.log10(separation_len[mask]) / self.sub_box_len_logr - np.log10(
-							self.r_bins[0]) / self.sub_box_len_logr
-					)
-					ind_r = np.array(ind_r, dtype=int)
-					ind_mu_r = np.floor(
-						mu_r[mask] / self.sub_box_len_mu_r - self.mu_r_bins[0] / self.sub_box_len_mu_r
-					)  # need length of LOS, so only positive values
-					ind_mu_r = np.array(ind_mu_r, dtype=int)
-					if np.any(ind_mu_r == self.num_bins_pi):
-						ind_mu_r[ind_mu_r >= self.num_bins_pi] -= 1
-					if np.any(ind_r == self.num_bins_r):
-						ind_r[ind_r >= self.num_bins_r] -= 1
-					np.add.at(Splus_D, (ind_r, ind_mu_r),
-							  (self.weight[ind_rbin_i[n]][mask] * weight_shape_i[n] * e_plus[mask]) / (2 * self.R))
-					np.add.at(Scross_D, (ind_r, ind_mu_r),
-							  (self.weight[ind_rbin_i[n]][mask] * weight_shape_i[n] * e_cross[mask]) / (2 * self.R))
-					np.add.at(DD, (ind_r, ind_mu_r), self.weight[ind_rbin_i[n]][mask] * weight_shape_i[n])
-					del e_plus, e_cross, mask, separation_len
+				e_plus[np.isnan(e_plus)] = 0.0
+				mu_r[np.isnan(e_plus)] = 0.0
+				e_cross[np.isnan(e_cross)] = 0.0
+
+				# get the indices for the binning
+				mask = (
+						(projected_separation_len > self.rp_cut)
+						* (separation_len >= self.r_bins[0])
+						* (separation_len < self.r_bins[-1])
+				)
+				ind_r = np.floor(
+					np.log10(separation_len[mask]) / self.sub_box_len_logr - np.log10(
+						self.r_bins[0]) / self.sub_box_len_logr
+				)
+				ind_r = np.array(ind_r, dtype=int)
+				ind_mu_r = np.floor(
+					mu_r[mask] / self.sub_box_len_mu_r - self.mu_r_bins[0] / self.sub_box_len_mu_r
+				)  # need length of LOS, so only positive values
+				ind_mu_r = np.array(ind_mu_r, dtype=int)
+				if np.any(ind_mu_r == self.num_bins_pi):
+					ind_mu_r[ind_mu_r >= self.num_bins_pi] -= 1
+				if np.any(ind_r == self.num_bins_r):
+					ind_r[ind_r >= self.num_bins_r] -= 1
+				np.add.at(Splus_D, (ind_r, ind_mu_r),
+						  (weight[ind_rbin_i[n]][mask] * weight_shape_i[n] * e_plus[mask]) / (2 * self.R))
+				np.add.at(Scross_D, (ind_r, ind_mu_r),
+						  (weight[ind_rbin_i[n]][mask] * weight_shape_i[n] * e_cross[mask]) / (2 * self.R))
+				np.add.at(DD, (ind_r, ind_mu_r), weight[ind_rbin_i[n]][mask] * weight_shape_i[n])
+				del separation_len, e_cross, e_plus
+
 		return Splus_D, Scross_D, DD
 
-	def _measure_xi_r_mur_box_multiprocessing(self, dataset_name, num_nodes=9, masks=None,
-											  rp_cut=None,
-											  return_output=False, print_num=True, jk_group_name="",
-											  ellipticity='distortion'):
-		"""Measures the projected correlation functions, xi_g+ and xi_gg, in (r, mu_r) bins for an object created with
-		MeasureIABox. Uses >1 CPUs.
+	def _measure_xi_r_mur_box_multiprocessing(self, dataset_name, temp_file_path, masks=None,
+											  rp_cut=None, return_output=False, jk_group_name="",
+											  chunk_size=100, num_nodes=1, ellipticity='distortion'):
+		r"""Measures the projected correlation functions, $\xi_{gg}$ and $\xi_{g+}$, in (r, mu_r) bins for an object
+		created with MeasureIABox. Uses >1 CPU. Uses KDTree for speedup.
 
 		Parameters
 		----------
@@ -797,20 +804,20 @@ class MeasureMultipolesBox(MeasureIABase):
 		"""
 
 		if masks == None:
-			self.positions = self.data["Position"]
-			self.positions_shape_sample = self.data["Position_shape_sample"]
+			positions = self.data["Position"]
+			positions_shape_sample = self.data["Position_shape_sample"]
 			axis_direction_v = self.data["Axis_Direction"]
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
-			self.axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
+			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"]
-			self.weight = self.data["weight"]
-			self.weight_shape = self.data["weight_shape_sample"]
+			weight = self.data["weight"]
+			weight_shape = self.data["weight_shape_sample"]
 		else:
-			self.positions = self.data["Position"][masks["Position"]]
-			self.positions_shape_sample = self.data["Position_shape_sample"][masks["Position_shape_sample"]]
+			positions = self.data["Position"][masks["Position"]]
+			positions_shape_sample = self.data["Position_shape_sample"][masks["Position_shape_sample"]]
 			axis_direction_v = self.data["Axis_Direction"][masks["Axis_Direction"]]
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
-			self.axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
+			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][masks["q"]]
 			try:
 				weight_mask = masks["weight"]
@@ -822,15 +829,29 @@ class MeasureMultipolesBox(MeasureIABase):
 			except:
 				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
 				masks["weight_shape_sample"][sum(masks["Position_shape_sample"]):self.Num_shape] = 0
-			self.weight = self.data["weight"][masks["weight"]]
-			self.weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
+			weight = self.data["weight"][masks["weight"]]
+			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		# masking changes the number of galaxies
-		Num_position = len(self.positions)  # number of halos in position sample
-		Num_shape = len(self.positions_shape_sample)  # number of halos in shape sample
+		self.Num_position_masked = len(positions)
+		self.Num_shape_masked = len(positions_shape_sample)
+		print(
+			f"There are {self.Num_shape_masked} galaxies in the shape sample and {self.Num_position_masked} galaxies in the position sample.")
 
-		if print_num:
-			print(
-				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
+		# create temp hdf5 from which data can be read. del self.data, but save it in this method to reduce RAM
+		figname_dataset_name = dataset_name
+		if "/" in dataset_name:
+			figname_dataset_name = figname_dataset_name.replace("/", "_")
+		if "." in dataset_name:
+			figname_dataset_name = figname_dataset_name.replace(".", "p")
+		file_temp = h5py.File(f"{temp_file_path}/m_{self.simname}_temp_data_{figname_dataset_name}.hdf5", "w")
+		write_dataset_hdf5(file_temp, "positions", positions)
+		write_dataset_hdf5(file_temp, "weight", weight)
+		write_dataset_hdf5(file_temp, "weight_shape", weight_shape)
+		write_dataset_hdf5(file_temp, "positions_shape_sample", positions_shape_sample)
+		write_dataset_hdf5(file_temp, "axis_direction", axis_direction)
+		file_temp.close()
+		self.temp_data_obj_m = ReadData(self.simname, f"m_{self.simname}_temp_data_{figname_dataset_name}", None,
+										data_path=temp_file_path)
 
 		if rp_cut == None:
 			self.rp_cut = 0.0
@@ -844,7 +865,7 @@ class MeasureMultipolesBox(MeasureIABase):
 			self.e = (1 - q) / (1 + q)
 		else:
 			raise ValueError("Invalid value for ellipticity. Choose 'distortion' or 'ellipticity'.")
-		self.R = sum(self.weight_shape * (1 - self.e ** 2 / 2.0)) / sum(self.weight_shape)
+		self.R = sum(weight_shape * (1 - self.e ** 2 / 2.0)) / sum(weight_shape)
 		# self.R = 1 - np.mean(self.e ** 2) / 2.0  # responsivity factor
 		L3 = self.boxsize ** 3  # box volume
 		self.sub_box_len_logr = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
@@ -855,13 +876,14 @@ class MeasureMultipolesBox(MeasureIABase):
 		RR_g_plus = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		RR_gg = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 
-		self.pos_tree = KDTree(self.positions, boxsize=self.boxsize)
+		self.pos_tree = KDTree(positions, boxsize=self.boxsize)
+		indices = np.arange(0, len(positions_shape_sample), chunk_size)
+		self.chunk_size = chunk_size
+		with Pool(num_nodes) as p:
+			result = p.map(self._measure_xi_r_mur_box_batch, indices)
+		os.remove(
+			f"{temp_file_path}/m_{self.simname}_temp_data_{figname_dataset_name}.hdf5")
 
-		self.multiproc_chuncks = np.array_split(np.arange(len(self.positions_shape_sample)), num_nodes)
-		result = ProcessingPool(nodes=num_nodes).map(
-			self._measure_xi_r_mur_box_batch,
-			self.multiproc_chuncks,
-		)
 		for i in np.arange(num_nodes):
 			Splus_D += result[i][0]
 			Scross_D += result[i][1]
@@ -878,10 +900,10 @@ class MeasureMultipolesBox(MeasureIABase):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_g_plus[i, p] = self.get_random_pairs_r_mur(
 					self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, "cross",
-					Num_position, Num_shape)
+					self.Num_position_masked, self.Num_shape_masked)
 				RR_gg[i, p] = self.get_random_pairs_r_mur(
 					self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, corrtype,
-					Num_position, Num_shape)
+					self.Num_position_masked, self.Num_shape_masked)
 
 		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
 		xi_g_cross = Scross_D / RR_g_plus  # (Scross_D - Scross_R) / RR_g_plus
