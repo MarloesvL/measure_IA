@@ -12,7 +12,7 @@ num_nodes = 3  # number of CPU cores available for calculation
 r_lims = [0.1, 20.]  # r or rp bin edges. Must be in same units as position and boxsize.
 num_r = 10  # number of r or rp bins
 num_pi = 8  # number of pi bins. (trivial for wg+, not too little for multipoles)
-LOS_lim = None  # pi max value
+pi_max = None  # pi max value
 periodicity = True  # take periodic boundary conditions into account
 
 # parameters for methods
@@ -40,11 +40,12 @@ data_dir = {
 
 dataset_name = "test"
 
-MeasureIA_validation = MeasureIABox(data_dir, simulation=simulation, snapshot=snapshot,
-									separation_limits=r_lims, pi_max=LOS_lim,
-									num_bins_r=num_r, num_nodes=num_nodes,
-									num_bins_pi=num_pi, output_file_name=outfile, periodicity=periodicity)
-# calculate wg+
-MeasureIA_validation.measure_xi_w(dataset_name, corr_type, num_jk, file_tree_path=tree_path)
-# calculate multipoles
-MeasureIA_validation.measure_xi_multipoles(dataset_name, corr_type, num_jk, file_tree_path=tree_path)
+if __name__ == "__main__":  # when using multiprocessing, this statement is needed.
+	MeasureIA_validation = MeasureIABox(data_dir, simulation=simulation, snapshot=snapshot,
+										separation_limits=r_lims, pi_max=pi_max,
+										num_bins_r=num_r, num_nodes=num_nodes,
+										num_bins_pi=num_pi, output_file_name=outfile, periodicity=periodicity)
+	# calculate wg+
+	MeasureIA_validation.measure_xi_w(dataset_name, corr_type, num_jk, temp_file_path=tree_path)
+	# calculate multipoles
+	MeasureIA_validation.measure_xi_multipoles(dataset_name, corr_type, num_jk, temp_file_path=tree_path)
