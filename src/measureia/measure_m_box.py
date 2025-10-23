@@ -830,7 +830,7 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 		os.remove(
 			f"{temp_file_path}/m_{self.simname}_temp_data_{figname_dataset_name}.hdf5")
 
-		for i in np.arange(num_nodes):
+		for i in np.arange(len(result)):
 			Splus_D += result[i][0]
 			Scross_D += result[i][1]
 			DD += result[i][2]
