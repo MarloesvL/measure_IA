@@ -764,6 +764,7 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 		self.temp_data_obj_m = ReadData(self.simname, f"m_{self.simname}_temp_data_{figname_dataset_name}", None,
 										data_path=file_tree_path)
 
+
 		self.LOS_ind = self.data["LOS"]  # eg 2 for z axis
 		self.not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], self.LOS_ind, invert=True)]  # eg 0,1 for x&y
 		if ellipticity == 'distortion':
@@ -794,6 +795,9 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 		DD_jk = np.zeros((self.num_box, self.num_bins_r, self.num_bins_pi))
 		Splus_D_jk = np.zeros((self.num_box, self.num_bins_r, self.num_bins_pi))
 
+		data_temp = self.data  # make sure data is not sent to every CPU
+		self.data = None
+
 		self.pos_tree = KDTree(positions, boxsize=self.boxsize)
 		indices = np.arange(0, len(positions_shape_sample), chunk_size)
 		self.chunk_size = chunk_size
@@ -801,6 +805,9 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			result = p.map(self._measure_xi_r_mur_box_jk_batch, indices)
 		os.remove(
 			f"{file_tree_path}/m_{self.simname}_temp_data_{figname_dataset_name}.hdf5")
+
+		self.data = data_temp
+		del data_temp
 
 		for i in np.arange(len(result)):
 			Splus_D += result[i][0]

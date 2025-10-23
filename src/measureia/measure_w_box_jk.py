@@ -757,6 +757,9 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 		DD_jk = np.zeros((self.num_box, self.num_bins_r, self.num_bins_pi))
 		Splus_D_jk = np.zeros((self.num_box, self.num_bins_r, self.num_bins_pi))
 
+		data_temp = self.data  # make sure data is not sent to every CPU
+		self.data = None
+
 		self.pos_tree = KDTree(positions[:, self.not_LOS], boxsize=self.boxsize)
 		indices = np.arange(0, len(positions_shape_sample), chunk_size)
 		self.chunk_size = chunk_size
@@ -764,6 +767,9 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 			result = p.map(self._measure_xi_rp_pi_box_jk_batch, indices)
 		os.remove(
 			f"{temp_file_path}/w_{self.simname}_temp_data_{figname_dataset_name}.hdf5")
+
+		self.data = data_temp
+		del data_temp
 
 		for i in np.arange(len(result)):
 			Splus_D += result[i][0]
