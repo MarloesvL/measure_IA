@@ -239,7 +239,7 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 					Num_position, Num_shape)
 
 		RR_jk = np.zeros((num_box, self.num_bins_r, self.num_bins_pi))
-		volume_jk = L3  # (num_box-1)/(num_box)*
+		volume_jk = L3 * (num_box - 1) / (num_box)
 		for jk in np.arange(num_box):
 			Num_position_jk, Num_shape_jk = len(np.where(jackknife_region_indices_pos != jk)[0]), len(
 				np.where(jackknife_region_indices_shape != jk)[0])
@@ -503,13 +503,15 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 					Num_position, Num_shape)
 
 		RR_jk = np.zeros((num_box, self.num_bins_r, self.num_bins_pi))
+		volume_jk = L3 * (num_box - 1) / num_box
 		for jk in np.arange(num_box):
 			Num_position_jk, Num_shape_jk = len(np.where(jackknife_region_indices_pos != jk)[0]), len(
 				np.where(jackknife_region_indices_shape != jk)[0])
 			for i in np.arange(0, self.num_bins_r):
 				for p in np.arange(0, self.num_bins_pi):
 					RR_jk[jk, i, p] = self.get_random_pairs_r_mur(
-						self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, "cross",
+						self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], volume_jk,
+						"cross",
 						Num_position_jk, Num_shape_jk)
 
 		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
@@ -764,7 +766,6 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 		self.temp_data_obj_m = ReadData(self.simname, f"m_{self.simname}_temp_data_{figname_dataset_name}", None,
 										data_path=file_tree_path)
 
-
 		self.LOS_ind = self.data["LOS"]  # eg 2 for z axis
 		self.not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], self.LOS_ind, invert=True)]  # eg 0,1 for x&y
 		if ellipticity == 'distortion':
@@ -833,13 +834,15 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 					self.Num_position_masked, self.Num_shape_masked)
 
 		RR_jk = np.zeros((self.num_box, self.num_bins_r, self.num_bins_pi))
+		volume_jk = L3 * (self.num_box - 1) / self.num_box
 		for jk in np.arange(self.num_box):
 			Num_position_jk, Num_shape_jk = len(np.where(self.jackknife_region_indices_pos != jk)[0]), len(
 				np.where(self.jackknife_region_indices_shape != jk)[0])
 			for i in np.arange(0, self.num_bins_r):
 				for p in np.arange(0, self.num_bins_pi):
 					RR_jk[jk, i, p] = self.get_random_pairs_r_mur(
-						self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, "cross",
+						self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], volume_jk,
+						"cross",
 						Num_position_jk, Num_shape_jk)
 
 		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
@@ -891,6 +894,7 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			return
 		else:
 			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus
+
 
 if __name__ == "__main__":
 	pass
