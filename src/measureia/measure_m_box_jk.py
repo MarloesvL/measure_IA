@@ -15,20 +15,25 @@ KPC_TO_KM = 3.086e16  # 1 kpc is 3.086e16 km
 
 
 class MeasureMBoxJackknife(MeasureIABase, ReadData):
-	"""Class that contains all methods for the measurements of xi_gg and xi_g+ for w_gg and w_g+ with carthesian
-	simulation data.
+	r"""Class that contains all methods for the measurements of $\xi_{gg}$ and $\xi_{g+}$ for $\tilde{\xi}_{gg,0}$ and
+	$\tilde{\xi}_{g+,2}$ including the jackknife realisations needed for the covariance estimation with
+	Cartesian simulation data.
 
 	Methods
 	-------
-	_measure_xi_rp_pi_sims_brute()
-		Measure xi_gg or xi_g+ in (rp, pi) grid binning in a periodic box using 1 CPU.
-	_measure_xi_rp_pi_sims_tree()
-		Measure xi_gg or xi_g+ in (rp, pi) grid binning in a periodic box using 1 CPU and KDTree for extra speed.
-	_measure_xi_rp_pi_sims_batch()
-		Measure xi_gg or xi_g+ in (rp, pi) grid binning in a periodic box using 1 CPU for a batch of indices.
-		Support function of _measure_xi_rp_pi_sims_multiprocessing().
-	_measure_xi_rp_pi_sims_multiprocessing()
-		Measure xi_gg or xi_g+ in (rp, pi) grid binning in a periodic box using >1 CPUs.
+	_measure_xi_r_mur_box_jk_brute()
+		Measure $\xi_{gg}$ and $\xi_{g+}$ in (r, mu_r) grid binning including jackknife realisations in a periodic box
+		using 1 CPU.
+	_measure_xi_r_mur_box_jk_tree()
+		Measure $\xi_{gg}$ and $\xi_{g+}$ in (r, mu_r) grid binning including jackknife realisations in a periodic box
+		using 1 CPU and KDTree for extra speed.
+	_measure_xi_r_mur_box_jk_batch()
+		Measure $\xi_{gg}$ and $\xi_{g+}$ in (r, mu_r) grid binning including jackknife realisations in a periodic box
+		using 1 CPU for a batch of indices.
+		Support function of _measure_xi_r_mur_box_jk_multiprocessing().
+	_measure_xi_r_mur_box_jk_multiprocessing()
+		Measure $\xi_{gg}$ and $\xi_{g+}$ in (r, mu_r) grid binning including jackknife realisations in a periodic
+		box using >1 CPUs.
 
 	Notes
 	-----
@@ -65,30 +70,33 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 		return
 
 	def _measure_xi_r_mur_box_jk_brute(self, dataset_name, L_subboxes, masks=None, rp_cut=None, return_output=False,
-									   print_num=True, jk_group_name=""):
-		"""Measures the projected correlation functions, xi_g+ and xi_gg, in (rp, pi) bins for an object created with
-		MeasureIABox. Uses 1 CPU.
+									   jk_group_name="", ellipticity='distortion'):
+		r"""Measures the projected correlation functions including jackknife realisations, $\xi_{gg}$ and $\xi_{g+}$,
+		in (r, mu_r) bins for an object created with MeasureIABox. Uses 1 CPU.
 
 		Parameters
 		----------
 		dataset_name : str
 			Name of the dataset in the output file.
+		L_subboxes: int
+			Number of subboxes on one side of the box. L_subboxes^3 is the total number of jackknife realisations.
 		masks : dict or NoneType, optional
 			Dictionary with masks for the data to select only part of the data. Uses same keywords as data dictionary.
-			Default value = None.
+			Default value is None.
+		rp_cut : float, optional
+			Limit for minimum r_p value for pairs to be included. Default value is None.
 		return_output : bool, optional
 			If True, the output will be returned instead of written to a file. Default value is False.
-		print_num : bool, optional
-			If True, prints the number of objects in the shape and positon samples. Default value is True.
 		jk_group_name : str, optional
-			Group in output file (hdf5) where jackknife realisations are stored. Is used when this method is called in
-			MeasureJackknife. Default value is "".
+			Group in output file (hdf5) where jackknife realisations are stored. Default value is "".
+		ellipticity : str, optional
+			Definition of ellipticity. Choose from 'distortion', defined as (1-q^2)/(1+q^2), or 'ellipticity', defined
+			 as (1-q)/(1+q). Default is 'distortion'.
 
 		Returns
 		-------
 		ndarrays
-			xi_g+, xi_gg, r_p bins, pi bins if no output file is specified
-
+			$\xi_{gg}$ and $\xi_{g+}$, r bins, mu_r bins, S+D, DD, RR (if no output file is specified)
 		"""
 
 		if masks == None:
@@ -121,13 +129,17 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		Num_position = len(positions)
 		Num_shape = len(positions_shape_sample)
-		if print_num:
-			print(
-				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
+		print(
+			f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
 
 		LOS_ind = self.data["LOS"]  # eg 2 for z axis
 		not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], LOS_ind, invert=True)]  # eg 0,1 for x&y
-		e = (1 - q ** 2) / (1 + q ** 2)  # size of ellipticity
+		if ellipticity == 'distortion':
+			e = (1 - q ** 2) / (1 + q ** 2)  # size of ellipticity
+		elif ellipticity == 'ellipticity':
+			e = (1 - q) / (1 + q)
+		else:
+			raise ValueError("Invalid value for ellipticity. Choose 'distortion' or 'ellipticity'.")
 		del q
 		R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape)
 		# R = 1 - np.mean(e ** 2) / 2.0  # responsitivity factor
@@ -292,29 +304,33 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus
 
 	def _measure_xi_r_mur_box_jk_tree(self, dataset_name, L_subboxes, masks=None, rp_cut=None, return_output=False,
-									  print_num=True, jk_group_name="", file_tree_path=None, save_tree=False):
-		"""Measures the projected correlation functions, xi_g+ and xi_gg, in (rp, pi) bins for an object created with
-		MeasureIABox. Uses 1 CPU.
+									  jk_group_name="", ellipticity='distortion'):
+		r"""Measures the projected correlation functions including jackknife realisations, $\xi_{gg}$ and $\xi_{g+}$,
+		in (r, mu_r) bins for an object created with MeasureIABox. Uses 1 CPU. Uses KDTree for speedup.
 
 		Parameters
 		----------
 		dataset_name : str
 			Name of the dataset in the output file.
+		L_subboxes: int
+			Number of subboxes on one side of the box. L_subboxes^3 is the total number of jackknife realisations.
 		masks : dict or NoneType, optional
 			Dictionary with masks for the data to select only part of the data. Uses same keywords as data dictionary.
 			Default value = None.
+		rp_cut : float, optional
+			Limit for minimum r_p value for pairs to be included. Default value is None.
 		return_output : bool, optional
 			If True, the output will be returned instead of written to a file. Default value is False.
-		print_num : bool, optional
-			If True, prints the number of objects in the shape and positon samples. Default value is True.
 		jk_group_name : str, optional
-			Group in output file (hdf5) where jackknife realisations are stored. Is used when this method is called in
-			MeasureJackknife. Default value is "".
+			Group in output file (hdf5) where jackknife realisations are stored. Default value is "".
+		ellipticity : str, optional
+			Definition of ellipticity. Choose from 'distortion', defined as (1-q^2)/(1+q^2), or 'ellipticity', defined
+			 as (1-q)/(1+q). Default is 'distortion'.
 
 		Returns
 		-------
 		ndarrays
-			xi_g+, xi_gg, r_p bins, pi bins if no output file is specified
+			$\xi_{gg}$ and $\xi_{g+}$, r bins, mu_r bins, S+D, DD, RR (if no output file is specified)
 
 		"""
 
@@ -348,13 +364,17 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		Num_position = len(positions)
 		Num_shape = len(positions_shape_sample)
-		if print_num:
-			print(
-				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
+		print(
+			f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
 
 		LOS_ind = self.data["LOS"]  # eg 2 for z axis
 		not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], LOS_ind, invert=True)]  # eg 0,1 for x&y
-		e = (1 - q ** 2) / (1 + q ** 2)  # size of ellipticity
+		if ellipticity == 'distortion':
+			e = (1 - q ** 2) / (1 + q ** 2)  # size of ellipticity
+		elif ellipticity == 'ellipticity':
+			e = (1 - q) / (1 + q)
+		else:
+			raise ValueError("Invalid value for ellipticity. Choose 'distortion' or 'ellipticity'.")
 		del q
 		R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape)
 		# R = 1 - np.mean(e ** 2) / 2.0  # responsitivity factor
@@ -392,9 +412,6 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			ind_min_i = shape_tree.query_ball_tree(pos_tree, self.r_min)
 			ind_max_i = shape_tree.query_ball_tree(pos_tree, self.r_max)
 			ind_rbin_i = self.setdiff2D(ind_max_i, ind_min_i)
-			if save_tree:
-				with open(f"{file_tree_path}/w_{self.simname}_tree_{figname_dataset_name}.pickle", 'ab') as handle:
-					pickle.dump(ind_rbin_i, handle, protocol=pickle.HIGHEST_PROTOCOL)
 			for n in np.arange(0, len(positions_shape_sample_i)):
 				if len(ind_rbin_i[n]) > 0:
 					# for Splus_D (calculate ellipticities around position sample)
@@ -549,6 +566,20 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus
 
 	def _measure_xi_r_mur_box_jk_batch(self, i):
+		r"""Measures components of $\xi_{gg}$ and $\xi_{g+}$ in (r, mu_r) bins including jackknife realisations for a
+		batch of indices from i to i+chunk_size. Support function for _measure_xi_r_mu_r_box_jk_multiprocessing().
+
+		Parameters
+		----------
+		i: int
+			Start index of the batch.
+
+		Returns
+		-------
+		ndarrays
+			S+D, SxD, DD, DD_jk, S+D_jk where the _jk versions store the necessary information of DD of S+D for
+			each jackknife realisation.
+		"""
 		if i + self.chunk_size > self.Num_shape_masked:
 			i2 = self.Num_shape_masked
 		else:
@@ -649,8 +680,43 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 		return Splus_D, Scross_D, DD, DD_jk, Splus_D_jk
 
 	def _measure_xi_r_mur_box_jk_multiprocessing(self, dataset_name, L_subboxes, file_tree_path, masks=None,
-												 rp_cut=None, return_output=False, print_num=True, jk_group_name="",
-												 chunk_size=100, num_nodes=1):
+												 rp_cut=None, return_output=False, jk_group_name="",
+												 chunk_size=100, num_nodes=1, ellipticity='distortion'):
+		r"""Measures the projected correlation functions including jackknife realisations, $\xi_{gg}$ and $\xi_{g+}$,
+		in (r, mu_r) bins for an object created with MeasureIABox. Uses >1 CPU. Uses KDTree for speedup.
+
+		Parameters
+		----------
+		dataset_name : str
+			Name of the dataset in the output file.
+		L_subboxes: int
+			Number of subboxes on one side of the box. L_subboxes^3 is the total number of jackknife realisations.
+		temp_file_path : str or NoneType, optional
+			Path to where the data is temporarily stored [file name generated automatically].
+		masks : dict or NoneType, optional
+			Dictionary with masks for the data to select only part of the data. Uses same keywords as data dictionary.
+			Default value = None.
+		rp_cut : float, optional
+			Limit for minimum r_p value for pairs to be included. Default value is None.
+		return_output : bool, optional
+			If True, the output will be returned instead of written to a file. Default value is False.
+		jk_group_name : str, optional
+			Group in output file (hdf5) where jackknife realisations are stored. Default value is "".
+		chunk_size: int, optional
+			Size of the chunks of data sent to each multiprocessing node. If larger, more RAM is needed per node.
+			Default is 1000.
+		num_nodes : int, optional
+			Number of CPUs used in the multiprocessing. Default is 1.
+		ellipticity : str, optional
+			Definition of ellipticity. Choose from 'distortion', defined as (1-q^2)/(1+q^2), or 'ellipticity', defined
+			 as (1-q)/(1+q). Default is 'distortion'.
+
+		Returns
+		-------
+		ndarrays
+			$\xi_{gg}$ and $\xi_{g+}$, r bins, mu_r bins, S+D, DD, RR (if no output file is specified)
+
+		"""
 		if masks == None:
 			positions = self.data["Position"]
 			positions_shape_sample = self.data["Position_shape_sample"]
@@ -700,7 +766,12 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 
 		self.LOS_ind = self.data["LOS"]  # eg 2 for z axis
 		self.not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], self.LOS_ind, invert=True)]  # eg 0,1 for x&y
-		self.e = (1 - q ** 2) / (1 + q ** 2)  # size of ellipticity
+		if ellipticity == 'distortion':
+			self.e = (1 - q ** 2) / (1 + q ** 2)  # size of ellipticity
+		elif ellipticity == 'ellipticity':
+			self.e = (1 - q) / (1 + q)
+		else:
+			raise ValueError("Invalid value for ellipticity. Choose 'distortion' or 'ellipticity'.")
 		del q
 		self.R = sum(weight_shape * (1 - self.e ** 2 / 2.0)) / sum(weight_shape)
 		# R = 1 - np.mean(e ** 2) / 2.0  # responsitivity factor
