@@ -1,24 +1,17 @@
 import numpy as np
 import h5py
-import os
 from pathos.multiprocessing import ProcessingPool
 from .write_data import write_dataset_hdf5, create_group_hdf5
-from .measure_w_box import MeasureWBox
-from .measure_m_box import MeasureMultipolesBox
 from .measure_w_lightcone import MeasureWLightcone
 from .measure_m_lightcone import MeasureMultipolesLightcone
-from astropy.cosmology import LambdaCDM
 
-class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
+
+class MeasureJackknife(MeasureWLightcone,
 					   MeasureMultipolesLightcone):
 	"""Class that contains all methods for jackknife covariance measurements for IA correlation functions.
 
 	Methods
 	-------
-	_measure_jackknife_covariance_sims()
-		Measures all jackknife realisations for MeasureIABox and combines into covariance using 1 or more CPUs.
-	_measure_jackknife_covariance_sims_multiprocessing()
-		Measures all jackknife realisations for MeasureIABox and combines into covariance using >1 CPU.
 	_measure_jackknife_realisations_obs()
 		Measures all jackknife realisations for MeasureIALightcone using 1 or more CPUs.
 	_measure_jackknife_covariance_obs()
@@ -63,507 +56,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 						 pi_max, boxsize, periodicity)
 		return
 
-	def _measure_jackknife_covariance_sims(
-			self, dataset_name, corr_type, masks=None, L_subboxes=3, rp_cut=None,
-			tree_saved=True, file_tree_path=None, remove_tree_file=True, num_nodes=None
-	):
-		"""Measures the covariance in the projected correlation functions using the jackknife method.
-		The box is divided into L_subboxes^3 subboxes; the correlation function is calculated omitting one box at a time.
-		Then the covariance is computed by combining the information of all realisations.
-		This method uses 1 or more CPUs.
-
-		Parameters
-		----------
-		dataset_name : str
-			Name of the dataset in the output file.
-		corr_type : iterable with 2 str entries
-			Array with two entries. For first choose from [gg, g+, both], for second from [w, multipoles].
-		masks : dict or NoneType, optional
-			See MeasureIABox methods. Default is None.
-		L_subboxes : int, optional
-			Integer by which the length of the side of the box should be divided. Total number of jackknife realisations
-			will be L_subboxes^3. Default is 3.
-		rp_cut : float or NoneType, optional
-			See MeasureIABox.measure_xi_multipoles. Default is None.
-		tree_saved : bool, optional
-			If True, a method using trees has been used in the correlation measurement and the tree information is
-			saved. Default is True.
-		file_tree_path : str or NoneType, optional
-			Data path to tree information. See MeasureIABox methods. Default is None.
-		remove_tree_file : bool, optional
-			If True, the tree information file is removed after the jackknife covariance is measured. Default is True.
-		num_nodes : int or NoneType, optional
-			Number of cores to be used in multiprocessing. Default is None.
-
-		"""
-		if corr_type is None:
-			corr_type = ["both", "multipoles"]
-		if corr_type[0] == "both":
-			data = [corr_type[1] + "_g_plus", corr_type[1] + "_gg"]
-		elif corr_type[0] == "g+":
-			data = [corr_type[1] + "_g_plus"]
-		elif corr_type[0] == "gg":
-			data = [corr_type[1] + "_gg"]
-		else:
-			raise KeyError("Unknown value for corr_type. Choose from [g+, gg, both]")
-		figname_dataset_name = dataset_name
-		if "/" in dataset_name:
-			figname_dataset_name = figname_dataset_name.replace("/", "_")
-		if "." in dataset_name:
-			figname_dataset_name = figname_dataset_name.replace(".", "p")
-		L_sub = self.L_0p5 * 2.0 / L_subboxes
-		num_box = 0
-		for i in np.arange(0, L_subboxes):
-			for j in np.arange(0, L_subboxes):
-				for k in np.arange(0, L_subboxes):
-					x_bounds = [i * L_sub, (i + 1) * L_sub]
-					y_bounds = [j * L_sub, (j + 1) * L_sub]
-					z_bounds = [k * L_sub, (k + 1) * L_sub]
-					x_mask = (self.data["Position"][:, 0] > x_bounds[0]) * (self.data["Position"][:, 0] < x_bounds[1])
-					y_mask = (self.data["Position"][:, 1] > y_bounds[0]) * (self.data["Position"][:, 1] < y_bounds[1])
-					z_mask = (self.data["Position"][:, 2] > z_bounds[0]) * (self.data["Position"][:, 2] < z_bounds[1])
-					mask_position = np.invert(
-						x_mask * y_mask * z_mask
-					)  # mask that is True for all positions not in the subbox
-					if self.Num_position == self.Num_shape:
-						mask_shape = mask_position
-					else:
-						x_mask = (self.data["Position_shape_sample"][:, 0] > x_bounds[0]) * (
-								self.data["Position_shape_sample"][:, 0] < x_bounds[1]
-						)
-						y_mask = (self.data["Position_shape_sample"][:, 1] > y_bounds[0]) * (
-								self.data["Position_shape_sample"][:, 1] < y_bounds[1]
-						)
-						z_mask = (self.data["Position_shape_sample"][:, 2] > z_bounds[0]) * (
-								self.data["Position_shape_sample"][:, 2] < z_bounds[1]
-						)
-						mask_shape = np.invert(
-							x_mask * y_mask * z_mask
-						)  # mask that is True for all positions not in the subbox
-					if tree_saved:
-						if masks != None:
-							indices_shape = np.where(mask_shape[masks["Position_shape_sample"]])[0]
-							mask_not_position = np.invert(mask_position[masks["Position"]])
-							indices_not_position = np.where(mask_not_position)[0]
-							masks_total = {
-								"Position": masks["Position"],
-								"Position_shape_sample": masks["Position_shape_sample"],
-								"Axis_Direction": masks["Position_shape_sample"],
-								"q": masks["Position_shape_sample"],
-								"weight": masks["Position"],
-								"weight_shape_sample": masks["Position_shape_sample"],
-							}
-						else:
-							indices_shape = np.where(mask_shape)[0]
-							mask_not_position = np.invert(mask_position)
-							indices_not_position = np.where(mask_not_position)[0]
-							masks_total = None
-						tree_input = [indices_not_position, indices_shape]
-
-					else:
-						if masks != None:
-							mask_position = mask_position * masks["Position"]
-							mask_shape = mask_shape * masks["Position_shape_sample"]
-						tree_input = None
-						masks_total = {
-							"Position": mask_position,
-							"Position_shape_sample": mask_shape,
-							"Axis_Direction": mask_shape,
-							"q": mask_shape,
-							"weight": mask_position,
-							"weight_shape_sample": mask_shape,
-						}
-					if corr_type[1] == "multipoles":
-						if num_nodes == None:
-							self._measure_xi_r_mur_sims_tree(
-								tree_input=tree_input,
-								masks=masks_total,
-								rp_cut=rp_cut,
-								dataset_name=dataset_name + "_" + str(num_box),
-								print_num=False,
-								save_tree=False,
-								dataset_name_tree=f"m_{self.simname}_tree_{figname_dataset_name}",
-								file_tree_path=file_tree_path,
-								jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}",
-							)
-						else:
-							self._measure_xi_r_mur_sims_multiprocessing(
-								masks=masks_total,
-								rp_cut=rp_cut,
-								dataset_name=dataset_name + "_" + str(num_box),
-								print_num=False,
-								num_nodes=num_nodes,
-								jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}",
-							)
-						self._measure_multipoles(corr_type=corr_type[0], dataset_name=dataset_name + "_" + str(num_box),
-												 jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}")
-					else:
-						if num_nodes == None:
-							self._measure_xi_rp_pi_sims_tree(
-								tree_input=tree_input,
-								masks=masks_total,
-								dataset_name=dataset_name + "_" + str(num_box),
-								print_num=False,
-								save_tree=False,
-								dataset_name_tree=f"w_{self.simname}_tree_{figname_dataset_name}",
-								file_tree_path=file_tree_path,
-								jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}",
-							)
-						else:
-							self._measure_xi_rp_pi_sims_multiprocessing(
-								masks=masks_total,
-								dataset_name=dataset_name + "_" + str(num_box),
-								print_num=False,
-								num_nodes=num_nodes,
-								jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}",
-							)
-						self._measure_w_g_i(corr_type=corr_type[0], dataset_name=dataset_name + "_" + str(num_box),
-											jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}")
-
-					num_box += 1
-		if remove_tree_file and tree_saved:
-			if corr_type[1] == "multipoles":
-				os.remove(
-					f"{file_tree_path}/m_{self.simname}_tree_{figname_dataset_name}.pickle")  # removes temp pickle file
-			else:
-				os.remove(
-					f"{file_tree_path}/w_{self.simname}_tree_{figname_dataset_name}.pickle")  # removes temp pickle file
-		covs, stds = [], []
-		for d in np.arange(0, len(data)):
-			data_file = h5py.File(self.output_file_name, "a")
-			group_multipoles = data_file[f"{self.snap_group}/{data[d]}/{dataset_name}_jk{num_box}/"]
-			# calculating mean of the datavectors
-			mean_multipoles = np.zeros(self.num_bins_r)
-			for b in np.arange(0, num_box):
-				mean_multipoles += group_multipoles[dataset_name + "_" + str(b)]
-			mean_multipoles /= num_box
-
-			# calculation the covariance matrix (multipoles) and the standard deviation (sqrt of diag of cov)
-			cov = np.zeros((self.num_bins_r, self.num_bins_r))
-			std = np.zeros(self.num_bins_r)
-			for b in np.arange(0, num_box):
-				std += (group_multipoles[dataset_name + "_" + str(b)] - mean_multipoles) ** 2
-				for i in np.arange(self.num_bins_r):
-					cov[:, i] += (group_multipoles[dataset_name + "_" + str(b)] - mean_multipoles) * (
-							group_multipoles[dataset_name + "_" + str(b)][i] - mean_multipoles[i]
-					)
-			std *= (num_box - 1) / num_box  # see Singh 2023
-			std = np.sqrt(std)  # size of errorbars
-			cov *= (num_box - 1) / num_box  # cov not sqrt so to get std, sqrt of diag would need to be taken
-			data_file.close()
-			if self.output_file_name != None:
-				output_file = h5py.File(self.output_file_name, "a")
-				group_multipoles = create_group_hdf5(output_file, f"{self.snap_group}/" + data[d])
-				write_dataset_hdf5(group_multipoles, dataset_name + "_mean_" + str(num_box), data=mean_multipoles)
-				write_dataset_hdf5(group_multipoles, dataset_name + "_jackknife_" + str(num_box), data=std)
-				write_dataset_hdf5(group_multipoles, dataset_name + "_jackknife_cov_" + str(num_box), data=cov)
-				output_file.close()
-			else:
-				covs.append(cov)
-				stds.append(std)
-		if self.output_file_name != None:
-			return
-		else:
-			return covs, stds
-
-	def _measure_jackknife_covariance_sims_multiprocessing(
-			self, dataset_name, corr_type, masks=None, L_subboxes=3, rp_cut=None,
-			num_nodes=4, twoD=False, tree=True, tree_saved=True, file_tree_path=None, remove_tree_file=True,
-			save_jk_terms=False
-	):
-		"""Measures the covariance in the projected correlation functions using the jackknife method.
-		The box is divided into L_subboxes^3 subboxes; the correlation function is calculated omitting one box at a time.
-		Then the covariance is computed by combining the information of all realisations.
-		This method uses >1 CPUs.
-
-		Parameters
-		----------
-		dataset_name : str
-			Name of the dataset in the output file.
-		corr_type : iterable with 2 str entries
-			Array with two entries. For first choose from [gg, g+, both], for second from [w, multipoles].
-		masks : dict or NoneType, optional
-			See MeasureIABox methods. Default is None.
-		L_subboxes : int, optional
-			Integer by which the length of the side of the box should be divided. Total number of jackknife realisations
-			will be L_subboxes^3. Default is 3.
-		rp_cut : float or NoneType, optional
-			See MeasureIABox.measure_xi_multipoles. Default is None.
-		tree_saved : bool, optional
-			If True, a method using trees has been used in the correlation measurement and the tree information is
-			saved. Default is True.
-		file_tree_path : str or NoneType, optional
-			Data path to tree information. See MeasureIABox methods. Default is None.
-		remove_tree_file : bool, optional
-			If True, the tree information file is removed after the jackknife covariance is measured. Default is True.
-		num_nodes : int or NoneType, optional
-			Number of cores to be used in multiprocessing. Default is 4.
-		twoD : bool, optional
-			Divide box into L_subboxes^2, no division in z-direction. Default value is False.
-		tree : bool, optional
-			Manually determine if trees should be used in measurement. Default is True
-		save_jk_terms : bool, optional
-			If True, DD, and S+D terms are saved for each realisation. Default value is False.
-
-		Returns
-		-------
-
-		"""
-		if corr_type[0] == "both":
-			data = [corr_type[1] + "_g_plus", corr_type[1] + "_gg"]
-			corr_type_suff = ["_g_plus", "_gg"]
-			jk_terms = ["SplusD", "DD"]
-		elif corr_type[0] == "g+":
-			data = [corr_type[1] + "_g_plus"]
-			corr_type_suff = ["_g_plus"]
-			jk_terms = ["SplusD"]
-		elif corr_type[0] == "gg":
-			data = [corr_type[1] + "_g_plus", corr_type[1] + "_gg"]
-			corr_type_suff = ["_g_plus", "_gg"]
-			jk_terms = ["SplusD", "DD"]
-			corr_type[0] = 'both'  # will write away wrong data at the end (j,data_j loop) if gg only
-		# todo: update this to only do gg (count pairs methods) if asked
-		# data = [corr_type[1] + "_gg"]
-		# corr_type_suff = ["_gg"]
-		else:
-			raise KeyError("Unknown value for first entry of corr_type. Choose from [g+, gg, both]")
-
-		if corr_type[1] == "multipoles":
-			bin_var_names = ["r", "mu_r"]
-		elif corr_type[1] == "w":
-			bin_var_names = ["rp", "pi"]
-		else:
-			raise KeyError("Unknown value for second entry of corr_type. Choose from [multipoles, w_g_plus]")
-		L_sub = self.boxsize / L_subboxes
-		if twoD:
-			z_L_sub = 1
-		else:
-			z_L_sub = L_subboxes
-		figname_dataset_name = dataset_name
-		if "/" in dataset_name:
-			figname_dataset_name = figname_dataset_name.replace("/", "_")
-		if "." in dataset_name:
-			figname_dataset_name = figname_dataset_name.replace(".", "p")
-		num_box = 0
-		args_xi_g_plus, args_multipoles, tree_args = [], [], []
-		for i in np.arange(0, L_subboxes):
-			for j in np.arange(0, L_subboxes):
-				for k in np.arange(0, z_L_sub):
-					x_bounds = [i * L_sub, (i + 1) * L_sub]
-					y_bounds = [j * L_sub, (j + 1) * L_sub]
-					if twoD:
-						z_bounds = [0.0, self.boxsize]
-					else:
-						z_bounds = [k * L_sub, (k + 1) * L_sub]
-					x_mask = (self.data["Position"][:, 0] > x_bounds[0]) * (self.data["Position"][:, 0] < x_bounds[1])
-					y_mask = (self.data["Position"][:, 1] > y_bounds[0]) * (self.data["Position"][:, 1] < y_bounds[1])
-					z_mask = (self.data["Position"][:, 2] > z_bounds[0]) * (self.data["Position"][:, 2] < z_bounds[1])
-					mask_position = np.invert(
-						x_mask * y_mask * z_mask
-					)  # mask that is True for all positions not in the subbox
-					if self.Num_position == self.Num_shape:
-						mask_shape = mask_position
-					else:
-						x_mask = (self.data["Position_shape_sample"][:, 0] > x_bounds[0]) * (
-								self.data["Position_shape_sample"][:, 0] < x_bounds[1]
-						)
-						y_mask = (self.data["Position_shape_sample"][:, 1] > y_bounds[0]) * (
-								self.data["Position_shape_sample"][:, 1] < y_bounds[1]
-						)
-						z_mask = (self.data["Position_shape_sample"][:, 2] > z_bounds[0]) * (
-								self.data["Position_shape_sample"][:, 2] < z_bounds[1]
-						)
-						mask_shape = np.invert(
-							x_mask * y_mask * z_mask
-						)  # mask that is True for all positions not in the subbox
-					if tree_saved:
-						if masks != None:
-							indices_shape = np.where(mask_shape[masks["Position_shape_sample"]])[0]
-							mask_not_position = np.invert(mask_position[masks["Position"]])
-							indices_not_position = np.where(mask_not_position)[0]
-							masks_total = {
-								"Position": masks["Position"],
-								"Position_shape_sample": masks["Position_shape_sample"],
-								"Axis_Direction": masks["Position_shape_sample"],
-								"q": masks["Position_shape_sample"],
-								"weight": masks["Position"],
-								"weight_shape_sample": masks["Position_shape_sample"],
-							}
-						else:
-							indices_shape = np.where(mask_shape)[0]
-							mask_not_position = np.invert(mask_position)
-							indices_not_position = np.where(mask_not_position)[0]
-							masks_total = None
-						tree_input = [indices_not_position, indices_shape]
-					else:
-						if masks != None:
-							mask_position = mask_position * masks["Position"]
-							mask_shape = mask_shape * masks["Position_shape_sample"]
-						tree_input = None
-						masks_total = {
-							"Position": mask_position,
-							"Position_shape_sample": mask_shape,
-							"Axis_Direction": mask_shape,
-							"q": mask_shape,
-							"weight": mask_position,
-							"weight_shape_sample": mask_shape,
-						}
-					if corr_type[1] == "multipoles":
-						tree_args.append(tree_input)
-						args_xi_g_plus.append(
-							(
-								dataset_name + "_" + str(num_box),
-								masks_total,
-								rp_cut,
-								True,
-								False,
-								f"m_{self.simname}_tree_{figname_dataset_name}",
-								False,
-								file_tree_path,
-							)
-						)
-					else:
-						tree_args.append(tree_input)
-						args_xi_g_plus.append(
-							(
-								dataset_name + "_" + str(num_box),
-								masks_total,
-								True,
-								False,
-								f"w_{self.simname}_tree_{figname_dataset_name}",
-								False,
-								file_tree_path,
-							)
-						)
-					args_multipoles.append([corr_type[0], dataset_name + "_" + str(num_box)])
-
-					num_box += 1
-		args_xi_g_plus = np.array(args_xi_g_plus)
-		args_multipoles = np.array(args_multipoles)
-		multiproc_chuncks = np.array_split(np.arange(num_box), np.ceil(num_box / num_nodes))
-		for chunck in multiproc_chuncks:
-			chunck = np.array(chunck, dtype=int)
-			if corr_type[1] == "multipoles":
-				if tree:
-					result = ProcessingPool(nodes=len(chunck)).map(
-						self._measure_xi_r_mur_sims_tree,
-						tree_args[min(chunck):max(chunck) + 1],
-						args_xi_g_plus[chunck][:, 0],
-						args_xi_g_plus[chunck][:, 1],
-						args_xi_g_plus[chunck][:, 2],
-						args_xi_g_plus[chunck][:, 3],
-						args_xi_g_plus[chunck][:, 4],
-						args_xi_g_plus[chunck][:, 5],
-						args_xi_g_plus[chunck][:, 6],
-						args_xi_g_plus[chunck][:, 7],
-					)
-				else:
-					result = ProcessingPool(nodes=len(chunck)).map(
-						self._measure_xi_r_mur_sims_brute,
-						args_xi_g_plus[chunck][:, 0],
-						args_xi_g_plus[chunck][:, 1],
-						args_xi_g_plus[chunck][:, 2],
-						args_xi_g_plus[chunck][:, 3],
-						args_xi_g_plus[chunck][:, 4],
-					)
-			else:
-				if tree:
-					result = ProcessingPool(nodes=len(chunck)).map(
-						self._measure_xi_rp_pi_sims_tree,
-						tree_args[min(chunck):max(chunck) + 1],
-						args_xi_g_plus[chunck][:, 0],
-						args_xi_g_plus[chunck][:, 1],
-						args_xi_g_plus[chunck][:, 2],
-						args_xi_g_plus[chunck][:, 3],
-						args_xi_g_plus[chunck][:, 4],
-						args_xi_g_plus[chunck][:, 5],
-						args_xi_g_plus[chunck][:, 6],
-					)
-
-				else:
-					result = ProcessingPool(nodes=len(chunck)).map(
-						self._measure_xi_rp_pi_sims_brute,
-						args_xi_g_plus[chunck][:, 0],
-						args_xi_g_plus[chunck][:, 1],
-						args_xi_g_plus[chunck][:, 2],
-						args_xi_g_plus[chunck][:, 3],
-					)
-
-			output_file = h5py.File(self.output_file_name, "a")
-			for i in np.arange(0, len(chunck)):
-				for j, data_j in enumerate(data):
-					group_xigplus = create_group_hdf5(
-						output_file,
-						f"{self.snap_group}/{corr_type[1]}/xi{corr_type_suff[j]}/{dataset_name}_jk{L_subboxes ** 3}"
-					)
-					# correlation, (DD / RR_gg) - 1, separation_bins, pi_bins, Splus_D, DD, RR_g_plus
-					write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i]}", data=result[i][j])
-					write_dataset_hdf5(
-						group_xigplus, f"{dataset_name}_{chunck[i]}_{bin_var_names[0]}", data=result[i][2]
-					)
-					write_dataset_hdf5(
-						group_xigplus, f"{dataset_name}_{chunck[i]}_{bin_var_names[1]}", data=result[i][3]
-					)
-					if save_jk_terms:
-						write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i]}_{jk_terms[j]}",
-										   data=result[i][4 + j])
-						write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i]}_RR{corr_type_suff[j]}",
-										   data=result[i][6])
-			# write_dataset_hdf5(group_xigplus, f"{dataset_name}_{chunck[i]}_sigmasq", data=result[i][3])
-			output_file.close()
-		if remove_tree_file and tree_saved:
-			if corr_type[1] == "multipoles":
-				os.remove(
-					f"{file_tree_path}/m_{self.simname}_tree_{figname_dataset_name}.pickle")  # removes temp pickle file
-			else:
-				os.remove(
-					f"{file_tree_path}/w_{self.simname}_tree_{figname_dataset_name}.pickle")  # removes temp pickle file
-		for i in np.arange(0, num_box):
-			if corr_type[1] == "multipoles":
-				self._measure_multipoles(corr_type=args_multipoles[i][0], dataset_name=args_multipoles[i][1],
-										 jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}")
-			else:
-				self._measure_w_g_i(corr_type=args_multipoles[i][0], dataset_name=args_multipoles[i][1],
-									jk_group_name=f"{dataset_name}_jk{L_subboxes ** 3}")
-		covs, stds = [], []
-		for d in np.arange(0, len(data)):
-			data_file = h5py.File(self.output_file_name, "a")
-			group_multipoles = data_file[f"{self.snap_group}/{data[d]}/{dataset_name}_jk{num_box}"]
-			# calculating mean of the datavectors
-			mean_multipoles = np.zeros((self.num_bins_r))
-			for b in np.arange(0, num_box):
-				mean_multipoles += group_multipoles[dataset_name + "_" + str(b)]
-			mean_multipoles /= num_box
-
-			# calculation the covariance matrix (multipoles) and the standard deviation (wg+)
-			cov = np.zeros((self.num_bins_r, self.num_bins_r))
-			std = np.zeros(self.num_bins_r)
-			for b in np.arange(0, num_box):
-				std += (group_multipoles[dataset_name + "_" + str(b)] - mean_multipoles) ** 2
-				for i in np.arange(self.num_bins_r):
-					cov[:, i] += (group_multipoles[dataset_name + "_" + str(b)] - mean_multipoles) * (
-							group_multipoles[dataset_name + "_" + str(b)][i] - mean_multipoles[i]
-					)
-			std *= (num_box - 1) / num_box  # see Singh 2023
-			std = np.sqrt(std)  # size of errorbars
-			cov *= (num_box - 1) / num_box  # cov not sqrt so to get std, sqrt of diag would need to be taken
-			data_file.close()
-			if self.output_file_name != None:
-				output_file = h5py.File(self.output_file_name, "a")
-				group_multipoles = create_group_hdf5(output_file, f"{self.snap_group}/" + data[d])
-				write_dataset_hdf5(group_multipoles, dataset_name + "_mean_" + str(num_box), data=mean_multipoles)
-				write_dataset_hdf5(group_multipoles, dataset_name + "_jackknife_" + str(num_box), data=std)
-				write_dataset_hdf5(group_multipoles, dataset_name + "_jackknife_cov_" + str(num_box), data=cov)
-				output_file.close()
-			else:
-				covs.append(cov)
-				stds.append(std)
-		if self.output_file_name != None:
-			return
-		else:
-			return covs, stds
-
-	def _measure_jackknife_realisations_obs(
+	def _measure_jackknife_realisations_lightcone(
 			self, patches_pos, patches_shape, corr_type, dataset_name, masks=None,
 			rp_cut=None, over_h=False, cosmology=None, count_pairs=False, data_suffix="", num_sample_names=["S", "D"]
 	):
@@ -642,12 +135,13 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 			}
 			if corr_type[1] == "multipoles":
 				if count_pairs:
-					self._count_pairs_xi_r_mur_obs_brute(masks=masks_total, dataset_name=dataset_name + "_" + str(i),
-														 over_h=over_h, cosmology=cosmology, print_num=False,
-														 data_suffix=data_suffix, rp_cut=rp_cut,
-														 jk_group_name=f"{dataset_name}_jk{num_patches}")
+					self._count_pairs_xi_r_mur_lightcone_brute(masks=masks_total,
+															   dataset_name=dataset_name + "_" + str(i),
+															   over_h=over_h, cosmology=cosmology, print_num=False,
+															   data_suffix=data_suffix, rp_cut=rp_cut,
+															   jk_group_name=f"{dataset_name}_jk{num_patches}")
 				else:
-					self._measure_xi_r_mur_obs_brute(
+					self._measure_xi_r_mur_lightcone_brute(
 						masks=masks_total,
 						rp_cut=rp_cut,
 						dataset_name=dataset_name + "_" + str(i),
@@ -659,12 +153,13 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 
 			else:
 				if count_pairs:
-					self._count_pairs_xi_rp_pi_obs_brute(masks=masks_total, dataset_name=dataset_name + "_" + str(i),
-														 over_h=over_h, cosmology=cosmology, print_num=False,
-														 data_suffix=data_suffix,
-														 jk_group_name=f"{dataset_name}_jk{num_patches}")
+					self._count_pairs_xi_rp_pi_lightcone_brute(masks=masks_total,
+															   dataset_name=dataset_name + "_" + str(i),
+															   over_h=over_h, cosmology=cosmology, print_num=False,
+															   data_suffix=data_suffix,
+															   jk_group_name=f"{dataset_name}_jk{num_patches}")
 				else:
-					self._measure_xi_rp_pi_obs_brute(
+					self._measure_xi_rp_pi_lightcone_brute(
 						masks=masks_total,
 						dataset_name=dataset_name + "_" + str(i),
 						print_num=False,
@@ -674,7 +169,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 					)
 		return
 
-	def _measure_jackknife_covariance_obs(
+	def _measure_jackknife_covariance_lightcone(
 			self, IA_estimator, corr_type, dataset_name, max_patch, min_patch=1,
 			randoms_suf="_randoms"
 	):
@@ -722,7 +217,8 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 			for b in np.arange(min_patch, max_patch + 1):
 				self._obs_estimator(corr_type, IA_estimator, f"{dataset_name}_{b}",
 									f"{dataset_name}{randoms_suf}_{b}", self.num_samples[f"{b}"],
-									jk_group_name=f"{dataset_name}_jk{num_patches}")
+									jk_group_name=f"{dataset_name}_jk{num_patches}",
+									jk_group_name_randoms=f"{dataset_name}{randoms_suf}_jk{num_patches}")
 				if "w" in data[d]:
 					self._measure_w_g_i(corr_type=corr_type[0], dataset_name=f"{dataset_name}_{b}",
 										jk_group_name=f"{dataset_name}_jk{num_patches}")
@@ -766,7 +262,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 		else:
 			return covs, stds
 
-	def _measure_jackknife_realisations_obs_multiprocessing(
+	def _measure_jackknife_realisations_lightcone_multiprocessing(
 			self, patches_pos, patches_shape, corr_type, dataset_name, masks=None,
 			rp_cut=None, over_h=False, num_nodes=4, cosmology=None, count_pairs=False, data_suffix="",
 			num_sample_names=["S", "D"]
@@ -809,9 +305,9 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 
 		"""
 		if num_nodes == 1:
-			self._measure_jackknife_realisations_obs(patches_pos, patches_shape, masks, corr_type, dataset_name,
-													 rp_cut, over_h, cosmology, count_pairs, data_suffix,
-													 num_sample_names)
+			self._measure_jackknife_realisations_lightcone(patches_pos, patches_shape, masks, corr_type, dataset_name,
+														   rp_cut, over_h, cosmology, count_pairs, data_suffix,
+														   num_sample_names)
 			return
 
 		if count_pairs == False:
@@ -898,7 +394,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 			if corr_type[1] == "multipoles":
 				if count_pairs:
 					result = ProcessingPool(nodes=len(chunck)).map(
-						self._count_pairs_xi_r_mur_obs_brute,
+						self._count_pairs_xi_r_mur_lightcone_brute,
 						args_xi_g_plus[chunck][:, 0],
 						args_xi_g_plus[chunck][:, 1],
 						args_xi_g_plus[chunck][:, 2],
@@ -910,7 +406,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 					)
 				else:
 					result = ProcessingPool(nodes=len(chunck)).map(
-						self._measure_xi_r_mur_obs_brute,
+						self._measure_xi_r_mur_lightcone_brute,
 						args_xi_g_plus[chunck][:, 0],
 						args_xi_g_plus[chunck][:, 1],
 						args_xi_g_plus[chunck][:, 2],
@@ -922,7 +418,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 			else:
 				if count_pairs:
 					result = ProcessingPool(nodes=len(chunck)).map(
-						self._count_pairs_xi_rp_pi_obs_brute,
+						self._count_pairs_xi_rp_pi_lightcone_brute,
 						args_xi_g_plus[chunck][:, 0],
 						args_xi_g_plus[chunck][:, 1],
 						args_xi_g_plus[chunck][:, 2],
@@ -933,7 +429,7 @@ class MeasureJackknife(MeasureWBox, MeasureMultipolesBox, MeasureWLightcone,
 					)
 				else:
 					result = ProcessingPool(nodes=len(chunck)).map(
-						self._measure_xi_rp_pi_obs_brute,
+						self._measure_xi_rp_pi_lightcone_brute,
 						args_xi_g_plus[chunck][:, 0],
 						args_xi_g_plus[chunck][:, 1],
 						args_xi_g_plus[chunck][:, 2],
