@@ -25,6 +25,6 @@ mi = MeasureIABox(
 	boxsize=205.0,
 )
 
-mi.measure_xi_w(dataset_name="ds1", corr_type="both", num_jk=27)
-mi.measure_xi_multipoles(dataset_name="ds1", corr_type="both", num_jk=27)
+mi.measure_xi_w(dataset_name="ds1", corr_type="both", num_jk=27, temp_file_path='./')
+mi.measure_xi_multipoles(dataset_name="ds1", corr_type="both", num_jk=27, temp_file_path='./')
 ```
