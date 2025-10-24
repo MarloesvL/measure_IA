@@ -13,6 +13,9 @@ authors:
     email: m.l.vanheukelum@uu.nl
     affiliation: Utrecht University
     orcid: 'https://orcid.org/0009-0008-3780-1617'
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.17252215
 repository-code: 'https://github.com/MarloesvL/measure_IA'
 abstract: >-
   MeasureIA is a tool that can be used to easily measure

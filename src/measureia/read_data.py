@@ -317,8 +317,27 @@ class ReadData(SimInfo):
 		-------
 
 		"""
+		# reset parameters (if same object is used for multiple datasets)
+		self.r = None
+		self.rp = None
+		self.w_gg = None
+		self.w_gp = None
+		self.multipoles_gg = None
+		self.multipoles_gp = None
+		self.cov_multipoles_gg = None
+		self.errors_multipoles_gg = None
+		self.cov_multipoles_gp = None
+		self.errors_multipoles_gp = None
+		self.cov_w_gg = None
+		self.errors_w_gg = None
+		self.cov_w_gp = None
+		self.errors_w_gp = None
+
 		file = h5py.File(f"{self.data_path}{self.catalogue}.hdf5", "r")
-		data_group = file[self.snap_group]
+		if self.snap_group != "":
+			data_group = file[self.snap_group]
+		else:
+			data_group = file
 		try:
 			self.multipoles_gg = data_group[f"multipoles_gg/{dataset_name}"][:]
 			self.r = data_group[f"multipoles_gg/{dataset_name}_r"][:]

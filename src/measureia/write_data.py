@@ -43,17 +43,16 @@ def create_group_hdf5(file, name):
 		list_groups = name.split('/')
 		groups = ''
 		for group in list_groups:
-			if groups == '':
-				groups += group
-			else:
-				groups += '/'
-				groups += group
-			try:
-				group_file = file[groups]
-			except:
-				file.create_group(groups)
-	if groups != name:
-		raise ValueError('Created groups do not match specified one.')
+			if group != '':
+				if groups == '':
+					groups += group
+				else:
+					groups += '/'
+					groups += group
+				try:
+					group_file = file[groups]
+				except:
+					file.create_group(groups)
 	return file[name]
 
 
