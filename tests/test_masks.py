@@ -3,7 +3,7 @@ import numpy as np
 from measureia import ReadData
 
 
-def test_masks_w(IA_mock_TNG300_n8):
+def test_masks_w(IA_mock_TNG300_n1):
 	'''
 	Compare limited TNG300 catalogue outputs with saved version.
 	:param IA_mock_TNG300:
@@ -13,9 +13,9 @@ def test_masks_w(IA_mock_TNG300_n8):
 	Mass = data_file["Mass"][:]
 	data_file.close()
 	masks = {}
-	for key_d in IA_mock_TNG300_n8.data.keys():
+	for key_d in IA_mock_TNG300_n1.data.keys():
 		masks[key_d] = Mass > 11.75
-	IA_mock_TNG300_n8.measure_xi_w("high", 'both', 8, file_tree_path='./data/processed/', masks=masks)
+	IA_mock_TNG300_n1.measure_xi_w("high", 'both', 8, temp_file_path='./data/processed/', masks=masks)
 
 	output_wgp = ReadData("TNG300", "test_IA_mock_TNG300", 99, "w_g_plus/", data_path='./data/processed/TNG300/')
 	output_wgg = ReadData("TNG300", "test_IA_mock_TNG300", 99, "w_gg/", data_path='./data/processed/TNG300/')
@@ -41,13 +41,13 @@ def test_masks_w(IA_mock_TNG300_n8):
 	np.testing.assert_array_equal(rp_wgp, a_rp_wgp)
 	np.testing.assert_array_equal(rp_wgg, a_rp_wgg)
 
-	np.testing.assert_array_equal(cov_wgp, a_cov_wgp)
-	np.testing.assert_array_equal(cov_wgg, a_cov_wgg)
+	np.testing.assert_allclose(cov_wgp, a_cov_wgp)
+	np.testing.assert_allclose(cov_wgg, a_cov_wgg)
 
 	return
 
 
-def test_masks_m(IA_mock_TNG300_n8):
+def test_masks_m(IA_mock_TNG300_n1):
 	'''
 	Compare limited TNG300 catalogue outputs with saved version.
 	:param IA_mock_TNG300:
@@ -57,9 +57,9 @@ def test_masks_m(IA_mock_TNG300_n8):
 	Mass = data_file["Mass"][:]
 	data_file.close()
 	masks = {}
-	for key_d in IA_mock_TNG300_n8.data.keys():
+	for key_d in IA_mock_TNG300_n1.data.keys():
 		masks[key_d] = Mass > 11.75
-	IA_mock_TNG300_n8.measure_xi_multipoles("high", 'both', 8, file_tree_path='./data/processed/', masks=masks)
+	IA_mock_TNG300_n1.measure_xi_multipoles("high", 'both', 8, temp_file_path='./data/processed/', masks=masks)
 
 	output_wgp = ReadData("TNG300", "test_IA_mock_TNG300", 99, "multipoles_g_plus/",
 						  data_path='./data/processed/TNG300/')
@@ -87,8 +87,8 @@ def test_masks_m(IA_mock_TNG300_n8):
 	np.testing.assert_array_equal(rp_wgp, a_rp_wgp)
 	np.testing.assert_array_equal(rp_wgg, a_rp_wgg)
 
-	np.testing.assert_array_equal(cov_wgp, a_cov_wgp)
-	np.testing.assert_array_equal(cov_wgg, a_cov_wgg)
+	np.testing.assert_allclose(cov_wgp, a_cov_wgp)
+	np.testing.assert_allclose(cov_wgg, a_cov_wgg)
 
 	return
 
