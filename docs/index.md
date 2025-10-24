@@ -23,6 +23,8 @@ You can also view the [GitHub](https://github.com/MarloesvL/measure_IA)
       <li><a href="/api/MeasureJackknife/">MeasureJackknife</a></li>
       <li><a href="/api/MeasureWBox/">MeasureWBox</a></li>
       <li><a href="/api/MeasureMBox/">MeasureMultipolesBox</a></li>
+      <li><a href="/api/MeasureWBoxJackknife/">MeasureWBoxJackknife</a></li>
+      <li><a href="/api/MeasureMBoxJackknife/">MeasureMBoxJackknife</a></li>
       <li><a href="/api/SimInfo/">SimInfo</a></li>
       <li><a href="/api/ReadData/">ReadData</a></li>
     </ul>
