@@ -749,6 +749,8 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		self.Num_position_masked = len(positions)
 		self.Num_shape_masked = len(positions_shape_sample)
+		print(
+			f"There are {self.Num_shape_masked} galaxies in the shape sample and {self.Num_position_masked} galaxies in the position sample.")
 
 		# create temp hdf5 from which data can be read. del self.data, but save it in this method to reduce RAM
 		figname_dataset_name = dataset_name
