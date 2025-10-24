@@ -74,6 +74,10 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../MeasureMBox/">MeasureMultipolesBox</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../MeasureWBoxJackknife/">MeasureWBoxJackknife</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../MeasureMBoxJackknife/">MeasureMBoxJackknife</a>
+                  </li>
                   <li class="toctree-l1 current"><a class="reference internal current" href="#">SimInfo</a>
     <ul class="current">
     <li class="toctree-l2"><a class="reference internal" href="#measureia.SimInfo">SimInfo</a>
@@ -384,10 +388,19 @@
 				raise KeyError("Add an L1 or L2p8 suffix to your simname to specify which boxsize is used")
 			self.L_0p5 = self.boxsize / 2.0
 			self.h = 0.681
+		elif "COLIBRE" in self.simname:
+			if "L4" in self.simname:
+				self.boxsize = 400.0 * 0.681  # cMpc/h
+			elif "L2" in self.simname:
+				self.boxsize = 200.0 * 0.681  # cMpc/h
+			else:
+				raise KeyError("Add an L4 or L2 suffix to your simname to specify which boxsize is used")
+			self.L_0p5 = self.boxsize / 2.0
+			self.h = 0.681
 		else:
 			raise KeyError(
 				"Simulation name not recognised. Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, "
-				"FLAMINGO_L2p8].")
+				"FLAMINGO_L2p8, COLIBRE_L400, COLIBRE_L200].")
 		return
 
 	def get_file_info(self):
@@ -421,9 +434,13 @@
 			self.fof_folder = None
 			self.snap_folder = None
 			self.N_files = 1
+		elif "COLIBRE" in self.simname:
+			self.fof_folder = None
+			self.snap_folder = None
+			self.N_files = 1
 		else:
 			raise KeyError(
-				"Simulation name not recognised. Choose from [TNG100, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1_m8, FLAMINGO_L1_m9, FLAMINGO_L1_m10, FLAMINGO_L2p8_m9].")
+				"Simulation name not recognised. Choose from [TNG100, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1_m8, FLAMINGO_L1_m9, FLAMINGO_L1_m10, FLAMINGO_L2p8_m9,, COLIBRE_L400, COLIBRE_L200].")
 		return</code></pre>
               </details>
 
@@ -657,10 +674,19 @@ FLAMINGO_L1, FLAMINGO_L2p8].</p>
 			raise KeyError("Add an L1 or L2p8 suffix to your simname to specify which boxsize is used")
 		self.L_0p5 = self.boxsize / 2.0
 		self.h = 0.681
+	elif "COLIBRE" in self.simname:
+		if "L4" in self.simname:
+			self.boxsize = 400.0 * 0.681  # cMpc/h
+		elif "L2" in self.simname:
+			self.boxsize = 200.0 * 0.681  # cMpc/h
+		else:
+			raise KeyError("Add an L4 or L2 suffix to your simname to specify which boxsize is used")
+		self.L_0p5 = self.boxsize / 2.0
+		self.h = 0.681
 	else:
 		raise KeyError(
 			"Simulation name not recognised. Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, "
-			"FLAMINGO_L2p8].")
+			"FLAMINGO_L2p8, COLIBRE_L400, COLIBRE_L200].")
 	return</code></pre>
             </details>
     </div>
@@ -714,9 +740,13 @@ FLAMINGO_L1, FLAMINGO_L2p8].</p>
 		self.fof_folder = None
 		self.snap_folder = None
 		self.N_files = 1
+	elif "COLIBRE" in self.simname:
+		self.fof_folder = None
+		self.snap_folder = None
+		self.N_files = 1
 	else:
 		raise KeyError(
-			"Simulation name not recognised. Choose from [TNG100, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1_m8, FLAMINGO_L1_m9, FLAMINGO_L1_m10, FLAMINGO_L2p8_m9].")
+			"Simulation name not recognised. Choose from [TNG100, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1_m8, FLAMINGO_L1_m9, FLAMINGO_L1_m10, FLAMINGO_L2p8_m9,, COLIBRE_L400, COLIBRE_L200].")
 	return</code></pre>
             </details>
     </div>
@@ -734,7 +764,7 @@ FLAMINGO_L1, FLAMINGO_L2p8].</p>
             </div>
           </div><footer>
     <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
-        <a href="../MeasureMBox/" class="btn btn-neutral float-left" title="MeasureMultipolesBox"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../MeasureMBoxJackknife/" class="btn btn-neutral float-left" title="MeasureMBoxJackknife"><span class="icon icon-circle-arrow-left"></span> Previous</a>
         <a href="../ReadData/" class="btn btn-neutral float-right" title="ReadData">Next <span class="icon icon-circle-arrow-right"></span></a>
     </div>
 
@@ -758,7 +788,7 @@ FLAMINGO_L1, FLAMINGO_L2p8].</p>
   <span class="rst-current-version" data-toggle="rst-current-version">
     
     
-      <span><a href="../MeasureMBox/" style="color: #fcfcfc">&laquo; Previous</a></span>
+      <span><a href="../MeasureMBoxJackknife/" style="color: #fcfcfc">&laquo; Previous</a></span>
     
     
       <span><a href="../ReadData/" style="color: #fcfcfc">Next &raquo;</a></span>
@@ -769,6 +799,8 @@ FLAMINGO_L1, FLAMINGO_L2p8].</p>
     <script>var base_url = "../..";</script>
     <script src="../../js/theme_extra.js"></script>
     <script src="../../js/theme.js"></script>
+      <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+      <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
       <script src="../../search/main.js"></script>
     <script>
         jQuery(function () {

@@ -86,6 +86,10 @@
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../MeasureMBox/">MeasureMultipolesBox</a>
                   </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../MeasureWBoxJackknife/">MeasureWBoxJackknife</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../MeasureMBoxJackknife/">MeasureMBoxJackknife</a>
+                  </li>
                   <li class="toctree-l1"><a class="reference internal" href="../SimInfo/">SimInfo</a>
                   </li>
                   <li class="toctree-l1"><a class="reference internal" href="../ReadData/">ReadData</a>
@@ -131,12 +135,13 @@
 
     <div class="doc doc-contents first">
             <p class="doc doc-class-bases">
-              Bases: <code><a class="autorefs autorefs-internal" title="measureia.MeasureJackknife (measureia.measure_jackknife.MeasureJackknife)" href="../MeasureJackknife/#measureia.MeasureJackknife">MeasureJackknife</a></code></p>
+              Bases: <code><a class="autorefs autorefs-internal" title="measureia.MeasureWBox (measureia.measure_w_box.MeasureWBox)" href="../MeasureWBox/#measureia.MeasureWBox">MeasureWBox</a></code>, <code><a class="autorefs autorefs-internal" title="measureia.MeasureMultipolesBox (measureia.measure_m_box.MeasureMultipolesBox)" href="../MeasureMBox/#measureia.MeasureMultipolesBox">MeasureMultipolesBox</a></code>, <code><a class="autorefs autorefs-internal" title="measureia.measure_w_box_jk.MeasureWBoxJackknife" href="../MeasureWBoxJackknife/#measureia.MeasureWBoxJackknife">MeasureWBoxJackknife</a></code>, <code><a class="autorefs autorefs-internal" title="measureia.measure_m_box_jk.MeasureMBoxJackknife" href="../MeasureMBoxJackknife/#measureia.MeasureMBoxJackknife">MeasureMBoxJackknife</a></code></p>
 
 
         <p>Manages the IA correlation function measurement methods used in the MeasureIA package based on speed and input.
-This class is used to call the methods that measure w_gg, w_g+ and multipoles for simulations in cartesian coordinates.
-Depending on the input parameters, various correlations incl covariance estimates are measured for given data.</p>
+This class is used to call the methods that measure <span class="arithmatex">\(w_{gg}\)</span>, <span class="arithmatex">\(w_{g+}\)</span> and multipoles for simulations in cartesian
+coordinates. Depending on the input parameters, various correlations incl covariance estimates are measured for
+given data.</p>
 
 
 <p><span class="doc-section-title">Methods:</span></p>
@@ -149,18 +154,18 @@ Depending on the input parameters, various correlations incl covariance estimate
       </thead>
       <tbody>
             <tr class="doc-section-item">
-              <td><code><a class="autorefs autorefs-internal" title="measure_xi_w(dataset_name, corr_type, num_jk=0, measure_cov=True, file_tree_path=None, masks=None, remove_tree_file=True, save_jk_terms=False) (measureia.MeasureIABox.measure_xi_w)" href="#measureia.MeasureIABox.measure_xi_w">measure_xi_w</a></code></td>
+              <td><code><a class="autorefs autorefs-internal" title="measure_xi_w(dataset_name, corr_type, num_jk=0, temp_file_path=None, masks=None, ellipticity='distortion', chunk_size=1000) (measureia.MeasureIABox.measure_xi_w)" href="#measureia.MeasureIABox.measure_xi_w">measure_xi_w</a></code></td>
               <td>
                 <div class="doc-md-description">
-                  <p>Compute projected correlations $w_{gg}$ and/or $w_{g+}$.</p>
+                  <p>Compute projected correlations <span class="arithmatex">\(w_{gg}\)</span> and/or <span class="arithmatex">\(w_{g+}\)</span>.</p>
                 </div>
               </td>
             </tr>
             <tr class="doc-section-item">
-              <td><code><a class="autorefs autorefs-internal" title="measure_xi_multipoles(dataset_name, corr_type, num_jk, measure_cov=True, file_tree_path=None, masks=None, remove_tree_file=True, rp_cut=None) (measureia.MeasureIABox.measure_xi_multipoles)" href="#measureia.MeasureIABox.measure_xi_multipoles">measure_xi_multipoles</a></code></td>
+              <td><code><a class="autorefs autorefs-internal" title="measure_xi_multipoles(dataset_name, corr_type, num_jk=0, temp_file_path=None, masks=None, rp_cut=None, ellipticity='distortion', chunk_size=1000) (measureia.MeasureIABox.measure_xi_multipoles)" href="#measureia.MeasureIABox.measure_xi_multipoles">measure_xi_multipoles</a></code></td>
               <td>
                 <div class="doc-md-description">
-                  <p>Compute multipoles of the correlation functions, $\tilde{\xi}<em>{gg,0}$ and/or $\tilde{\xi}</em>{g+,2}$.</p>
+                  <p>Compute multipoles of the correlation functions, <span class="arithmatex">\(\tilde{\xi}_{gg,0}\)</span> and/or <span class="arithmatex">\(\tilde{\xi}_{g+,2}\)</span>.</p>
                 </div>
               </td>
             </tr>
@@ -183,10 +188,11 @@ Inherits attributes from 'MeasureIABase', where 'data', 'output_file_name', 'per
 
               <details class="quote">
                 <summary>Source code in <code>src/measureia/measure_IA.py</code></summary>
-                <pre class="highlight"><code class="language-python">class MeasureIABox(MeasureJackknife):
+                <pre class="highlight"><code class="language-python">class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, MeasureMBoxJackknife):
 	r"""Manages the IA correlation function measurement methods used in the MeasureIA package based on speed and input.
-	This class is used to call the methods that measure w_gg, w_g+ and multipoles for simulations in cartesian coordinates.
-	Depending on the input parameters, various correlations incl covariance estimates are measured for given data.
+	This class is used to call the methods that measure $w_{gg}$, $w_{g+}$ and multipoles for simulations in cartesian
+	coordinates. Depending on the input parameters, various correlations incl covariance estimates are measured for
+	given data.
 
 	Methods
 	-------
@@ -240,11 +246,10 @@ Inherits attributes from 'MeasureIABase', where 'data', 'output_file_name', 'per
 
 		return
 
-	def measure_xi_w(self, dataset_name, corr_type, num_jk=0, measure_cov=True, file_tree_path=None, masks=None,
-					 remove_tree_file=True, save_jk_terms=False):
-		"""Measures xi_gg, xi_g+ and w_gg, w_g+ including jackknife covariance if desired.
-		Manages the various _measure_xi_rp_pi_sims and _measure_jackknife_covariance_sims options in MeasureWSimulations
-		and MeasureJackknife.
+	def measure_xi_w(self, dataset_name, corr_type, num_jk=0, temp_file_path=None, masks=None,
+					 ellipticity='distortion', chunk_size=1000):
+		r"""Measures $\xi_{gg}$, $\xi_{g+}$ and $w_{gg}$, $w_{g+}$ including jackknife covariance if desired.
+		Manages the various _measure_xi_rp_pi_box method options in MeasureWBox and MeasureWBoxJackknife.
 
 		Parameters
 		----------
@@ -253,114 +258,96 @@ Inherits attributes from 'MeasureIABase', where 'data', 'output_file_name', 'per
 		corr_type : str
 			Type of correlation to be measured. Choose from [g+, gg, both].
 		num_jk : int, optional
-			Number of jackknife regions (needs to be x^3, with x an int) for the covariance measurement. Default is 0.
-		measure_cov : bool, optional
-			If True, jackknife covariance is measured. Default is True
-		file_tree_path : str or NoneType, optional
-			Path to where the tree information is temporarily stored [file name generated automatically].
-			If None (default), no trees are used in the calculation.
-			Note that the use of trees speeds up the calculations significantly.
+			Number of jackknife regions (needs to be x^3, with x an int) for the covariance measurement.
+			Default is 0 (no covariance).
+		temp_file_path : str or NoneType, optional
+			Path to where the data is temporarily stored [file name generated automatically].
 		masks : dict or NoneType, optional
 			Directory of mask information in the same form as the data dictionary, where the masks are placed over
 			the data to apply selections. Default is None.
-		remove_tree_file : bool, optional
-			If True (default), the file that stores the tree information is removed after the measurements.
-		save_jk_terms : bool, optional
-			If True, DD and S+D terms of the jackknife realisations are also saved in the output file.
-			These terms are automatically saved when only 1 core is used in the measurements. Default is False.
+		chunk_size: int, optional
+			Size of the chunks of data sent to each multiprocessing node. If larger, more RAM is needed per node.
+			Default is 1000.
+		ellipticity : str, optional
+			Definition of ellipticity. Choose from 'distortion', defined as (1-q^2)/(1+q^2), or 'ellipticity', defined
+			 as (1-q)/(1+q). Default is 'distortion'.
 
 		"""
-		if measure_cov:
+		if num_jk &gt; 0:
 			try:
 				assert sympy.integer_nthroot(num_jk, 3)[1]
 				L = sympy.integer_nthroot(num_jk, 3)[0]
 			except AssertionError:
 				raise ValueError(
 					f"Use x^3 as input for num_jk, with x as an int. {float(int(num_jk ** (1. / 3)))},{num_jk ** (1. / 3)}")
-			if self.num_nodes == 1:
-				multiproc_bool = False
-				save_tree = True
-			elif num_jk &gt; 0.5 * self.num_nodes:
-				multiproc_bool = True
-				save_tree = True
-			else:
-				multiproc_bool = True
-				save_tree = False
+
+		if temp_file_path == False:
+			temp_storage = False
+			temp_file_path = None
 		else:
-			if self.num_nodes == 1:
-				multiproc_bool = False
-				save_tree = False
-			elif self.num_nodes &gt; 2:
-				multiproc_bool = True
-				save_tree = False
-			else:
-				multiproc_bool = True
-				save_tree = True
-		if save_tree and file_tree_path == False:
-			save_tree = False
-			file_tree_path = None
-		elif save_tree and file_tree_path == None:
+			temp_storage = True
+		if temp_storage and temp_file_path == None:
 			raise ValueError(
-				"Input file_tree_path for faster computation. Do not want to use trees? Input file_path_tree=False.")
+				"Input temp_file_path for faster computation. Do not want to save data temporarily? Input file_path_tree=False.")
+
+		# replace by better checks of input data
 		try:
 			RA = self.data["RA"]
-			sim_bool = False
+			print("Given data is lightcone, use measure_xi_w_lightcone method instead.")
+			exit()
 		except:
-			sim_bool = True
-		if not sim_bool:
-			print("Given data is observational, use measure_xi_w_obs method instead.")
-		else:
-			if multiproc_bool and save_tree:
-				self._measure_xi_rp_pi_sims_tree(tree_input=None, masks=masks, dataset_name=dataset_name,
-												 return_output=False, print_num=True, dataset_name_tree=None,
-												 save_tree=save_tree, file_tree_path=file_tree_path)
-				self._measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
-				if measure_cov:
-					self._measure_jackknife_covariance_sims_multiprocessing(masks=masks, corr_type=[corr_type, "w"],
-																			dataset_name=dataset_name, L_subboxes=L,
-																			rp_cut=None,
-																			num_nodes=self.num_nodes, twoD=False,
-																			tree=True,
-																			tree_saved=True,
-																			file_tree_path=file_tree_path,
-																			remove_tree_file=remove_tree_file,
-																			save_jk_terms=save_jk_terms)
-			elif not multiproc_bool and save_tree:
-				self._measure_xi_rp_pi_sims_tree(tree_input=None, masks=masks, dataset_name=dataset_name,
-												 return_output=False, print_num=True, dataset_name_tree=None,
-												 save_tree=save_tree, file_tree_path=file_tree_path)
-				self._measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
-				if measure_cov:
-					self._measure_jackknife_covariance_sims(masks=masks, corr_type=[corr_type, "w"],
-															dataset_name=dataset_name, L_subboxes=L, rp_cut=None,
-															tree_saved=True, file_tree_path=file_tree_path,
-															remove_tree_file=remove_tree_file)
-			elif multiproc_bool and not save_tree:
-				print("yes")
-				self._measure_xi_rp_pi_sims_multiprocessing(num_nodes=self.num_nodes, masks=masks,
-															dataset_name=dataset_name, return_output=False,
-															print_num=True)
-				self._measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
-				if measure_cov:
-					self._measure_jackknife_covariance_sims(masks=masks, corr_type=[corr_type, "w"],
-															dataset_name=dataset_name, L_subboxes=L, rp_cut=None,
-															num_nodes=self.num_nodes, tree_saved=False)
+			pass
+
+		if num_jk &gt; 0:  # include covariance
+			if self.num_nodes &gt; 1 and temp_storage:
+				self._measure_xi_rp_pi_box_jk_multiprocessing(masks=masks, L_subboxes=L, dataset_name=dataset_name,
+															  return_output=False,
+															  num_nodes=self.num_nodes,
+															  jk_group_name=f"{dataset_name}_jk{num_jk}",
+															  chunk_size=chunk_size, ellipticity=ellipticity,
+															  temp_file_path=temp_file_path)
+			elif temp_storage:
+				self._measure_xi_rp_pi_box_jk_tree(masks=masks, L_subboxes=L, dataset_name=dataset_name,
+												   return_output=False, ellipticity=ellipticity,
+												   jk_group_name=f"{dataset_name}_jk{num_jk}")
 			else:
-				self._measure_xi_rp_pi_sims_brute(masks=masks, dataset_name=dataset_name,
-												  return_output=False, print_num=True)
-				self._measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
-				if measure_cov:
-					self._measure_jackknife_covariance_sims(masks=masks, corr_type=[corr_type, "w"],
-															dataset_name=dataset_name, L_subboxes=L, rp_cut=None,
-															num_nodes=self.num_nodes, tree_saved=False)
+				self._measure_xi_rp_pi_box_jk_brute(masks=masks, L_subboxes=L, dataset_name=dataset_name,
+													return_output=False, ellipticity=ellipticity,
+													jk_group_name=f"{dataset_name}_jk{num_jk}")
+			self._measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
+			for i in np.arange(num_jk):
+				self._measure_w_g_i(corr_type=corr_type, dataset_name=f"{dataset_name}_{i}",
+									jk_group_name=f"{dataset_name}_jk{num_jk}", return_output=False)
+			if corr_type == "both":
+				corr_group = ["w_g_plus", "w_gg"]
+			elif corr_type == "g+":
+				corr_group = ["w_g_plus"]
+			elif corr_type == "gg":
+				corr_group = ["w_gg"]
+			else:
+				raise KeyError("Unknown value for corr_type. Choose from [g+, gg, both]")
+			self._combine_jackknife_information(dataset_name=dataset_name, jk_group_name=f"{dataset_name}_jk{num_jk}",
+												corr_group=corr_group, num_box=num_jk)
+		else:  # no covariance
+			if self.num_nodes &gt; 1 and temp_storage:
+				self._measure_xi_rp_pi_box_multiprocessing(dataset_name=dataset_name, temp_file_path=temp_file_path,
+														   masks=masks, return_output=False, num_nodes=self.num_nodes,
+														   chunk_size=chunk_size, ellipticity=ellipticity)
+			elif temp_storage:
+				self._measure_xi_rp_pi_box_tree(masks=masks, dataset_name=dataset_name,
+												return_output=False, ellipticity=ellipticity)
+			else:
+				self._measure_xi_rp_pi_box_brute(masks=masks, dataset_name=dataset_name,
+												 return_output=False, ellipticity=ellipticity)
+			self._measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
 
 		return
 
-	def measure_xi_multipoles(self, dataset_name, corr_type, num_jk, measure_cov=True, file_tree_path=None, masks=None,
-							  remove_tree_file=True, rp_cut=None):
-		"""Measures multipoles including jackknife covariance if desired.
-		Manages the various _measure_xi_r_mu_r_sims and _measure_jackknife_covariance_sims options in
-		MeasureMultipolesSimulations and MeasureJackknife.
+	def measure_xi_multipoles(self, dataset_name, corr_type, num_jk=0, temp_file_path=None, masks=None, rp_cut=None,
+							  ellipticity='distortion', chunk_size=1000):
+		r"""Measures $\xi_{gg}$, $\xi_{g+}$ and $\tilde{\xi}_{gg,0}$, $\tilde{\xi}_{g+,2}$ including jackknife covariance
+		if desired. Manages the various _measure_xi_r_mur_box method options in MeasureMultipolesBox and
+		MeasureMultipolesBoxJackknife.
 
 		Parameters
 		----------
@@ -369,112 +356,89 @@ Inherits attributes from 'MeasureIABase', where 'data', 'output_file_name', 'per
 		corr_type : str
 			Type of correlation to be measured. Choose from [g+, gg, both].
 		num_jk : int, optional
-			Number of jackknife regions (needs to be x^3, with x an int) for the covariance measurement. Default is 0.
-		measure_cov : bool, optional
-			If True, jackknife covariance is measured. Default is True
-		file_tree_path : str or NoneType, optional
-			Path to where the tree information is temporarily stored [file name generated automatically].
-			If None (default), no trees are used in the calculation.
-			Note that the use of trees speeds up the calculations significantly.
+			Number of jackknife regions (needs to be x^3, with x an int) for the covariance measurement. Default is 0 (no covariance).
+		temp_file_path : str or NoneType, optional
+			Path to where the data is temporarily stored [file name generated automatically].
 		masks : dict or NoneType, optional
 			Directory of mask information in the same form as the data dictionary, where the masks are placed over
 			the data to apply selections. Default is None.
-		remove_tree_file : bool, optional
-			If True (default), the file that stores the tree information is removed after the measurements.
 		rp_cut : float or NoneType, optional
 			Applies a minimum r_p value condition for pairs to be included. Default is None.
-
+		chunck_size: int, optional
+			Size of the chunks of data sent to each multiprocessing node. If larger, more RAM is needed per node.
+		ellipticity : str, optional
+			Definition of ellipticity. Choose from 'distortion', defined as (1-q^2)/(1+q^2), or 'ellipticity', defined
+			 as (1-q)/(1+q). Default is 'distortion'.
 		"""
-		if measure_cov:
+
+		if num_jk &gt; 0:
 			try:
 				assert sympy.integer_nthroot(num_jk, 3)[1]
 				L = sympy.integer_nthroot(num_jk, 3)[0]
 			except AssertionError:
-				raise ValueError("Use x^3 as input for num_jk, with x as an int.")
-			if self.num_nodes == 1:
-				multiproc_bool = False
-				save_tree = True
-			elif num_jk &gt; 0.5 * self.num_nodes:
-				multiproc_bool = True
-				save_tree = True
-			else:
-				multiproc_bool = True
-				save_tree = False
+				raise ValueError(
+					f"Use x^3 as input for num_jk, with x as an int. {float(int(num_jk ** (1. / 3)))},{num_jk ** (1. / 3)}")
+
+		if temp_file_path == False:
+			temp_storage = False
+			temp_file_path = None
 		else:
-			if self.num_nodes == 1:
-				multiproc_bool = False
-				save_tree = False
-			elif self.num_nodes &gt; 2:
-				multiproc_bool = True
-				save_tree = False
-			else:
-				multiproc_bool = True
-				save_tree = True
-		if save_tree and file_tree_path == None:
+			temp_storage = True
+		if temp_storage and temp_file_path == None:
 			raise ValueError(
-				"Input file_tree_path for faster computation. Do not want to use trees? Input file_path_tree=False.")
-		elif save_tree and file_tree_path == False:
-			save_tree = False
-			file_tree_path = None
+				"Input temp_file_path for faster computation. Do not want to save data temporarily? Input file_path_tree=False.")
+
+		# replace by better checks of input data
 		try:
 			RA = self.data["RA"]
-			raise KeyError(
-				"Lightcone input provided, use measure_xi_w_obs and measure_xi_multipoles_obs for measurements or "
-				"provide carthesian coordinate data.")
-		except KeyError:
+			print("Given data is lightcone, use measure_xi_w_lightcone method instead.")
+			exit()
+		except:
 			pass
-		if multiproc_bool and save_tree:
-			self._measure_xi_r_mur_sims_tree(tree_input=None, masks=masks,
-											 dataset_name=dataset_name,
-											 return_output=False, print_num=True,
-											 dataset_name_tree=None, rp_cut=rp_cut,
-											 save_tree=save_tree, file_tree_path=file_tree_path)
+
+		if num_jk &gt; 0:  # include covariance
+			if self.num_nodes &gt; 1 and temp_storage:
+				self._measure_xi_r_mur_box_jk_multiprocessing(masks=masks, L_subboxes=L, dataset_name=dataset_name,
+															  return_output=False,
+															  num_nodes=self.num_nodes,
+															  jk_group_name=f"{dataset_name}_jk{num_jk}",
+															  chunk_size=chunk_size, ellipticity=ellipticity,
+															  file_tree_path=temp_file_path)
+			elif temp_storage:
+				self._measure_xi_r_mur_box_jk_tree(masks=masks, L_subboxes=L, dataset_name=dataset_name,
+												   return_output=False, ellipticity=ellipticity,
+												   jk_group_name=f"{dataset_name}_jk{num_jk}")
+			else:
+				self._measure_xi_r_mur_box_jk_brute(masks=masks, L_subboxes=L, dataset_name=dataset_name,
+													return_output=False, ellipticity=ellipticity,
+													jk_group_name=f"{dataset_name}_jk{num_jk}")
 			self._measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
-			if measure_cov:
-				self._measure_jackknife_covariance_sims_multiprocessing(masks=masks,
-																		corr_type=[corr_type, "multipoles"],
-																		dataset_name=dataset_name, L_subboxes=L,
-																		rp_cut=rp_cut,
-																		num_nodes=self.num_nodes, twoD=False,
-																		tree=True,
-																		tree_saved=True,
-																		file_tree_path=file_tree_path,
-																		remove_tree_file=remove_tree_file)
-		elif not multiproc_bool and save_tree:
-			self._measure_xi_r_mur_sims_tree(tree_input=None, masks=masks,
-											 dataset_name=dataset_name,
-											 return_output=False, print_num=True,
-											 dataset_name_tree=None, rp_cut=rp_cut,
-											 save_tree=save_tree, file_tree_path=file_tree_path)
+			for i in np.arange(num_jk):
+				self._measure_multipoles(corr_type=corr_type, dataset_name=f"{dataset_name}_{i}",
+										 jk_group_name=f"{dataset_name}_jk{num_jk}", return_output=False)
+			if corr_type == "both":
+				corr_group = ["multipoles_g_plus", "multipoles_gg"]
+			elif corr_type == "g+":
+				corr_group = ["multipoles_g_plus"]
+			elif corr_type == "gg":
+				corr_group = ["multipoles_gg"]
+			else:
+				raise KeyError("Unknown value for corr_type. Choose from [g+, gg, both]")
+			self._combine_jackknife_information(dataset_name=dataset_name, jk_group_name=f"{dataset_name}_jk{num_jk}",
+												corr_group=corr_group, num_box=num_jk)
+		else:  # no covariance
+			if self.num_nodes &gt; 1 and temp_storage:
+				self._measure_xi_r_mur_box_multiprocessing(dataset_name=dataset_name, temp_file_path=temp_file_path,
+														   masks=masks, return_output=False, num_nodes=self.num_nodes,
+														   chunk_size=chunk_size, ellipticity=ellipticity)
+			elif temp_storage:
+				self._measure_xi_r_mur_box_tree(masks=masks, dataset_name=dataset_name,
+												return_output=False,
+												ellipticity=ellipticity)
+			else:
+				self._measure_xi_r_mur_box_brute(masks=masks, dataset_name=dataset_name,
+												 return_output=False, ellipticity=ellipticity)
 			self._measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
-			if measure_cov:
-				self._measure_jackknife_covariance_sims(masks=masks, corr_type=[corr_type, "multipoles"],
-														dataset_name=dataset_name, L_subboxes=L, rp_cut=rp_cut,
-														tree_saved=True, file_tree_path=file_tree_path,
-														remove_tree_file=remove_tree_file)
-		elif multiproc_bool and not save_tree:
-			self._measure_xi_r_mur_sims_multiprocessing(num_nodes=self.num_nodes,
-														masks=masks,
-														dataset_name=dataset_name,
-														return_output=False, rp_cut=rp_cut,
-														print_num=True)
-			self._measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
-			if measure_cov:
-				self._measure_jackknife_covariance_sims(masks=masks, corr_type=[corr_type, "multipoles"],
-														dataset_name=dataset_name, L_subboxes=L,
-														rp_cut=rp_cut, num_nodes=self.num_nodes,
-														tree_saved=False)
-		else:
-			self._measure_xi_r_mur_sims_brute(masks=masks,
-											  dataset_name=dataset_name,
-											  return_output=False, print_num=True,
-											  rp_cut=rp_cut)
-			self._measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
-			if measure_cov:
-				self._measure_jackknife_covariance_sims(masks=masks, corr_type=[corr_type, "multipoles"],
-														dataset_name=dataset_name, L_subboxes=L,
-														rp_cut=rp_cut, num_nodes=self.num_nodes,
-														tree_saved=False)
 
 		return</code></pre>
               </details>
@@ -586,16 +550,15 @@ Inherits attributes from 'MeasureIABase', where 'data', 'output_file_name', 'per
 
 
 <h3 id="measureia.MeasureIABox.measure_xi_w" class="doc doc-heading">
-            <code class="highlight language-python">measure_xi_w(dataset_name, corr_type, num_jk=0, measure_cov=True, file_tree_path=None, masks=None, remove_tree_file=True, save_jk_terms=False)</code>
+            <code class="highlight language-python">measure_xi_w(dataset_name, corr_type, num_jk=0, temp_file_path=None, masks=None, ellipticity='distortion', chunk_size=1000)</code>
 
 </h3>
 
 
     <div class="doc doc-contents ">
 
-        <p>Measures xi_gg, xi_g+ and w_gg, w_g+ including jackknife covariance if desired.
-Manages the various _measure_xi_rp_pi_sims and _measure_jackknife_covariance_sims options in MeasureWSimulations
-and MeasureJackknife.</p>
+        <p>Measures <span class="arithmatex">\(\xi_{gg}\)</span>, <span class="arithmatex">\(\xi_{g+}\)</span> and <span class="arithmatex">\(w_{gg}\)</span>, <span class="arithmatex">\(w_{g+}\)</span> including jackknife covariance if desired.
+Manages the various _measure_xi_rp_pi_box method options in MeasureWBox and MeasureWBoxJackknife.</p>
 
 
 <table class="field-list">
@@ -633,31 +596,19 @@ and MeasureJackknife.</p>
 )
               –
               <div class="doc-md-description">
-                <pre><code>Number of jackknife regions (needs to be x^3, with x an int) for the covariance measurement. Default is 0.
+                <pre><code>Number of jackknife regions (needs to be x^3, with x an int) for the covariance measurement.
+Default is 0 (no covariance).
 </code></pre>
               </div>
             </li>
             <li>
-              <b><code>measure_cov</code></b>
-                  (<code><span title="bool">bool</span></code>, default:
-                      <code>True</code>
-)
-              –
-              <div class="doc-md-description">
-                <pre><code>If True, jackknife covariance is measured. Default is True
-</code></pre>
-              </div>
-            </li>
-            <li>
-              <b><code>file_tree_path</code></b>
+              <b><code>temp_file_path</code></b>
                   (<code><span title="str">str</span> or <span title="NoneType">NoneType</span></code>, default:
                       <code>None</code>
 )
               –
               <div class="doc-md-description">
-                <pre><code>Path to where the tree information is temporarily stored [file name generated automatically].
-If None (default), no trees are used in the calculation.
-Note that the use of trees speeds up the calculations significantly.
+                <pre><code>Path to where the data is temporarily stored [file name generated automatically].
 </code></pre>
               </div>
             </li>
@@ -674,25 +625,23 @@ the data to apply selections. Default is None.
               </div>
             </li>
             <li>
-              <b><code>remove_tree_file</code></b>
-                  (<code><span title="bool">bool</span></code>, default:
-                      <code>True</code>
-)
+              <b><code>chunk_size</code></b>
               –
               <div class="doc-md-description">
-                <pre><code>If True (default), the file that stores the tree information is removed after the measurements.
+                <pre><code>Size of the chunks of data sent to each multiprocessing node. If larger, more RAM is needed per node.
+Default is 1000.
 </code></pre>
               </div>
             </li>
             <li>
-              <b><code>save_jk_terms</code></b>
-                  (<code><span title="bool">bool</span></code>, default:
-                      <code>False</code>
+              <b><code>ellipticity</code></b>
+                  (<code><span title="str">str</span></code>, default:
+                      <code>&#39;distortion&#39;</code>
 )
               –
               <div class="doc-md-description">
-                <pre><code>If True, DD and S+D terms of the jackknife realisations are also saved in the output file.
-These terms are automatically saved when only 1 core is used in the measurements. Default is False.
+                <pre><code>Definition of ellipticity. Choose from 'distortion', defined as (1-q^2)/(1+q^2), or 'ellipticity', defined
+ as (1-q)/(1+q). Default is 'distortion'.
 </code></pre>
               </div>
             </li>
@@ -704,11 +653,10 @@ These terms are automatically saved when only 1 core is used in the measurements
 
             <details class="quote">
               <summary>Source code in <code>src/measureia/measure_IA.py</code></summary>
-              <pre class="highlight"><code class="language-python">def measure_xi_w(self, dataset_name, corr_type, num_jk=0, measure_cov=True, file_tree_path=None, masks=None,
-				 remove_tree_file=True, save_jk_terms=False):
-	"""Measures xi_gg, xi_g+ and w_gg, w_g+ including jackknife covariance if desired.
-	Manages the various _measure_xi_rp_pi_sims and _measure_jackknife_covariance_sims options in MeasureWSimulations
-	and MeasureJackknife.
+              <pre class="highlight"><code class="language-python">def measure_xi_w(self, dataset_name, corr_type, num_jk=0, temp_file_path=None, masks=None,
+				 ellipticity='distortion', chunk_size=1000):
+	r"""Measures $\xi_{gg}$, $\xi_{g+}$ and $w_{gg}$, $w_{g+}$ including jackknife covariance if desired.
+	Manages the various _measure_xi_rp_pi_box method options in MeasureWBox and MeasureWBoxJackknife.
 
 	Parameters
 	----------
@@ -717,106 +665,88 @@ These terms are automatically saved when only 1 core is used in the measurements
 	corr_type : str
 		Type of correlation to be measured. Choose from [g+, gg, both].
 	num_jk : int, optional
-		Number of jackknife regions (needs to be x^3, with x an int) for the covariance measurement. Default is 0.
-	measure_cov : bool, optional
-		If True, jackknife covariance is measured. Default is True
-	file_tree_path : str or NoneType, optional
-		Path to where the tree information is temporarily stored [file name generated automatically].
-		If None (default), no trees are used in the calculation.
-		Note that the use of trees speeds up the calculations significantly.
+		Number of jackknife regions (needs to be x^3, with x an int) for the covariance measurement.
+		Default is 0 (no covariance).
+	temp_file_path : str or NoneType, optional
+		Path to where the data is temporarily stored [file name generated automatically].
 	masks : dict or NoneType, optional
 		Directory of mask information in the same form as the data dictionary, where the masks are placed over
 		the data to apply selections. Default is None.
-	remove_tree_file : bool, optional
-		If True (default), the file that stores the tree information is removed after the measurements.
-	save_jk_terms : bool, optional
-		If True, DD and S+D terms of the jackknife realisations are also saved in the output file.
-		These terms are automatically saved when only 1 core is used in the measurements. Default is False.
+	chunk_size: int, optional
+		Size of the chunks of data sent to each multiprocessing node. If larger, more RAM is needed per node.
+		Default is 1000.
+	ellipticity : str, optional
+		Definition of ellipticity. Choose from 'distortion', defined as (1-q^2)/(1+q^2), or 'ellipticity', defined
+		 as (1-q)/(1+q). Default is 'distortion'.
 
 	"""
-	if measure_cov:
+	if num_jk &gt; 0:
 		try:
 			assert sympy.integer_nthroot(num_jk, 3)[1]
 			L = sympy.integer_nthroot(num_jk, 3)[0]
 		except AssertionError:
 			raise ValueError(
 				f"Use x^3 as input for num_jk, with x as an int. {float(int(num_jk ** (1. / 3)))},{num_jk ** (1. / 3)}")
-		if self.num_nodes == 1:
-			multiproc_bool = False
-			save_tree = True
-		elif num_jk &gt; 0.5 * self.num_nodes:
-			multiproc_bool = True
-			save_tree = True
-		else:
-			multiproc_bool = True
-			save_tree = False
+
+	if temp_file_path == False:
+		temp_storage = False
+		temp_file_path = None
 	else:
-		if self.num_nodes == 1:
-			multiproc_bool = False
-			save_tree = False
-		elif self.num_nodes &gt; 2:
-			multiproc_bool = True
-			save_tree = False
-		else:
-			multiproc_bool = True
-			save_tree = True
-	if save_tree and file_tree_path == False:
-		save_tree = False
-		file_tree_path = None
-	elif save_tree and file_tree_path == None:
+		temp_storage = True
+	if temp_storage and temp_file_path == None:
 		raise ValueError(
-			"Input file_tree_path for faster computation. Do not want to use trees? Input file_path_tree=False.")
+			"Input temp_file_path for faster computation. Do not want to save data temporarily? Input file_path_tree=False.")
+
+	# replace by better checks of input data
 	try:
 		RA = self.data["RA"]
-		sim_bool = False
+		print("Given data is lightcone, use measure_xi_w_lightcone method instead.")
+		exit()
 	except:
-		sim_bool = True
-	if not sim_bool:
-		print("Given data is observational, use measure_xi_w_obs method instead.")
-	else:
-		if multiproc_bool and save_tree:
-			self._measure_xi_rp_pi_sims_tree(tree_input=None, masks=masks, dataset_name=dataset_name,
-											 return_output=False, print_num=True, dataset_name_tree=None,
-											 save_tree=save_tree, file_tree_path=file_tree_path)
-			self._measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
-			if measure_cov:
-				self._measure_jackknife_covariance_sims_multiprocessing(masks=masks, corr_type=[corr_type, "w"],
-																		dataset_name=dataset_name, L_subboxes=L,
-																		rp_cut=None,
-																		num_nodes=self.num_nodes, twoD=False,
-																		tree=True,
-																		tree_saved=True,
-																		file_tree_path=file_tree_path,
-																		remove_tree_file=remove_tree_file,
-																		save_jk_terms=save_jk_terms)
-		elif not multiproc_bool and save_tree:
-			self._measure_xi_rp_pi_sims_tree(tree_input=None, masks=masks, dataset_name=dataset_name,
-											 return_output=False, print_num=True, dataset_name_tree=None,
-											 save_tree=save_tree, file_tree_path=file_tree_path)
-			self._measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
-			if measure_cov:
-				self._measure_jackknife_covariance_sims(masks=masks, corr_type=[corr_type, "w"],
-														dataset_name=dataset_name, L_subboxes=L, rp_cut=None,
-														tree_saved=True, file_tree_path=file_tree_path,
-														remove_tree_file=remove_tree_file)
-		elif multiproc_bool and not save_tree:
-			print("yes")
-			self._measure_xi_rp_pi_sims_multiprocessing(num_nodes=self.num_nodes, masks=masks,
-														dataset_name=dataset_name, return_output=False,
-														print_num=True)
-			self._measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
-			if measure_cov:
-				self._measure_jackknife_covariance_sims(masks=masks, corr_type=[corr_type, "w"],
-														dataset_name=dataset_name, L_subboxes=L, rp_cut=None,
-														num_nodes=self.num_nodes, tree_saved=False)
+		pass
+
+	if num_jk &gt; 0:  # include covariance
+		if self.num_nodes &gt; 1 and temp_storage:
+			self._measure_xi_rp_pi_box_jk_multiprocessing(masks=masks, L_subboxes=L, dataset_name=dataset_name,
+														  return_output=False,
+														  num_nodes=self.num_nodes,
+														  jk_group_name=f"{dataset_name}_jk{num_jk}",
+														  chunk_size=chunk_size, ellipticity=ellipticity,
+														  temp_file_path=temp_file_path)
+		elif temp_storage:
+			self._measure_xi_rp_pi_box_jk_tree(masks=masks, L_subboxes=L, dataset_name=dataset_name,
+											   return_output=False, ellipticity=ellipticity,
+											   jk_group_name=f"{dataset_name}_jk{num_jk}")
 		else:
-			self._measure_xi_rp_pi_sims_brute(masks=masks, dataset_name=dataset_name,
-											  return_output=False, print_num=True)
-			self._measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
-			if measure_cov:
-				self._measure_jackknife_covariance_sims(masks=masks, corr_type=[corr_type, "w"],
-														dataset_name=dataset_name, L_subboxes=L, rp_cut=None,
-														num_nodes=self.num_nodes, tree_saved=False)
+			self._measure_xi_rp_pi_box_jk_brute(masks=masks, L_subboxes=L, dataset_name=dataset_name,
+												return_output=False, ellipticity=ellipticity,
+												jk_group_name=f"{dataset_name}_jk{num_jk}")
+		self._measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
+		for i in np.arange(num_jk):
+			self._measure_w_g_i(corr_type=corr_type, dataset_name=f"{dataset_name}_{i}",
+								jk_group_name=f"{dataset_name}_jk{num_jk}", return_output=False)
+		if corr_type == "both":
+			corr_group = ["w_g_plus", "w_gg"]
+		elif corr_type == "g+":
+			corr_group = ["w_g_plus"]
+		elif corr_type == "gg":
+			corr_group = ["w_gg"]
+		else:
+			raise KeyError("Unknown value for corr_type. Choose from [g+, gg, both]")
+		self._combine_jackknife_information(dataset_name=dataset_name, jk_group_name=f"{dataset_name}_jk{num_jk}",
+											corr_group=corr_group, num_box=num_jk)
+	else:  # no covariance
+		if self.num_nodes &gt; 1 and temp_storage:
+			self._measure_xi_rp_pi_box_multiprocessing(dataset_name=dataset_name, temp_file_path=temp_file_path,
+													   masks=masks, return_output=False, num_nodes=self.num_nodes,
+													   chunk_size=chunk_size, ellipticity=ellipticity)
+		elif temp_storage:
+			self._measure_xi_rp_pi_box_tree(masks=masks, dataset_name=dataset_name,
+											return_output=False, ellipticity=ellipticity)
+		else:
+			self._measure_xi_rp_pi_box_brute(masks=masks, dataset_name=dataset_name,
+											 return_output=False, ellipticity=ellipticity)
+		self._measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
 
 	return</code></pre>
             </details>
@@ -828,16 +758,16 @@ These terms are automatically saved when only 1 core is used in the measurements
 
 
 <h3 id="measureia.MeasureIABox.measure_xi_multipoles" class="doc doc-heading">
-            <code class="highlight language-python">measure_xi_multipoles(dataset_name, corr_type, num_jk, measure_cov=True, file_tree_path=None, masks=None, remove_tree_file=True, rp_cut=None)</code>
+            <code class="highlight language-python">measure_xi_multipoles(dataset_name, corr_type, num_jk=0, temp_file_path=None, masks=None, rp_cut=None, ellipticity='distortion', chunk_size=1000)</code>
 
 </h3>
 
 
     <div class="doc doc-contents ">
 
-        <p>Measures multipoles including jackknife covariance if desired.
-Manages the various _measure_xi_r_mu_r_sims and _measure_jackknife_covariance_sims options in
-MeasureMultipolesSimulations and MeasureJackknife.</p>
+        <p>Measures <span class="arithmatex">\(\xi_{gg}\)</span>, <span class="arithmatex">\(\xi_{g+}\)</span> and <span class="arithmatex">\(\tilde{\xi}_{gg,0}\)</span>, <span class="arithmatex">\(\tilde{\xi}_{g+,2}\)</span> including jackknife covariance
+if desired. Manages the various _measure_xi_r_mur_box method options in MeasureMultipolesBox and
+MeasureMultipolesBoxJackknife.</p>
 
 
 <table class="field-list">
@@ -870,34 +800,23 @@ MeasureMultipolesSimulations and MeasureJackknife.</p>
             </li>
             <li>
               <b><code>num_jk</code></b>
-                  (<code><span title="int">int</span></code>)
-              –
-              <div class="doc-md-description">
-                <pre><code>Number of jackknife regions (needs to be x^3, with x an int) for the covariance measurement. Default is 0.
-</code></pre>
-              </div>
-            </li>
-            <li>
-              <b><code>measure_cov</code></b>
-                  (<code><span title="bool">bool</span></code>, default:
-                      <code>True</code>
+                  (<code><span title="int">int</span></code>, default:
+                      <code>0</code>
 )
               –
               <div class="doc-md-description">
-                <pre><code>If True, jackknife covariance is measured. Default is True
+                <pre><code>Number of jackknife regions (needs to be x^3, with x an int) for the covariance measurement. Default is 0 (no covariance).
 </code></pre>
               </div>
             </li>
             <li>
-              <b><code>file_tree_path</code></b>
+              <b><code>temp_file_path</code></b>
                   (<code><span title="str">str</span> or <span title="NoneType">NoneType</span></code>, default:
                       <code>None</code>
 )
               –
               <div class="doc-md-description">
-                <pre><code>Path to where the tree information is temporarily stored [file name generated automatically].
-If None (default), no trees are used in the calculation.
-Note that the use of trees speeds up the calculations significantly.
+                <pre><code>Path to where the data is temporarily stored [file name generated automatically].
 </code></pre>
               </div>
             </li>
@@ -914,17 +833,6 @@ the data to apply selections. Default is None.
               </div>
             </li>
             <li>
-              <b><code>remove_tree_file</code></b>
-                  (<code><span title="bool">bool</span></code>, default:
-                      <code>True</code>
-)
-              –
-              <div class="doc-md-description">
-                <pre><code>If True (default), the file that stores the tree information is removed after the measurements.
-</code></pre>
-              </div>
-            </li>
-            <li>
               <b><code>rp_cut</code></b>
                   (<code><span title="float">float</span> or <span title="NoneType">NoneType</span></code>, default:
                       <code>None</code>
@@ -932,6 +840,26 @@ the data to apply selections. Default is None.
               –
               <div class="doc-md-description">
                 <pre><code>Applies a minimum r_p value condition for pairs to be included. Default is None.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>chunck_size</code></b>
+              –
+              <div class="doc-md-description">
+                <pre><code>Size of the chunks of data sent to each multiprocessing node. If larger, more RAM is needed per node.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>ellipticity</code></b>
+                  (<code><span title="str">str</span></code>, default:
+                      <code>&#39;distortion&#39;</code>
+)
+              –
+              <div class="doc-md-description">
+                <pre><code>Definition of ellipticity. Choose from 'distortion', defined as (1-q^2)/(1+q^2), or 'ellipticity', defined
+ as (1-q)/(1+q). Default is 'distortion'.
 </code></pre>
               </div>
             </li>
@@ -943,11 +871,11 @@ the data to apply selections. Default is None.
 
             <details class="quote">
               <summary>Source code in <code>src/measureia/measure_IA.py</code></summary>
-              <pre class="highlight"><code class="language-python">def measure_xi_multipoles(self, dataset_name, corr_type, num_jk, measure_cov=True, file_tree_path=None, masks=None,
-						  remove_tree_file=True, rp_cut=None):
-	"""Measures multipoles including jackknife covariance if desired.
-	Manages the various _measure_xi_r_mu_r_sims and _measure_jackknife_covariance_sims options in
-	MeasureMultipolesSimulations and MeasureJackknife.
+              <pre class="highlight"><code class="language-python">def measure_xi_multipoles(self, dataset_name, corr_type, num_jk=0, temp_file_path=None, masks=None, rp_cut=None,
+						  ellipticity='distortion', chunk_size=1000):
+	r"""Measures $\xi_{gg}$, $\xi_{g+}$ and $\tilde{\xi}_{gg,0}$, $\tilde{\xi}_{g+,2}$ including jackknife covariance
+	if desired. Manages the various _measure_xi_r_mur_box method options in MeasureMultipolesBox and
+	MeasureMultipolesBoxJackknife.
 
 	Parameters
 	----------
@@ -956,112 +884,89 @@ the data to apply selections. Default is None.
 	corr_type : str
 		Type of correlation to be measured. Choose from [g+, gg, both].
 	num_jk : int, optional
-		Number of jackknife regions (needs to be x^3, with x an int) for the covariance measurement. Default is 0.
-	measure_cov : bool, optional
-		If True, jackknife covariance is measured. Default is True
-	file_tree_path : str or NoneType, optional
-		Path to where the tree information is temporarily stored [file name generated automatically].
-		If None (default), no trees are used in the calculation.
-		Note that the use of trees speeds up the calculations significantly.
+		Number of jackknife regions (needs to be x^3, with x an int) for the covariance measurement. Default is 0 (no covariance).
+	temp_file_path : str or NoneType, optional
+		Path to where the data is temporarily stored [file name generated automatically].
 	masks : dict or NoneType, optional
 		Directory of mask information in the same form as the data dictionary, where the masks are placed over
 		the data to apply selections. Default is None.
-	remove_tree_file : bool, optional
-		If True (default), the file that stores the tree information is removed after the measurements.
 	rp_cut : float or NoneType, optional
 		Applies a minimum r_p value condition for pairs to be included. Default is None.
-
+	chunck_size: int, optional
+		Size of the chunks of data sent to each multiprocessing node. If larger, more RAM is needed per node.
+	ellipticity : str, optional
+		Definition of ellipticity. Choose from 'distortion', defined as (1-q^2)/(1+q^2), or 'ellipticity', defined
+		 as (1-q)/(1+q). Default is 'distortion'.
 	"""
-	if measure_cov:
+
+	if num_jk &gt; 0:
 		try:
 			assert sympy.integer_nthroot(num_jk, 3)[1]
 			L = sympy.integer_nthroot(num_jk, 3)[0]
 		except AssertionError:
-			raise ValueError("Use x^3 as input for num_jk, with x as an int.")
-		if self.num_nodes == 1:
-			multiproc_bool = False
-			save_tree = True
-		elif num_jk &gt; 0.5 * self.num_nodes:
-			multiproc_bool = True
-			save_tree = True
-		else:
-			multiproc_bool = True
-			save_tree = False
+			raise ValueError(
+				f"Use x^3 as input for num_jk, with x as an int. {float(int(num_jk ** (1. / 3)))},{num_jk ** (1. / 3)}")
+
+	if temp_file_path == False:
+		temp_storage = False
+		temp_file_path = None
 	else:
-		if self.num_nodes == 1:
-			multiproc_bool = False
-			save_tree = False
-		elif self.num_nodes &gt; 2:
-			multiproc_bool = True
-			save_tree = False
-		else:
-			multiproc_bool = True
-			save_tree = True
-	if save_tree and file_tree_path == None:
+		temp_storage = True
+	if temp_storage and temp_file_path == None:
 		raise ValueError(
-			"Input file_tree_path for faster computation. Do not want to use trees? Input file_path_tree=False.")
-	elif save_tree and file_tree_path == False:
-		save_tree = False
-		file_tree_path = None
+			"Input temp_file_path for faster computation. Do not want to save data temporarily? Input file_path_tree=False.")
+
+	# replace by better checks of input data
 	try:
 		RA = self.data["RA"]
-		raise KeyError(
-			"Lightcone input provided, use measure_xi_w_obs and measure_xi_multipoles_obs for measurements or "
-			"provide carthesian coordinate data.")
-	except KeyError:
+		print("Given data is lightcone, use measure_xi_w_lightcone method instead.")
+		exit()
+	except:
 		pass
-	if multiproc_bool and save_tree:
-		self._measure_xi_r_mur_sims_tree(tree_input=None, masks=masks,
-										 dataset_name=dataset_name,
-										 return_output=False, print_num=True,
-										 dataset_name_tree=None, rp_cut=rp_cut,
-										 save_tree=save_tree, file_tree_path=file_tree_path)
+
+	if num_jk &gt; 0:  # include covariance
+		if self.num_nodes &gt; 1 and temp_storage:
+			self._measure_xi_r_mur_box_jk_multiprocessing(masks=masks, L_subboxes=L, dataset_name=dataset_name,
+														  return_output=False,
+														  num_nodes=self.num_nodes,
+														  jk_group_name=f"{dataset_name}_jk{num_jk}",
+														  chunk_size=chunk_size, ellipticity=ellipticity,
+														  file_tree_path=temp_file_path)
+		elif temp_storage:
+			self._measure_xi_r_mur_box_jk_tree(masks=masks, L_subboxes=L, dataset_name=dataset_name,
+											   return_output=False, ellipticity=ellipticity,
+											   jk_group_name=f"{dataset_name}_jk{num_jk}")
+		else:
+			self._measure_xi_r_mur_box_jk_brute(masks=masks, L_subboxes=L, dataset_name=dataset_name,
+												return_output=False, ellipticity=ellipticity,
+												jk_group_name=f"{dataset_name}_jk{num_jk}")
 		self._measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
-		if measure_cov:
-			self._measure_jackknife_covariance_sims_multiprocessing(masks=masks,
-																	corr_type=[corr_type, "multipoles"],
-																	dataset_name=dataset_name, L_subboxes=L,
-																	rp_cut=rp_cut,
-																	num_nodes=self.num_nodes, twoD=False,
-																	tree=True,
-																	tree_saved=True,
-																	file_tree_path=file_tree_path,
-																	remove_tree_file=remove_tree_file)
-	elif not multiproc_bool and save_tree:
-		self._measure_xi_r_mur_sims_tree(tree_input=None, masks=masks,
-										 dataset_name=dataset_name,
-										 return_output=False, print_num=True,
-										 dataset_name_tree=None, rp_cut=rp_cut,
-										 save_tree=save_tree, file_tree_path=file_tree_path)
+		for i in np.arange(num_jk):
+			self._measure_multipoles(corr_type=corr_type, dataset_name=f"{dataset_name}_{i}",
+									 jk_group_name=f"{dataset_name}_jk{num_jk}", return_output=False)
+		if corr_type == "both":
+			corr_group = ["multipoles_g_plus", "multipoles_gg"]
+		elif corr_type == "g+":
+			corr_group = ["multipoles_g_plus"]
+		elif corr_type == "gg":
+			corr_group = ["multipoles_gg"]
+		else:
+			raise KeyError("Unknown value for corr_type. Choose from [g+, gg, both]")
+		self._combine_jackknife_information(dataset_name=dataset_name, jk_group_name=f"{dataset_name}_jk{num_jk}",
+											corr_group=corr_group, num_box=num_jk)
+	else:  # no covariance
+		if self.num_nodes &gt; 1 and temp_storage:
+			self._measure_xi_r_mur_box_multiprocessing(dataset_name=dataset_name, temp_file_path=temp_file_path,
+													   masks=masks, return_output=False, num_nodes=self.num_nodes,
+													   chunk_size=chunk_size, ellipticity=ellipticity)
+		elif temp_storage:
+			self._measure_xi_r_mur_box_tree(masks=masks, dataset_name=dataset_name,
+											return_output=False,
+											ellipticity=ellipticity)
+		else:
+			self._measure_xi_r_mur_box_brute(masks=masks, dataset_name=dataset_name,
+											 return_output=False, ellipticity=ellipticity)
 		self._measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
-		if measure_cov:
-			self._measure_jackknife_covariance_sims(masks=masks, corr_type=[corr_type, "multipoles"],
-													dataset_name=dataset_name, L_subboxes=L, rp_cut=rp_cut,
-													tree_saved=True, file_tree_path=file_tree_path,
-													remove_tree_file=remove_tree_file)
-	elif multiproc_bool and not save_tree:
-		self._measure_xi_r_mur_sims_multiprocessing(num_nodes=self.num_nodes,
-													masks=masks,
-													dataset_name=dataset_name,
-													return_output=False, rp_cut=rp_cut,
-													print_num=True)
-		self._measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
-		if measure_cov:
-			self._measure_jackknife_covariance_sims(masks=masks, corr_type=[corr_type, "multipoles"],
-													dataset_name=dataset_name, L_subboxes=L,
-													rp_cut=rp_cut, num_nodes=self.num_nodes,
-													tree_saved=False)
-	else:
-		self._measure_xi_r_mur_sims_brute(masks=masks,
-										  dataset_name=dataset_name,
-										  return_output=False, print_num=True,
-										  rp_cut=rp_cut)
-		self._measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
-		if measure_cov:
-			self._measure_jackknife_covariance_sims(masks=masks, corr_type=[corr_type, "multipoles"],
-													dataset_name=dataset_name, L_subboxes=L,
-													rp_cut=rp_cut, num_nodes=self.num_nodes,
-													tree_saved=False)
 
 	return</code></pre>
             </details>
@@ -1115,6 +1020,8 @@ the data to apply selections. Default is None.
     <script>var base_url = "../..";</script>
     <script src="../../js/theme_extra.js"></script>
     <script src="../../js/theme.js"></script>
+      <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+      <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
       <script src="../../search/main.js"></script>
     <script>
         jQuery(function () {
