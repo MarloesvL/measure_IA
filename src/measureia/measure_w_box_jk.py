@@ -227,7 +227,7 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 					Num_position, Num_shape)
 
 		RR_jk = np.zeros((num_box, self.num_bins_r, self.num_bins_pi))
-		volume_jk = L3  # (num_box - 1) / (num_box) *
+		volume_jk = L3 * (num_box - 1) / (num_box)
 		for jk in np.arange(num_box):
 			Num_position_jk, Num_shape_jk = len(np.where(jackknife_region_indices_pos != jk)[0]), len(
 				np.where(jackknife_region_indices_shape != jk)[0])
@@ -477,13 +477,14 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 					Num_position, Num_shape)
 
 		RR_jk = np.zeros((num_box, self.num_bins_r, self.num_bins_pi))
+		volume_jk = L3 * (num_box - 1) / num_box
 		for jk in np.arange(num_box):
 			Num_position_jk, Num_shape_jk = len(np.where(jackknife_region_indices_pos != jk)[0]), len(
 				np.where(jackknife_region_indices_shape != jk)[0])
 			for i in np.arange(0, self.num_bins_r):
 				for p in np.arange(0, self.num_bins_pi):
 					RR_jk[jk, i, p] = self.get_random_pairs(
-						self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "cross",
+						self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], volume_jk, "cross",
 						Num_position_jk, Num_shape_jk)
 
 		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
@@ -757,6 +758,9 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 		DD_jk = np.zeros((self.num_box, self.num_bins_r, self.num_bins_pi))
 		Splus_D_jk = np.zeros((self.num_box, self.num_bins_r, self.num_bins_pi))
 
+		data_temp = self.data  # make sure data is not sent to every CPU
+		self.data = None
+
 		self.pos_tree = KDTree(positions[:, self.not_LOS], boxsize=self.boxsize)
 		indices = np.arange(0, len(positions_shape_sample), chunk_size)
 		self.chunk_size = chunk_size
@@ -764,6 +768,9 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 			result = p.map(self._measure_xi_rp_pi_box_jk_batch, indices)
 		os.remove(
 			f"{temp_file_path}/w_{self.simname}_temp_data_{figname_dataset_name}.hdf5")
+
+		self.data = data_temp
+		del data_temp
 
 		for i in np.arange(len(result)):
 			Splus_D += result[i][0]
@@ -789,13 +796,14 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 					self.Num_position_masked, self.Num_shape_masked)
 
 		RR_jk = np.zeros((self.num_box, self.num_bins_r, self.num_bins_pi))
+		volume_jk = L3 * (self.num_box - 1) / self.num_box
 		for jk in np.arange(self.num_box):
 			Num_position_jk, Num_shape_jk = len(np.where(self.jackknife_region_indices_pos != jk)[0]), len(
 				np.where(self.jackknife_region_indices_shape != jk)[0])
 			for i in np.arange(0, self.num_bins_r):
 				for p in np.arange(0, self.num_bins_pi):
 					RR_jk[jk, i, p] = self.get_random_pairs(
-						self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "cross",
+						self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], volume_jk, "cross",
 						Num_position_jk, Num_shape_jk)
 
 		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
@@ -847,6 +855,7 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 			return
 		else:
 			return correlation, (DD / RR_gg) - 1, separation_bins, pi_bins, Splus_D, DD, RR_g_plus
+
 
 if __name__ == "__main__":
 	pass

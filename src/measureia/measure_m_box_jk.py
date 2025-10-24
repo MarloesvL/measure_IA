@@ -239,7 +239,7 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 					Num_position, Num_shape)
 
 		RR_jk = np.zeros((num_box, self.num_bins_r, self.num_bins_pi))
-		volume_jk = L3  # (num_box-1)/(num_box)*
+		volume_jk = L3 * (num_box - 1) / (num_box)
 		for jk in np.arange(num_box):
 			Num_position_jk, Num_shape_jk = len(np.where(jackknife_region_indices_pos != jk)[0]), len(
 				np.where(jackknife_region_indices_shape != jk)[0])
@@ -503,13 +503,15 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 					Num_position, Num_shape)
 
 		RR_jk = np.zeros((num_box, self.num_bins_r, self.num_bins_pi))
+		volume_jk = L3 * (num_box - 1) / num_box
 		for jk in np.arange(num_box):
 			Num_position_jk, Num_shape_jk = len(np.where(jackknife_region_indices_pos != jk)[0]), len(
 				np.where(jackknife_region_indices_shape != jk)[0])
 			for i in np.arange(0, self.num_bins_r):
 				for p in np.arange(0, self.num_bins_pi):
 					RR_jk[jk, i, p] = self.get_random_pairs_r_mur(
-						self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, "cross",
+						self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], volume_jk,
+						"cross",
 						Num_position_jk, Num_shape_jk)
 
 		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
@@ -747,6 +749,8 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		self.Num_position_masked = len(positions)
 		self.Num_shape_masked = len(positions_shape_sample)
+		print(
+			f"There are {self.Num_shape_masked} galaxies in the shape sample and {self.Num_position_masked} galaxies in the position sample.")
 
 		# create temp hdf5 from which data can be read. del self.data, but save it in this method to reduce RAM
 		figname_dataset_name = dataset_name
@@ -794,6 +798,9 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 		DD_jk = np.zeros((self.num_box, self.num_bins_r, self.num_bins_pi))
 		Splus_D_jk = np.zeros((self.num_box, self.num_bins_r, self.num_bins_pi))
 
+		data_temp = self.data  # make sure data is not sent to every CPU
+		self.data = None
+
 		self.pos_tree = KDTree(positions, boxsize=self.boxsize)
 		indices = np.arange(0, len(positions_shape_sample), chunk_size)
 		self.chunk_size = chunk_size
@@ -801,6 +808,9 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			result = p.map(self._measure_xi_r_mur_box_jk_batch, indices)
 		os.remove(
 			f"{file_tree_path}/m_{self.simname}_temp_data_{figname_dataset_name}.hdf5")
+
+		self.data = data_temp
+		del data_temp
 
 		for i in np.arange(len(result)):
 			Splus_D += result[i][0]
@@ -826,13 +836,15 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 					self.Num_position_masked, self.Num_shape_masked)
 
 		RR_jk = np.zeros((self.num_box, self.num_bins_r, self.num_bins_pi))
+		volume_jk = L3 * (self.num_box - 1) / self.num_box
 		for jk in np.arange(self.num_box):
 			Num_position_jk, Num_shape_jk = len(np.where(self.jackknife_region_indices_pos != jk)[0]), len(
 				np.where(self.jackknife_region_indices_shape != jk)[0])
 			for i in np.arange(0, self.num_bins_r):
 				for p in np.arange(0, self.num_bins_pi):
 					RR_jk[jk, i, p] = self.get_random_pairs_r_mur(
-						self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, "cross",
+						self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], volume_jk,
+						"cross",
 						Num_position_jk, Num_shape_jk)
 
 		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
@@ -884,6 +896,7 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			return
 		else:
 			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus
+
 
 if __name__ == "__main__":
 	pass

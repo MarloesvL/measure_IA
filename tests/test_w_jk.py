@@ -3,7 +3,7 @@ from measureia import ReadData
 
 
 def test_combine_jk(IA_available_output):
-	covs, stds = IA_available_output._combine_jackknife_information("All", "", ["w_g_plus", "w_gg"], 8, True)
+	covs, stds = IA_available_output._combine_jackknife_information("All", "All_jk8", ["w_g_plus", "w_gg"], 8, True)
 	available_out_wgp = ReadData("TNG300", "mock_IA_TNG300", 99, "w_g_plus/", data_path='./data/processed/TNG300/')
 	available_out_wgg = ReadData("TNG300", "mock_IA_TNG300", 99, "w_gg/", data_path='./data/processed/TNG300/')
 	a_cov_wgp = available_out_wgp.read_cat("All_jackknife_cov_8")

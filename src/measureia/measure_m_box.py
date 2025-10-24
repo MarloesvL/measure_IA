@@ -822,6 +822,9 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 		RR_g_plus = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		RR_gg = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 
+		data_temp = self.data  # make sure data is not sent to every CPU
+		self.data = None
+
 		self.pos_tree = KDTree(positions, boxsize=self.boxsize)
 		indices = np.arange(0, len(positions_shape_sample), chunk_size)
 		self.chunk_size = chunk_size
@@ -829,6 +832,9 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 			result = p.map(self._measure_xi_r_mur_box_batch, indices)
 		os.remove(
 			f"{temp_file_path}/m_{self.simname}_temp_data_{figname_dataset_name}.hdf5")
+
+		self.data = data_temp
+		del data_temp
 
 		for i in np.arange(len(result)):
 			Splus_D += result[i][0]
