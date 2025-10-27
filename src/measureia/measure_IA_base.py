@@ -735,7 +735,7 @@ class MeasureIABase(SimInfo):
 					SR = group_gg_r[f"{dataset_name_randoms}_DD"][:]
 				RD *= num_samples["S"] / num_samples["R_S"]
 				SR *= num_samples["D"] / num_samples["R_D"]
-				correlation_gg = (DD - RD - SR) / RR - 1
+				correlation_gg = (DD - RD - SR) / RR + 1
 				write_dataset_hdf5(group_gg, dataset_name, correlation_gg)
 		else:
 			raise ValueError("Unknown input for IA_estimator, choose from [clusters, galaxies].")
