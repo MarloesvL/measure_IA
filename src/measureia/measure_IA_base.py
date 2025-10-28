@@ -439,11 +439,11 @@ class MeasureIABase(SimInfo):
 					y_mask = (positions[:, 1] > y_bounds[0]) * (positions[:, 1] < y_bounds[1])
 					z_mask = (positions[:, 2] > z_bounds[0]) * (positions[:, 2] < z_bounds[1])
 					x_mask_shape = (positions_shape_sample[:, 0] > x_bounds[0]) * (
-								positions_shape_sample[:, 0] < x_bounds[1])
+							positions_shape_sample[:, 0] < x_bounds[1])
 					y_mask_shape = (positions_shape_sample[:, 1] > y_bounds[0]) * (
-								positions_shape_sample[:, 1] < y_bounds[1])
+							positions_shape_sample[:, 1] < y_bounds[1])
 					z_mask_shape = (positions_shape_sample[:, 2] > z_bounds[0]) * (
-								positions_shape_sample[:, 2] < z_bounds[1])
+							positions_shape_sample[:, 2] < z_bounds[1])
 					mask_position = x_mask * y_mask * z_mask  # mask that is True for all positions in the subbox
 					mask_shape = x_mask_shape * y_mask_shape * z_mask_shape  # mask that is True for all positions not in the subbox
 					jackknife_region_indices_pos[mask_position] = num_box
@@ -698,43 +698,44 @@ class MeasureIABase(SimInfo):
 			group_gp_r = output_file[
 				f"{self.snap_group}/{corr_type[1]}/xi_g_plus/{jk_group_name_randoms}"]
 			SpD = group_gp[f"{dataset_name}_SplusD"][:]
+			SpD /= (num_samples["S"] * num_samples["D"] - num_samples["D_S"])
 			SpR = group_gp_r[f"{dataset_name_randoms}_SplusD"][:]
+			SpR /= (num_samples["S"] * num_samples["R_D"])
 		group_gg = output_file[f"{self.snap_group}/{corr_type[1]}/xi_gg/{jk_group_name}"]
 		group_gg_r = output_file[f"{self.snap_group}/{corr_type[1]}/xi_gg/{jk_group_name_randoms}"]
 		DD = group_gg[f"{dataset_name}_DD"][:]
+		DD /= (num_samples["D"] * num_samples["S"] - num_samples["D_S"])
 
 		if IA_estimator == "clusters":
 			if corr_type[0] == "gg":
 				SR = group_gg[f"{dataset_name}_SR"][:]
 			else:
 				SR = group_gg_r[f"{dataset_name_randoms}_DD"][:]
-			SR *= num_samples["D"] / num_samples["R_D"]
+			SR /= (num_samples["S"] * num_samples["R_D"])
 			if corr_type[0] == "g+" or corr_type[0] == "both":
-				SpR *= num_samples["D"] / num_samples["R_D"]
 				correlation_gp = SpD / DD - SpR / SR
 				write_dataset_hdf5(group_gp, dataset_name, correlation_gp)
 			if corr_type[0] == "gg" or corr_type[0] == "both":
 				RD = group_gg[f"{dataset_name}_RD"][:]
+				RD /= (num_samples["D"] * num_samples["R_S"])
 				RR = group_gg[f"{dataset_name}_RR"][:]
-				RD *= num_samples["S"] / num_samples["R_S"]
-				RR *= (num_samples["S"] / num_samples["R_S"]) * (num_samples["D"] / num_samples["R_D"])
-				correlation_gg = (DD - RD - SR) / RR - 1
+				RR /= (num_samples["R_D"] * num_samples["R_S"])
+				correlation_gg = (DD - RD - SR) / RR + 1
 				write_dataset_hdf5(group_gg, dataset_name, correlation_gg)
 		elif IA_estimator == "galaxies":
 			RR = group_gg[f"{dataset_name}_RR"][:]
-			RR *= (num_samples["S"] / num_samples["R_S"]) * (num_samples["D"] / num_samples["R_D"])
+			RR /= (num_samples["R_D"] * num_samples["R_S"])
 			if corr_type[0] == "g+" or corr_type[0] == "both":
-				SpR *= num_samples["D"] / num_samples["R_D"]
 				correlation_gp = (SpD - SpR) / RR
 				write_dataset_hdf5(group_gp, dataset_name, correlation_gp)
 			if corr_type[0] == "gg" or corr_type[0] == "both":
 				RD = group_gg[f"{dataset_name}_RD"][:]
+				RD /= (num_samples["D"] * num_samples["R_S"])
 				if corr_type[0] == "gg":
 					SR = group_gg[f"{dataset_name}_SR"][:]
 				else:
 					SR = group_gg_r[f"{dataset_name_randoms}_DD"][:]
-				RD *= num_samples["S"] / num_samples["R_S"]
-				SR *= num_samples["D"] / num_samples["R_D"]
+				SR /= (num_samples["S"] * num_samples["R_D"])
 				correlation_gg = (DD - RD - SR) / RR + 1
 				write_dataset_hdf5(group_gg, dataset_name, correlation_gg)
 		else:
