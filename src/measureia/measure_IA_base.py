@@ -213,9 +213,10 @@ class MeasureIABase(SimInfo):
 		Parameters
 		----------
 		e : ndarray
-			size of the ellipticity vector
+			if 1D: size of the ellipticity vector; if 2D: e1,e2 components of the ellipticity vector
 		phi : ndarray
-			angle between semimajor/semiminor axis and separation vector
+			if e 1D: angle between semimajor/semiminor axis and separation vector;
+			if 2D: angle of separation vector wrt RA
 
 		Returns
 		-------
@@ -223,7 +224,11 @@ class MeasureIABase(SimInfo):
 			e_+ and e_x
 
 		"""
-		e_plus, e_cross = e * np.cos(2 * phi), e * np.sin(2 * phi)
+		if len(np.shape(e)) > 1:
+			e_plus = -(e[:, 0] * np.cos(2 * phi) + e[:, 1] * np.sin(2 * phi))
+			e_cross = e[:, 0] * np.sin(2 * phi) - e[:, 1] * np.cos(2 * phi)
+		else:
+			e_plus, e_cross = e * np.cos(2 * phi), e * np.sin(2 * phi)
 		return e_plus, e_cross
 
 	@staticmethod
