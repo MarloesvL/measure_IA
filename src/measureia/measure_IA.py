@@ -374,14 +374,14 @@ class MeasureIALightcone(MeasureJackknife):
 				print("No randoms given, correlation defined as S+D/DD")
 				raise KeyError("This version does not work yet, add randoms.")
 			else:
-				print("xi_g+ defined as S+D/SD - S+R/SR, xi_gg as (SD - RD - SR)/RR - 1")
+				print("xi_g+ defined as S+D/SD - S+R/SR, xi_gg as (SD - RD - SR)/RR + 1")
 				if masks != None and masks_randoms == None:
 					print("Warning, masks given for data vector but not for randoms.")
 		elif IA_estimator == "galaxies":
 			if self.randoms_data == None:
 				raise KeyError("No randoms given. Please provide input.")
 			else:
-				print("xi_g+ defined as (S+D - S+R)/RR, xi_gg as (SD - RD - SR)/RR - 1")
+				print("xi_g+ defined as (S+D - S+R)/RR, xi_gg as (SD - RD - SR)/RR + 1")
 				if masks != None and masks_randoms == None:
 					print("Warning, masks given for data vector but not for randoms.")
 				print("WARNING: this version of the code has not been fully validated. Proceed with caution.")
@@ -435,18 +435,30 @@ class MeasureIALightcone(MeasureJackknife):
 
 		num_samples = {}  # Needed to correct for different number of randoms and galaxies/clusters in data
 		if masks == None:
-			num_samples["D"] = len(self.data_dir["RA"])
-			num_samples["S"] = len(self.data_dir["RA_shape_sample"])
+			# Stack RA and DEC into coordinate pairs
+			coords_D = np.column_stack((self.data_dir["RA"], self.data_dir["DEC"]))
+			coords_S = np.column_stack((self.data_dir["RA_shape_sample"], self.data_dir["DEC_shape_sample"]))
+
+
 		else:
-			num_samples["D"] = len(self.data_dir["RA"][masks["RA"]])
-			num_samples["S"] = len(self.data_dir["RA_shape_sample"][masks["RA_shape_sample"]])
+			coords_D = np.column_stack((self.data_dir["RA"][masks["RA"]], self.data_dir["DEC"][masks["DEC"]]))
+			coords_S = np.column_stack((self.data_dir["RA_shape_sample"][masks["RA_shape_sample"]],
+										self.data_dir["DEC_shape_sample"][masks["DEC_shape_sample"]]))
+		# Use a structured view so np.intersect1d compares full pairs
+		D_view = coords_D.view([('', coords_D.dtype)] * 2)
+		S_view = coords_S.view([('', coords_S.dtype)] * 2)
+
+		overlap, ind_D, ind_S = np.intersect1d(D_view, S_view, return_indices=True)
+
+		num_samples["D"] = len(coords_D)
+		num_samples["S"] = len(coords_S)
+		num_samples["D_S"] = len(overlap)
 		if masks_randoms == None:
 			num_samples["R_D"] = len(self.randoms_data["RA"])
 			num_samples["R_S"] = len(self.randoms_data["RA_shape_sample"])
 		else:
 			num_samples["R_D"] = len(self.randoms_data["RA"][masks_randoms["RA"]])
 			num_samples["R_S"] = len(self.randoms_data["RA_shape_sample"][masks_randoms["RA_shape_sample"]])
-		# print(self.data_dir,self.randoms_data)
 
 		# Shape-position combinations:
 		# S+D (Cg+, Gg+)
@@ -688,7 +700,7 @@ class MeasureIALightcone(MeasureJackknife):
 		return
 
 	def measure_xi_multipoles(self, IA_estimator, dataset_name, corr_type, jk_patches=None,
-							  num_jk=None, calc_errors=True, masks=None, masks_randoms=None, cosmology=None,
+							  num_jk=None, measure_cov=True, masks=None, masks_randoms=None, cosmology=None,
 							  over_h=False, rp_cut=None):
 		"""Measures multipoles including jackknife covariance if desired for lightcone data.
 		Manages the various _measure_xi_r_mu_r_obs and _measure_jackknife_covariance options in
@@ -734,14 +746,14 @@ class MeasureIALightcone(MeasureJackknife):
 				print("No randoms given, correlation defined as S+D/DD")
 				raise KeyError("This version does not work yet, add randoms.")
 			else:
-				print("xi_g+ defined as S+D/SD - S+R/SR, xi_gg as (SD - RD - SR)/RR - 1")
+				print("xi_g+ defined as S+D/SD - S+R/SR, xi_gg as (SD - RD - SR)/RR + 1")
 				if masks != None and masks_randoms == None:
 					print("Warning, masks given for data vector but not for randoms.")
 		elif IA_estimator == "galaxies":
 			if self.randoms_data == None:
 				raise KeyError("No randoms given. Please provide input.")
 			else:
-				print("xi_g+ defined as (S+D - S+R)/RR, xi_gg as (SD - RD - SR)/RR - 1")
+				print("xi_g+ defined as (S+D - S+R)/RR, xi_gg as (SD - RD - SR)/RR + 1")
 				if masks != None and masks_randoms == None:
 					print("Warning, masks given for data vector but not for randoms.")
 				print("WARNING: this version of the code has not been fully validated. Proceed with caution.")
@@ -772,7 +784,7 @@ class MeasureIALightcone(MeasureJackknife):
 			else:
 				self.randoms_data["weight_shape_sample"] = np.ones(len(self.randoms_data["RA_shape_sample"]))
 
-		if calc_errors:
+		if measure_cov:
 			if jk_patches == None:
 				if num_jk != None:
 					jk_patches = self.assign_jackknife_patches(data, self.randoms_data, num_jk)
@@ -909,7 +921,7 @@ class MeasureIALightcone(MeasureJackknife):
 							num_samples)
 		self._measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
 
-		if calc_errors:
+		if measure_cov:
 			self.num_samples = {}
 			min_patch, max_patch = int(min(jk_patches["shape"])), int(max(jk_patches["shape"]))
 			for n in np.arange(min_patch, max_patch + 1):
