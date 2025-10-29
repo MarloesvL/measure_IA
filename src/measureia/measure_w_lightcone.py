@@ -175,11 +175,28 @@ class MeasureWLightcone(MeasureIABase):
 			n_LOS = (n_pos + n_shape) / np.array([np.sqrt(np.sum((n_pos + n_shape) ** 2, axis=1))]).transpose()
 			s = n_shape * np.array([LOS_all_shape_sample]).transpose() - LOS_all[n] * n_pos
 			LOS = self.calculate_dot_product_arrays(s, n_LOS)
-			separation_len = np.sqrt(np.sum(s ** 2, axis=1) - LOS ** 2)
-			dra = (RA_shape_sample_rad - RA_rad[n])
-			ddec = (DEC_shape_sample_rad - DEC_rad[n])
-			dec_mid = (DEC_rad[n] + DEC_shape_sample_rad) / 2.
-			phi = np.arctan2(dra * np.cos(dec_mid), ddec)
+			separation_len = np.sqrt(np.sum(s ** 2, axis=1) - LOS ** 2)  # len of s-pi*nlos ->check
+
+			# Projected separation vector
+			s_perp = s - np.sum(s * n_LOS, axis=1, keepdims=True) * n_LOS
+
+			# Tangent plane basis
+			east = np.array([-np.sin(RA_rad[n]), np.cos(RA_rad[n]), 0.0])
+			north = np.array([
+				-np.sin(DEC_rad[n]) * np.cos(RA_rad[n]),
+				-np.sin(DEC_rad[n]) * np.sin(RA_rad[n]),
+				np.cos(DEC_rad[n])
+			])
+
+			# Components of projected separation
+			x = np.sum(s_perp * east, axis=1)
+			y = np.sum(s_perp * north, axis=1)
+			phi = np.arctan2(x, y)  # angle from north toward east
+
+			# dra = (RA_shape_sample_rad - RA_rad[n])
+			# ddec = (DEC_shape_sample_rad - DEC_rad[n])
+			# dec_mid = (DEC_rad[n] + DEC_shape_sample_rad) / 2.
+			# phi = np.arctan2(ddec,dra * np.cos(dec_mid)) # to match TreeCorr, otherwise: switch arguments
 
 			e_plus, e_cross = self.get_ellipticity(e, phi)
 			# del phi_sep_dir
