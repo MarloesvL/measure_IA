@@ -241,6 +241,8 @@ class MeasureWLightconeJackknife(MeasureIABase):
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_g_plus/{jk_group_name}")
 			for i in np.arange(0, num_jk):
 				write_dataset_hdf5(group, dataset_name + f"_{i}{data_suffix}", data=(Splus_D - Splus_D_jk[i]))
+				write_dataset_hdf5(group, dataset_name + f"_{i}_rp", data=separation_bins)
+				write_dataset_hdf5(group, dataset_name + f"_{i}_pi", data=pi_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_g_cross/")
 			write_dataset_hdf5(group, dataset_name + "_ScrossD", data=Scross_D)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
@@ -252,6 +254,8 @@ class MeasureWLightconeJackknife(MeasureIABase):
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_gg/{jk_group_name}")
 			for i in np.arange(0, num_jk):
 				write_dataset_hdf5(group, dataset_name + f"_{i}{DD_suff}", data=(DD - DD_jk[i]))
+				write_dataset_hdf5(group, dataset_name + f"_{i}_rp", data=separation_bins)
+				write_dataset_hdf5(group, dataset_name + f"_{i}_pi", data=pi_bins)
 			output_file.close()
 			return
 		else:
@@ -399,6 +403,8 @@ class MeasureWLightconeJackknife(MeasureIABase):
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_gg/{jk_group_name}")
 			for i in np.arange(0, num_jk):
 				write_dataset_hdf5(group, dataset_name + f"_{i}{data_suffix}", data=(DD - DD_jk[i]))
+				write_dataset_hdf5(group, dataset_name + f"_{i}_rp", data=separation_bins)
+				write_dataset_hdf5(group, dataset_name + f"_{i}_pi", data=pi_bins)
 			output_file.close()
 			return
 		else:
