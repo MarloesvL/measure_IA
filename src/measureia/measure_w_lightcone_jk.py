@@ -392,10 +392,11 @@ class MeasureWLightconeJackknife(MeasureIABase):
 
 		if (self.output_file_name != None) and (return_output == False):
 			output_file = h5py.File(self.output_file_name, "a")
-			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_gg/{jk_group_name}")
+			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_gg/")
 			write_dataset_hdf5(group, dataset_name + data_suffix, data=DD)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
+			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_gg/{jk_group_name}")
 			for i in np.arange(0, num_jk):
 				write_dataset_hdf5(group, dataset_name + f"_{i}{data_suffix}", data=(DD - DD_jk[i]))
 			output_file.close()
