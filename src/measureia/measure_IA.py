@@ -5,6 +5,7 @@ from .measure_w_box_jk import MeasureWBoxJackknife
 from .measure_m_box_jk import MeasureMBoxJackknife
 from .measure_w_box import MeasureWBox
 from .measure_m_box import MeasureMultipolesBox
+from .measure_w_lightcone_jk import MeasureWLightconeJackknife
 
 
 class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, MeasureMBoxJackknife):
@@ -262,7 +263,7 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 		return
 
 
-class MeasureIALightcone(MeasureJackknife):
+class MeasureIALightcone(MeasureJackknife, MeasureWLightconeJackknife):
 	r"""Manages the IA correlation function measurement methods used in the MeasureIA package based on speed and input.
 	This class is used to call the methods that measure w_gg, w_g+ and multipoles for simulations (and observations),
 	with lightcone data.
@@ -331,6 +332,223 @@ class MeasureIALightcone(MeasureJackknife):
 		self.data_dir = None
 		self.num_samples = None
 
+		return
+
+	def measure_xi_w_jk_brute(self, IA_estimator, dataset_name, corr_type, jk_patches=None, masks=None,
+							  masks_randoms=None, cosmology=None, over_h=False):
+		num_jk = max(jk_patches["shape"]) - min(jk_patches["shape"]) + 1
+		# Shape-position combinations:
+		# S+D (Cg+, Gg+)
+		# S+R (Cg+, Gg+)
+		if corr_type == "g+" or corr_type == "both":
+			# S+D
+			self.data = self.data_dir
+			self._measure_xi_rp_pi_lightcone_jk_brute(jackknife_region_indices_pos=jk_patches["position"],
+													  jackknife_region_indices_shape=jk_patches["shape"], masks=masks,
+													  dataset_name=dataset_name,
+													  jk_group_name=f"{dataset_name}_jk{num_jk}",
+													  over_h=over_h, data_suffix="_SplusD",
+													  cosmology=cosmology)
+			# S+R
+			self.data = {
+				"Redshift": self.randoms_data["Redshift"],
+				"Redshift_shape_sample": self.data_dir["Redshift_shape_sample"],
+				"RA": self.randoms_data["RA"],
+				"RA_shape_sample": self.data_dir["RA_shape_sample"],
+				"DEC": self.randoms_data["DEC"],
+				"DEC_shape_sample": self.data_dir["DEC_shape_sample"],
+				"e1": self.data_dir["e1"],
+				"e2": self.data_dir["e2"],
+				"weight": self.randoms_data["weight"],
+				"weight_shape_sample": self.data_dir["weight_shape_sample"]
+			}
+			# print(self.data)
+			self._measure_xi_rp_pi_lightcone_jk_brute(jackknife_region_indices_pos=jk_patches["randoms_position"],
+													  jackknife_region_indices_shape=jk_patches["shape"], masks=masks,
+													  dataset_name=f"{dataset_name}", data_suffix="_SplusR",
+													  over_h=over_h, jk_group_name=f"{dataset_name}_jk{num_jk}",
+													  cosmology=cosmology)
+
+		# Position-position combinations:
+		# SD (Cgg, Ggg)
+		# SR (Cg+, Cgg, Ggg)
+		# RD (Cgg, Ggg)
+		# RR (Cgg, Gg+, Ggg)
+
+		if corr_type == "gg":  # already have it for 'both'
+			# SD (Cgg, Ggg)
+			self.data = {
+				"Redshift": self.data_dir["Redshift"],
+				"Redshift_shape_sample": self.data_dir["Redshift_shape_sample"],
+				"RA": self.data_dir["RA"],
+				"RA_shape_sample": self.data_dir["RA_shape_sample"],
+				"DEC": self.data_dir["DEC"],
+				"DEC_shape_sample": self.data_dir["DEC_shape_sample"],
+				"weight": self.data_dir["weight"],
+				"weight_shape_sample": self.data_dir["weight_shape_sample"]
+			}
+			self._count_pairs_xi_rp_pi_lightcone_jk_brute(jackknife_region_indices_pos=jk_patches["position"],
+														  jackknife_region_indices_shape=jk_patches["shape"],
+														  masks=masks, dataset_name=dataset_name, over_h=over_h,
+														  cosmology=cosmology,
+														  jk_group_name=f"{dataset_name}_jk{num_jk}",
+														  data_suffix="_DD")
+
+			# SR (Cg+, Cgg, Ggg) - watch name (Obs estimator) # if g+ or both, already have it
+			self.data = {
+				"Redshift": self.randoms_data["Redshift"],
+				"Redshift_shape_sample": self.data_dir["Redshift_shape_sample"],
+				"RA": self.randoms_data["RA"],
+				"RA_shape_sample": self.data_dir["RA_shape_sample"],
+				"DEC": self.randoms_data["DEC"],
+				"DEC_shape_sample": self.data_dir["DEC_shape_sample"],
+				"weight": self.randoms_data["weight"],
+				"weight_shape_sample": self.data_dir["weight_shape_sample"]
+			}
+			self._count_pairs_xi_rp_pi_lightcone_jk_brute(jackknife_region_indices_pos=jk_patches["randoms_position"],
+														  jackknife_region_indices_shape=jk_patches["shape"],
+														  masks=masks, dataset_name=dataset_name, over_h=over_h,
+														  cosmology=cosmology,
+														  jk_group_name=f"{dataset_name}_jk{num_jk}",
+														  data_suffix="_SR")
+
+		if corr_type == "gg" or corr_type == "both":
+			# RD (Cgg, Ggg)
+			self.data = {
+				"Redshift": self.data_dir["Redshift"],
+				"Redshift_shape_sample": self.randoms_data["Redshift_shape_sample"],
+				"RA": self.data_dir["RA"],
+				"RA_shape_sample": self.randoms_data["RA_shape_sample"],
+				"DEC": self.data_dir["DEC"],
+				"DEC_shape_sample": self.randoms_data["DEC_shape_sample"],
+				"weight": self.data_dir["weight"],
+				"weight_shape_sample": self.randoms_data["weight_shape_sample"]
+			}
+			self._count_pairs_xi_rp_pi_lightcone_jk_brute(jackknife_region_indices_pos=jk_patches["position"],
+														  jackknife_region_indices_shape=jk_patches["randoms_shape"],
+														  masks=masks, dataset_name=dataset_name, over_h=over_h,
+														  cosmology=cosmology,
+														  jk_group_name=f"{dataset_name}_jk{num_jk}",
+														  data_suffix="_RD")
+
+		if IA_estimator == "galaxies" or corr_type == "gg" or corr_type == "both":
+			# RR (Cgg, Gg+, Ggg)
+			self.data = {
+				"Redshift": self.randoms_data["Redshift"],
+				"Redshift_shape_sample": self.randoms_data["Redshift_shape_sample"],
+				"RA": self.randoms_data["RA"],
+				"RA_shape_sample": self.randoms_data["RA_shape_sample"],
+				"DEC": self.randoms_data["DEC"],
+				"DEC_shape_sample": self.randoms_data["DEC_shape_sample"],
+				"weight": self.randoms_data["weight"],
+				"weight_shape_sample": self.randoms_data["weight_shape_sample"]
+			}
+			self._count_pairs_xi_rp_pi_lightcone_jk_brute(jackknife_region_indices_pos=jk_patches["randoms_position"],
+														  jackknife_region_indices_shape=jk_patches["randoms_shape"],
+														  masks=masks, dataset_name=dataset_name, over_h=over_h,
+														  cosmology=cosmology,
+														  jk_group_name=f"{dataset_name}_jk{num_jk}",
+														  data_suffix="_RR")
+
+		return
+
+	def measure_xi_w_brute(self, IA_estimator, dataset_name, corr_type, masks=None, masks_randoms=None, cosmology=None,
+						   over_h=False):
+		# Shape-position combinations:
+		# S+D (Cg+, Gg+)
+		# S+R (Cg+, Gg+)
+		if corr_type == "g+" or corr_type == "both":
+			# S+D
+			self.data = self.data_dir
+			self._measure_xi_rp_pi_lightcone_brute(masks=masks, dataset_name=dataset_name,
+												   over_h=over_h, data_suffix="_SplusD",
+												   cosmology=cosmology)
+			# S+R
+			self.data = {
+				"Redshift": self.randoms_data["Redshift"],
+				"Redshift_shape_sample": self.data_dir["Redshift_shape_sample"],
+				"RA": self.randoms_data["RA"],
+				"RA_shape_sample": self.data_dir["RA_shape_sample"],
+				"DEC": self.randoms_data["DEC"],
+				"DEC_shape_sample": self.data_dir["DEC_shape_sample"],
+				"e1": self.data_dir["e1"],
+				"e2": self.data_dir["e2"],
+				"weight": self.randoms_data["weight"],
+				"weight_shape_sample": self.data_dir["weight_shape_sample"]
+			}
+			# print(self.data)
+			self._measure_xi_rp_pi_lightcone_brute(masks=masks, dataset_name=f"{dataset_name}",
+												   over_h=over_h, data_suffix="_SplusR",
+												   cosmology=cosmology)
+
+		# Position-position combinations:
+		# SD (Cgg, Ggg)
+		# SR (Cg+, Cgg, Ggg)
+		# RD (Cgg, Ggg)
+		# RR (Cgg, Gg+, Ggg)
+
+		if corr_type == "gg":  # already have it for 'both'
+			# SD (Cgg, Ggg)
+			self.data = {
+				"Redshift": self.data_dir["Redshift"],
+				"Redshift_shape_sample": self.data_dir["Redshift_shape_sample"],
+				"RA": self.data_dir["RA"],
+				"RA_shape_sample": self.data_dir["RA_shape_sample"],
+				"DEC": self.data_dir["DEC"],
+				"DEC_shape_sample": self.data_dir["DEC_shape_sample"],
+				"weight": self.data_dir["weight"],
+				"weight_shape_sample": self.data_dir["weight_shape_sample"]
+			}
+			self._count_pairs_xi_rp_pi_lightcone_brute(masks=masks, dataset_name=dataset_name, over_h=over_h,
+													   cosmology=cosmology,
+													   data_suffix="_DD")
+
+			# SR (Cg+, Cgg, Ggg) - watch name (Obs estimator) # if g+ or both, already have it
+			self.data = {
+				"Redshift": self.randoms_data["Redshift"],
+				"Redshift_shape_sample": self.data_dir["Redshift_shape_sample"],
+				"RA": self.randoms_data["RA"],
+				"RA_shape_sample": self.data_dir["RA_shape_sample"],
+				"DEC": self.randoms_data["DEC"],
+				"DEC_shape_sample": self.data_dir["DEC_shape_sample"],
+				"weight": self.randoms_data["weight"],
+				"weight_shape_sample": self.data_dir["weight_shape_sample"]
+			}
+			self._count_pairs_xi_rp_pi_lightcone_brute(masks=masks, dataset_name=dataset_name, over_h=over_h,
+													   cosmology=cosmology,
+													   data_suffix="_SR")
+
+		if corr_type == "gg" or corr_type == "both":
+			# RD (Cgg, Ggg)
+			self.data = {
+				"Redshift": self.data_dir["Redshift"],
+				"Redshift_shape_sample": self.randoms_data["Redshift_shape_sample"],
+				"RA": self.data_dir["RA"],
+				"RA_shape_sample": self.randoms_data["RA_shape_sample"],
+				"DEC": self.data_dir["DEC"],
+				"DEC_shape_sample": self.randoms_data["DEC_shape_sample"],
+				"weight": self.data_dir["weight"],
+				"weight_shape_sample": self.randoms_data["weight_shape_sample"]
+			}
+			self._count_pairs_xi_rp_pi_lightcone_brute(masks=masks, dataset_name=dataset_name, over_h=over_h,
+													   cosmology=cosmology,
+													   data_suffix="_RD")
+
+		if IA_estimator == "galaxies" or corr_type == "gg" or corr_type == "both":
+			# RR (Cgg, Gg+, Ggg)
+			self.data = {
+				"Redshift": self.randoms_data["Redshift"],
+				"Redshift_shape_sample": self.randoms_data["Redshift_shape_sample"],
+				"RA": self.randoms_data["RA"],
+				"RA_shape_sample": self.randoms_data["RA_shape_sample"],
+				"DEC": self.randoms_data["DEC"],
+				"DEC_shape_sample": self.randoms_data["DEC_shape_sample"],
+				"weight": self.randoms_data["weight"],
+				"weight_shape_sample": self.randoms_data["weight_shape_sample"]
+			}
+			self._count_pairs_xi_rp_pi_lightcone_brute(masks=masks, dataset_name=dataset_name, over_h=over_h,
+													   cosmology=cosmology,
+													   data_suffix="_RR")
 		return
 
 	def measure_xi_w(self, IA_estimator, dataset_name, corr_type, jk_patches=None, num_jk=None,
@@ -413,15 +631,18 @@ class MeasureIALightcone(MeasureJackknife):
 				self.randoms_data["weight_shape_sample"] = np.ones(len(self.randoms_data["RA_shape_sample"]))
 
 		if measure_cov:
-			if jk_patches == None:
-				if num_jk != None:
+			if jk_patches is None:
+				if num_jk is not None:
 					jk_patches = self.assign_jackknife_patches(data, self.randoms_data, num_jk)
 				else:
-					raise ValueError("Set calc_errors to False, or provide either jk_patches or num_jk input.")
+					raise ValueError("Set measure_cov to False, or provide either jk_patches or num_jk input.")
 			else:
 				if one_random_sample:
 					jk_patches["randoms_position"] = jk_patches["randoms"]
 					jk_patches["randoms_shape"] = jk_patches["randoms"]
+			min_patch = min(jk_patches["shape"])
+			max_patch = max(jk_patches["shape"])
+			num_jk = max_patch - min_patch + 1
 
 		self.data_dir = data
 		try:
@@ -460,242 +681,43 @@ class MeasureIALightcone(MeasureJackknife):
 			num_samples["R_D"] = len(self.randoms_data["RA"][masks_randoms["RA"]])
 			num_samples["R_S"] = len(self.randoms_data["RA_shape_sample"][masks_randoms["RA_shape_sample"]])
 
-		# Shape-position combinations:
-		# S+D (Cg+, Gg+)
-		# S+R (Cg+, Gg+)
-		if corr_type == "g+" or corr_type == "both":
-			# S+D
-			self.data = self.data_dir
-			self._measure_xi_rp_pi_lightcone_brute(masks=masks, dataset_name=dataset_name,
-												   over_h=over_h,
-												   cosmology=cosmology)
-			# S+R
-			self.data = {
-				"Redshift": self.randoms_data["Redshift"],
-				"Redshift_shape_sample": self.data_dir["Redshift_shape_sample"],
-				"RA": self.randoms_data["RA"],
-				"RA_shape_sample": self.data_dir["RA_shape_sample"],
-				"DEC": self.randoms_data["DEC"],
-				"DEC_shape_sample": self.data_dir["DEC_shape_sample"],
-				"e1": self.data_dir["e1"],
-				"e2": self.data_dir["e2"],
-				"weight": self.randoms_data["weight"],
-				"weight_shape_sample": self.data_dir["weight_shape_sample"]
-			}
-			# print(self.data)
-			self._measure_xi_rp_pi_lightcone_brute(masks=masks, dataset_name=f"{dataset_name}_randoms",
-												   over_h=over_h,
-												   cosmology=cosmology)
-
-		# Position-position combinations:
-		# SD (Cgg, Ggg)
-		# SR (Cg+, Cgg, Ggg)
-		# RD (Cgg, Ggg)
-		# RR (Cgg, Gg+, Ggg)
-
-		if corr_type == "gg":  # already have it for 'both'
-			# SD (Cgg, Ggg)
-			self.data = {
-				"Redshift": self.data_dir["Redshift"],
-				"Redshift_shape_sample": self.data_dir["Redshift_shape_sample"],
-				"RA": self.data_dir["RA"],
-				"RA_shape_sample": self.data_dir["RA_shape_sample"],
-				"DEC": self.data_dir["DEC"],
-				"DEC_shape_sample": self.data_dir["DEC_shape_sample"],
-				"weight": self.data_dir["weight"],
-				"weight_shape_sample": self.data_dir["weight_shape_sample"]
-			}
-			self._count_pairs_xi_rp_pi_lightcone_brute(masks=masks, dataset_name=dataset_name, over_h=over_h,
-													   cosmology=cosmology,
-													   data_suffix="_DD")
-
-			# SR (Cg+, Cgg, Ggg) - watch name (Obs estimator) # if g+ or both, already have it
-			self.data = {
-				"Redshift": self.randoms_data["Redshift"],
-				"Redshift_shape_sample": self.data_dir["Redshift_shape_sample"],
-				"RA": self.randoms_data["RA"],
-				"RA_shape_sample": self.data_dir["RA_shape_sample"],
-				"DEC": self.randoms_data["DEC"],
-				"DEC_shape_sample": self.data_dir["DEC_shape_sample"],
-				"weight": self.randoms_data["weight"],
-				"weight_shape_sample": self.data_dir["weight_shape_sample"]
-			}
-			self._count_pairs_xi_rp_pi_lightcone_brute(masks=masks, dataset_name=dataset_name, over_h=over_h,
-													   cosmology=cosmology,
-													   data_suffix="_SR")
-
-		if corr_type == "gg" or corr_type == "both":
-			# RD (Cgg, Ggg)
-			self.data = {
-				"Redshift": self.data_dir["Redshift"],
-				"Redshift_shape_sample": self.randoms_data["Redshift_shape_sample"],
-				"RA": self.data_dir["RA"],
-				"RA_shape_sample": self.randoms_data["RA_shape_sample"],
-				"DEC": self.data_dir["DEC"],
-				"DEC_shape_sample": self.randoms_data["DEC_shape_sample"],
-				"weight": self.data_dir["weight"],
-				"weight_shape_sample": self.randoms_data["weight_shape_sample"]
-			}
-			self._count_pairs_xi_rp_pi_lightcone_brute(masks=masks, dataset_name=dataset_name, over_h=over_h,
-													   cosmology=cosmology,
-													   data_suffix="_RD")
-
-		if IA_estimator == "galaxies" or corr_type == "gg" or corr_type == "both":
-			# RR (Cgg, Gg+, Ggg)
-			self.data = {
-				"Redshift": self.randoms_data["Redshift"],
-				"Redshift_shape_sample": self.randoms_data["Redshift_shape_sample"],
-				"RA": self.randoms_data["RA"],
-				"RA_shape_sample": self.randoms_data["RA_shape_sample"],
-				"DEC": self.randoms_data["DEC"],
-				"DEC_shape_sample": self.randoms_data["DEC_shape_sample"],
-				"weight": self.randoms_data["weight"],
-				"weight_shape_sample": self.randoms_data["weight_shape_sample"]
-			}
-			self._count_pairs_xi_rp_pi_lightcone_brute(masks=masks, dataset_name=dataset_name, over_h=over_h,
-													   cosmology=cosmology,
-													   data_suffix="_RR")
-
-		self._obs_estimator([corr_type, "w"], IA_estimator, dataset_name, f"{dataset_name}_randoms", num_samples)
-		self._measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
+		# ToDo: deal with masks
 
 		if measure_cov:
-			self.num_samples = {}
-			min_patch, max_patch = int(min(jk_patches["shape"])), int(max(jk_patches["shape"]))
-			for n in np.arange(min_patch, max_patch + 1):
-				self.num_samples[f"{n}"] = {}
-
-			# Shape-position combinations:
-			# S+D (Cg+, Gg+)
-			# S+R (Cg+, Gg+)
-			if corr_type == "g+" or corr_type == "both":
-				# S+D
-				self.data = self.data_dir
-				self._measure_jackknife_realisations_lightcone_multiprocessing(patches_pos=jk_patches["position"],
-																			   patches_shape=jk_patches["shape"],
-																			   corr_type=[corr_type, "w"], masks=masks,
-																			   dataset_name=dataset_name,
-																			   num_nodes=self.num_nodes, over_h=over_h,
-																			   cosmology=cosmology, count_pairs=False,
-																			   num_sample_names=["S", "D"])
-				# S+R
-				self.data = {
-					"Redshift": self.randoms_data["Redshift"],
-					"Redshift_shape_sample": self.data_dir["Redshift_shape_sample"],
-					"RA": self.randoms_data["RA"],
-					"RA_shape_sample": self.data_dir["RA_shape_sample"],
-					"DEC": self.randoms_data["DEC"],
-					"DEC_shape_sample": self.data_dir["DEC_shape_sample"],
-					"e1": self.data_dir["e1"],
-					"e2": self.data_dir["e2"],
-					"weight": self.randoms_data["weight"],
-					"weight_shape_sample": self.data_dir["weight_shape_sample"]
+			self.measure_xi_w_jk_brute(IA_estimator, dataset_name, corr_type, jk_patches=jk_patches, masks=masks,
+									   masks_randoms=masks_randoms, cosmology=cosmology, over_h=over_h)
+			self._obs_estimator([corr_type, "w"], IA_estimator, dataset_name, num_samples)
+			self._measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
+			for i in np.arange(num_jk):
+				num_samples_i = {
+					"S": num_samples["S"] - sum(jk_patches["shape"] == (i + min_patch)),
+					"D": num_samples["D"] - sum(jk_patches["position"] == (i + min_patch)),
+					"R_S": num_samples["R_S"] - sum(jk_patches["randoms_shape"] == (i + min_patch)),
+					"R_D": num_samples["R_D"] - sum(jk_patches["randoms_position"] == (i + min_patch)),
 				}
-				# print(self.data)
-				self._measure_jackknife_realisations_lightcone_multiprocessing(
-					patches_pos=jk_patches["randoms_position"],
-					patches_shape=jk_patches["shape"],
-					corr_type=[corr_type, "w"], masks=masks,
-					dataset_name=f"{dataset_name}_randoms",
-					num_nodes=self.num_nodes, over_h=over_h,
-					cosmology=cosmology, count_pairs=False,
-					num_sample_names=["S", "R_D"])
+				self._obs_estimator([corr_type, "w"], IA_estimator, f"{dataset_name}_{i}",
+									num_samples_i, jk_group_name=f"{dataset_name}_jk{num_jk}")
 
-			# Position-position combinations:
-			# SD (Cgg, Ggg)
-			# SR (Cg+, Cgg, Ggg)
-			# RD (Cgg, Ggg)
-			# RR (Cgg, Gg+, Ggg)
+				self._measure_w_g_i(corr_type=corr_type, dataset_name=f"{dataset_name}_{i}",
+									jk_group_name=f"{dataset_name}_jk{num_jk}", return_output=False)
+			if corr_type == "both":
+				corr_group = ["w_g_plus", "w_gg"]
+			elif corr_type == "g+":
+				corr_group = ["w_g_plus"]
+			elif corr_type == "gg":
+				corr_group = ["w_gg"]
+			else:
+				raise KeyError("Unknown value for corr_type. Choose from [g+, gg, both]")
+			# ToDo: change _combine_jackknife_information to deal with min_patch=1
+			self._combine_jackknife_information(dataset_name=dataset_name, jk_group_name=f"{dataset_name}_jk{num_jk}",
+												corr_group=corr_group, num_box=num_jk)
+		else:
+			self.measure_xi_w_brute(IA_estimator, dataset_name, corr_type, masks=masks,
+									masks_randoms=masks_randoms, cosmology=cosmology, over_h=over_h)
 
-			if corr_type == "gg":  # already have it for 'both'
-				# SD (Cgg, Ggg)
-				self.data = {
-					"Redshift": self.data_dir["Redshift"],
-					"Redshift_shape_sample": self.data_dir["Redshift_shape_sample"],
-					"RA": self.data_dir["RA"],
-					"RA_shape_sample": self.data_dir["RA_shape_sample"],
-					"DEC": self.data_dir["DEC"],
-					"DEC_shape_sample": self.data_dir["DEC_shape_sample"],
-					"weight": self.data_dir["weight"],
-					"weight_shape_sample": self.data_dir["weight_shape_sample"]
-				}
-				self._measure_jackknife_realisations_lightcone_multiprocessing(patches_pos=jk_patches["position"],
-																			   patches_shape=jk_patches["shape"],
-																			   corr_type=["gg", "w"],
-																			   dataset_name=dataset_name,
-																			   num_nodes=self.num_nodes, over_h=over_h,
-																			   cosmology=cosmology, count_pairs=True,
-																			   data_suffix="_DD",
-																			   num_sample_names=["S", "D"])
+			self._obs_estimator([corr_type, "w"], IA_estimator, dataset_name, num_samples)
+			self._measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
 
-				# SR (Cg+, Cgg, Ggg) - watch name (Obs estimator) # if g+ or both, already have it
-				self.data = {
-					"Redshift": self.randoms_data["Redshift"],
-					"Redshift_shape_sample": self.data_dir["Redshift_shape_sample"],
-					"RA": self.randoms_data["RA"],
-					"RA_shape_sample": self.data_dir["RA_shape_sample"],
-					"DEC": self.randoms_data["DEC"],
-					"DEC_shape_sample": self.data_dir["DEC_shape_sample"],
-					"weight": self.randoms_data["weight"],
-					"weight_shape_sample": self.data_dir["weight_shape_sample"]
-				}
-				self._measure_jackknife_realisations_lightcone_multiprocessing(
-					patches_pos=jk_patches["randoms_position"],
-					patches_shape=jk_patches["shape"],
-					corr_type=["gg", "w"],
-					dataset_name=dataset_name,
-					num_nodes=self.num_nodes, over_h=over_h,
-					cosmology=cosmology, count_pairs=True,
-					data_suffix="_SR",
-					num_sample_names=["S", "R_D"])
-
-			if corr_type == "gg" or corr_type == "both":
-				# RD (Cgg, Ggg)
-				self.data = {
-					"Redshift": self.data_dir["Redshift"],
-					"Redshift_shape_sample": self.randoms_data["Redshift_shape_sample"],
-					"RA": self.data_dir["RA"],
-					"RA_shape_sample": self.randoms_data["RA_shape_sample"],
-					"DEC": self.data_dir["DEC"],
-					"DEC_shape_sample": self.randoms_data["DEC_shape_sample"],
-					"weight": self.data_dir["weight"],
-					"weight_shape_sample": self.randoms_data["weight_shape_sample"]
-				}
-				self._measure_jackknife_realisations_lightcone_multiprocessing(patches_pos=jk_patches["position"],
-																			   patches_shape=jk_patches[
-																				   "randoms_shape"],
-																			   corr_type=["gg", "w"],
-																			   dataset_name=dataset_name,
-																			   num_nodes=self.num_nodes, over_h=over_h,
-																			   cosmology=cosmology, count_pairs=True,
-																			   data_suffix="_RD",
-																			   num_sample_names=["R_S", "D"])
-
-			if IA_estimator == "galaxies" or corr_type == "gg" or corr_type == "both":
-				# RR (Cgg, Gg+, Ggg)
-				self.data = {
-					"Redshift": self.randoms_data["Redshift"],
-					"Redshift_shape_sample": self.randoms_data["Redshift_shape_sample"],
-					"RA": self.randoms_data["RA"],
-					"RA_shape_sample": self.randoms_data["RA_shape_sample"],
-					"DEC": self.randoms_data["DEC"],
-					"DEC_shape_sample": self.randoms_data["DEC_shape_sample"],
-					"weight": self.randoms_data["weight"],
-					"weight_shape_sample": self.randoms_data["weight_shape_sample"]
-				}
-				self._measure_jackknife_realisations_lightcone_multiprocessing(
-					patches_pos=jk_patches["randoms_position"],
-					patches_shape=jk_patches["randoms_shape"],
-					corr_type=["gg", "w"],
-					dataset_name=dataset_name,
-					num_nodes=self.num_nodes, over_h=over_h,
-					cosmology=cosmology, count_pairs=True,
-					data_suffix="_RR",
-					num_sample_names=["R_S", "R_D"])
-
-			self._measure_jackknife_covariance_lightcone(IA_estimator=IA_estimator, max_patch=max(jk_patches['shape']),
-														 min_patch=min(jk_patches["shape"]), corr_type=[corr_type, "w"],
-														 dataset_name=dataset_name, randoms_suf="_randoms")
 		self.data = data
 		return
 
