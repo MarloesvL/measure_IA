@@ -43,7 +43,8 @@ class MeasureWLightcone(MeasureIABase):
 		return
 
 	def _measure_xi_rp_pi_lightcone_brute(self, dataset_name, masks=None, return_output=False,
-										  print_num=True, over_h=False, cosmology=None, jk_group_name=""
+										  print_num=True, over_h=False, cosmology=None, jk_group_name="",
+										  data_suffix="_SplusD"
 										  ):
 		"""Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
@@ -110,6 +111,12 @@ class MeasureWLightcone(MeasureIABase):
 			print(
 				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
 
+		if data_suffix == "_SplusD":
+			DD_suff = "_DD"
+		elif data_suffix == "_SplusR":
+			DD_suff = "_SR"
+		else:
+			raise ValueError("data_suffix must be _SplusD or _SplusR")
 		sub_box_len_logrp = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
 		sub_box_len_pi = (self.pi_bins[-1] - self.pi_bins[0]) / self.num_bins_pi
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
@@ -244,7 +251,7 @@ class MeasureWLightcone(MeasureIABase):
 			output_file = h5py.File(self.output_file_name, "a")
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_g_plus/{jk_group_name}")
 			write_dataset_hdf5(group, dataset_name, data=correlation)
-			write_dataset_hdf5(group, dataset_name + "_SplusD", data=Splus_D)
+			write_dataset_hdf5(group, dataset_name + data_suffix, data=Splus_D)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_g_cross/{jk_group_name}")
@@ -252,7 +259,7 @@ class MeasureWLightcone(MeasureIABase):
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_gg/{jk_group_name}")
-			write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
+			write_dataset_hdf5(group, dataset_name + DD_suff, data=DD)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
 			output_file.close()
