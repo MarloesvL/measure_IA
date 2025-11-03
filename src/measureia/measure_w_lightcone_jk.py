@@ -223,9 +223,6 @@ class MeasureWLightconeJackknife(MeasureIABase):
 		# if Num_position == Num_shape:
 		# 	DD = DD / 2.0  # auto correlation, all pairs are double
 
-		DD[np.where(DD == 0)] = 1
-
-		correlation = Splus_D / DD
 		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
 		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
 		dpi = (self.pi_bins[1:] - self.pi_bins[:-1]) / 2.0
@@ -234,7 +231,6 @@ class MeasureWLightconeJackknife(MeasureIABase):
 		if (self.output_file_name != None) and (return_output == False):
 			output_file = h5py.File(self.output_file_name, "a")
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_g_plus/")
-			write_dataset_hdf5(group, dataset_name, data=correlation)
 			write_dataset_hdf5(group, dataset_name + data_suffix, data=Splus_D)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
@@ -386,8 +382,6 @@ class MeasureWLightconeJackknife(MeasureIABase):
 					  (weight[n] * weight_shape[mask]))
 			np.add.at(DD_jk, (jackknife_region_indices_shape[mask][shape_mask], ind_r[shape_mask], ind_pi[shape_mask]),
 					  (weight[n] * weight_shape[mask][shape_mask]))
-
-		DD[np.where(DD == 0)] = 1
 
 		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
 		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
