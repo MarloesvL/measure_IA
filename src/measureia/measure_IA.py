@@ -689,11 +689,13 @@ class MeasureIALightcone(MeasureJackknife, MeasureWLightconeJackknife):
 			self._obs_estimator([corr_type, "w"], IA_estimator, dataset_name, num_samples)
 			self._measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
 			for i in np.arange(num_jk):
+				overlap_i = np.where(jk_patches["position"][ind_D] == (i + min_patch))
 				num_samples_i = {
 					"S": num_samples["S"] - sum(jk_patches["shape"] == (i + min_patch)),
 					"D": num_samples["D"] - sum(jk_patches["position"] == (i + min_patch)),
 					"R_S": num_samples["R_S"] - sum(jk_patches["randoms_shape"] == (i + min_patch)),
 					"R_D": num_samples["R_D"] - sum(jk_patches["randoms_position"] == (i + min_patch)),
+					"D_S": num_samples["D_S"] - len(overlap_i)
 				}
 				self._obs_estimator([corr_type, "w"], IA_estimator, f"{dataset_name}_{i}",
 									num_samples_i, jk_group_name=f"{dataset_name}_jk{num_jk}")
