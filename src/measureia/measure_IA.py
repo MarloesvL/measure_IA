@@ -551,6 +551,105 @@ class MeasureIALightcone(MeasureJackknife, MeasureWLightconeJackknife):
 													   data_suffix="_RR")
 		return
 
+	def measure_xi_w_tree(self, IA_estimator, dataset_name, corr_type, masks=None, masks_randoms=None, cosmology=None,
+						  over_h=False):
+		# Shape-position combinations:
+		# S+D (Cg+, Gg+)
+		# S+R (Cg+, Gg+)
+		if corr_type == "g+" or corr_type == "both":
+			# S+D
+			self.data = self.data_dir
+			self._measure_xi_rp_pi_lightcone_tree(masks=masks, dataset_name=dataset_name,
+												  over_h=over_h, data_suffix="_SplusD",
+												  cosmology=cosmology)
+			# S+R
+			self.data = {
+				"Redshift": self.randoms_data["Redshift"],
+				"Redshift_shape_sample": self.data_dir["Redshift_shape_sample"],
+				"RA": self.randoms_data["RA"],
+				"RA_shape_sample": self.data_dir["RA_shape_sample"],
+				"DEC": self.randoms_data["DEC"],
+				"DEC_shape_sample": self.data_dir["DEC_shape_sample"],
+				"e1": self.data_dir["e1"],
+				"e2": self.data_dir["e2"],
+				"weight": self.randoms_data["weight"],
+				"weight_shape_sample": self.data_dir["weight_shape_sample"]
+			}
+			# print(self.data)
+			self._measure_xi_rp_pi_lightcone_tree(masks=masks, dataset_name=f"{dataset_name}",
+												  over_h=over_h, data_suffix="_SplusR",
+												  cosmology=cosmology)
+
+		# Position-position combinations:
+		# SD (Cgg, Ggg)
+		# SR (Cg+, Cgg, Ggg)
+		# RD (Cgg, Ggg)
+		# RR (Cgg, Gg+, Ggg)
+
+		if corr_type == "gg":  # already have it for 'both'
+			# SD (Cgg, Ggg)
+			self.data = {
+				"Redshift": self.data_dir["Redshift"],
+				"Redshift_shape_sample": self.data_dir["Redshift_shape_sample"],
+				"RA": self.data_dir["RA"],
+				"RA_shape_sample": self.data_dir["RA_shape_sample"],
+				"DEC": self.data_dir["DEC"],
+				"DEC_shape_sample": self.data_dir["DEC_shape_sample"],
+				"weight": self.data_dir["weight"],
+				"weight_shape_sample": self.data_dir["weight_shape_sample"]
+			}
+			self._count_pairs_xi_rp_pi_lightcone_tree(masks=masks, dataset_name=dataset_name, over_h=over_h,
+													  cosmology=cosmology,
+													  data_suffix="_DD")
+
+			# SR (Cg+, Cgg, Ggg) - watch name (Obs estimator) # if g+ or both, already have it
+			self.data = {
+				"Redshift": self.randoms_data["Redshift"],
+				"Redshift_shape_sample": self.data_dir["Redshift_shape_sample"],
+				"RA": self.randoms_data["RA"],
+				"RA_shape_sample": self.data_dir["RA_shape_sample"],
+				"DEC": self.randoms_data["DEC"],
+				"DEC_shape_sample": self.data_dir["DEC_shape_sample"],
+				"weight": self.randoms_data["weight"],
+				"weight_shape_sample": self.data_dir["weight_shape_sample"]
+			}
+			self._count_pairs_xi_rp_pi_lightcone_tree(masks=masks, dataset_name=dataset_name, over_h=over_h,
+													  cosmology=cosmology,
+													  data_suffix="_SR")
+
+		if corr_type == "gg" or corr_type == "both":
+			# RD (Cgg, Ggg)
+			self.data = {
+				"Redshift": self.data_dir["Redshift"],
+				"Redshift_shape_sample": self.randoms_data["Redshift_shape_sample"],
+				"RA": self.data_dir["RA"],
+				"RA_shape_sample": self.randoms_data["RA_shape_sample"],
+				"DEC": self.data_dir["DEC"],
+				"DEC_shape_sample": self.randoms_data["DEC_shape_sample"],
+				"weight": self.data_dir["weight"],
+				"weight_shape_sample": self.randoms_data["weight_shape_sample"]
+			}
+			self._count_pairs_xi_rp_pi_lightcone_tree(masks=masks, dataset_name=dataset_name, over_h=over_h,
+													  cosmology=cosmology,
+													  data_suffix="_RD")
+
+		if IA_estimator == "galaxies" or corr_type == "gg" or corr_type == "both":
+			# RR (Cgg, Gg+, Ggg)
+			self.data = {
+				"Redshift": self.randoms_data["Redshift"],
+				"Redshift_shape_sample": self.randoms_data["Redshift_shape_sample"],
+				"RA": self.randoms_data["RA"],
+				"RA_shape_sample": self.randoms_data["RA_shape_sample"],
+				"DEC": self.randoms_data["DEC"],
+				"DEC_shape_sample": self.randoms_data["DEC_shape_sample"],
+				"weight": self.randoms_data["weight"],
+				"weight_shape_sample": self.randoms_data["weight_shape_sample"]
+			}
+			self._count_pairs_xi_rp_pi_lightcone_tree(masks=masks, dataset_name=dataset_name, over_h=over_h,
+													  cosmology=cosmology,
+													  data_suffix="_RR")
+		return
+
 	def measure_xi_w_jk_tree(self, IA_estimator, dataset_name, corr_type, jk_patches=None, masks=None,
 							 masks_randoms=None, cosmology=None, over_h=False):
 		num_jk = max(jk_patches["shape"]) - min(jk_patches["shape"]) + 1
@@ -836,8 +935,12 @@ class MeasureIALightcone(MeasureJackknife, MeasureWLightconeJackknife):
 			self._combine_jackknife_information(dataset_name=dataset_name, jk_group_name=f"{dataset_name}_jk{num_jk}",
 												corr_group=corr_group, num_box=num_jk)
 		else:
-			self.measure_xi_w_brute(IA_estimator, dataset_name, corr_type, masks=masks,
-									masks_randoms=masks_randoms, cosmology=cosmology, over_h=over_h)
+			if tree:
+				self.measure_xi_w_tree(IA_estimator, dataset_name, corr_type, masks=masks,
+									   masks_randoms=masks_randoms, cosmology=cosmology, over_h=over_h)
+			else:
+				self.measure_xi_w_brute(IA_estimator, dataset_name, corr_type, masks=masks,
+										masks_randoms=masks_randoms, cosmology=cosmology, over_h=over_h)
 
 			self._obs_estimator([corr_type, "w"], IA_estimator, dataset_name, num_samples)
 			self._measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
