@@ -140,6 +140,7 @@ class MeasureWLightconeJackknife(MeasureIABase):
 		if over_h:
 			LOS_all *= h
 			LOS_all_shape_sample *= h
+		del redshift, redshift_shape_sample, cosmology
 
 		e = np.array([e1, e2]).transpose()
 		RA_rad = RA / 180 * np.pi
@@ -149,31 +150,33 @@ class MeasureWLightconeJackknife(MeasureIABase):
 		n_shape = np.array([np.cos(DEC_shape_sample_rad) * np.cos(RA_shape_sample_rad),
 							np.cos(DEC_shape_sample_rad) * np.sin(RA_shape_sample_rad),
 							np.sin(DEC_shape_sample_rad)]).transpose()
+		del DEC_shape_sample, RA_shape_sample, DEC_shape_sample_rad, RA_shape_sample_rad
+		s_shape = n_shape * np.array([LOS_all_shape_sample]).transpose()
+		n_pos = np.array([np.cos(DEC_rad) * np.cos(RA_rad),
+						  np.cos(DEC_rad) * np.sin(RA_rad),
+						  np.sin(DEC_rad)]).transpose()
+		east = np.array([-np.sin(RA_rad), np.cos(RA_rad), np.zeros(Num_position)]).transpose()
+		north = np.array([
+			-np.sin(DEC_rad) * np.cos(RA_rad),
+			-np.sin(DEC_rad) * np.sin(RA_rad),
+			np.cos(DEC_rad)
+		]).transpose()
+		del RA, DEC, DEC_rad, RA_rad
+		s_pos = np.array([LOS_all]).transpose() * n_pos
+		del LOS_all, LOS_all_shape_sample
 
-		for n in np.arange(0, len(RA)):
-			n_pos = np.array([np.cos(DEC_rad[n]) * np.cos(RA_rad[n]),
-							  np.cos(DEC_rad[n]) * np.sin(RA_rad[n]),
-							  np.sin(DEC_rad[n])]).transpose()
-
-			n_LOS = (n_pos + n_shape) / np.array([np.sqrt(np.sum((n_pos + n_shape) ** 2, axis=1))]).transpose()
-			s = n_shape * np.array([LOS_all_shape_sample]).transpose() - LOS_all[n] * n_pos
+		for n in np.arange(0, Num_position):
+			n_LOS = (n_pos[n] + n_shape) / np.array([np.sqrt(np.sum((n_pos[n] + n_shape) ** 2, axis=1))]).transpose()
+			s = s_shape - s_pos[n]
 			LOS = self.calculate_dot_product_arrays(s, n_LOS)
 			separation_len = np.sqrt(np.sum(s ** 2, axis=1) - LOS ** 2)  # len of s-pi*nlos ->check
 
 			# Projected separation vector
 			s_perp = s - np.sum(s * n_LOS, axis=1, keepdims=True) * n_LOS
 
-			# Tangent plane basis
-			east = np.array([-np.sin(RA_rad[n]), np.cos(RA_rad[n]), 0.0])
-			north = np.array([
-				-np.sin(DEC_rad[n]) * np.cos(RA_rad[n]),
-				-np.sin(DEC_rad[n]) * np.sin(RA_rad[n]),
-				np.cos(DEC_rad[n])
-			])
-
 			# Components of projected separation
-			x = np.sum(s_perp * east, axis=1)
-			y = np.sum(s_perp * north, axis=1)
+			x = np.sum(s_perp * east[n], axis=1)
+			y = np.sum(s_perp * north[n], axis=1)
 			phi = np.arctan2(x, y)  # angle from north toward east
 
 			e_plus, e_cross = self.get_ellipticity(e, phi)
@@ -354,6 +357,8 @@ class MeasureWLightconeJackknife(MeasureIABase):
 		if over_h:
 			LOS_all *= h
 			LOS_all_shape_sample *= h
+		del redshift, redshift_shape_sample, cosmology
+
 		r_max, r_min = np.sqrt(self.r_max ** 2 + self.pi_bins[-1] ** 2), self.r_min
 		e = np.array([e1, e2]).transpose()
 		RA_rad = RA / 180 * np.pi
@@ -583,6 +588,8 @@ class MeasureWLightconeJackknife(MeasureIABase):
 		if over_h:
 			LOS_all *= h
 			LOS_all_shape_sample *= h
+		del redshift, redshift_shape_sample, cosmology
+
 		RA_rad = RA / 180 * np.pi
 		RA_shape_sample_rad = RA_shape_sample / 180 * np.pi
 		DEC_rad = DEC / 180 * np.pi
@@ -590,14 +597,18 @@ class MeasureWLightconeJackknife(MeasureIABase):
 		n_shape = np.array([np.cos(DEC_shape_sample_rad) * np.cos(RA_shape_sample_rad),
 							np.cos(DEC_shape_sample_rad) * np.sin(RA_shape_sample_rad),
 							np.sin(DEC_shape_sample_rad)]).transpose()
+		del DEC_shape_sample, RA_shape_sample, DEC_shape_sample_rad, RA_shape_sample_rad
+		s_shape = n_shape * np.array([LOS_all_shape_sample]).transpose()
+		n_pos = np.array([np.cos(DEC_rad) * np.cos(RA_rad),
+						  np.cos(DEC_rad) * np.sin(RA_rad),
+						  np.sin(DEC_rad)]).transpose()
+		del RA, DEC, RA_rad, DEC_rad
+		s_pos = np.array([LOS_all]).transpose() * n_pos
+		del LOS_all, LOS_all_shape_sample
 
-		for n in np.arange(0, len(RA)):
-			n_pos = np.array([np.cos(DEC_rad[n]) * np.cos(RA_rad[n]),
-							  np.cos(DEC_rad[n]) * np.sin(RA_rad[n]),
-							  np.sin(DEC_rad[n])]).transpose()
-
-			n_LOS = (n_pos + n_shape) / np.array([np.sqrt(np.sum((n_pos + n_shape) ** 2, axis=1))]).transpose()
-			s = n_shape * np.array([LOS_all_shape_sample]).transpose() - LOS_all[n] * n_pos
+		for n in np.arange(0, Num_position):
+			n_LOS = (n_pos[n] + n_shape) / np.array([np.sqrt(np.sum((n_pos[n] + n_shape) ** 2, axis=1))]).transpose()
+			s = s_shape - s_pos[n]
 			LOS = self.calculate_dot_product_arrays(s, n_LOS)
 			separation_len = np.sqrt(np.sum(s ** 2, axis=1) - LOS ** 2)
 

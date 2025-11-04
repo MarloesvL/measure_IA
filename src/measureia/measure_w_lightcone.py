@@ -133,13 +133,8 @@ class MeasureWLightcone(MeasureIABase):
 		if over_h:
 			LOS_all *= h
 			LOS_all_shape_sample *= h
+		del redshift, redshift_shape_sample, cosmology
 
-		# theta = 1. / 2 * np.arctan2(e2, e1)  # e1 = |e| cos(2theta), e2 = |e| sin(2theta)
-		# Semimajor_Axis_Direction = np.array([np.cos(theta), np.sin(theta)])
-		# axis_direction_len = np.sqrt(np.sum(Semimajor_Axis_Direction ** 2, axis=0))
-		# axis_direction = Semimajor_Axis_Direction / axis_direction_len
-		# e = np.sqrt(e1 ** 2 + e2 ** 2)
-		# phi_axis_dir = np.arctan2(axis_direction[1], axis_direction[0])
 		e = np.array([e1, e2]).transpose()
 		RA_rad = RA / 180 * np.pi
 		RA_shape_sample_rad = RA_shape_sample / 180 * np.pi
@@ -148,62 +143,34 @@ class MeasureWLightcone(MeasureIABase):
 		n_shape = np.array([np.cos(DEC_shape_sample_rad) * np.cos(RA_shape_sample_rad),
 							np.cos(DEC_shape_sample_rad) * np.sin(RA_shape_sample_rad),
 							np.sin(DEC_shape_sample_rad)]).transpose()
+		del DEC_shape_sample, RA_shape_sample, DEC_shape_sample_rad, RA_shape_sample_rad
+		s_shape = n_shape * np.array([LOS_all_shape_sample]).transpose()
+		n_pos = np.array([np.cos(DEC_rad) * np.cos(RA_rad),
+						  np.cos(DEC_rad) * np.sin(RA_rad),
+						  np.sin(DEC_rad)]).transpose()
+		east = np.array([-np.sin(RA_rad), np.cos(RA_rad), np.zeros(Num_position)]).transpose()
+		north = np.array([
+			-np.sin(DEC_rad) * np.cos(RA_rad),
+			-np.sin(DEC_rad) * np.sin(RA_rad),
+			np.cos(DEC_rad)
+		]).transpose()
+		del RA, DEC, DEC_rad, RA_rad
+		s_pos = np.array([LOS_all]).transpose() * n_pos
+		del LOS_all, LOS_all_shape_sample
 
-		for n in np.arange(0, len(RA)):
-			# for Splus_D (calculate ellipticities around position sample)
-			# dra = (RA_shape_sample - RA[n]) / 180 * np.pi  # RA[n] - RA_shape_sample
-			# # phi = np.arccos(np.sin(DEC[n] / 180 * np.pi) * np.sin(DEC_shape_sample / 180 * np.pi) + np.cos(
-			# # 	DEC[n] / 180 * np.pi) * np.cos(DEC_shape_sample / 180 * np.pi) * np.cos(dra))
-			# LOS = (LOS_all_shape_sample - LOS_all[n])# * np.cos(phi/2.)
-			# # separation_len = (LOS_all_shape_sample + LOS_all[n])/2. * np.sin(phi)
-			# # dra = (RA_shape_sample - RA[n]) / 180 * np.pi
-			# ddec = (DEC_shape_sample - DEC[n]) / 180 * np.pi
-			# dx = dra * LOS_all[n] * np.cos(DEC[n] / 180 * np.pi)
-			# dy = ddec * LOS_all[n]
-			# projected_sep = np.array([dx, dy])
-			# if over_h:
-			# 	projected_sep *= h
-			# separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=0))
-			# with np.errstate(invalid='ignore'):
-			# 	separation_dir = (projected_sep / separation_len)  # normalisation of rp
-			# 	del projected_sep
-			# 	phi_sep_dir = np.arctan2(separation_dir[1], separation_dir[0])
-			# 	phi_2 = phi_sep_dir#phi_axis_dir - phi_sep_dir #
-			# phi_0 = self.phi_pair_spherical(RA_shape_sample[0], DEC_shape_sample[0],RA[n], DEC[n])
-			# phi_0 = self.phi_pair_spherical(RA[n], DEC[n], RA_shape_sample[0], DEC_shape_sample[0])
-			# print(phi_0, phi_sep_dir[0])
-			# del separation_dir
-			# print(max(abs((phi_2-phi)/phi)))
-			# print(max(abs((separation_len_2-separation_len)/separation_len)))
-			n_pos = np.array([np.cos(DEC_rad[n]) * np.cos(RA_rad[n]),
-							  np.cos(DEC_rad[n]) * np.sin(RA_rad[n]),
-							  np.sin(DEC_rad[n])]).transpose()
-
-			n_LOS = (n_pos + n_shape) / np.array([np.sqrt(np.sum((n_pos + n_shape) ** 2, axis=1))]).transpose()
-			s = n_shape * np.array([LOS_all_shape_sample]).transpose() - LOS_all[n] * n_pos
+		for n in np.arange(0, Num_position):
+			n_LOS = (n_pos[n] + n_shape) / np.array([np.sqrt(np.sum((n_pos[n] + n_shape) ** 2, axis=1))]).transpose()
+			s = s_shape - s_pos[n]
 			LOS = self.calculate_dot_product_arrays(s, n_LOS)
 			separation_len = np.sqrt(np.sum(s ** 2, axis=1) - LOS ** 2)  # len of s-pi*nlos ->check
 
 			# Projected separation vector
 			s_perp = s - np.sum(s * n_LOS, axis=1, keepdims=True) * n_LOS
 
-			# Tangent plane basis
-			east = np.array([-np.sin(RA_rad[n]), np.cos(RA_rad[n]), 0.0])
-			north = np.array([
-				-np.sin(DEC_rad[n]) * np.cos(RA_rad[n]),
-				-np.sin(DEC_rad[n]) * np.sin(RA_rad[n]),
-				np.cos(DEC_rad[n])
-			])
-
 			# Components of projected separation
-			x = np.sum(s_perp * east, axis=1)
-			y = np.sum(s_perp * north, axis=1)
+			x = np.sum(s_perp * east[n], axis=1)
+			y = np.sum(s_perp * north[n], axis=1)
 			phi = np.arctan2(x, y)  # angle from north toward east
-
-			# dra = (RA_shape_sample_rad - RA_rad[n])
-			# ddec = (DEC_shape_sample_rad - DEC_rad[n])
-			# dec_mid = (DEC_rad[n] + DEC_shape_sample_rad) / 2.
-			# phi = np.arctan2(ddec,dra * np.cos(dec_mid)) # to match TreeCorr, otherwise: switch arguments
 
 			e_plus, e_cross = self.get_ellipticity(e, phi)
 			# del phi_sep_dir
@@ -347,6 +314,8 @@ class MeasureWLightcone(MeasureIABase):
 		if over_h:
 			LOS_all *= h
 			LOS_all_shape_sample *= h
+		del redshift, redshift_shape_sample, cosmology
+
 		RA_rad = RA / 180 * np.pi
 		RA_shape_sample_rad = RA_shape_sample / 180 * np.pi
 		DEC_rad = DEC / 180 * np.pi
@@ -354,52 +323,20 @@ class MeasureWLightcone(MeasureIABase):
 		n_shape = np.array([np.cos(DEC_shape_sample_rad) * np.cos(RA_shape_sample_rad),
 							np.cos(DEC_shape_sample_rad) * np.sin(RA_shape_sample_rad),
 							np.sin(DEC_shape_sample_rad)]).transpose()
+		del DEC_shape_sample, RA_shape_sample, DEC_shape_sample_rad, RA_shape_sample_rad
+		s_shape = n_shape * np.array([LOS_all_shape_sample]).transpose()
+		n_pos = np.array([np.cos(DEC_rad) * np.cos(RA_rad),
+						  np.cos(DEC_rad) * np.sin(RA_rad),
+						  np.sin(DEC_rad)]).transpose()
+		del RA, DEC, RA_rad, DEC_rad
+		s_pos = np.array([LOS_all]).transpose() * n_pos
+		del LOS_all, LOS_all_shape_sample
 
-		for n in np.arange(0, len(RA)):
-			# for Splus_D (calculate ellipticities around position sample)
-			# LOS = LOS_all_shape_sample - LOS_all[n]
-			# dra = (RA_shape_sample - RA[n]) / 180 * np.pi
-			# ddec = (DEC_shape_sample - DEC[n]) / 180 * np.pi
-			# dx = dra * LOS_all[n] * np.cos(DEC[n] / 180 * np.pi)
-			# dy = ddec * LOS_all[n]
-			# projected_sep = np.array([dx, dy])
-			# if over_h:
-			# 	projected_sep *= h
-			# separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=0))
-
-			n_pos = np.array([np.cos(DEC_rad[n]) * np.cos(RA_rad[n]),
-							  np.cos(DEC_rad[n]) * np.sin(RA_rad[n]),
-							  np.sin(DEC_rad[n])]).transpose()
-
-			n_LOS = (n_pos + n_shape) / np.array([np.sqrt(np.sum((n_pos + n_shape) ** 2, axis=1))]).transpose()
-			s = n_shape * np.array([LOS_all_shape_sample]).transpose() - LOS_all[n] * n_pos
+		for n in np.arange(0, Num_position):
+			n_LOS = (n_pos[n] + n_shape) / np.array([np.sqrt(np.sum((n_pos[n] + n_shape) ** 2, axis=1))]).transpose()
+			s = s_shape - s_pos[n]
 			LOS = self.calculate_dot_product_arrays(s, n_LOS)
 			separation_len = np.sqrt(np.sum(s ** 2, axis=1) - LOS ** 2)
-
-			# Dc_mean = 0.5 * (LOS_all[n] + LOS_all_shape_sample)
-			# #
-			# # 	# Angular separation (radians)
-			# cos_theta = (np.sin(DEC_rad[n]) * np.sin(DEC_shape_sample_rad) +
-			# 			 np.cos(DEC_rad[n]) * np.cos(DEC_shape_sample_rad) * np.cos(RA_shape_sample_rad - RA_rad[n]))
-			# # Clamp numerical errors
-			# cos_theta = np.clip(cos_theta, -1.0, 1.0)
-			# theta = np.arccos(cos_theta)
-			#
-			# # Projected comoving separation
-			# R_proj = Dc_mean * theta  # in Mpc
-			# print(n, np.mean((separation_len-R_proj)/separation_len))
-			# z_mean = 0.5 * (redshift[n] + redshift_shape_sample)
-			# R_proj /= (1 + z_mean)
-			# print(n, np.mean((separation_len - R_proj) / separation_len))
-
-			#
-			# 	# Convert to proper (physical) if requested
-			# 	if physical:
-			# 		z_mean = 0.5 * (z1 + z2)
-			# 		R_proj /= (1 + z_mean)
-			#
-			# 	return R_proj
-
 			# get the indices for the binning
 			mask = (separation_len >= self.r_bins[0]) * (separation_len < self.r_bins[-1]) * (
 					LOS >= self.pi_bins[0]) * (LOS < self.pi_bins[-1])
@@ -414,11 +351,6 @@ class MeasureWLightcone(MeasureIABase):
 			del LOS
 			ind_pi = np.array(ind_pi, dtype=int)
 			np.add.at(DD, (ind_r, ind_pi), weight[n] * weight_shape[mask])
-
-		# if Num_position == Num_shape:
-		# 	DD = DD / 2.0  # auto correlation, all pairs are double
-
-		DD[np.where(DD == 0)] = 1
 
 		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
 		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
