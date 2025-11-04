@@ -214,7 +214,6 @@ class MeasureWLightconeJackknife(MeasureIABase):
 						  shape_mask]))  # responsivity added later
 
 			del e_plus, e_cross
-			np.add.at(DD, (ind_r, ind_pi), weight[n] * weight_shape[mask])
 			np.add.at(DD_jk, (jackknife_region_indices_pos[n], ind_r, ind_pi),
 					  (weight[n] * weight_shape[mask]))
 			np.add.at(DD_jk, (jackknife_region_indices_shape[mask][shape_mask], ind_r[shape_mask], ind_pi[shape_mask]),
@@ -377,7 +376,6 @@ class MeasureWLightconeJackknife(MeasureIABase):
 			np.add.at(DD, (ind_r, ind_pi), weight[n] * weight_shape[mask])
 
 			shape_mask = np.where(jackknife_region_indices_shape[mask] != jackknife_region_indices_pos[n])[0]
-			np.add.at(DD, (ind_r, ind_pi), weight[n] * weight_shape[mask])
 			np.add.at(DD_jk, (jackknife_region_indices_pos[n], ind_r, ind_pi),
 					  (weight[n] * weight_shape[mask]))
 			np.add.at(DD_jk, (jackknife_region_indices_shape[mask][shape_mask], ind_r[shape_mask], ind_pi[shape_mask]),
