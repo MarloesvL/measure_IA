@@ -1,15 +1,33 @@
 import numpy as np
 import h5py
 import os
+import sys
 from multiprocessing import Pool
 from scipy.spatial import KDTree
 from .write_data import write_dataset_hdf5, create_group_hdf5
 from .measure_IA_base import MeasureIABase
 from .read_data import ReadData
-from astropy.cosmology import LambdaCDM
 
-cosmo = LambdaCDM(H0=69.6, Om0=0.286, Ode0=0.714)
-KPC_TO_KM = 3.086e16  # 1 kpc is 3.086e16 km
+
+def get_size(obj, seen=None):
+	"""Recursively finds size of objects"""
+	size = sys.getsizeof(obj)
+	if seen is None:
+		seen = set()
+	obj_id = id(obj)
+	if obj_id in seen:
+		return 0
+	# Important mark as seen *before* entering recursion to gracefully handle
+	# self-referential objects
+	seen.add(obj_id)
+	if isinstance(obj, dict):
+		size += sum([get_size(v, seen) for v in obj.values()])
+		size += sum([get_size(k, seen) for k in obj.keys()])
+	elif hasattr(obj, '__dict__'):
+		size += get_size(obj.__dict__, seen)
+	elif hasattr(obj, '__iter__') and not isinstance(obj, (str, bytes, bytearray)):
+		size += sum([get_size(i, seen) for i in obj])
+	return size
 
 
 class MeasureWBoxJackknife(MeasureIABase, ReadData):
@@ -569,8 +587,6 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 		positions_shape_sample_i = self.temp_data_obj.read_cat("positions_shape_sample", [i, i2])
 		axis_direction_i = self.temp_data_obj.read_cat("axis_direction", [i, i2])
 		weight_shape_i = self.temp_data_obj.read_cat("weight_shape", [i, i2])
-		positions = self.temp_data_obj.read_cat("positions")
-		weight = self.temp_data_obj.read_cat("weight")
 		e_i = self.e[i:i2]
 		jackknife_region_indices_shape_i = self.jackknife_region_indices_shape[i:i2]
 
@@ -578,22 +594,28 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 		ind_min_i = shape_tree.query_ball_tree(self.pos_tree, self.r_min)
 		ind_max_i = shape_tree.query_ball_tree(self.pos_tree, self.r_max)
 		ind_rbin_i = self.setdiff2D(ind_max_i, ind_min_i)
+		print(i, get_size(self.pos_tree), get_size(self.jackknife_region_indices_pos),
+			  get_size(positions_shape_sample_i), get_size(self.temp_data_obj),
+			  get_size(self.temp_data_obj.read_cat("positions", ind_rbin_i[0])), get_size(shape_tree),
+			  get_size(ind_rbin_i))
 		for n in np.arange(0, len(positions_shape_sample_i)):  # CHANGE2: loop now over shapes, not positions
 			if len(ind_rbin_i[n]) > 0:
 				# for Splus_D (calculate ellipticities around position sample)
-				separation = positions_shape_sample_i[n] - positions[ind_rbin_i[n]]  # CHANGE1 & CHANGE2
+				separation = positions_shape_sample_i[n] - self.temp_data_obj.read_cat("positions",
+																					   ind_rbin_i[
+																						   n])  # CHANGE1 & CHANGE2
 				if self.periodicity:
 					separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
-					separation[separation < -self.L_0p5] += self.boxsize
+				separation[separation < -self.L_0p5] += self.boxsize
 				projected_sep = separation[:, self.not_LOS]
 				LOS = separation[:, self.LOS_ind]
 				separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
 				with np.errstate(invalid='ignore'):
 					separation_dir = (projected_sep.transpose() / separation_len).transpose()  # normalisation of rp
-					del projected_sep, separation
-					phi = np.arccos(
-						separation_dir[:, 0] * axis_direction_i[n, 0] + separation_dir[:, 1] * axis_direction_i[
-							n, 1])  # CHANGE2
+				del projected_sep, separation
+				phi = np.arccos(
+					separation_dir[:, 0] * axis_direction_i[n, 0] + separation_dir[:, 1] * axis_direction_i[
+						n, 1])  # CHANGE2
 				e_plus, e_cross = self.get_ellipticity(e_i[n], phi)  # CHANGE2
 				del phi, separation_dir
 				e_plus[np.isnan(e_plus)] = 0.0
@@ -615,34 +637,35 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 					ind_pi[ind_pi >= self.num_bins_pi] -= 1
 				if np.any(ind_r == self.num_bins_r):
 					ind_r[ind_r >= self.num_bins_r] -= 1
+				weight_i_n = self.temp_data_obj.read_cat("weight", ind_rbin_i[n])
 				np.add.at(Splus_D, (ind_r, ind_pi),
-						  (weight[ind_rbin_i[n]][mask] * weight_shape_i[n] * e_plus[mask]) / (2 * self.R))
+						  (weight_i_n[mask] * weight_shape_i[n] * e_plus[mask]) / (2 * self.R))
 				np.add.at(Scross_D, (ind_r, ind_pi),
-						  (weight[ind_rbin_i[n]][mask] * weight_shape_i[n] * e_cross[mask]) / (2 * self.R))
+						  (weight_i_n[mask] * weight_shape_i[n] * e_cross[mask]) / (2 * self.R))
 				del separation_len
-				np.add.at(DD, (ind_r, ind_pi), weight[ind_rbin_i[n]][mask] * weight_shape_i[n])
+				np.add.at(DD, (ind_r, ind_pi), weight_i_n[mask] * weight_shape_i[n])
 
 				pos_mask = \
 					np.where(
 						self.jackknife_region_indices_pos[ind_rbin_i[n]][mask] != jackknife_region_indices_shape_i[n])[
 						0]
 				np.add.at(Splus_D_jk, (jackknife_region_indices_shape_i[n], ind_r, ind_pi),
-						  (weight[ind_rbin_i[n]][mask] * weight_shape_i[n] * e_plus[
+						  (weight_i_n[mask] * weight_shape_i[n] * e_plus[
 							  mask]))  # responsivity added later
 				np.add.at(Splus_D_jk,
 						  (self.jackknife_region_indices_pos[ind_rbin_i[n]][mask][pos_mask], ind_r[pos_mask],
 						   ind_pi[pos_mask]),
-						  (weight[ind_rbin_i[n]][mask][pos_mask] * weight_shape_i[n] * e_plus[mask][
+						  (weight_i_n[mask][pos_mask] * weight_shape_i[n] * e_plus[mask][
 							  pos_mask]))  # responsivity added later
 
 				del e_plus, e_cross
 				np.add.at(DD_jk, (jackknife_region_indices_shape_i[n], ind_r, ind_pi),
-						  (weight[ind_rbin_i[n]][mask] * weight_shape_i[n]))  # responsivity added later
+						  (weight_i_n[mask] * weight_shape_i[n]))  # responsivity added later
 				np.add.at(DD_jk,
 						  (self.jackknife_region_indices_pos[ind_rbin_i[n]][mask][pos_mask], ind_r[pos_mask],
 						   ind_pi[pos_mask]),
-						  (weight[ind_rbin_i[n]][mask][pos_mask] * weight_shape_i[n]))  # responsivity added later
-
+						  (weight_i_n[mask][pos_mask] * weight_shape_i[n]))  # responsivity added later
+		print(i, get_size(Splus_D), get_size(DD), get_size(Splus_D_jk), get_size(DD_jk))
 		return Splus_D, Scross_D, DD, DD_jk, Splus_D_jk
 
 	def _measure_xi_rp_pi_box_jk_multiprocessing(self, dataset_name, L_subboxes, temp_file_path,
@@ -764,6 +787,7 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 		self.pos_tree = KDTree(positions[:, self.not_LOS], boxsize=self.boxsize)
 		indices = np.arange(0, len(positions_shape_sample), chunk_size)
 		self.chunk_size = chunk_size
+		print(get_size(data_temp), get_size(self.pos_tree), get_size(self.jackknife_region_indices_pos))
 		with Pool(num_nodes) as p:
 			result = p.map(self._measure_xi_rp_pi_box_jk_batch, indices)
 		os.remove(
