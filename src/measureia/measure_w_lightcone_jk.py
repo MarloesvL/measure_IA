@@ -368,7 +368,7 @@ class MeasureWLightconeJackknife(MeasureIABase):
 		n_shape = np.array([np.cos(DEC_shape_sample_rad) * np.cos(RA_shape_sample_rad),
 							np.cos(DEC_shape_sample_rad) * np.sin(RA_shape_sample_rad),
 							np.sin(DEC_shape_sample_rad)]).transpose()
-		del DEC_shape_sample, RA_shape_sample, DEC_shape_sample_rad, RA_shape_sample_rad
+		# del DEC_shape_sample, RA_shape_sample, DEC_shape_sample_rad, RA_shape_sample_rad
 		s_shape = n_shape * np.array([LOS_all_shape_sample]).transpose()
 		n_pos = np.array([np.cos(DEC_rad) * np.cos(RA_rad),
 						  np.cos(DEC_rad) * np.sin(RA_rad),
@@ -379,12 +379,11 @@ class MeasureWLightconeJackknife(MeasureIABase):
 			-np.sin(DEC_rad) * np.sin(RA_rad),
 			np.cos(DEC_rad)
 		]).transpose()
-		del RA, DEC, DEC_rad, RA_rad
+		# del RA, DEC, DEC_rad, RA_rad
 		s_pos = np.array([LOS_all]).transpose() * n_pos
-		del LOS_all, LOS_all_shape_sample
+		# del LOS_all, LOS_all_shape_sample
 		shape_tree = KDTree(s_shape)
-		# print(np.shape(s_pos),np.shape(n_pos),np.shape(weight),np.shape(jackknife_region_indices_pos))
-		# (52970, 3) (52970, 3) (52970,) (52970,)
+		n_pairs_bin1 = 0
 		for i in np.arange(0, Num_position, 100):  # RAM optimisation
 			i2 = min(Num_position, i + 100)
 			s_pos_i = s_pos[i:i2]
@@ -392,6 +391,8 @@ class MeasureWLightconeJackknife(MeasureIABase):
 			weight_i = weight[i:i2]
 			east_i = east[i:i2]
 			north_i = north[i:i2]
+			DEC_rad_i = DEC_rad[i:i2]
+			RA_rad_i = RA_rad[i:i2]
 			jackknife_region_indices_pos_i = jackknife_region_indices_pos[i:i2]
 			pos_tree = KDTree(s_pos_i)
 			ind_min_i = pos_tree.query_ball_tree(shape_tree, r_min)
@@ -405,6 +406,12 @@ class MeasureWLightconeJackknife(MeasureIABase):
 					s = s_pos_i[n] - s_shape[ind_rbin_i[n]]
 					LOS = self.calculate_dot_product_arrays(s, n_LOS)
 					separation_len = np.sqrt(np.sum(s ** 2, axis=1) - LOS ** 2)  # len of s-pi*nlos ->check
+					# ang_sep =np.array([np.arccos(
+					# 	np.sin(DEC_rad_i[n]) * np.sin(DEC_shape_sample_rad[ind_rbin_i[n]]) + np.cos(DEC_rad_i[n]) * np.cos(
+					# 		DEC_shape_sample_rad[ind_rbin_i[n]]) * np.cos(
+					# 		RA_shape_sample_rad[ind_rbin_i[n]] - RA_rad_i[n]))]).transpose()
+					# r_perp = ang_sep*(2*(s_pos_i[n]*s_shape[ind_rbin_i[n]])/(s_pos_i[n]+ s_shape[ind_rbin_i[n]]))
+					# separation_len=np.sqrt(np.sum(r_perp ** 2, axis=1))
 
 					# Projected separation vector
 					s_perp = s - np.sum(s * n_LOS, axis=1, keepdims=True) * n_LOS
@@ -426,12 +433,12 @@ class MeasureWLightconeJackknife(MeasureIABase):
 						np.log10(separation_len[mask]) / sub_box_len_logrp - np.log10(
 							self.r_bins[0]) / sub_box_len_logrp
 					)
-					del separation_len
+					# del separation_len
 					ind_r = np.array(ind_r, dtype=int)
 					ind_pi = np.floor(
 						LOS[mask] / sub_box_len_pi - self.pi_bins[0] / sub_box_len_pi
 					)  # need length of LOS, so only positive values
-					del LOS
+					# del LOS
 					ind_pi = np.array(ind_pi, dtype=int)
 					if np.any(ind_r == np.shape(Splus_D)[0]):
 						ind_r[np.where(ind_r == np.shape(Splus_D)[0])] = np.shape(Splus_D)[0] - 1
@@ -446,6 +453,14 @@ class MeasureWLightconeJackknife(MeasureIABase):
 					np.add.at(Scross_D, (ind_r, ind_pi),
 							  (weight_i[n] * weight_shape[ind_rbin_i[n]][mask] * e_cross[mask]))
 					np.add.at(DD, (ind_r, ind_pi), weight_i[n] * weight_shape[ind_rbin_i[n]][mask])
+					# if i + n == 717:
+					# 	ind_1010 = np.where(ind_rbin_i[n][mask] == 1010)
+					# 	print(sum(ind_rbin_i[n][mask] == 1010), ind_r[ind_1010], ind_pi[ind_1010],
+					# 		  separation_len[mask][ind_1010])
+					# bin_1 = (ind_pi == 4) * (ind_r == 7)
+					# if sum(bin_1)>0:
+					# 	n_pairs_bin1+=1
+					# 	print(i+n,ind_rbin_i[n][mask][bin_1], LOS[mask][bin_1], separation_len[mask][bin_1])
 
 					shape_mask = \
 						np.where(
@@ -468,6 +483,7 @@ class MeasureWLightconeJackknife(MeasureIABase):
 							   ind_pi[shape_mask]),
 							  (weight_i[n] * weight_shape[ind_rbin_i[n]][mask][shape_mask]))
 
+		# print(n_pairs_bin1)
 		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
 		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
 		dpi = (self.pi_bins[1:] - self.pi_bins[:-1]) / 2.0
@@ -746,12 +762,12 @@ class MeasureWLightconeJackknife(MeasureIABase):
 		n_shape = np.array([np.cos(DEC_shape_sample_rad) * np.cos(RA_shape_sample_rad),
 							np.cos(DEC_shape_sample_rad) * np.sin(RA_shape_sample_rad),
 							np.sin(DEC_shape_sample_rad)]).transpose()
-		del DEC_shape_sample, RA_shape_sample, DEC_shape_sample_rad, RA_shape_sample_rad
+		# del DEC_shape_sample, RA_shape_sample, DEC_shape_sample_rad, RA_shape_sample_rad
 		s_shape = n_shape * np.array([LOS_all_shape_sample]).transpose()
 		n_pos = np.array([np.cos(DEC_rad) * np.cos(RA_rad),
 						  np.cos(DEC_rad) * np.sin(RA_rad),
 						  np.sin(DEC_rad)]).transpose()
-		del RA, DEC, DEC_rad, RA_rad
+		# del RA, DEC, DEC_rad, RA_rad
 		s_pos = np.array([LOS_all]).transpose() * n_pos
 		del LOS_all, LOS_all_shape_sample
 		shape_tree = KDTree(s_shape)
@@ -760,6 +776,8 @@ class MeasureWLightconeJackknife(MeasureIABase):
 			s_pos_i = s_pos[i:i2]
 			n_pos_i = n_pos[i:i2]
 			weight_i = weight[i:i2]
+			DEC_rad_i = DEC_rad[i:i2]
+			RA_rad_i = RA_rad[i:i2]
 			jackknife_region_indices_pos_i = jackknife_region_indices_pos[i:i2]
 			pos_tree = KDTree(s_pos_i)
 			ind_min_i = pos_tree.query_ball_tree(shape_tree, r_min)
@@ -773,6 +791,14 @@ class MeasureWLightconeJackknife(MeasureIABase):
 					s = s_pos_i[n] - s_shape[ind_rbin_i[n]]
 					LOS = self.calculate_dot_product_arrays(s, n_LOS)
 					separation_len = np.sqrt(np.sum(s ** 2, axis=1) - LOS ** 2)  # len of s-pi*nlos ->check
+					# ang_sep = np.array([np.arccos(
+					# 	np.sin(DEC_rad_i[n]) * np.sin(DEC_shape_sample_rad[ind_rbin_i[n]]) + np.cos(
+					# 		DEC_rad_i[n]) * np.cos(
+					# 		DEC_shape_sample_rad[ind_rbin_i[n]]) * np.cos(
+					# 		RA_shape_sample_rad[ind_rbin_i[n]] - RA_rad_i[n]))]).transpose()
+					# r_perp = ang_sep * (
+					# 			2 * (s_pos_i[n] * s_shape[ind_rbin_i[n]]) / (s_pos_i[n] + s_shape[ind_rbin_i[n]]))
+					# separation_len = np.sqrt(np.sum(r_perp ** 2, axis=1))
 
 					# get the indices for the binning
 					mask = (separation_len >= self.r_bins[0]) * (separation_len < self.r_bins[-1]) * (
