@@ -661,8 +661,6 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 						* (separation_len >= self.r_bins[0])
 						* (separation_len < self.r_bins[-1])
 				)
-				print(i, n, np.shape(mask), np.shape(ind_rbin_i[n]), np.shape(projected_separation_len),
-					  np.shape(separation_len))
 				ind_r = np.floor(
 					np.log10(separation_len[mask]) / self.sub_box_len_logr - np.log10(
 						self.r_bins[0]) / self.sub_box_len_logr
