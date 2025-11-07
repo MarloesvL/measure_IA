@@ -855,6 +855,16 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			del shared_data, shared_arr
 			del positions, positions_shape_sample, axis_direction, weight, weight_shape, jackknife_region_indices_pos, jackknife_region_indices_shape
 			print(get_size(self))  # 8569
+			shms = []
+			shared_data = {}
+			for name, shape, dtype in self.shm_infos:
+				shm = shared_memory.SharedMemory(name=name)
+				shared_data[name] = np.ndarray(shape, dtype=dtype, buffer=shm.buf)
+				shms.append(shm)
+			for k in shared_data.keys():
+				print(k, get_size(shared_data[k]))
+			for shm in shms:
+				shm.close()
 			with Pool(num_nodes) as p:
 				result = p.map(self._measure_xi_r_mur_box_jk_batch, indices)
 
