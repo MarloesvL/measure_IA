@@ -617,95 +617,94 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			shm = shared_memory.SharedMemory(name=name)
 			shared_data[name] = np.ndarray(shape, dtype=dtype, buffer=shm.buf)
 			shms.append(shm)
+		for j in np.arange(i, i2, 100):
+			j2 = min(j + 100, i2)
+			positions_shape_sample_i = shared_data["positions_shape_sample"][j:j2]
+			axis_direction_i = shared_data["axis_direction"][j:j2]
+			weight_shape_i = shared_data["weight_shape"][j:j2]
+			positions = shared_data["positions"]
+			e_i = shared_data["e"][j:j2]
+			jackknife_region_indices_shape_i = shared_data["jackknife_region_indices_shape"][j:j2]
+			jackknife_region_indices_pos = shared_data["jackknife_region_indices_pos"]
 
-		positions_shape_sample_i = shared_data["positions_shape_sample"][i:i2]
-		axis_direction_i = shared_data["axis_direction"][i:i2]
-		weight_shape_i = shared_data["weight_shape"][i:i2]
-		positions = shared_data["positions"]
-		weight = shared_data["weight"]
-		e_i = shared_data["e"][i:i2]
-		jackknife_region_indices_shape_i = shared_data["jackknife_region_indices_shape"][i:i2]
-		jackknife_region_indices_pos = shared_data["jackknife_region_indices_pos"]
+			shape_tree = KDTree(positions_shape_sample_i, boxsize=self.boxsize)
+			ind_min_i = shape_tree.query_ball_tree(self.pos_tree, self.r_min)
+			ind_max_i = shape_tree.query_ball_tree(self.pos_tree, self.r_max)
+			ind_rbin_i = self.setdiff2D(ind_max_i, ind_min_i)
+			for n in np.arange(0, len(positions_shape_sample_i)):
+				if len(ind_rbin_i[n]) > 0:
+					# for Splus_D (calculate ellipticities around position sample)
+					separation = positions_shape_sample_i[n] - positions[ind_rbin_i[n]]
+					if self.periodicity:
+						separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
+						separation[separation < -self.L_0p5] += self.boxsize
+					projected_sep = separation[:, self.not_LOS]
+					LOS = separation[:, self.LOS_ind]
+					projected_separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
+					with np.errstate(invalid='ignore'):
+						separation_dir = (
+								projected_sep.transpose() / projected_separation_len).transpose()  # normalisation of rp
+					separation_len = np.sqrt(np.sum(separation ** 2, axis=1))
+					del separation, projected_sep
+					with np.errstate(invalid='ignore'):
+						mu_r = LOS / separation_len
+						phi = np.arccos(
+							separation_dir[:, 0] * axis_direction_i[n, 0] + separation_dir[:, 1] * axis_direction_i[
+								n, 1])  # [0,pi]
+					e_plus, e_cross = self.get_ellipticity(e_i[n], phi)
+					del phi, LOS, separation_dir
 
-		shape_tree = KDTree(positions_shape_sample_i, boxsize=self.boxsize)
-		ind_min_i = shape_tree.query_ball_tree(self.pos_tree, self.r_min)
-		ind_max_i = shape_tree.query_ball_tree(self.pos_tree, self.r_max)
-		ind_rbin_i = self.setdiff2D(ind_max_i, ind_min_i)
-		print(i, get_size(positions), get_size(weight))
-		for n in np.arange(0, len(positions_shape_sample_i)):
-			if len(ind_rbin_i[n]) > 0:
-				# for Splus_D (calculate ellipticities around position sample)
-				separation = positions_shape_sample_i[n] - positions[ind_rbin_i[n]]
-				if self.periodicity:
-					separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
-					separation[separation < -self.L_0p5] += self.boxsize
-				projected_sep = separation[:, self.not_LOS]
-				LOS = separation[:, self.LOS_ind]
-				projected_separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
-				with np.errstate(invalid='ignore'):
-					separation_dir = (
-							projected_sep.transpose() / projected_separation_len).transpose()  # normalisation of rp
-				separation_len = np.sqrt(np.sum(separation ** 2, axis=1))
-				del separation, projected_sep
-				with np.errstate(invalid='ignore'):
-					mu_r = LOS / separation_len
-					phi = np.arccos(
-						separation_dir[:, 0] * axis_direction_i[n, 0] + separation_dir[:, 1] * axis_direction_i[
-							n, 1])  # [0,pi]
-				e_plus, e_cross = self.get_ellipticity(e_i[n], phi)
-				del phi, LOS, separation_dir
+					e_plus[np.isnan(e_plus)] = 0.0
+					mu_r[np.isnan(e_plus)] = 0.0
+					e_cross[np.isnan(e_cross)] = 0.0
 
-				e_plus[np.isnan(e_plus)] = 0.0
-				mu_r[np.isnan(e_plus)] = 0.0
-				e_cross[np.isnan(e_cross)] = 0.0
+					# get the indices for the binning
+					mask = (
+							(projected_separation_len > self.rp_cut)
+							* (separation_len >= self.r_bins[0])
+							* (separation_len < self.r_bins[-1])
+					)
+					ind_r = np.floor(
+						np.log10(separation_len[mask]) / self.sub_box_len_logr - np.log10(
+							self.r_bins[0]) / self.sub_box_len_logr
+					)
+					ind_r = np.array(ind_r, dtype=int)
+					ind_mu_r = np.floor(
+						mu_r[mask] / self.sub_box_len_mu_r - self.mu_r_bins[0] / self.sub_box_len_mu_r
+					)  # need length of LOS, so only positive values
+					ind_mu_r = np.array(ind_mu_r, dtype=int)
+					if np.any(ind_mu_r == self.num_bins_pi):
+						ind_mu_r[ind_mu_r >= self.num_bins_pi] -= 1
+					if np.any(ind_r == self.num_bins_r):
+						ind_r[ind_r >= self.num_bins_r] -= 1
+					weight_i_n = shared_data["weight"][ind_rbin_i[n]]
+					np.add.at(Splus_D, (ind_r, ind_mu_r),
+							  (weight_i_n[mask] * weight_shape_i[n] * e_plus[mask]) / (2 * self.R))
+					np.add.at(Scross_D, (ind_r, ind_mu_r),
+							  (weight_i_n[mask] * weight_shape_i[n] * e_cross[mask]) / (2 * self.R))
+					np.add.at(DD, (ind_r, ind_mu_r), weight_i_n[mask] * weight_shape_i[n])
+					del separation_len
 
-				# get the indices for the binning
-				mask = (
-						(projected_separation_len > self.rp_cut)
-						* (separation_len >= self.r_bins[0])
-						* (separation_len < self.r_bins[-1])
-				)
-				ind_r = np.floor(
-					np.log10(separation_len[mask]) / self.sub_box_len_logr - np.log10(
-						self.r_bins[0]) / self.sub_box_len_logr
-				)
-				ind_r = np.array(ind_r, dtype=int)
-				ind_mu_r = np.floor(
-					mu_r[mask] / self.sub_box_len_mu_r - self.mu_r_bins[0] / self.sub_box_len_mu_r
-				)  # need length of LOS, so only positive values
-				ind_mu_r = np.array(ind_mu_r, dtype=int)
-				if np.any(ind_mu_r == self.num_bins_pi):
-					ind_mu_r[ind_mu_r >= self.num_bins_pi] -= 1
-				if np.any(ind_r == self.num_bins_r):
-					ind_r[ind_r >= self.num_bins_r] -= 1
-				weight_i_n = weight[ind_rbin_i[n]]
-				np.add.at(Splus_D, (ind_r, ind_mu_r),
-						  (weight_i_n[mask] * weight_shape_i[n] * e_plus[mask]) / (2 * self.R))
-				np.add.at(Scross_D, (ind_r, ind_mu_r),
-						  (weight_i_n[mask] * weight_shape_i[n] * e_cross[mask]) / (2 * self.R))
-				np.add.at(DD, (ind_r, ind_mu_r), weight_i_n[mask] * weight_shape_i[n])
-				del separation_len
+					pos_mask = \
+						np.where(
+							jackknife_region_indices_pos[ind_rbin_i[n]][mask] != jackknife_region_indices_shape_i[n])[
+							0]
+					np.add.at(Splus_D_jk, (jackknife_region_indices_shape_i[n], ind_r, ind_mu_r),
+							  (weight_i_n[mask] * weight_shape_i[n] * e_plus[
+								  mask]))  # responsivity added later
+					np.add.at(Splus_D_jk,
+							  (jackknife_region_indices_pos[ind_rbin_i[n]][mask][pos_mask], ind_r[pos_mask],
+							   ind_mu_r[pos_mask]),
+							  (weight_i_n[mask][pos_mask] * weight_shape_i[n] * e_plus[mask][
+								  pos_mask]))  # responsivity added later
 
-				pos_mask = \
-					np.where(
-						jackknife_region_indices_pos[ind_rbin_i[n]][mask] != jackknife_region_indices_shape_i[n])[
-						0]
-				np.add.at(Splus_D_jk, (jackknife_region_indices_shape_i[n], ind_r, ind_mu_r),
-						  (weight_i_n[mask] * weight_shape_i[n] * e_plus[
-							  mask]))  # responsivity added later
-				np.add.at(Splus_D_jk,
-						  (jackknife_region_indices_pos[ind_rbin_i[n]][mask][pos_mask], ind_r[pos_mask],
-						   ind_mu_r[pos_mask]),
-						  (weight_i_n[mask][pos_mask] * weight_shape_i[n] * e_plus[mask][
-							  pos_mask]))  # responsivity added later
-
-				del e_plus, e_cross
-				np.add.at(DD_jk, (jackknife_region_indices_shape_i[n], ind_r, ind_mu_r),
-						  (weight_i_n[mask] * weight_shape_i[n]))  # responsivity added later
-				np.add.at(DD_jk,
-						  (jackknife_region_indices_pos[ind_rbin_i[n]][mask][pos_mask], ind_r[pos_mask],
-						   ind_mu_r[pos_mask]),
-						  (weight_i_n[mask][pos_mask] * weight_shape_i[n]))  # responsivity added later
+					del e_plus, e_cross
+					np.add.at(DD_jk, (jackknife_region_indices_shape_i[n], ind_r, ind_mu_r),
+							  (weight_i_n[mask] * weight_shape_i[n]))  # responsivity added later
+					np.add.at(DD_jk,
+							  (jackknife_region_indices_pos[ind_rbin_i[n]][mask][pos_mask], ind_r[pos_mask],
+							   ind_mu_r[pos_mask]),
+							  (weight_i_n[mask][pos_mask] * weight_shape_i[n]))  # responsivity added later
 		for shm in shms:
 			shm.close()
 		return Splus_D, Scross_D, DD, DD_jk, Splus_D_jk
@@ -783,8 +782,6 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 		print(
 			f"There are {self.Num_shape_masked} galaxies in the shape sample and {self.Num_position_masked} galaxies in the position sample.")
 
-
-
 		self.LOS_ind = self.data["LOS"]  # eg 2 for z axis
 		self.not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], self.LOS_ind, invert=True)]  # eg 0,1 for x&y
 		if ellipticity == 'distortion':
@@ -836,40 +833,42 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 		write_dataset_hdf5(file_temp, "jackknife_region_indices_shape", jackknife_region_indices_shape)
 		write_dataset_hdf5(file_temp, "jackknife_region_indices_pos", jackknife_region_indices_pos)
 		file_temp.close()
+		print(get_size(positions), get_size(weight))
+		try:
+			shared_data = {
+				"positions": positions,
+				"positions_shape_sample": positions_shape_sample,
+				"axis_direction": axis_direction,
+				"e": e,
+				"weight": weight,
+				"weight_shape": weight_shape,
+				"jackknife_region_indices_pos": jackknife_region_indices_pos,
+				"jackknife_region_indices_shape": jackknife_region_indices_shape,
+			}
+			shm_blocks, self.shm_infos = [], []
+			for k in shared_data.keys():
+				shm = shared_memory.SharedMemory(name=k, create=True, size=shared_data[k].nbytes)
+				shared_arr = np.ndarray(shared_data[k].shape, dtype=shared_data[k].dtype, buffer=shm.buf)
+				np.copyto(shared_arr, shared_data[k])
+				shm_blocks.append(shm)
+				self.shm_infos.append([k, shared_data[k].shape, shared_data[k].dtype])
+			self.data = {}
+			if masks is not None:
+				masks = {}
+			del shared_data
+			del positions, positions_shape_sample, axis_direction, weight, weight_shape, jackknife_region_indices_pos, jackknife_region_indices_shape
 
-		shared_data = {
-			"positions": positions,
-			"positions_shape_sample": positions_shape_sample,
-			"axis_direction": axis_direction,
-			"e": e,
-			"weight": weight,
-			"weight_shape": weight_shape,
-			"jackknife_region_indices_pos": jackknife_region_indices_pos,
-			"jackknife_region_indices_shape": jackknife_region_indices_shape,
-		}
-		shm_blocks, self.shm_infos = [], []
-		for k in shared_data.keys():
-			shm = shared_memory.SharedMemory(name=k, create=True, size=shared_data[k].nbytes)
-			shared_arr = np.ndarray(shared_data[k].shape, dtype=shared_data[k].dtype, buffer=shm.buf)
-			np.copyto(shared_arr, shared_data[k])
-			shm_blocks.append(shm)
-			self.shm_infos.append([k, shared_data[k].shape, shared_data[k].dtype])
-		self.data = None
-		del shared_data
-		del positions, positions_shape_sample, axis_direction, weight, weight_shape, jackknife_region_indices_pos, jackknife_region_indices_shape
+			with Pool(num_nodes) as p:
+				result = p.map(self._measure_xi_r_mur_box_jk_batch, indices)
 
-		with Pool(num_nodes) as p:
-			result = p.map(self._measure_xi_r_mur_box_jk_batch, indices)
-
-		for shm in shm_blocks:
-			shm.close()
-			shm.unlink()
+		finally:
+			for shm in shm_blocks:
+				shm.close()
+				shm.unlink()
 
 		temp_data_obj_m = ReadData(self.simname, f"m_{self.simname}_temp_data_{figname_dataset_name}", None,
 								   data_path=file_tree_path)
-		self.data = {}
 		for k in keys:
-			print(k)
 			self.data[k] = temp_data_obj_m.read_cat(k)
 			if masks is not None:
 				masks[k] = temp_data_obj_m.read_cat(f"mask_{k}")
