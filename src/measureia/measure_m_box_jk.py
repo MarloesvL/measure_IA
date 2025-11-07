@@ -5,32 +5,11 @@ import os
 import sys
 # from pathos.multiprocessing import ProcessingPool
 from multiprocessing import Pool, shared_memory
+import multiprocessing as mp
 from scipy.spatial import KDTree
 from .write_data import write_dataset_hdf5, create_group_hdf5
 from .measure_IA_base import MeasureIABase
 from .read_data import ReadData
-
-
-def get_size(obj, seen=None):
-	"""Recursively finds size of objects"""
-	size = sys.getsizeof(obj)
-	if seen is None:
-		seen = set()
-	obj_id = id(obj)
-	if obj_id in seen:
-		return 0
-	# Important mark as seen *before* entering recursion to gracefully handle
-	# self-referential objects
-	seen.add(obj_id)
-	if isinstance(obj, dict):
-		size += sum([get_size(v, seen) for v in obj.values()])
-		size += sum([get_size(k, seen) for k in obj.keys()])
-	elif hasattr(obj, '__dict__'):
-		size += get_size(obj.__dict__, seen)
-	elif hasattr(obj, '__iter__') and not isinstance(obj, (str, bytes, bytearray)):
-		size += sum([get_size(i, seen) for i in obj])
-	return size
-
 
 class MeasureMBoxJackknife(MeasureIABase, ReadData):
 	r"""Class that contains all methods for the measurements of $\xi_{gg}$ and $\xi_{g+}$ for $\tilde{\xi}_{gg,0}$ and
@@ -617,8 +596,6 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			shm = shared_memory.SharedMemory(name=name)
 			shared_data[name] = np.ndarray(shape, dtype=dtype, buffer=shm.buf)
 			shms.append(shm)
-		for k in shared_data.keys():
-			print(i, k, get_size(shared_data[k]))
 		for j in np.arange(i, i2, 100):
 			j2 = min(j + 100, i2)
 			positions_shape_sample_i = shared_data["positions_shape_sample"][j:j2]
@@ -711,7 +688,7 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			shm.close()
 		return Splus_D, Scross_D, DD, DD_jk, Splus_D_jk
 
-	def _measure_xi_r_mur_box_jk_multiprocessing(self, dataset_name, L_subboxes, file_tree_path, masks=None,
+	def _measure_xi_r_mur_box_jk_multiprocessing(self, dataset_name, L_subboxes, temp_file_path, masks=None,
 												 rp_cut=None, return_output=False, jk_group_name="",
 												 chunk_size=100, num_nodes=1, ellipticity='distortion'):
 		r"""Measures the projected correlation functions including jackknife realisations, $\xi_{gg}$ and $\xi_{g+}$,
@@ -818,7 +795,7 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			figname_dataset_name = figname_dataset_name.replace("/", "_")
 		if "." in dataset_name:
 			figname_dataset_name = figname_dataset_name.replace(".", "p")
-		file_temp = h5py.File(f"{file_tree_path}/m_{self.simname}_temp_data_{figname_dataset_name}.hdf5", "w")
+		file_temp = h5py.File(f"{temp_file_path}/m_{self.simname}_temp_data_{figname_dataset_name}.hdf5", "w")
 		keys = []
 		for k in self.data.keys():
 			if k != "LOS":
@@ -829,7 +806,6 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 		write_dataset_hdf5(file_temp, "jackknife_region_indices_shape", jackknife_region_indices_shape)
 		write_dataset_hdf5(file_temp, "jackknife_region_indices_pos", jackknife_region_indices_pos)
 		file_temp.close()
-		print(get_size(self))
 		try:
 			shared_data = {
 				"positions": positions,
@@ -841,6 +817,12 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 				"jackknife_region_indices_pos": jackknife_region_indices_pos,
 				"jackknife_region_indices_shape": jackknife_region_indices_shape,
 			}
+			for k in shared_data.keys():
+				try:
+					old = shared_memory.SharedMemory(name=k)
+					old.unlink()
+				except FileNotFoundError:
+					pass
 			shm_blocks, self.shm_infos = [], []
 			for k in shared_data.keys():
 				shm = shared_memory.SharedMemory(name=k, create=True, size=shared_data[k].nbytes)
@@ -848,23 +830,12 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 				np.copyto(shared_arr, shared_data[k])
 				shm_blocks.append(shm)
 				self.shm_infos.append([k, shared_data[k].shape, shared_data[k].dtype])
-				print(k, get_size(shared_data[k]))
 			self.data = {}
 			if masks is not None:
 				masks = {}
 			del shared_data, shared_arr
 			del positions, positions_shape_sample, axis_direction, weight, weight_shape, jackknife_region_indices_pos, jackknife_region_indices_shape
-			print(get_size(self))  # 8569
-			shms = []
-			shared_data = {}
-			for name, shape, dtype in self.shm_infos:
-				shm = shared_memory.SharedMemory(name=name)
-				shared_data[name] = np.ndarray(shape, dtype=dtype, buffer=shm.buf)
-				shms.append(shm)
-			for k in shared_data.keys():
-				print(k, get_size(shared_data[k]))
-			for shm in shms:
-				shm.close()
+			mp.set_start_method("spawn", force=True)
 			with Pool(num_nodes) as p:
 				result = p.map(self._measure_xi_r_mur_box_jk_batch, indices)
 
@@ -874,7 +845,7 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 				shm.unlink()
 
 		temp_data_obj_m = ReadData(self.simname, f"m_{self.simname}_temp_data_{figname_dataset_name}", None,
-								   data_path=file_tree_path)
+								   data_path=temp_file_path)
 		for k in keys:
 			self.data[k] = temp_data_obj_m.read_cat(k)
 			if masks is not None:
@@ -883,7 +854,7 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 		jackknife_region_indices_pos = temp_data_obj_m.read_cat(f"jackknife_region_indices_pos")
 		jackknife_region_indices_shape = temp_data_obj_m.read_cat(f"jackknife_region_indices_shape")
 		os.remove(
-			f"{file_tree_path}/m_{self.simname}_temp_data_{figname_dataset_name}.hdf5")
+			f"{temp_file_path}/m_{self.simname}_temp_data_{figname_dataset_name}.hdf5")
 
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
