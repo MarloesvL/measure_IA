@@ -83,15 +83,15 @@ class ReadData(SimInfo):
 		self.errors_w_gp = None
 		return
 
-	def read_cat(self, dataset_name, cut=None):
+	def read_cat(self, dataset_name, cut=None, indices=None):
 		"""Reads the data from the specified catalogue.
 
 		Parameters
 		----------
 		dataset_name :
 			the dataset name for the requested data
-		cut : iterable with 2 entries
-			 Read dataset slice [cut[0]:cut[1]]. Default value = None
+		cut : iterable with 2 or more entries
+			 If 2 entries: Read dataset slice [cut[0]:cut[1]]. If more: Read dataset slice [cut]. Default value = None
 
 		Returns
 		-------
@@ -110,10 +110,12 @@ class ReadData(SimInfo):
 			raise KeyError("Use read_snapshot method")
 
 		file = h5py.File(f"{self.data_path}{self.catalogue}.hdf5", "r")
-		if cut == None:
+		if cut is None and indices is None:
 			data = file[self.snap_group + self.sub_group + dataset_name][:]
-		else:
+		elif cut is not None:
 			data = file[self.snap_group + self.sub_group + dataset_name][cut[0]: cut[1]]
+		else:
+			data = file[self.snap_group + self.sub_group + dataset_name][indices]
 		file.close()
 		return data
 
