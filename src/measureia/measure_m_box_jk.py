@@ -4,7 +4,7 @@ import pickle
 import os
 import sys
 # from pathos.multiprocessing import ProcessingPool
-from multiprocessing import Pool
+from multiprocessing import Pool, shared_memory
 from scipy.spatial import KDTree
 from .write_data import write_dataset_hdf5, create_group_hdf5
 from .measure_IA_base import MeasureIABase
@@ -611,27 +611,31 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 		DD_jk = np.zeros((self.num_box, self.num_bins_r, self.num_bins_pi))
 		Splus_D_jk = np.zeros((self.num_box, self.num_bins_r, self.num_bins_pi))
 
-		positions_shape_sample_i = self.temp_data_obj_m.read_cat("positions_shape_sample", [i, i2])
-		axis_direction_i = self.temp_data_obj_m.read_cat("axis_direction", [i, i2])
-		weight_shape_i = self.temp_data_obj_m.read_cat("weight_shape", [i, i2])
-		# positions = self.temp_data_obj_m.read_cat("positions")
-		# weight = self.temp_data_obj_m.read_cat("weight")
-		e_i = self.e[i:i2]
-		jackknife_region_indices_shape_i = self.jackknife_region_indices_shape[i:i2]
+		shms = []
+		shared_data = {}
+		for name, shape, dtype in self.shm_infos:
+			shm = shared_memory.SharedMemory(name=name)
+			shared_data[name] = np.ndarray(shape, dtype=dtype, buffer=shm.buf)
+			shms.append(shm)
+
+		positions_shape_sample_i = shared_data["positions_shape_sample"][i:i2]
+		axis_direction_i = shared_data["axis_direction"][i:i2]
+		weight_shape_i = shared_data["weight_shape"][i:i2]
+		positions = shared_data["positions"]
+		weight = shared_data["weight"]
+		e_i = shared_data["e"][i:i2]
+		jackknife_region_indices_shape_i = shared_data["jackknife_region_indices_shape"][i:i2]
+		jackknife_region_indices_pos = shared_data["jackknife_region_indices_pos"]
 
 		shape_tree = KDTree(positions_shape_sample_i, boxsize=self.boxsize)
 		ind_min_i = shape_tree.query_ball_tree(self.pos_tree, self.r_min)
 		ind_max_i = shape_tree.query_ball_tree(self.pos_tree, self.r_max)
 		ind_rbin_i = self.setdiff2D(ind_max_i, ind_min_i)
-		print(i, get_size(self.pos_tree), get_size(self.jackknife_region_indices_pos),
-			  get_size(positions_shape_sample_i), get_size(self.temp_data_obj_m),
-			  get_size(self.temp_data_obj_m.read_cat("positions", indices=ind_rbin_i[0])), get_size(shape_tree),
-			  get_size(ind_rbin_i))
+		print(i, get_size(positions), get_size(weight))
 		for n in np.arange(0, len(positions_shape_sample_i)):
 			if len(ind_rbin_i[n]) > 0:
 				# for Splus_D (calculate ellipticities around position sample)
-				separation = positions_shape_sample_i[n] - self.temp_data_obj_m.read_cat("positions",
-																						 indices=ind_rbin_i[n])
+				separation = positions_shape_sample_i[n] - positions[ind_rbin_i[n]]
 				if self.periodicity:
 					separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
 					separation[separation < -self.L_0p5] += self.boxsize
@@ -674,7 +678,7 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 					ind_mu_r[ind_mu_r >= self.num_bins_pi] -= 1
 				if np.any(ind_r == self.num_bins_r):
 					ind_r[ind_r >= self.num_bins_r] -= 1
-				weight_i_n = self.temp_data_obj_m.read_cat("weight", indices=ind_rbin_i[n])
+				weight_i_n = weight[ind_rbin_i[n]]
 				np.add.at(Splus_D, (ind_r, ind_mu_r),
 						  (weight_i_n[mask] * weight_shape_i[n] * e_plus[mask]) / (2 * self.R))
 				np.add.at(Scross_D, (ind_r, ind_mu_r),
@@ -684,13 +688,13 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 
 				pos_mask = \
 					np.where(
-						self.jackknife_region_indices_pos[ind_rbin_i[n]][mask] != jackknife_region_indices_shape_i[n])[
+						jackknife_region_indices_pos[ind_rbin_i[n]][mask] != jackknife_region_indices_shape_i[n])[
 						0]
 				np.add.at(Splus_D_jk, (jackknife_region_indices_shape_i[n], ind_r, ind_mu_r),
 						  (weight_i_n[mask] * weight_shape_i[n] * e_plus[
 							  mask]))  # responsivity added later
 				np.add.at(Splus_D_jk,
-						  (self.jackknife_region_indices_pos[ind_rbin_i[n]][mask][pos_mask], ind_r[pos_mask],
+						  (jackknife_region_indices_pos[ind_rbin_i[n]][mask][pos_mask], ind_r[pos_mask],
 						   ind_mu_r[pos_mask]),
 						  (weight_i_n[mask][pos_mask] * weight_shape_i[n] * e_plus[mask][
 							  pos_mask]))  # responsivity added later
@@ -699,10 +703,11 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 				np.add.at(DD_jk, (jackknife_region_indices_shape_i[n], ind_r, ind_mu_r),
 						  (weight_i_n[mask] * weight_shape_i[n]))  # responsivity added later
 				np.add.at(DD_jk,
-						  (self.jackknife_region_indices_pos[ind_rbin_i[n]][mask][pos_mask], ind_r[pos_mask],
+						  (jackknife_region_indices_pos[ind_rbin_i[n]][mask][pos_mask], ind_r[pos_mask],
 						   ind_mu_r[pos_mask]),
 						  (weight_i_n[mask][pos_mask] * weight_shape_i[n]))  # responsivity added later
-		print(i, get_size(Splus_D), get_size(DD), get_size(Splus_D_jk), get_size(DD_jk))
+		for shm in shms:
+			shm.close()
 		return Splus_D, Scross_D, DD, DD_jk, Splus_D_jk
 
 	def _measure_xi_r_mur_box_jk_multiprocessing(self, dataset_name, L_subboxes, file_tree_path, masks=None,
@@ -743,12 +748,13 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			$\xi_{gg}$ and $\xi_{g+}$, r bins, mu_r bins, S+D, DD, RR (if no output file is specified)
 
 		"""
-		if masks == None:
+		if masks is None:
 			positions = self.data["Position"]
 			positions_shape_sample = self.data["Position_shape_sample"]
 			axis_direction_v = self.data["Axis_Direction"]
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
+			del axis_direction_v, axis_direction_len
 			q = self.data["q"]
 			weight = self.data["weight"]
 			weight_shape = self.data["weight_shape_sample"]
@@ -758,6 +764,7 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			axis_direction_v = self.data["Axis_Direction"][masks["Axis_Direction"]]
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
+			del axis_direction_v, axis_direction_len
 			q = self.data["q"][masks["q"]]
 			try:
 				weight_mask = masks["weight"]
@@ -776,32 +783,18 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 		print(
 			f"There are {self.Num_shape_masked} galaxies in the shape sample and {self.Num_position_masked} galaxies in the position sample.")
 
-		# create temp hdf5 from which data can be read. del self.data, but save it in this method to reduce RAM
-		figname_dataset_name = dataset_name
-		if "/" in dataset_name:
-			figname_dataset_name = figname_dataset_name.replace("/", "_")
-		if "." in dataset_name:
-			figname_dataset_name = figname_dataset_name.replace(".", "p")
-		file_temp = h5py.File(f"{file_tree_path}/m_{self.simname}_temp_data_{figname_dataset_name}.hdf5", "w")
-		write_dataset_hdf5(file_temp, "positions", positions)
-		write_dataset_hdf5(file_temp, "weight", weight)
-		write_dataset_hdf5(file_temp, "weight_shape", weight_shape)
-		write_dataset_hdf5(file_temp, "positions_shape_sample", positions_shape_sample)
-		write_dataset_hdf5(file_temp, "axis_direction", axis_direction)
-		file_temp.close()
-		self.temp_data_obj_m = ReadData(self.simname, f"m_{self.simname}_temp_data_{figname_dataset_name}", None,
-										data_path=file_tree_path)
+
 
 		self.LOS_ind = self.data["LOS"]  # eg 2 for z axis
 		self.not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], self.LOS_ind, invert=True)]  # eg 0,1 for x&y
 		if ellipticity == 'distortion':
-			self.e = (1 - q ** 2) / (1 + q ** 2)  # size of ellipticity
+			e = (1 - q ** 2) / (1 + q ** 2)  # size of ellipticity
 		elif ellipticity == 'ellipticity':
-			self.e = (1 - q) / (1 + q)
+			e = (1 - q) / (1 + q)
 		else:
 			raise ValueError("Invalid value for ellipticity. Choose 'distortion' or 'ellipticity'.")
 		del q
-		self.R = sum(weight_shape * (1 - self.e ** 2 / 2.0)) / sum(weight_shape)
+		self.R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape)
 		# R = 1 - np.mean(e ** 2) / 2.0  # responsitivity factor
 		L3 = self.boxsize ** 3  # box volume
 		if rp_cut == None:
@@ -815,26 +808,76 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		RR_g_plus = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		RR_gg = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
-		self.jackknife_region_indices_pos, self.jackknife_region_indices_shape = self._get_jackknife_region_indices(
+		jackknife_region_indices_pos, jackknife_region_indices_shape = self._get_jackknife_region_indices(
 			masks,
 			L_subboxes)
 		self.num_box = L_subboxes ** 3
 		DD_jk = np.zeros((self.num_box, self.num_bins_r, self.num_bins_pi))
 		Splus_D_jk = np.zeros((self.num_box, self.num_bins_r, self.num_bins_pi))
 
-		data_temp = self.data  # make sure data is not sent to every CPU
-		self.data = None
-
 		self.pos_tree = KDTree(positions, boxsize=self.boxsize)
 		indices = np.arange(0, len(positions_shape_sample), chunk_size)
 		self.chunk_size = chunk_size
+
+		# create temp hdf5 from which data can be read. del self.data, but save it in this method to reduce RAM
+		figname_dataset_name = dataset_name
+		if "/" in dataset_name:
+			figname_dataset_name = figname_dataset_name.replace("/", "_")
+		if "." in dataset_name:
+			figname_dataset_name = figname_dataset_name.replace(".", "p")
+		file_temp = h5py.File(f"{file_tree_path}/m_{self.simname}_temp_data_{figname_dataset_name}.hdf5", "w")
+		keys = []
+		for k in self.data.keys():
+			if k != "LOS":
+				write_dataset_hdf5(file_temp, k, self.data[k])
+				if masks is not None:
+					write_dataset_hdf5(file_temp, f"mask_{k}", masks[k])
+				keys.append(k)
+		write_dataset_hdf5(file_temp, "jackknife_region_indices_shape", jackknife_region_indices_shape)
+		write_dataset_hdf5(file_temp, "jackknife_region_indices_pos", jackknife_region_indices_pos)
+		file_temp.close()
+
+		shared_data = {
+			"positions": positions,
+			"positions_shape_sample": positions_shape_sample,
+			"axis_direction": axis_direction,
+			"e": e,
+			"weight": weight,
+			"weight_shape": weight_shape,
+			"jackknife_region_indices_pos": jackknife_region_indices_pos,
+			"jackknife_region_indices_shape": jackknife_region_indices_shape,
+		}
+		shm_blocks, self.shm_infos = [], []
+		for k in shared_data.keys():
+			shm = shared_memory.SharedMemory(name=k, create=True, size=shared_data[k].nbytes)
+			shared_arr = np.ndarray(shared_data[k].shape, dtype=shared_data[k].dtype, buffer=shm.buf)
+			np.copyto(shared_arr, shared_data[k])
+			shm_blocks.append(shm)
+			self.shm_infos.append([k, shared_data[k].shape, shared_data[k].dtype])
+		self.data = None
+		del shared_data
+		del positions, positions_shape_sample, axis_direction, weight, weight_shape, jackknife_region_indices_pos, jackknife_region_indices_shape
+
 		with Pool(num_nodes) as p:
 			result = p.map(self._measure_xi_r_mur_box_jk_batch, indices)
+
+		for shm in shm_blocks:
+			shm.close()
+			shm.unlink()
+
+		temp_data_obj_m = ReadData(self.simname, f"m_{self.simname}_temp_data_{figname_dataset_name}", None,
+								   data_path=file_tree_path)
+		self.data = {}
+		for k in keys:
+			print(k)
+			self.data[k] = temp_data_obj_m.read_cat(k)
+			if masks is not None:
+				masks[k] = temp_data_obj_m.read_cat(f"mask_{k}")
+		self.data["LOS"] = self.LOS_ind
+		jackknife_region_indices_pos = temp_data_obj_m.read_cat(f"jackknife_region_indices_pos")
+		jackknife_region_indices_shape = temp_data_obj_m.read_cat(f"jackknife_region_indices_shape")
 		os.remove(
 			f"{file_tree_path}/m_{self.simname}_temp_data_{figname_dataset_name}.hdf5")
-
-		self.data = data_temp
-		del data_temp
 
 		for i in np.arange(len(result)):
 			Splus_D += result[i][0]
@@ -843,10 +886,14 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			DD_jk += result[i][3]
 			Splus_D_jk += result[i][4]
 
+		if masks is None:
+			weight_shape = self.data["weight_shape_sample"]
+		else:
+			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		R_jk = np.zeros(self.num_box)
 		for i in np.arange(self.num_box):
-			jk_mask = np.where(self.jackknife_region_indices_shape != i)
-			R_jk[i] = sum(weight_shape[jk_mask] * (1 - self.e[jk_mask] ** 2 / 2.0)) / sum(weight_shape[jk_mask])
+			jk_mask = np.where(jackknife_region_indices_shape != i)
+			R_jk[i] = sum(weight_shape[jk_mask] * (1 - e[jk_mask] ** 2 / 2.0)) / sum(weight_shape[jk_mask])
 
 		corrtype = "cross"
 
@@ -862,8 +909,8 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 		RR_jk = np.zeros((self.num_box, self.num_bins_r, self.num_bins_pi))
 		volume_jk = L3 * (self.num_box - 1) / self.num_box
 		for jk in np.arange(self.num_box):
-			Num_position_jk, Num_shape_jk = len(np.where(self.jackknife_region_indices_pos != jk)[0]), len(
-				np.where(self.jackknife_region_indices_shape != jk)[0])
+			Num_position_jk, Num_shape_jk = len(np.where(jackknife_region_indices_pos != jk)[0]), len(
+				np.where(jackknife_region_indices_shape != jk)[0])
 			for i in np.arange(0, self.num_bins_r):
 				for p in np.arange(0, self.num_bins_pi):
 					RR_jk[jk, i, p] = self.get_random_pairs_r_mur(
