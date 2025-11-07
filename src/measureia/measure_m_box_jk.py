@@ -617,6 +617,8 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			shm = shared_memory.SharedMemory(name=name)
 			shared_data[name] = np.ndarray(shape, dtype=dtype, buffer=shm.buf)
 			shms.append(shm)
+		for k in shared_data.keys():
+			print(i, k, get_size(shared_data[k]))
 		for j in np.arange(i, i2, 100):
 			j2 = min(j + 100, i2)
 			positions_shape_sample_i = shared_data["positions_shape_sample"][j:j2]
@@ -800,17 +802,11 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			self.rp_cut = rp_cut
 		self.sub_box_len_logr = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
 		self.sub_box_len_mu_r = 2.0 / self.num_bins_pi  # mu_r ranges from -1 to 1. Same number of bins as pi
-		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
-		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
-		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
-		RR_g_plus = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
-		RR_gg = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+
 		jackknife_region_indices_pos, jackknife_region_indices_shape = self._get_jackknife_region_indices(
 			masks,
 			L_subboxes)
 		self.num_box = L_subboxes ** 3
-		DD_jk = np.zeros((self.num_box, self.num_bins_r, self.num_bins_pi))
-		Splus_D_jk = np.zeros((self.num_box, self.num_bins_r, self.num_bins_pi))
 
 		self.pos_tree = KDTree(positions, boxsize=self.boxsize)
 		indices = np.arange(0, len(positions_shape_sample), chunk_size)
@@ -833,7 +829,7 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 		write_dataset_hdf5(file_temp, "jackknife_region_indices_shape", jackknife_region_indices_shape)
 		write_dataset_hdf5(file_temp, "jackknife_region_indices_pos", jackknife_region_indices_pos)
 		file_temp.close()
-		print(get_size(positions), get_size(weight))
+		print(get_size(self))
 		try:
 			shared_data = {
 				"positions": positions,
@@ -852,12 +848,13 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 				np.copyto(shared_arr, shared_data[k])
 				shm_blocks.append(shm)
 				self.shm_infos.append([k, shared_data[k].shape, shared_data[k].dtype])
+				print(k, get_size(shared_data[k]))
 			self.data = {}
 			if masks is not None:
 				masks = {}
-			del shared_data
+			del shared_data, shared_arr
 			del positions, positions_shape_sample, axis_direction, weight, weight_shape, jackknife_region_indices_pos, jackknife_region_indices_shape
-
+			print(get_size(self))  # 8569
 			with Pool(num_nodes) as p:
 				result = p.map(self._measure_xi_r_mur_box_jk_batch, indices)
 
@@ -878,6 +875,13 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 		os.remove(
 			f"{file_tree_path}/m_{self.simname}_temp_data_{figname_dataset_name}.hdf5")
 
+		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		RR_g_plus = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		RR_gg = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		DD_jk = np.zeros((self.num_box, self.num_bins_r, self.num_bins_pi))
+		Splus_D_jk = np.zeros((self.num_box, self.num_bins_r, self.num_bins_pi))
 		for i in np.arange(len(result)):
 			Splus_D += result[i][0]
 			Scross_D += result[i][1]
