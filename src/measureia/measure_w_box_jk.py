@@ -579,7 +579,7 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 			e_i = shared_data["e"][j:j2]
 			jackknife_region_indices_shape_i = shared_data["jackknife_region_indices_shape"][j:j2]
 			jackknife_region_indices_pos = shared_data["jackknife_region_indices_pos"]
-			shape_tree = KDTree(positions_shape_sample_i, boxsize=self.boxsize)
+			shape_tree = KDTree(positions_shape_sample_i[:, self.not_LOS], boxsize=self.boxsize)
 			ind_min_i = shape_tree.query_ball_tree(self.pos_tree, self.r_min)
 			ind_max_i = shape_tree.query_ball_tree(self.pos_tree, self.r_max)
 			ind_rbin_i = self.setdiff2D(ind_max_i, ind_min_i)
@@ -751,7 +751,7 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 			figname_dataset_name = figname_dataset_name.replace("/", "_")
 		if "." in dataset_name:
 			figname_dataset_name = figname_dataset_name.replace(".", "p")
-		file_temp = h5py.File(f"{temp_file_path}/m_{self.simname}_temp_data_{figname_dataset_name}.hdf5", "w")
+		file_temp = h5py.File(f"{temp_file_path}/w_{self.simname}_temp_data_{figname_dataset_name}.hdf5", "w")
 		keys = []
 		for k in self.data.keys():
 			if k != "LOS":
@@ -793,14 +793,14 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 			del positions, positions_shape_sample, axis_direction, weight, weight_shape, jackknife_region_indices_pos, jackknife_region_indices_shape
 			mp.set_start_method("spawn", force=True)
 			with Pool(num_nodes) as p:
-				result = p.map(self._measure_xi_r_mur_box_jk_batch, indices)
+				result = p.map(self._measure_xi_rp_pi_box_jk_batch, indices)
 
 		finally:
 			for shm in shm_blocks:
 				shm.close()
 				shm.unlink()
 
-		temp_data_obj_m = ReadData(self.simname, f"m_{self.simname}_temp_data_{figname_dataset_name}", None,
+		temp_data_obj_m = ReadData(self.simname, f"w_{self.simname}_temp_data_{figname_dataset_name}", None,
 								   data_path=temp_file_path)
 		for k in keys:
 			self.data[k] = temp_data_obj_m.read_cat(k)
@@ -810,7 +810,7 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 		jackknife_region_indices_pos = temp_data_obj_m.read_cat(f"jackknife_region_indices_pos")
 		jackknife_region_indices_shape = temp_data_obj_m.read_cat(f"jackknife_region_indices_shape")
 		os.remove(
-			f"{temp_file_path}/m_{self.simname}_temp_data_{figname_dataset_name}.hdf5")
+			f"{temp_file_path}/w_{self.simname}_temp_data_{figname_dataset_name}.hdf5")
 
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)

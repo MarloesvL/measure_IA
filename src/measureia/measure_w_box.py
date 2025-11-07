@@ -447,9 +447,7 @@ class MeasureWBox(MeasureIABase, ReadData):
 			weight_shape_i = shared_data["weight_shape"][j:j2]
 			positions = shared_data["positions"]
 			e_i = shared_data["e"][j:j2]
-			jackknife_region_indices_shape_i = shared_data["jackknife_region_indices_shape"][j:j2]
-			jackknife_region_indices_pos = shared_data["jackknife_region_indices_pos"]
-			shape_tree = KDTree(positions_shape_sample_i, boxsize=self.boxsize)
+			shape_tree = KDTree(positions_shape_sample_i[:, self.not_LOS], boxsize=self.boxsize)
 			ind_min_i = shape_tree.query_ball_tree(self.pos_tree, self.r_min)
 			ind_max_i = shape_tree.query_ball_tree(self.pos_tree, self.r_max)
 			ind_rbin_i = self.setdiff2D(ind_max_i, ind_min_i)
@@ -634,7 +632,7 @@ class MeasureWBox(MeasureIABase, ReadData):
 				shm.close()
 				shm.unlink()
 
-		temp_data_obj_m = ReadData(self.simname, f"m_{self.simname}_temp_data_{figname_dataset_name}", None,
+		temp_data_obj_m = ReadData(self.simname, f"w_{self.simname}_temp_data_{figname_dataset_name}", None,
 								   data_path=temp_file_path)
 		for k in keys:
 			self.data[k] = temp_data_obj_m.read_cat(k)
