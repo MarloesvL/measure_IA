@@ -1,7 +1,7 @@
 # import internal classes for use, so the module file names do not need to be called.
 
 # import base and wrapper classes
-from .measure_IA_box import MeasureIABox
+from .measure_IA import MeasureIABox
 from .measure_IA_lightcone import MeasureIALightcone
 from .measure_IA_base import MeasureIABase
 
