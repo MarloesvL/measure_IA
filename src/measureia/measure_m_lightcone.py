@@ -163,7 +163,7 @@ class MeasureMultipolesLightcone(MeasureIABase):
 			n_LOS = (n_pos[n] + n_shape) / np.array([np.sqrt(np.sum((n_pos[n] + n_shape) ** 2, axis=1))]).transpose()
 			s = s_shape - s_pos[n]
 			LOS = self.calculate_dot_product_arrays(s, n_LOS)
-			separation_len = np.sqrt(np.sum(s ** 2, axis=1))  # len of s-pi*nlos ->check
+			separation_len = np.sqrt(np.sum(s ** 2, axis=1))
 			mu_r = LOS / separation_len
 
 			# Projected separation vector
@@ -366,7 +366,7 @@ class MeasureMultipolesLightcone(MeasureIABase):
 						[np.sqrt(np.sum((n_pos_i[n] + n_shape[ind_rbin_i[n]]) ** 2, axis=1))]).transpose()
 					s = s_pos_i[n] - s_shape[ind_rbin_i[n]]
 					LOS = self.calculate_dot_product_arrays(s, n_LOS)
-					separation_len = np.sqrt(np.sum(s ** 2, axis=1))  # len of s-pi*nlos ->check
+					separation_len = np.sqrt(np.sum(s ** 2, axis=1))
 					mu_r = LOS / separation_len
 
 					# Projected separation vector

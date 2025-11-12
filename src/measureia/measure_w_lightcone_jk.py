@@ -762,12 +762,12 @@ class MeasureWLightconeJackknife(MeasureIABase):
 		n_shape = np.array([np.cos(DEC_shape_sample_rad) * np.cos(RA_shape_sample_rad),
 							np.cos(DEC_shape_sample_rad) * np.sin(RA_shape_sample_rad),
 							np.sin(DEC_shape_sample_rad)]).transpose()
-		# del DEC_shape_sample, RA_shape_sample, DEC_shape_sample_rad, RA_shape_sample_rad
+		del DEC_shape_sample, RA_shape_sample, DEC_shape_sample_rad, RA_shape_sample_rad
 		s_shape = n_shape * np.array([LOS_all_shape_sample]).transpose()
 		n_pos = np.array([np.cos(DEC_rad) * np.cos(RA_rad),
 						  np.cos(DEC_rad) * np.sin(RA_rad),
 						  np.sin(DEC_rad)]).transpose()
-		# del RA, DEC, DEC_rad, RA_rad
+		del RA, DEC, DEC_rad, RA_rad
 		s_pos = np.array([LOS_all]).transpose() * n_pos
 		del LOS_all, LOS_all_shape_sample
 		shape_tree = KDTree(s_shape)
@@ -776,8 +776,6 @@ class MeasureWLightconeJackknife(MeasureIABase):
 			s_pos_i = s_pos[i:i2]
 			n_pos_i = n_pos[i:i2]
 			weight_i = weight[i:i2]
-			DEC_rad_i = DEC_rad[i:i2]
-			RA_rad_i = RA_rad[i:i2]
 			jackknife_region_indices_pos_i = jackknife_region_indices_pos[i:i2]
 			pos_tree = KDTree(s_pos_i)
 			ind_min_i = pos_tree.query_ball_tree(shape_tree, r_min)
@@ -791,14 +789,6 @@ class MeasureWLightconeJackknife(MeasureIABase):
 					s = s_pos_i[n] - s_shape[ind_rbin_i[n]]
 					LOS = self.calculate_dot_product_arrays(s, n_LOS)
 					separation_len = np.sqrt(np.sum(s ** 2, axis=1) - LOS ** 2)  # len of s-pi*nlos ->check
-					# ang_sep = np.array([np.arccos(
-					# 	np.sin(DEC_rad_i[n]) * np.sin(DEC_shape_sample_rad[ind_rbin_i[n]]) + np.cos(
-					# 		DEC_rad_i[n]) * np.cos(
-					# 		DEC_shape_sample_rad[ind_rbin_i[n]]) * np.cos(
-					# 		RA_shape_sample_rad[ind_rbin_i[n]] - RA_rad_i[n]))]).transpose()
-					# r_perp = ang_sep * (
-					# 			2 * (s_pos_i[n] * s_shape[ind_rbin_i[n]]) / (s_pos_i[n] + s_shape[ind_rbin_i[n]]))
-					# separation_len = np.sqrt(np.sum(r_perp ** 2, axis=1))
 
 					# get the indices for the binning
 					mask = (separation_len >= self.r_bins[0]) * (separation_len < self.r_bins[-1]) * (

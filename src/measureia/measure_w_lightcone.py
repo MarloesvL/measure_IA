@@ -381,7 +381,6 @@ class MeasureWLightcone(MeasureIABase):
 					phi = np.arctan2(x, y)  # angle from north toward east
 
 					e_plus, e_cross = self.get_ellipticity(e[ind_rbin_i[n]], phi)
-					# del phi_sep_dir
 					e_plus[np.isnan(e_plus)] = 0.0
 					e_cross[np.isnan(e_cross)] = 0.0
 

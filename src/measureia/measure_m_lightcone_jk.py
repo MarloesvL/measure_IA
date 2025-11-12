@@ -6,7 +6,7 @@ from .write_data import write_dataset_hdf5, create_group_hdf5
 from .measure_IA_base import MeasureIABase
 
 
-class MeasureMLightconeJackknife(MeasureIABase):
+class MeasureMultipolesLightconeJackknife(MeasureIABase):
 	"""Class that contains all methods for the measurements of xi_gg and xi_g+ for w_gg and w_g+ with lightcone data.
 
 	Notes
