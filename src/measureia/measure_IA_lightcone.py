@@ -428,14 +428,21 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 		# ToDo: deal with masks
 
 		if measure_cov:
-			if tree:
-				self.measure_xi_jk_helper(self._count_pairs_xi_rp_pi_lightcone_jk_tree,
-										  self._measure_xi_rp_pi_lightcone_jk_tree, IA_estimator, dataset_name,
-										  corr_type, jk_patches=jk_patches, masks=masks,
-										  masks_randoms=masks_randoms, cosmology=cosmology, over_h=over_h)
+			if self.num_nodes == 1:
+				if tree:
+					self.measure_xi_jk_helper(self._count_pairs_xi_rp_pi_lightcone_jk_tree,
+											  self._measure_xi_rp_pi_lightcone_jk_tree, IA_estimator, dataset_name,
+											  corr_type, jk_patches=jk_patches, masks=masks,
+											  masks_randoms=masks_randoms, cosmology=cosmology, over_h=over_h)
+				else:
+					self.measure_xi_jk_helper(self._count_pairs_xi_rp_pi_lightcone_jk_brute,
+											  self._measure_xi_rp_pi_lightcone_jk_brute, IA_estimator, dataset_name,
+											  corr_type, jk_patches=jk_patches, masks=masks,
+											  masks_randoms=masks_randoms, cosmology=cosmology, over_h=over_h)
 			else:
-				self.measure_xi_jk_helper(self._count_pairs_xi_rp_pi_lightcone_jk_brute,
-										  self._measure_xi_rp_pi_lightcone_jk_brute, IA_estimator, dataset_name,
+				self.measure_xi_jk_helper(self._count_pairs_xi_rp_pi_lightcone_jk_multiprocessing,
+										  self._measure_xi_rp_pi_lightcone_jk_multiprocessing, IA_estimator,
+										  dataset_name,
 										  corr_type, jk_patches=jk_patches, masks=masks,
 										  masks_randoms=masks_randoms, cosmology=cosmology, over_h=over_h)
 			self._obs_estimator([corr_type, "w"], IA_estimator, dataset_name, num_samples)
@@ -668,7 +675,6 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 
 		self.data = data
 		return
-
 
 if __name__ == "__main__":
 	pass
