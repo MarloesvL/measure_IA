@@ -710,6 +710,7 @@ class MeasureIABase(SimInfo):
 			RD /= (num_samples["D"] * num_samples["R_S"])
 		if IA_estimator == 'clusters' or corr_type[0] == "gg" or corr_type[0] == "both":
 			DD = group_gg[f"{dataset_name}_DD"][:]
+			DD[DD == 0] = 1.
 			DD /= (num_samples["D"] * num_samples["S"] - num_samples["D_S"])
 		if IA_estimator == "galaxies" or corr_type[0] == "gg" or corr_type[0] == "both":
 			RR = group_gg[f"{dataset_name}_RR"][:]
