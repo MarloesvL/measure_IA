@@ -45,7 +45,7 @@ class MeasureMultipolesLightcone(MeasureIABase):
 
 	def _measure_xi_r_mur_lightcone_brute(self, dataset_name, masks=None, return_output=False,
 										  print_num=True, over_h=False, cosmology=None,
-										  data_suffix="_SplusD"
+										  data_suffix="_SplusD", chunk_size=1000, num_nodes=1, temp_file_path=None
 										  ):
 		"""Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
@@ -234,7 +234,7 @@ class MeasureMultipolesLightcone(MeasureIABase):
 
 	def _measure_xi_r_mur_lightcone_tree(self, dataset_name, masks=None, return_output=False,
 										 print_num=True, over_h=False, cosmology=None,
-										 data_suffix="_SplusD"
+										 data_suffix="_SplusD", chunk_size=1000, num_nodes=1, temp_file_path=None
 										 ):
 		"""Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
@@ -436,6 +436,7 @@ class MeasureMultipolesLightcone(MeasureIABase):
 
 	def _count_pairs_xi_r_mur_lightcone_brute(self, dataset_name, masks=None, return_output=False,
 											  print_num=True, over_h=False, cosmology=None, data_suffix="_DD",
+											  chunk_size=1000, num_nodes=1, temp_file_path=None
 											  ):
 		"""Measures the projected clustering (xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample) and the index of the direction of the line of sight (LOS=2 for z axis).
@@ -571,7 +572,7 @@ class MeasureMultipolesLightcone(MeasureIABase):
 
 	def _count_pairs_xi_r_mur_lightcone_tree(self, dataset_name, masks=None, return_output=False,
 											 print_num=True, over_h=False, cosmology=None,
-											 data_suffix="_DD"
+											 data_suffix="_DD", chunk_size=1000, num_nodes=1, temp_file_path=None
 											 ):
 		"""Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected

@@ -50,7 +50,7 @@ class MeasureWLightconeJackknife(MeasureIABase):
 	def _measure_xi_rp_pi_lightcone_jk_brute(self, dataset_name, jackknife_region_indices_pos,
 											 jackknife_region_indices_shape, masks=None, return_output=False,
 											 print_num=True, over_h=False, cosmology=None, jk_group_name="",
-											 data_suffix="_SplusD"
+											 data_suffix="_SplusD", chunk_size=1000, num_nodes=1, temp_file_path=None
 											 ):
 		"""Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
@@ -267,7 +267,7 @@ class MeasureWLightconeJackknife(MeasureIABase):
 	def _measure_xi_rp_pi_lightcone_jk_tree(self, dataset_name, jackknife_region_indices_pos,
 											jackknife_region_indices_shape, masks=None, return_output=False,
 											print_num=True, over_h=False, cosmology=None, jk_group_name="",
-											data_suffix="_SplusD"
+											data_suffix="_SplusD", chunk_size=1000, num_nodes=1, temp_file_path=None
 											):
 		"""Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
@@ -528,8 +528,8 @@ class MeasureWLightconeJackknife(MeasureIABase):
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
-		DD_jk = np.zeros((self.num_box, self.num_bins_r, self.num_bins_pi))
-		Splus_D_jk = np.zeros((self.num_box, self.num_bins_r, self.num_bins_pi))
+		DD_jk = np.zeros((self.num_jk, self.num_bins_r, self.num_bins_pi))
+		Splus_D_jk = np.zeros((self.num_jk, self.num_bins_r, self.num_bins_pi))
 
 		shms = []
 		shared_data = {}
@@ -697,9 +697,10 @@ class MeasureWLightconeJackknife(MeasureIABase):
 				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
 			weight = self.data["weight"][masks["weight"]]
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
-		Num_position = len(RA)
-		Num_shape = len(RA_shape_sample)
-		print(f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
+		self.Num_position_masked = len(RA)
+		self.Num_shape_masked = len(RA_shape_sample)
+		print(
+			f"There are {self.Num_shape_masked} galaxies in the shape sample and {self.Num_position_masked} galaxies in the position sample.")
 		if data_suffix == "_SplusD":
 			DD_suff = "_DD"
 		elif data_suffix == "_SplusR":
@@ -709,7 +710,7 @@ class MeasureWLightconeJackknife(MeasureIABase):
 		self.sub_box_len_logrp = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
 		self.sub_box_len_pi = (self.pi_bins[-1] - self.pi_bins[0]) / self.num_bins_pi
 
-		num_jk = max(jackknife_region_indices_pos) - min(jackknife_region_indices_pos) + 1
+		self.num_jk = max(jackknife_region_indices_pos) - min(jackknife_region_indices_pos) + 1
 		jackknife_region_indices_pos -= min(jackknife_region_indices_pos)
 		jackknife_region_indices_shape -= min(jackknife_region_indices_shape)
 
@@ -738,7 +739,7 @@ class MeasureWLightconeJackknife(MeasureIABase):
 		n_pos = np.array([np.cos(DEC_rad) * np.cos(RA_rad),
 						  np.cos(DEC_rad) * np.sin(RA_rad),
 						  np.sin(DEC_rad)]).transpose()
-		east = np.array([-np.sin(RA_rad), np.cos(RA_rad), np.zeros(Num_position)]).transpose()
+		east = np.array([-np.sin(RA_rad), np.cos(RA_rad), np.zeros(self.Num_position_masked)]).transpose()
 		north = np.array([
 			-np.sin(DEC_rad) * np.cos(RA_rad),
 			-np.sin(DEC_rad) * np.sin(RA_rad),
@@ -748,7 +749,7 @@ class MeasureWLightconeJackknife(MeasureIABase):
 		s_pos = np.array([LOS_all]).transpose() * n_pos
 		del LOS_all, LOS_all_shape_sample
 		self.shape_tree = KDTree(s_shape)
-		indices = np.arange(0, len(RA), chunk_size)
+		indices = np.arange(0, self.Num_position_masked, chunk_size)
 		self.chunk_size = chunk_size
 
 		# create temp hdf5 from which data can be read. del self.data, but save it in this method to reduce RAM
@@ -821,8 +822,8 @@ class MeasureWLightconeJackknife(MeasureIABase):
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
-		DD_jk = np.zeros((num_jk, self.num_bins_r, self.num_bins_pi))
-		Splus_D_jk = np.zeros((num_jk, self.num_bins_r, self.num_bins_pi))
+		DD_jk = np.zeros((self.num_jk, self.num_bins_r, self.num_bins_pi))
+		Splus_D_jk = np.zeros((self.num_jk, self.num_bins_r, self.num_bins_pi))
 
 		for i in np.arange(len(result)):
 			Splus_D += result[i][0]
@@ -843,7 +844,7 @@ class MeasureWLightconeJackknife(MeasureIABase):
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_g_plus/{jk_group_name}")
-			for i in np.arange(0, num_jk):
+			for i in np.arange(0, self.num_jk):
 				write_dataset_hdf5(group, dataset_name + f"_{i}{data_suffix}", data=(Splus_D - Splus_D_jk[i]))
 				write_dataset_hdf5(group, dataset_name + f"_{i}_rp", data=separation_bins)
 				write_dataset_hdf5(group, dataset_name + f"_{i}_pi", data=pi_bins)
@@ -856,7 +857,7 @@ class MeasureWLightconeJackknife(MeasureIABase):
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_gg/{jk_group_name}")
-			for i in np.arange(0, num_jk):
+			for i in np.arange(0, self.num_jk):
 				write_dataset_hdf5(group, dataset_name + f"_{i}{DD_suff}", data=(DD - DD_jk[i]))
 				write_dataset_hdf5(group, dataset_name + f"_{i}_rp", data=separation_bins)
 				write_dataset_hdf5(group, dataset_name + f"_{i}_pi", data=pi_bins)
@@ -868,7 +869,7 @@ class MeasureWLightconeJackknife(MeasureIABase):
 	def _count_pairs_xi_rp_pi_lightcone_jk_brute(self, dataset_name, jackknife_region_indices_pos,
 												 jackknife_region_indices_shape, masks=None, return_output=False,
 												 print_num=True, over_h=False, cosmology=None, data_suffix="_DD",
-												 jk_group_name=""
+												 jk_group_name="", chunk_size=1000, num_nodes=1, temp_file_path=None
 												 ):
 		"""Measures the projected clustering (xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample) and the index of the direction of the line of sight (LOS=2 for z axis).
@@ -1020,7 +1021,7 @@ class MeasureWLightconeJackknife(MeasureIABase):
 	def _count_pairs_xi_rp_pi_lightcone_jk_tree(self, dataset_name, jackknife_region_indices_pos,
 												jackknife_region_indices_shape, masks=None, return_output=False,
 												print_num=True, over_h=False, cosmology=None, jk_group_name="",
-												data_suffix="_DD"
+												data_suffix="_DD", chunk_size=1000, num_nodes=1, temp_file_path=None
 												):
 		"""Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
 		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
@@ -1185,7 +1186,7 @@ class MeasureWLightconeJackknife(MeasureIABase):
 		else:
 			return DD, separation_bins, pi_bins
 
-	def _measure_xi_rp_pi_lightcone_jk_batch(self, i):
+	def _count_pairs_xi_rp_pi_lightcone_jk_batch(self, i):
 		r"""Measures components of $\xi_{gg}$ and $\xi_{g+}$ in (rp,pi) bins including jackknife realisations for a batch
 		of indices from i to i+chunk_size. Support function for _measure_xi_rp_pi_box_jk_multiprocessing().
 
@@ -1344,12 +1345,6 @@ class MeasureWLightconeJackknife(MeasureIABase):
 		self.Num_shape_masked = len(RA_shape_sample)
 		print(
 			f"There are {self.Num_shape_masked} galaxies in the shape sample and {self.Num_position_masked} galaxies in the position sample.")
-		if data_suffix == "_SplusD":
-			DD_suff = "_DD"
-		elif data_suffix == "_SplusR":
-			DD_suff = "_SR"
-		else:
-			raise ValueError("data_suffix must be _SplusD or _SplusR")
 		self.sub_box_len_logrp = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
 		self.sub_box_len_pi = (self.pi_bins[-1] - self.pi_bins[0]) / self.num_bins_pi
 
@@ -1391,7 +1386,7 @@ class MeasureWLightconeJackknife(MeasureIABase):
 		s_pos = np.array([LOS_all]).transpose() * n_pos
 		del LOS_all, LOS_all_shape_sample
 		self.shape_tree = KDTree(s_shape)
-		indices = np.arange(0, len(RA), chunk_size)
+		indices = np.arange(0, self.Num_position_masked, chunk_size)
 		del RA
 		self.chunk_size = chunk_size
 
@@ -1442,10 +1437,10 @@ class MeasureWLightconeJackknife(MeasureIABase):
 			if masks is not None:
 				masks = {}
 			del shared_data, shared_arr
-			del weight, weight_shape, jackknife_region_indices_pos, jackknife_region_indices_shape, s_pos, n_pos, e, s_shape, n_shape, east, north
+			del weight, weight_shape, jackknife_region_indices_pos, jackknife_region_indices_shape, s_pos, n_pos, s_shape, n_shape, east, north
 			mp.set_start_method("spawn", force=True)
 			with Pool(num_nodes) as p:
-				result = p.map(self._measure_xi_rp_pi_lightcone_jk_batch, indices)
+				result = p.map(self._count_pairs_xi_rp_pi_lightcone_jk_batch, indices)
 
 		finally:
 			for shm in shm_blocks:
@@ -1465,8 +1460,8 @@ class MeasureWLightconeJackknife(MeasureIABase):
 		DD_jk = np.zeros((self.num_jk, self.num_bins_r, self.num_bins_pi))
 
 		for i in np.arange(len(result)):
-			DD += result[i][2]
-			DD_jk += result[i][3]
+			DD += result[i][0]
+			DD_jk += result[i][1]
 
 		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
 		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
