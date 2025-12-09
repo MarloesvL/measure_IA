@@ -56,13 +56,13 @@ class MeasureJackknife(MeasureWLightcone,
 						 pi_max, boxsize, periodicity)
 		return
 
-	def measure_covariance_multiple_datasets(self, corr_type, dataset_names, num_box=27, return_output=False):
+	def measure_covariance_multiple_datasets(self, corr_types, dataset_names, num_box=27, return_output=False):
 		"""Combines the jackknife measurements for different datasets into one covariance matrix.
 		Author: Marta Garcia Escobar (starting from measure_jackknife methods); updated
 
 		Parameters
 		----------
-		corr_type : str
+		corr_types : list of str
 			Which type of correlation is measured. Takes 'w_g_plus', 'w_gg', 'multipoles_g_plus' or 'multipoles_gg'.
 		dataset_names : list of str
 			List of the dataset names. If there is only one value, it calculates the covariance matrix with itself.
@@ -79,15 +79,16 @@ class MeasureJackknife(MeasureWLightcone,
 		"""
 		# check if corr_type is valid
 		valid_corr_types = ["w_g_plus", "multipoles_g_plus", "w_gg", "multipoles_gg"]
-		if corr_type not in valid_corr_types:
-			raise ValueError("corr_type must be 'w_g_plus', 'w_gg', 'multipoles_g_plus' or 'multipoles_gg'.")
+		for corr_type in corr_types:
+			if corr_type not in valid_corr_types:
+				raise ValueError("corr_type must be 'w_g_plus', 'w_gg', 'multipoles_g_plus' or 'multipoles_gg'.")
 
 		data_file = h5py.File(self.output_file_name, "a")
 
 		mean_list = []  # list of arrays
 
-		for dataset_name in dataset_names:
-			group = data_file[f"{self.snap_group}/{corr_type}/{dataset_name}_jk{num_box}"]
+		for d, dataset_name in enumerate(dataset_names):
+			group = data_file[f"{self.snap_group}/{corr_types[d]}/{dataset_name}_jk{num_box}"]
 			mean_multipoles = np.zeros(self.num_bins_r)
 			for b in np.arange(0, num_box):
 				mean_multipoles += group[dataset_name + "_" + str(b)]
@@ -100,7 +101,7 @@ class MeasureJackknife(MeasureWLightcone,
 
 		if len(dataset_names) == 1:  # covariance with itself
 			dataset_name = dataset_names[0]
-			group = data_file[f"{self.snap_group}/{corr_type}/{dataset_name}_jk{num_box}"]
+			group = data_file[f"{self.snap_group}/{corr_types[0]}/{dataset_name}_jk{num_box}"]
 			for b in np.arange(0, num_box):
 				std += (group[dataset_name + "_" + str(b)] - mean_list[0]) ** 2
 				for i in np.arange(self.num_bins_r):
@@ -108,8 +109,8 @@ class MeasureJackknife(MeasureWLightcone,
 							group[dataset_name + "_" + str(b)][i] - mean_list[0][i]
 					)
 		elif len(dataset_names) == 2:
-			group0 = data_file[f"{self.snap_group}/{corr_type}/{dataset_names[0]}_jk{num_box}"]
-			group1 = data_file[f"{self.snap_group}/{corr_type}/{dataset_names[1]}_jk{num_box}"]
+			group0 = data_file[f"{self.snap_group}/{corr_types[0]}/{dataset_names[0]}_jk{num_box}"]
+			group1 = data_file[f"{self.snap_group}/{corr_types[1]}/{dataset_names[1]}_jk{num_box}"]
 			for b in np.arange(0, num_box):
 				std += (group0[dataset_names[0] + "_" + str(b)] - mean_list[0]) * (
 						group1[dataset_names[1] + "_" + str(b)] - mean_list[1])
@@ -125,10 +126,14 @@ class MeasureJackknife(MeasureWLightcone,
 		cov *= (num_box - 1) / num_box  # cov not sqrt so to get std, sqrt of diag would need to be taken
 
 		data_file.close()
+		if corr_types[0] == corr_types[1]:
+			corr_group_name = corr_types[0]
+		else:
+			corr_group_name = f"{corr_types[0]}_{corr_types[1]}"
 
 		if (self.output_file_name != None) and (return_output == False):
 			output_file = h5py.File(self.output_file_name, "a")
-			group = create_group_hdf5(output_file, f"{self.snap_group}/{corr_type}")
+			group = create_group_hdf5(output_file, f"{self.snap_group}/{corr_group_name}")
 			if len(dataset_names) == 2:
 				write_dataset_hdf5(group, dataset_names[0] + "_" + dataset_names[1] + "_jackknife_cov_" + str(
 					num_box), data=cov)
