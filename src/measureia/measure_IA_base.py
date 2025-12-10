@@ -698,47 +698,88 @@ class MeasureIABase(SimInfo):
 			group_gp_r = output_file[
 				f"{self.snap_group}/{corr_type[1]}/xi_g_plus/{jk_group_name_randoms}"]
 			SpD = group_gp[f"{dataset_name}_SplusD"][:]
+			SpD /= (num_samples["S"] * num_samples["D"])
 			SpR = group_gp_r[f"{dataset_name_randoms}_SplusD"][:]
+			SpR /= (num_samples["S"] * num_samples["R_D"])
 		group_gg = output_file[f"{self.snap_group}/{corr_type[1]}/xi_gg/{jk_group_name}"]
 		group_gg_r = output_file[f"{self.snap_group}/{corr_type[1]}/xi_gg/{jk_group_name_randoms}"]
 		DD = group_gg[f"{dataset_name}_DD"][:]
+		DD /= (num_samples["D"] * num_samples["S"])
 
 		if IA_estimator == "clusters":
 			if corr_type[0] == "gg":
 				SR = group_gg[f"{dataset_name}_SR"][:]
+				SR /= (num_samples["S"] * num_samples["R_D"])
 			else:
 				SR = group_gg_r[f"{dataset_name_randoms}_DD"][:]
-			SR *= num_samples["D"] / num_samples["R_D"]
+				SR /= (num_samples["S"] * num_samples["R_D"])
 			if corr_type[0] == "g+" or corr_type[0] == "both":
-				SpR *= num_samples["D"] / num_samples["R_D"]
 				correlation_gp = SpD / DD - SpR / SR
 				write_dataset_hdf5(group_gp, dataset_name, correlation_gp)
 			if corr_type[0] == "gg" or corr_type[0] == "both":
 				RD = group_gg[f"{dataset_name}_RD"][:]
+				RD /= (num_samples["D"] * num_samples["R_S"])
 				RR = group_gg[f"{dataset_name}_RR"][:]
-				RD *= num_samples["S"] / num_samples["R_S"]
-				RR *= (num_samples["S"] / num_samples["R_S"]) * (num_samples["D"] / num_samples["R_D"])
+				RR /= (num_samples["R_D"] * num_samples["R_S"])
 				correlation_gg = (DD - RD - SR) / RR - 1
 				write_dataset_hdf5(group_gg, dataset_name, correlation_gg)
 		elif IA_estimator == "galaxies":
 			RR = group_gg[f"{dataset_name}_RR"][:]
-			RR *= (num_samples["S"] / num_samples["R_S"]) * (num_samples["D"] / num_samples["R_D"])
+			RR /= (num_samples["R_D"] * num_samples["R_S"])
 			if corr_type[0] == "g+" or corr_type[0] == "both":
-				SpR *= num_samples["D"] / num_samples["R_D"]
 				correlation_gp = (SpD - SpR) / RR
 				write_dataset_hdf5(group_gp, dataset_name, correlation_gp)
 			if corr_type[0] == "gg" or corr_type[0] == "both":
 				RD = group_gg[f"{dataset_name}_RD"][:]
+				RD /= (num_samples["D"] * num_samples["R_S"])
 				if corr_type[0] == "gg":
 					SR = group_gg[f"{dataset_name}_SR"][:]
+					SR /= (num_samples["S"] * num_samples["R_D"])
 				else:
 					SR = group_gg_r[f"{dataset_name_randoms}_DD"][:]
-				RD *= num_samples["S"] / num_samples["R_S"]
-				SR *= num_samples["D"] / num_samples["R_D"]
+					SR /= (num_samples["S"] * num_samples["R_D"])
 				correlation_gg = (DD - RD - SR) / RR + 1
 				write_dataset_hdf5(group_gg, dataset_name, correlation_gg)
 		else:
 			raise ValueError("Unknown input for IA_estimator, choose from [clusters, galaxies].")
+		# output_file = h5py.File(self.output_file_name, "a")
+		# 		group_gg = output_file[f"{self.snap_group}/{corr_type[1]}/xi_gg/{jk_group_name}"]
+		# 		if corr_type[0] == "g+" or corr_type[0] == "both":
+		# 			group_gp = output_file[
+		# 				f"{self.snap_group}/{corr_type[1]}/xi_g_plus/{jk_group_name}"]
+		# 			SpD = group_gp[f"{dataset_name}_SplusD"][:]
+		# 			SpD /= (num_samples["S"] * num_samples["D"] - num_samples["D_S"])
+		# 			SpR = group_gp[f"{dataset_name}_SplusR"][:]
+		# 			SpR /= (num_samples["S"] * num_samples["R_D"])
+		# 		if corr_type[0] == "gg" or corr_type[0] == "both":
+		# 			SR = group_gg[f"{dataset_name}_SR"][:]
+		# 			SR /= (num_samples["S"] * num_samples["R_D"])
+		# 			RD = group_gg[f"{dataset_name}_RD"][:]
+		# 			RD /= (num_samples["D"] * num_samples["R_S"])
+		# 		if IA_estimator == 'clusters' or corr_type[0] == "gg" or corr_type[0] == "both":
+		# 			DD = group_gg[f"{dataset_name}_DD"][:]
+		# 			DD[DD == 0] = 1.
+		# 			DD /= (num_samples["D"] * num_samples["S"] - num_samples["D_S"])
+		# 		if IA_estimator == "galaxies" or corr_type[0] == "gg" or corr_type[0] == "both":
+		# 			RR = group_gg[f"{dataset_name}_RR"][:]
+		# 			RR /= (num_samples["R_D"] * num_samples["R_S"])
+		#
+		# 		if IA_estimator == "clusters":
+		# 			if corr_type[0] == "g+" or corr_type[0] == "both":
+		# 				correlation_gp = SpD / DD - SpR / SR
+		# 				write_dataset_hdf5(group_gp, dataset_name, correlation_gp)
+		# 			if corr_type[0] == "gg" or corr_type[0] == "both":
+		# 				correlation_gg = (DD - RD - SR) / RR + 1
+		# 				write_dataset_hdf5(group_gg, dataset_name, correlation_gg)
+		# 		elif IA_estimator == "galaxies":
+		# 			if corr_type[0] == "g+" or corr_type[0] == "both":
+		# 				correlation_gp = (SpD - SpR) / RR
+		# 				write_dataset_hdf5(group_gp, dataset_name, correlation_gp)
+		# 			if corr_type[0] == "gg" or corr_type[0] == "both":
+		# 				correlation_gg = (DD - RD - SR) / RR + 1
+		# 				write_dataset_hdf5(group_gg, dataset_name, correlation_gg)
+		# 		else:
+		# 			raise ValueError("Unknown input for IA_estimator, choose from [clusters, galaxies].")
 		output_file.close()
 		return
 
