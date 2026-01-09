@@ -271,25 +271,6 @@ class MeasureIABase(SimInfo):
 			raise ValueError("Unknown input for corrtype, choose from auto or cross.")
 		return RR
 
-	@staticmethod
-	def get_volume_spherical_cap(mur, r):
-		"""Calculate the volume of a spherical cap.
-
-		Parameters
-		----------
-		mur : float
-			cos(theta), where theta is the polar angle between the apex and disk of the cap.
-		r : float
-			radius
-
-		Returns
-		-------
-		float
-			Volume of the spherical cap.
-
-		"""
-		return np.pi / 3.0 * r ** 3 * (2 + mur) * (1 - mur) ** 2
-
 	def get_random_pairs_r_mur(self, r_max, r_min, mur_max, mur_min, L3, corrtype, Num_position, Num_shape):
 		"""Returns analytical value of the number of pairs expected in an r, mu_r bin for a random uniform distribution.
 
@@ -325,12 +306,7 @@ class MeasureIABase(SimInfo):
 					(Num_position - 1.0)
 					/ 2.0
 					* Num_shape
-					* (
-							self.get_volume_spherical_cap(mur_min, r_max)
-							- self.get_volume_spherical_cap(mur_max, r_max)
-							- (self.get_volume_spherical_cap(mur_min, r_min) - self.get_volume_spherical_cap(mur_max,
-																											 r_min))
-					)
+					* 2. * np.pi / 3. * (r_max ** 3 - r_min ** 3) * (mur_max - mur_min)
 					/ L3
 			)
 		# volume is big cap - small cap for large - small radius
@@ -338,12 +314,7 @@ class MeasureIABase(SimInfo):
 			RR = (
 					(Num_position - 1.0)
 					* Num_shape
-					* (
-							self.get_volume_spherical_cap(mur_min, r_max)
-							- self.get_volume_spherical_cap(mur_max, r_max)
-							- (self.get_volume_spherical_cap(mur_min, r_min) - self.get_volume_spherical_cap(mur_max,
-																											 r_min))
-					)
+					* 2. * np.pi / 3. * (r_max ** 3 - r_min ** 3) * (mur_max - mur_min)
 					/ L3
 			)
 		else:
