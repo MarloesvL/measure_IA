@@ -222,7 +222,7 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 															  num_nodes=self.num_nodes,
 															  jk_group_name=f"{dataset_name}_jk{num_jk}",
 															  chunk_size=chunk_size, ellipticity=ellipticity,
-															  file_tree_path=temp_file_path)
+															  temp_file_path=temp_file_path)
 			elif temp_storage:
 				self._measure_xi_r_mur_box_jk_tree(masks=masks, L_subboxes=L, dataset_name=dataset_name,
 												   return_output=False, ellipticity=ellipticity,
