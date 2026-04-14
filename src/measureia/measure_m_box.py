@@ -653,14 +653,13 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 			shm = shared_memory.SharedMemory(name=name)
 			shared_data[name] = np.ndarray(shape, dtype=dtype, buffer=shm.buf)
 			shms.append(shm)
+		positions = shared_data[f"positions_{self.ID_shm}"]
 		for j in np.arange(i, i2, 100):
 			j2 = min(j + 100, i2)
-			positions_shape_sample_i = shared_data["positions_shape_sample"][j:j2]
-			axis_direction_i = shared_data["axis_direction"][j:j2]
-			weight_shape_i = shared_data["weight_shape"][j:j2]
-			positions = shared_data["positions"]
-			e_i = shared_data["e"][j:j2]
-
+			positions_shape_sample_i = shared_data[f"positions_shape_sample_{self.ID_shm}"][j:j2]
+			axis_direction_i = shared_data[f"axis_direction_{self.ID_shm}"][j:j2]
+			weight_shape_i = shared_data[f"weight_shape_{self.ID_shm}"][j:j2]
+			e_i = shared_data[f"e_{self.ID_shm}"][j:j2]
 			shape_tree = KDTree(positions_shape_sample_i, boxsize=self.boxsize)
 			ind_min_i = shape_tree.query_ball_tree(self.pos_tree, self.r_min)
 			ind_max_i = shape_tree.query_ball_tree(self.pos_tree, self.r_max)
@@ -711,7 +710,7 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 						ind_mu_r[ind_mu_r >= self.num_bins_pi] -= 1
 					if np.any(ind_r == self.num_bins_r):
 						ind_r[ind_r >= self.num_bins_r] -= 1
-					weight_i_n = shared_data["weight"][ind_rbin_i[n]]
+					weight_i_n = shared_data[f"weight_{self.ID_shm}"][ind_rbin_i[n]]
 					np.add.at(Splus_D, (ind_r, ind_mu_r),
 							  (weight_i_n[mask] * weight_shape_i[n] * e_plus[mask]) / (2 * self.R))
 					np.add.at(Scross_D, (ind_r, ind_mu_r),
@@ -825,14 +824,15 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 					write_dataset_hdf5(file_temp, f"mask_{k}", masks[k])
 				keys.append(k)
 		file_temp.close()
+		self.ID_shm = np.random.randint(100000)
 		try:
 			shared_data = {
-				"positions": positions,
-				"positions_shape_sample": positions_shape_sample,
-				"axis_direction": axis_direction,
-				"e": e,
-				"weight": weight,
-				"weight_shape": weight_shape,
+				f"positions_{self.ID_shm}": positions,
+				f"positions_shape_sample_{self.ID_shm}": positions_shape_sample,
+				f"axis_direction_{self.ID_shm}": axis_direction,
+				f"e_{self.ID_shm}": e,
+				f"weight_{self.ID_shm}": weight,
+				f"weight_shape_{self.ID_shm}": weight_shape,
 			}
 			for k in shared_data.keys():
 				try:
