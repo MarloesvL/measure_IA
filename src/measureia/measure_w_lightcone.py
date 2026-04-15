@@ -267,6 +267,7 @@ class MeasureWLightcone(MeasureIABase):
 			xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
 
 		"""
+		print('brute_old')
 
 		if masks == None:
 			redshift = self.data["Redshift"]
@@ -783,6 +784,7 @@ class MeasureWLightcone(MeasureIABase):
 			xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
 
 		"""
+		print('brute_old')
 
 		if masks == None:
 			redshift = self.data["Redshift"]
