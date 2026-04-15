@@ -499,8 +499,8 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 									   chunk_size=chunk_size, num_nodes=self.num_nodes,
 									   temp_file_path=temp_file_path)
 			else:
-				self.measure_xi_helper(self._count_pairs_xi_rp_pi_lightcone_brute,
-									   self._measure_xi_rp_pi_lightcone_brute,
+				self.measure_xi_helper(self._count_pairs_xi_rp_pi_lightcone_brute_old,
+									   self._measure_xi_rp_pi_lightcone_brute_old,
 									   IA_estimator, dataset_name, corr_type, masks=masks,
 									   masks_randoms=masks_randoms, cosmology=cosmology, over_h=over_h,
 									   chunk_size=chunk_size, num_nodes=self.num_nodes,
