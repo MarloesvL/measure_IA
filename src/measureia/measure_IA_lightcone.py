@@ -344,7 +344,7 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			If True, the units are assumed to be in not-over-h and converted to over-h units. Default is False.
 
 		"""
-		print('hello?')
+		print('hello? xi w')
 		if IA_estimator == "clusters":
 			if self.randoms_data == None:
 				print("No randoms given, correlation defined as S+D/DD")
@@ -439,7 +439,7 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			num_samples["R_S"] = len(self.randoms_data["RA_shape_sample"][masks_randoms["RA_shape_sample"]])
 
 		# ToDo: deal with masks
-		print(measure_cov, tree, num_nodes)
+		print(measure_cov, tree, self.num_nodes)
 
 		if measure_cov:
 			if self.num_nodes == 1:
