@@ -344,7 +344,6 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			If True, the units are assumed to be in not-over-h and converted to over-h units. Default is False.
 
 		"""
-		print('hello? xi w')
 		if IA_estimator == "clusters":
 			if self.randoms_data == None:
 				print("No randoms given, correlation defined as S+D/DD")
@@ -439,7 +438,6 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			num_samples["R_S"] = len(self.randoms_data["RA_shape_sample"][masks_randoms["RA_shape_sample"]])
 
 		# ToDo: deal with masks
-		print(measure_cov, tree, self.num_nodes)
 
 		if measure_cov:
 			if self.num_nodes == 1:
@@ -494,14 +492,13 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 												corr_group=corr_group, num_box=num_jk)
 		else:
 			if tree:
-				self.measure_xi_helper(self._count_pairs_xi_rp_pi_lightcone_tree,
-									   self._measure_xi_rp_pi_lightcone_tree,
+				self.measure_xi_helper(self._count_pairs_xi_rp_pi_lightcone_brute,
+									   self._measure_xi_rp_pi_lightcone_brute,
 									   IA_estimator, dataset_name, corr_type, masks=masks,
 									   masks_randoms=masks_randoms, cosmology=cosmology, over_h=over_h,
 									   chunk_size=chunk_size, num_nodes=self.num_nodes,
 									   temp_file_path=temp_file_path)
 			else:
-				print("should be brute old")
 				self.measure_xi_helper(self._count_pairs_xi_rp_pi_lightcone_brute_old,
 									   self._measure_xi_rp_pi_lightcone_brute_old,
 									   IA_estimator, dataset_name, corr_type, masks=masks,
