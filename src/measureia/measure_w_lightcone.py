@@ -275,7 +275,6 @@ class MeasureWLightcone(MeasureIABase):
 			xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
 
 		"""
-		print('brute_old')
 
 		if masks == None:
 			redshift = self.data["Redshift"]
@@ -346,7 +345,7 @@ class MeasureWLightcone(MeasureIABase):
 		for n in np.arange(0, len(RA)):
 			# for Splus_D (calculate ellipticities around position sample)
 			LOS = LOS_all_shape_sample - LOS_all[n]
-			dra = (RA_shape_sample - RA[n]) / 180 * np.pi
+			dra = (RA_shape_sample - RA[n]) / 180 * np.pi  # radians
 			ddec = (DEC_shape_sample - DEC[n]) / 180 * np.pi
 			dx = dra * LOS_all[n] * np.cos(DEC[n] / 180 * np.pi)
 			dy = ddec * LOS_all[n]
@@ -556,7 +555,7 @@ class MeasureWLightcone(MeasureIABase):
 					# for Splus_D (calculate ellipticities around position sample)
 					n_LOS = (n_pos_i[n] + n_shape[ind_rbin_i[n]]) / np.array(
 						[np.sqrt(np.sum((n_pos_i[n] + n_shape[ind_rbin_i[n]]) ** 2, axis=1))]).transpose()
-					s = s_pos_i[n] - s_shape[ind_rbin_i[n]]
+					s = s_shape[ind_rbin_i[n]] - s_pos_i[n]
 					LOS = self.calculate_dot_product_arrays(s, n_LOS)
 					separation_len = np.sqrt(np.sum(s ** 2, axis=1) - LOS ** 2)  # len of s-pi*nlos ->check
 
@@ -792,7 +791,6 @@ class MeasureWLightcone(MeasureIABase):
 			xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
 
 		"""
-		print('brute_old')
 
 		if masks == None:
 			redshift = self.data["Redshift"]
