@@ -137,7 +137,6 @@ class MeasureWLightcone(MeasureIABase):
 		del redshift, redshift_shape_sample, cosmology
 
 		e = np.array([e1, e2]).transpose()
-		# e=np.sqrt(e1 ** 2 + e2 ** 2)
 		RA_rad = RA / 180 * np.pi
 		RA_shape_sample_rad = RA_shape_sample / 180 * np.pi
 		DEC_rad = DEC / 180 * np.pi
@@ -159,11 +158,6 @@ class MeasureWLightcone(MeasureIABase):
 		del RA, DEC, DEC_rad, RA_rad
 		s_pos = np.array([LOS_all]).transpose() * n_pos
 		del LOS_all, LOS_all_shape_sample
-		# theta = 1. / 2 * np.arctan2(e2, e1)  # e1 = |e| cos(2theta), e2 = |e| sin(2theta)
-		# Semimajor_Axis_Direction = np.array([np.cos(theta), np.sin(theta)])
-		# axis_direction_len = np.sqrt(np.sum(Semimajor_Axis_Direction ** 2, axis=0))
-		# axis_direction = Semimajor_Axis_Direction / axis_direction_len
-		# phi_axis_dir = np.arctan2(axis_direction[1], axis_direction[0])
 
 		for n in np.arange(0, Num_position):
 			n_LOS = (n_pos[n] + n_shape) / np.array([np.sqrt(np.sum((n_pos[n] + n_shape) ** 2, axis=1))]).transpose()
@@ -178,8 +172,6 @@ class MeasureWLightcone(MeasureIABase):
 			x = np.sum(s_perp * east[n], axis=1)
 			y = np.sum(s_perp * north[n], axis=1)
 			phi = np.arctan2(x, y)  # angle from north toward east
-			# phi_sep = np.arctan2(y, x)
-			# phi = phi_sep-phi_axis_dir
 
 			e_plus, e_cross = self.get_ellipticity(e, phi)
 			# del phi_sep_dir
@@ -349,7 +341,15 @@ class MeasureWLightcone(MeasureIABase):
 			ddec = (DEC_shape_sample - DEC[n]) / 180 * np.pi
 			dx = dra * LOS_all[n] * np.cos(DEC[n] / 180 * np.pi)
 			dy = ddec * LOS_all[n]
+
 			projected_sep = np.array([dx, dy])
+
+			# RA_mid = 0.5 * (RA_shape_sample + RA[n])
+			# DEC_mid = 0.5 * (DEC_shape_sample + DEC[n])
+			# dx = (RA_shape_sample - RA[n]) * np.cos(DEC_mid * np.pi / 180)
+			# dy = (DEC_shape_sample - DEC[n])
+			# phi_sep_dir = np.arctan2(dx,dy)
+
 			if over_h:
 				projected_sep *= h
 			separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=0))
@@ -357,6 +357,7 @@ class MeasureWLightcone(MeasureIABase):
 				separation_dir = (projected_sep / separation_len)  # normalisation of rp
 				del projected_sep
 				phi_sep_dir = np.arctan2(separation_dir[1], separation_dir[0])
+				# phi_sep_dir = np.arctan2(separation_dir[0], separation_dir[1])
 				phi = phi_axis_dir - phi_sep_dir
 			del separation_dir
 			e_plus, e_cross = self.get_ellipticity(-e, phi)
@@ -420,7 +421,6 @@ class MeasureWLightcone(MeasureIABase):
 			return
 		else:
 			return Splus_D, DD, separation_bins, pi_bins
-
 
 	def _measure_xi_rp_pi_lightcone_tree(self, dataset_name, masks=None, return_output=False,
 										 print_num=True, over_h=False, cosmology=None,
