@@ -172,7 +172,8 @@ class MeasureMultipolesLightcone(MeasureIABase):
 			# Components of projected separation
 			x = np.sum(s_perp * east[n], axis=1)
 			y = np.sum(s_perp * north[n], axis=1)
-			phi = np.arctan2(x, y)  # angle from north toward east
+			# phi = np.arctan2(x, y)  # angle from north toward east
+			phi = np.arctan2(y, x)
 
 			e_plus, e_cross = self.get_ellipticity(e, phi)
 			# del phi_sep_dir
@@ -375,7 +376,8 @@ class MeasureMultipolesLightcone(MeasureIABase):
 					# Components of projected separation
 					x = np.sum(s_perp * east_i[n], axis=1)
 					y = np.sum(s_perp * north_i[n], axis=1)
-					phi = np.arctan2(x, y)  # angle from north toward east
+					# phi = np.arctan2(x, y)  # angle from north toward east
+					phi = np.arctan2(y, x)
 
 					e_plus, e_cross = self.get_ellipticity(e[ind_rbin_i[n]], phi)
 					# del phi_sep_dir

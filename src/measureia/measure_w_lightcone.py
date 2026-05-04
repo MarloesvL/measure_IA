@@ -171,7 +171,8 @@ class MeasureWLightcone(MeasureIABase):
 			# Components of projected separation
 			x = np.sum(s_perp * east[n], axis=1)
 			y = np.sum(s_perp * north[n], axis=1)
-			phi = np.arctan2(x, y)  # angle from north toward east
+			# phi = np.arctan2(x, y)  # angle from north toward east
+			phi = np.arctan2(y, x)
 
 			e_plus, e_cross = self.get_ellipticity(e, phi)
 			# del phi_sep_dir
@@ -339,8 +340,13 @@ class MeasureWLightcone(MeasureIABase):
 			LOS = LOS_all_shape_sample - LOS_all[n]
 			dra = (RA_shape_sample - RA[n]) / 180 * np.pi  # radians
 			ddec = (DEC_shape_sample - DEC[n]) / 180 * np.pi
-			dx = dra * LOS_all[n] * np.cos(DEC[n] / 180 * np.pi)
-			dy = ddec * LOS_all[n]
+			# dx = dra * LOS_all[n] * np.cos(DEC[n] / 180 * np.pi)
+			# dy = ddec * LOS_all[n]
+
+			DEC_mid = 0.5 * (DEC_shape_sample + DEC[n])
+			LOS_mid = 0.5 * (LOS_all[n] + LOS_all_shape_sample)
+			dx = dra * LOS_mid * np.cos(DEC_mid / 180 * np.pi)
+			dy = ddec * LOS_mid
 
 			projected_sep = np.array([dx, dy])
 
@@ -565,7 +571,8 @@ class MeasureWLightcone(MeasureIABase):
 					# Components of projected separation
 					x = np.sum(s_perp * east_i[n], axis=1)
 					y = np.sum(s_perp * north_i[n], axis=1)
-					phi = np.arctan2(x, y)  # angle from north toward east
+					# phi = np.arctan2(x, y)  # angle from north toward east
+					phi = np.arctan2(y, x)
 
 					e_plus, e_cross = self.get_ellipticity(e[ind_rbin_i[n]], phi)
 					e_plus[np.isnan(e_plus)] = 0.0
@@ -844,8 +851,12 @@ class MeasureWLightcone(MeasureIABase):
 			LOS = LOS_all_shape_sample - LOS_all[n]
 			dra = (RA_shape_sample - RA[n]) / 180 * np.pi
 			ddec = (DEC_shape_sample - DEC[n]) / 180 * np.pi
-			dx = dra * LOS_all[n] * np.cos(DEC[n] / 180 * np.pi)
-			dy = ddec * LOS_all[n]
+			# dx = dra * LOS_all[n] * np.cos(DEC[n] / 180 * np.pi)
+			# dy = ddec * LOS_all[n]
+			DEC_mid = 0.5 * (DEC_shape_sample + DEC[n])
+			LOS_mid = 0.5 * (LOS_all[n] + LOS_all_shape_sample)
+			dx = dra * LOS_mid * np.cos(DEC_mid / 180 * np.pi)
+			dy = ddec * LOS_mid
 			projected_sep = np.array([dx, dy])
 			if over_h:
 				projected_sep *= h

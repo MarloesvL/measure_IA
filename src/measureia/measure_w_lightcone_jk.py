@@ -181,7 +181,8 @@ class MeasureWLightconeJackknife(MeasureIABase):
 			# Components of projected separation
 			x = np.sum(s_perp * east[n], axis=1)
 			y = np.sum(s_perp * north[n], axis=1)
-			phi = np.arctan2(x, y)  # angle from north toward east
+			# phi = np.arctan2(x, y)  # angle from north toward east
+			phi = np.arctan2(y, x)
 
 			e_plus, e_cross = self.get_ellipticity(e, phi)
 			# del phi_sep_dir
@@ -414,7 +415,8 @@ class MeasureWLightconeJackknife(MeasureIABase):
 					# Components of projected separation
 					x = np.sum(s_perp * east_i[n], axis=1)
 					y = np.sum(s_perp * north_i[n], axis=1)
-					phi = np.arctan2(x, y)  # angle from north toward east
+					# phi = np.arctan2(x, y)  # angle from north toward east
+					phi = np.arctan2(y, x)
 
 					e_plus, e_cross = self.get_ellipticity(e[ind_rbin_i[n]], phi)
 					e_plus[np.isnan(e_plus)] = 0.0
@@ -568,7 +570,8 @@ class MeasureWLightconeJackknife(MeasureIABase):
 					# Components of projected separation
 					x = np.sum(s_perp * east_i[n], axis=1)
 					y = np.sum(s_perp * north_i[n], axis=1)
-					phi = np.arctan2(x, y)  # angle from north toward east
+					# phi = np.arctan2(x, y)  # angle from north toward east
+					phi = np.arctan2(y, x)
 
 					e_plus, e_cross = self.get_ellipticity(e[ind_rbin_i[n]], phi)
 					# del phi_sep_dir
@@ -1145,13 +1148,17 @@ class MeasureWLightconeJackknife(MeasureIABase):
 						np.log10(separation_len[mask]) / sub_box_len_logrp - np.log10(
 							self.r_bins[0]) / sub_box_len_logrp
 					)
-					del separation_len
+					# del separation_len
 					ind_r = np.array(ind_r, dtype=int)
 					ind_pi = np.floor(
 						LOS[mask] / sub_box_len_pi - self.pi_bins[0] / sub_box_len_pi
 					)  # need length of LOS, so only positive values
 					del LOS
 					ind_pi = np.array(ind_pi, dtype=int)
+					if sum(ind_r == 0) > 0 and sum(ind_pi == 3) > 0 and data_suffix == "_DD":
+						maks_bin = (ind_r == 0) * (ind_pi == 3)
+						if len(separation_len[mask][maks_bin]) > 0:
+							print(n, ind_rbin_i[n][mask][maks_bin], separation_len[mask][maks_bin])
 					np.add.at(DD, (ind_r, ind_pi), weight_i[n] * weight_shape[ind_rbin_i[n]][mask])
 
 					shape_mask = \
