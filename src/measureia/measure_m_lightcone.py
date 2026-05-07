@@ -160,7 +160,9 @@ class MeasureMultipolesLightcone(MeasureIABase):
 		del LOS_all, LOS_all_shape_sample
 
 		for n in np.arange(0, Num_position):
-			n_LOS = (n_pos[n] + n_shape) / np.array([np.sqrt(np.sum((n_pos[n] + n_shape) ** 2, axis=1))]).transpose()
+			L = s_pos[n] + s_shape
+			n_LOS = L / np.sqrt(np.sum(L ** 2, axis=1))[:, None]
+			# n_LOS = (n_pos[n] + n_shape) / np.array([np.sqrt(np.sum((n_pos[n] + n_shape) ** 2, axis=1))]).transpose()
 			s = s_shape - s_pos[n]
 			LOS = self.calculate_dot_product_arrays(s, n_LOS)
 			separation_len = np.sqrt(np.sum(s ** 2, axis=1))
@@ -363,8 +365,10 @@ class MeasureMultipolesLightcone(MeasureIABase):
 			for n in np.arange(0, len(s_pos_i)):
 				if len(ind_rbin_i[n]) > 0:
 					# for Splus_D (calculate ellipticities around position sample)
-					n_LOS = (n_pos_i[n] + n_shape[ind_rbin_i[n]]) / np.array(
-						[np.sqrt(np.sum((n_pos_i[n] + n_shape[ind_rbin_i[n]]) ** 2, axis=1))]).transpose()
+					L = s_pos_i[n] + s_shape[ind_rbin_i[n]]
+					n_LOS = L / np.sqrt(np.sum(L ** 2, axis=1))[:, None]
+					# n_LOS = (n_pos_i[n] + n_shape[ind_rbin_i[n]]) / np.array(
+					# 	[np.sqrt(np.sum((n_pos_i[n] + n_shape[ind_rbin_i[n]]) ** 2, axis=1))]).transpose()
 					s = s_pos_i[n] - s_shape[ind_rbin_i[n]]
 					LOS = self.calculate_dot_product_arrays(s, n_LOS)
 					separation_len = np.sqrt(np.sum(s ** 2, axis=1))
@@ -679,8 +683,10 @@ class MeasureMultipolesLightcone(MeasureIABase):
 			for n in np.arange(0, len(s_pos_i)):  # CHANGE2: loop now over shapes, not positions
 				if len(ind_rbin_i[n]) > 0:
 					# for Splus_D (calculate ellipticities around position sample)
-					n_LOS = (n_pos_i[n] + n_shape[ind_rbin_i[n]]) / np.array(
-						[np.sqrt(np.sum((n_pos_i[n] + n_shape[ind_rbin_i[n]]) ** 2, axis=1))]).transpose()
+					L = s_pos_i[n] + s_shape[ind_rbin_i[n]]
+					n_LOS = L / np.sqrt(np.sum(L ** 2, axis=1))[:, None]
+					# n_LOS = (n_pos_i[n] + n_shape[ind_rbin_i[n]]) / np.array(
+					# 	[np.sqrt(np.sum((n_pos_i[n] + n_shape[ind_rbin_i[n]]) ** 2, axis=1))]).transpose()
 					s = s_pos_i[n] - s_shape[ind_rbin_i[n]]
 					LOS = self.calculate_dot_product_arrays(s, n_LOS)
 					separation_len = np.sqrt(np.sum(s ** 2, axis=1))  # len of s-pi*nlos ->check
