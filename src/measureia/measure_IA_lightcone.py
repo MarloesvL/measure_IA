@@ -3,10 +3,11 @@ from .measure_w_lightcone_jk import MeasureWLightconeJackknife
 from .measure_w_lightcone import MeasureWLightcone
 from .measure_m_lightcone_jk import MeasureMultipolesLightconeJackknife
 from .measure_m_lightcone import MeasureMultipolesLightcone
+from .measure_jackknife import MeasureJackknife
 
 
 class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureWLightconeJackknife,
-						 MeasureMultipolesLightconeJackknife):
+						 MeasureMultipolesLightconeJackknife, MeasureJackknife):
 	r"""Manages the IA correlation function measurement methods used in the MeasureIA package based on speed and input.
 	This class is used to call the methods that measure w_gg, w_g+ and multipoles for simulations (and observations),
 	with lightcone data.
@@ -492,15 +493,15 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 												corr_group=corr_group, num_box=num_jk)
 		else:
 			if tree:
-				self.measure_xi_helper(self._count_pairs_xi_rp_pi_lightcone_brute,
-									   self._measure_xi_rp_pi_lightcone_brute,
+				self.measure_xi_helper(self._count_pairs_xi_rp_pi_lightcone_tree,
+									   self._measure_xi_rp_pi_lightcone_tree,
 									   IA_estimator, dataset_name, corr_type, masks=masks,
 									   masks_randoms=masks_randoms, cosmology=cosmology, over_h=over_h,
 									   chunk_size=chunk_size, num_nodes=self.num_nodes,
 									   temp_file_path=temp_file_path)
 			else:
-				self.measure_xi_helper(self._count_pairs_xi_rp_pi_lightcone_brute_old,
-									   self._measure_xi_rp_pi_lightcone_brute_old,
+				self.measure_xi_helper(self._count_pairs_xi_rp_pi_lightcone_brute,
+									   self._measure_xi_rp_pi_lightcone_brute,
 									   IA_estimator, dataset_name, corr_type, masks=masks,
 									   masks_randoms=masks_randoms, cosmology=cosmology, over_h=over_h,
 									   chunk_size=chunk_size, num_nodes=self.num_nodes,
