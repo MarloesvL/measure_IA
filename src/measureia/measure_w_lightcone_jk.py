@@ -409,7 +409,7 @@ class MeasureWLightconeJackknife(MeasureIABase):
 					n_LOS = L / np.sqrt(np.sum(L ** 2, axis=1))[:, None]
 					# n_LOS = (n_pos_i[n] + n_shape[ind_rbin_i[n]]) / np.array(
 					# 	[np.sqrt(np.sum((n_pos_i[n] + n_shape[ind_rbin_i[n]]) ** 2, axis=1))]).transpose()
-					s = s_pos_i[n] - s_shape[ind_rbin_i[n]]
+					s = s_shape[ind_rbin_i[n]] - s_pos_i[n]
 					LOS = self.calculate_dot_product_arrays(s, n_LOS)
 					separation_len = np.sqrt(np.sum(s ** 2, axis=1) - LOS ** 2)  # len of s-pi*nlos ->check
 
@@ -566,7 +566,7 @@ class MeasureWLightconeJackknife(MeasureIABase):
 					n_LOS = L / np.sqrt(np.sum(L ** 2, axis=1))[:, None]
 					# n_LOS = (n_pos_i[n] + n_shape[ind_rbin_i[n]]) / np.array(
 					# 	[np.sqrt(np.sum((n_pos_i[n] + n_shape[ind_rbin_i[n]]) ** 2, axis=1))]).transpose()
-					s = s_pos_i[n] - s_shape[ind_rbin_i[n]]
+					s = s_shape[ind_rbin_i[n]] - s_pos_i[n]
 					LOS = self.calculate_dot_product_arrays(s, n_LOS)
 					separation_len = np.sqrt(np.sum(s ** 2, axis=1) - LOS ** 2)  # len of s-pi*nlos ->check
 
@@ -1145,7 +1145,7 @@ class MeasureWLightconeJackknife(MeasureIABase):
 					# for Splus_D (calculate ellipticities around position sample)
 					L = s_pos_i[n] + s_shape[ind_rbin_i[n]]
 					n_LOS = L / np.sqrt(np.sum(L ** 2, axis=1))[:, None]
-					s = s_pos_i[n] - s_shape[ind_rbin_i[n]]
+					s = s_shape[ind_rbin_i[n]] - s_pos_i[n]
 					LOS = self.calculate_dot_product_arrays(s, n_LOS)
 					separation_len = np.sqrt(np.sum(s ** 2, axis=1) - LOS ** 2)  # len of s-pi*nlos ->check
 
@@ -1246,7 +1246,7 @@ class MeasureWLightconeJackknife(MeasureIABase):
 					# for Splus_D (calculate ellipticities around position sample)
 					L = s_pos_i[n] + s_shape[ind_rbin_i[n]]
 					n_LOS = L / np.sqrt(np.sum(L ** 2, axis=1))[:, None]
-					s = s_pos_i[n] - s_shape[ind_rbin_i[n]]
+					s = s_shape[ind_rbin_i[n]] - s_pos_i[n]
 					LOS = self.calculate_dot_product_arrays(s, n_LOS)
 					separation_len = np.sqrt(np.sum(s ** 2, axis=1) - LOS ** 2)  # len of s-pi*nlos ->check
 
