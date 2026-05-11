@@ -514,7 +514,7 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 
 	def measure_xi_multipoles(self, IA_estimator, dataset_name, corr_type, jk_patches=None, num_jk=None,
 							  measure_cov=True, masks=None, masks_randoms=None, cosmology=None, over_h=False,
-							  tree=True):
+							  tree=True, temp_file_path=None):
 		"""Measures xi_gg, xi_g+ and w_gg, w_g+ including jackknife covariance if desired for lightcone data.
 		Manages the various _measure_xi_rp_pi_obs and _measure_jackknife_covariance options in MeasureWObservations
 		and MeasureJackknife.
@@ -649,12 +649,14 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 				self.measure_xi_jk_helper(self._count_pairs_xi_r_mur_lightcone_jk_tree,
 										  self._measure_xi_r_mur_lightcone_jk_tree, IA_estimator, dataset_name,
 										  corr_type, jk_patches=jk_patches, masks=masks,
-										  masks_randoms=masks_randoms, cosmology=cosmology, over_h=over_h)
+										  masks_randoms=masks_randoms, cosmology=cosmology, over_h=over_h,
+										  temp_file_path=temp_file_path)
 			else:
 				self.measure_xi_jk_helper(self._count_pairs_xi_r_mur_lightcone_jk_brute,
 										  self._measure_xi_r_mur_lightcone_jk_brute, IA_estimator, dataset_name,
 										  corr_type, jk_patches=jk_patches, masks=masks,
-										  masks_randoms=masks_randoms, cosmology=cosmology, over_h=over_h)
+										  masks_randoms=masks_randoms, cosmology=cosmology, over_h=over_h,
+										  temp_file_path=temp_file_path)
 			self._obs_estimator([corr_type, "multipoles"], IA_estimator, dataset_name, num_samples)
 			self._measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
 			for i in np.arange(num_jk):
@@ -687,11 +689,13 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 				self.measure_xi_helper(self._count_pairs_xi_r_mur_lightcone_tree,
 									   self._measure_xi_r_mur_lightcone_tree,
 									   IA_estimator, dataset_name, corr_type, masks=masks,
+									   temp_file_path=temp_file_path,
 									   masks_randoms=masks_randoms, cosmology=cosmology, over_h=over_h)
 			else:
 				self.measure_xi_helper(self._count_pairs_xi_r_mur_lightcone_brute,
 									   self._measure_xi_r_mur_lightcone_brute,
 									   IA_estimator, dataset_name, corr_type, masks=masks,
+									   temp_file_path=temp_file_path,
 									   masks_randoms=masks_randoms, cosmology=cosmology, over_h=over_h)
 			self._obs_estimator([corr_type, "multipoles"], IA_estimator, dataset_name, num_samples)
 			self._measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
