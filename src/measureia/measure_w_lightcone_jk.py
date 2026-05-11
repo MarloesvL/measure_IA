@@ -1212,8 +1212,10 @@ class MeasureWLightconeJackknife(MeasureIABase):
 			S+D, SxD, DD, DD_jk, S+D_jk where the _jk versions store the necessary information of DD of S+D for
 			each jackknife realisation.
 		"""
-		if i + self.chunk_size > self.Num_shape_masked:
-			i2 = self.Num_shape_masked
+		# if i + self.chunk_size > self.Num_shape_masked:
+		# 	i2 = self.Num_shape_masked
+		if i + self.chunk_size > self.Num_position_masked:
+			i2 = self.Num_position_masked
 		else:
 			i2 = i + self.chunk_size
 		r_max, r_min = np.sqrt(self.r_max ** 2 + self.pi_bins[-1] ** 2), self.r_min
