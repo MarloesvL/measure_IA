@@ -97,17 +97,17 @@ class MeasureJackknife(MeasureIABase):
 
 		jk_patches['randoms_shape'] = jk_labels
 
-		RA = data['RA']
-		DEC = data['DEC']
-		X2 = np.column_stack((RA, DEC))
-		jk_labels = km.find_nearest(X2)
+		RA_data = data['RA']
+		DEC_data = data['DEC']
+		X3 = np.column_stack((RA_data, DEC_data))
+		jk_labels = km.find_nearest(X3)
 
 		jk_patches['position'] = jk_labels
 
-		RA = data['RA_shape_sample']
-		DEC = data['DEC_shape_sample']
-		X2 = np.column_stack((RA, DEC))
-		jk_labels = km.find_nearest(X2)
+		RA_data = data['RA_shape_sample']
+		DEC_data = data['DEC_shape_sample']
+		X4 = np.column_stack((RA_data, DEC_data))
+		jk_labels = km.find_nearest(X4)
 
 		jk_patches['shape'] = jk_labels
 
