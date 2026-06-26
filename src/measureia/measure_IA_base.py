@@ -410,7 +410,7 @@ class MeasureIABase(SimInfo):
 			raise KeyError("Unknown value for corr_type. Choose from [g+, gg, both]")
 		for i in np.arange(0, len(xi_data)):
 			correlation_data_file = h5py.File(self.output_file_name, "a")
-			group = correlation_data_file[f"{self.snap_group}/w/{xi_data[i]}/{jk_group_name}"]
+			group = correlation_data_file[f"{self.snap_group}w/{xi_data[i]}/{jk_group_name}"]
 			correlation_data = group[dataset_name][:]
 			pi = group[dataset_name + "_pi"]
 			rp = group[dataset_name + "_rp"]
@@ -431,7 +431,7 @@ class MeasureIABase(SimInfo):
 				return output_data
 			else:
 				group_out = create_group_hdf5(correlation_data_file,
-											  f"{self.snap_group}/{wg_data[i]}/{jk_group_name}")
+											  f"{self.snap_group}{wg_data[i]}/{jk_group_name}")
 				write_dataset_hdf5(group_out, dataset_name + "_rp", data=rp)
 				write_dataset_hdf5(group_out, dataset_name, data=w_g_i)
 				# write_dataset_hdf5(group_out, dataset_name + "_sigma", data=np.sqrt(sigsq))
@@ -460,7 +460,7 @@ class MeasureIABase(SimInfo):
 		"""
 		correlation_data_file = h5py.File(self.output_file_name, "a")
 		if corr_type == "g+":  # todo: expand to include ++ option
-			group = correlation_data_file[f"{self.snap_group}/multipoles/xi_g_plus/{jk_group_name}"]
+			group = correlation_data_file[f"{self.snap_group}multipoles/xi_g_plus/{jk_group_name}"]
 			correlation_data_list = [group[dataset_name][:]]  # xi_g+ in grid of r,mur
 			r_list = [group[dataset_name + "_r"][:]]
 			mu_r_list = [group[dataset_name + "_mu_r"][:]]
@@ -468,7 +468,7 @@ class MeasureIABase(SimInfo):
 			l_list = sab_list
 			corr_type_list = ["g_plus"]
 		elif corr_type == "gg":
-			group = correlation_data_file[f"{self.snap_group}/multipoles/xi_gg/{jk_group_name}"]
+			group = correlation_data_file[f"{self.snap_group}multipoles/xi_gg/{jk_group_name}"]
 			correlation_data_list = [group[dataset_name][:]]  # xi_g+ in grid of rp,pi
 			r_list = [group[dataset_name + "_r"][:]]
 			mu_r_list = [group[dataset_name + "_mu_r"][:]]
@@ -476,11 +476,11 @@ class MeasureIABase(SimInfo):
 			l_list = sab_list
 			corr_type_list = ["gg"]
 		elif corr_type == "both":
-			group = correlation_data_file[f"{self.snap_group}/multipoles/xi_g_plus/{jk_group_name}"]
+			group = correlation_data_file[f"{self.snap_group}multipoles/xi_g_plus/{jk_group_name}"]
 			correlation_data_list = [group[dataset_name][:]]  # xi_g+ in grid of rp,pi
 			r_list = [group[dataset_name + "_r"][:]]
 			mu_r_list = [group[dataset_name + "_mu_r"][:]]
-			group = correlation_data_file[f"{self.snap_group}/multipoles/xi_gg/{jk_group_name}"]
+			group = correlation_data_file[f"{self.snap_group}multipoles/xi_gg/{jk_group_name}"]
 			correlation_data_list.append(group[dataset_name][:])  # xi_g+ in grid of rp,pi
 			r_list.append(group[dataset_name + "_r"][:])
 			mu_r_list.append(group[dataset_name + "_mu_r"][:])
@@ -524,7 +524,7 @@ class MeasureIABase(SimInfo):
 				np.array([separation, multipoles]).transpose()
 			else:
 				group_out = create_group_hdf5(
-					correlation_data_file, f"{self.snap_group}/multipoles_{corr_type_i}/{jk_group_name}"
+					correlation_data_file, f"{self.snap_group}multipoles_{corr_type_i}/{jk_group_name}"
 				)
 				write_dataset_hdf5(group_out, dataset_name + "_r", data=separation)
 				write_dataset_hdf5(group_out, dataset_name, data=multipoles)
@@ -554,10 +554,10 @@ class MeasureIABase(SimInfo):
 
 		"""
 		output_file = h5py.File(self.output_file_name, "a")
-		group_gg = output_file[f"{self.snap_group}/{corr_type[1]}/xi_gg/{jk_group_name}"]
+		group_gg = output_file[f"{self.snap_group}{corr_type[1]}/xi_gg/{jk_group_name}"]
 		if corr_type[0] == "g+" or corr_type[0] == "both":
 			group_gp = output_file[
-				f"{self.snap_group}/{corr_type[1]}/xi_g_plus/{jk_group_name}"]
+				f"{self.snap_group}{corr_type[1]}/xi_g_plus/{jk_group_name}"]
 			SpD = group_gp[f"{dataset_name}_SplusD"][:]
 			SpD /= (num_samples["S"] * num_samples["D"] - num_samples["D_S"])
 			SpR = group_gp[f"{dataset_name}_SplusR"][:]
