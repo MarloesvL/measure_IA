@@ -174,6 +174,65 @@ class TestPlaneParallelConsistency:
         np.testing.assert_allclose((wgp_ana / box["w_g_plus"])[1:6], 1.0, atol=0.05)
 
 
+_COV_REF = os.path.join(_VALIDATION_DIR, "reference_outputs", "lightcone_treecorr_cov.hdf5")
+
+requires_cov_reference = pytest.mark.skipif(
+    not os.path.exists(_COV_REF),
+    reason="no committed treecorr jackknife covariance reference; run "
+           "validation/run_lightcone_treecorr_cov.py with treecorr installed first",
+)
+
+
+@requires_cov_reference
+class TestJackknifeCovarianceAgainstTreecorr:
+    """measureia's jackknife covariance vs an explicit delete-one-patch
+    jackknife built from treecorr counts, using the identical (seeded)
+    kmeans patch assignment — see validation/run_lightcone_treecorr_cov.py.
+    Both compute the same deterministic statistic, so agreement is limited
+    only by the estimator-level differences (~1e-5 on w_g+)."""
+
+    @pytest.fixture(scope="class")
+    def cov_results(self, tmp_path_factory):
+        import run_lightcone_treecorr_cov as v
+        data, randoms, info, dist = v.build_catalogues()
+        tmp = tmp_path_factory.mktemp("validation_cov")
+        out = str(tmp / "cov_mia.hdf5")
+        ia = v.make_measureia(data, randoms, out)
+        patches = ia.assign_jackknife_patches(data, randoms, v.NUM_JK,
+                                              seed=v.PATCH_SEED)
+        if "randoms_position" not in patches:
+            patches["randoms_position"] = patches["randoms"]
+            patches["randoms_shape"] = patches["randoms"]
+        if os.path.exists(out):
+            os.remove(out)
+        ia, mia = v.run_measureia_jk(data, randoms, patches, out, str(tmp) + "/")
+        with h5py.File(_COV_REF, "r") as f:
+            assert f.attrs["patch_seed"] == v.PATCH_SEED
+            return mia, f["cov_w_g_plus"][:], f["cov_w_gg"][:]
+
+    @staticmethod
+    def _corrmat(cov):
+        s = np.sqrt(np.diag(cov))
+        return cov / np.outer(s, s)
+
+    def test_w_g_plus_jackknife_std(self, cov_results):
+        mia, cov_gp_tc, _ = cov_results
+        np.testing.assert_allclose(mia["std_gp"], np.sqrt(np.diag(cov_gp_tc)),
+                                   rtol=0.03)
+
+    def test_w_gg_jackknife_std(self, cov_results):
+        mia, _, cov_gg_tc = cov_results
+        np.testing.assert_allclose(mia["std_gg"], np.sqrt(np.diag(cov_gg_tc)),
+                                   rtol=0.03)
+
+    def test_correlation_matrix_structure(self, cov_results):
+        mia, cov_gp_tc, cov_gg_tc = cov_results
+        np.testing.assert_allclose(self._corrmat(mia["cov_gp"]),
+                                   self._corrmat(cov_gp_tc), atol=0.05)
+        np.testing.assert_allclose(self._corrmat(mia["cov_gg"]),
+                                   self._corrmat(cov_gg_tc), atol=0.05)
+
+
 class TestResponsivityOption:
     """The responsivity flag divides all S+ terms by 2R. Defaults: box True
     (shapes derive from raw axis ratios), lightcone False (e1/e2 are treated

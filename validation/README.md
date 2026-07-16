@@ -124,4 +124,20 @@ shears.
 Compared against reference outputs from a private code (not redistributable;
 outputs only), plus internal consistency with the validated xi(rp, pi) grid.
 
-Covariance validation is out of scope for now; correlations first.
+### Jackknife covariance vs treecorr (`run_lightcone_treecorr_cov.py`)
+
+The identical seeded kmeans patch assignment (from measureia's
+`assign_jackknife_patches`) is supplied to both codes on the lightcone
+mock, so both compute the same deterministic delete-one-patch statistic
+with the standard (N−1)/N formula. Because measureia's RR-normalised
+w_g+ estimator is not what treecorr's compensated NG `calculateXi`
+computes, treecorr's built-in covariance machinery cannot reproduce it
+directly; instead the jackknife loop is explicit — each patch-deleted
+sample is re-processed with treecorr and the estimator rebuilt from raw
+counts, mirroring measureia's internal definition exactly.
+
+- **Result** (treecorr 5.1.3, 2026-07-16, 9 patches): jackknife standard
+  deviations agree to ≤5×10⁻⁵ for w_g+ in all high-signal bins (≤2% in
+  the near-zero outer bins) and ≤0.6% for w_gg; full correlation-matrix
+  elements agree to ≤0.02 absolute. Enforced at rtol=3%, atol=0.05 in
+  `tests/test_validation_references.py`.
