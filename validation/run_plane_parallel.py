@@ -89,7 +89,7 @@ def run_box(mock, output_file):
 
 def run_lightcone(mock, output_file, temp_path):
 	"""Run MeasureIALightcone on the embedded mock; return w and count grids."""
-	data, randoms = embed_box_mock_on_lightcone(
+	data, randoms, _ = embed_box_mock_on_lightcone(
 		mock, distance=DISTANCE, n_randoms_factor=N_RANDOMS_FACTOR)
 	num = {"D": len(data["RA"]), "S": len(data["RA_shape_sample"]),
 		   "R_D": len(randoms["RA"]), "R_S": len(randoms["RA_shape_sample"])}

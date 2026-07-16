@@ -141,3 +141,51 @@ counts, mirroring measureia's internal definition exactly.
   the near-zero outer bins) and ≤0.6% for w_gg; full correlation-matrix
   elements agree to ≤0.02 absolute. Enforced at rtol=3%, atol=0.05 in
   `tests/test_validation_references.py`.
+
+### Box jackknife covariance (`run_box_cov_bridge.py`)
+
+Two-level validation of the box jackknife (subbox partition, delete-one
+reconstruction by count subtraction, analytic RR rescaled to the retained
+counts and volume). No external package is needed — the reference here is
+measureia's own validated full-sample estimators.
+
+1. **Delete-one identity (machine precision, the rigorous test)**: every
+   reconstructed realisation is compared against an independent direct
+   measurement in which the subbox galaxies are physically removed and the
+   plain (non-jackknife) box estimator is rerun. The retained DD grids
+   match exactly, S+D (including the per-realisation responsivity 2R_i)
+   to ≤10⁻¹², the jackknife RR equals the direct analytic RR times exactly
+   V/V_del = L³/(L³−1), and the per-realisation w vectors follow to
+   ≤10⁻¹³. This locks the count-subtraction machinery: pairs are removed
+   when *either* member is in the deleted subbox, identical to physically
+   deleting the patch from both samples. Enforced at <10⁻¹⁰ in
+   `tests/test_validation_references.py` (runs in CI, no reference file
+   needed).
+
+2. **Cross-pipeline bridge (loose by expectation)**: the identical subbox
+   partition is fed as `jk_patches` to the treecorr-validated lightcone
+   jackknife on the plane-parallel embedding (`responsivity=True`).
+   Jackknife std ratios come out at 0.68–1.05 and correlation-matrix
+   elements differ by up to ~0.7 — and this is the *expected* result, not
+   a defect. Realization-level forensics (2026-07-16) attributed it fully:
+   rebuilding the box-style estimator from the lightcone run's own
+   retained counts reproduces the *lightcone* stds to ~0.8–1.1, so the
+   jackknife machinery is consistent and the residual comes from
+   (a) plane-parallel-vs-sky geometry migrating ~0.1–1% of pairs per
+   realisation between bins — amplified because 8-patch delete-one
+   deviations are only a few % of the mean; (b) genuinely different
+   estimator definitions (box: natural DD/RR−1, S+D/RR_analytic,
+   per-realisation responsivity; lightcone: LS-compensated
+   (DD−RD−SR)/RR+1, (S+D−S+R)/RR_empirical, full-sample responsivity) —
+   different estimators have different covariances; and (c) the
+   analytic-RR-under-deletion approximation, whose count/volume amplitude
+   is exact and whose missed hole-boundary bin-shape is ~2% (moving stds
+   ≲15%). The committed reference file stores both covariances, the
+   box-style reconstruction, and these metrics; the tests enforce the
+   documented bands.
+
+**Known approximation (by design)**: under deletion the analytic RR is
+rescaled by retained counts and volume but keeps the full-box bin shape;
+the ~2% hole-boundary shape effect above shrinks as the number of patches
+grows (the deleted hole gets smaller). Users needing that last few percent
+should use more patches or the lightcone pipeline with explicit randoms.

@@ -23,6 +23,7 @@ _VALIDATION_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(_
 sys.path.insert(0, _VALIDATION_DIR)
 
 import run_box_halotools as box_halotools
+import run_box_cov_bridge as box_cov_bridge
 import run_lightcone_treecorr as lc_treecorr
 import run_plane_parallel as plane_parallel
 from mock_catalogues import (radial_alignment_box_mock, responsivity,
@@ -286,6 +287,105 @@ class TestResponsivityOption:
         np.testing.assert_allclose(results[False][0], results[True][0] * 2 * R,
                                    rtol=1e-10)
         np.testing.assert_allclose(results[False][1], results[True][1], rtol=1e-12)
+
+
+@pytest.fixture(scope="module")
+def box_jk_delete_one(tmp_path_factory):
+    """Box jackknife run plus independent direct measurements on each
+    physically deleted subbox catalogue (see validation/run_box_cov_bridge.py)."""
+    mock = plane_parallel.build_mock()
+    tmp = tmp_path_factory.mktemp("validation_boxjk")
+    box = box_cov_bridge.run_box_jk(mock, str(tmp / "box_jk.hdf5"), str(tmp) + "/")
+    direct = box_cov_bridge.run_delete_one_direct(
+        mock, str(tmp / "direct.hdf5"), str(tmp) + "/")
+    return box, direct
+
+
+class TestBoxJackknifeDeleteOneIdentity:
+    """The box jackknife reconstructs each delete-one realisation by count
+    subtraction (a pair is removed when either member is in the deleted
+    subbox) with the analytic RR rescaled to the retained counts and volume.
+    Each reconstruction must equal an independent direct measurement on the
+    physically deleted catalogue at floating-point precision — no external
+    package and no approximation is involved in this identity."""
+
+    @pytest.fixture(scope="class")
+    def identity(self, box_jk_delete_one):
+        box, direct = box_jk_delete_one
+        return box_cov_bridge.delete_one_identity(box, direct)
+
+    def test_dd_count_grids(self, identity):
+        assert identity["DD"] < 1e-10
+
+    def test_splusd_grids_with_per_realisation_responsivity(self, identity):
+        assert identity["SplusD"] < 1e-10
+
+    def test_rr_volume_factor(self, identity):
+        """RR_jk equals the direct-run analytic RR times exactly V/V_del."""
+        assert identity["RR"] < 1e-12
+
+    def test_w_realisations(self, identity):
+        assert identity["w_g_plus"] < 1e-10
+        assert identity["w_gg"] < 1e-10
+
+
+_BRIDGE_REF = box_cov_bridge.REFERENCE_FILE
+
+requires_bridge_reference = pytest.mark.skipif(
+    not os.path.exists(_BRIDGE_REF),
+    reason="no committed box covariance bridge reference; run "
+           "validation/run_box_cov_bridge.py first",
+)
+
+
+@requires_bridge_reference
+class TestBoxCovarianceBridge:
+    """Box jackknife vs the treecorr-validated lightcone jackknife with the
+    identical subbox partition on the plane-parallel embedding. Agreement is
+    loose BY EXPECTATION (see validation/run_box_cov_bridge.py): with 8
+    patches the delete-one deviations are only a few % of the mean, so the
+    ~0.1-1% plane-parallel-vs-sky pair migrations plus the genuinely
+    different estimator definitions move the stds by tens of percent. The
+    sharp statement is that the box-style estimator rebuilt from the
+    lightcone's own retained counts reproduces the lightcone stds — the
+    residual lives in the counts/estimators, not the jackknife machinery
+    (which TestBoxJackknifeDeleteOneIdentity locks at machine precision)."""
+
+    def test_box_covariance_regression(self, box_jk_delete_one):
+        """Fresh box jackknife covariance matches the committed snapshot."""
+        box, _ = box_jk_delete_one
+        with h5py.File(_BRIDGE_REF, "r") as f:
+            np.testing.assert_allclose(box["std_gp"], f["box_std_gp"][:], rtol=1e-8)
+            np.testing.assert_allclose(box["std_gg"], f["box_std_gg"][:], rtol=1e-8)
+            np.testing.assert_allclose(box["cov_gp"], f["box_cov_gp"][:], rtol=1e-8,
+                                       atol=1e-12)
+            np.testing.assert_allclose(box["cov_gg"], f["box_cov_gg"][:], rtol=1e-8,
+                                       atol=1e-12)
+
+    def test_committed_identity_metrics(self):
+        """The committed run's delete-one identity held at machine precision."""
+        with h5py.File(_BRIDGE_REF, "r") as f:
+            for key in ["DD", "SplusD", "RR", "w_g_plus", "w_gg"]:
+                assert f.attrs[f"identity_{key}"] < 1e-9
+
+    def test_bridge_agreement_level(self):
+        """Cross-pipeline std ratios stay within the documented loose band."""
+        with h5py.File(_BRIDGE_REF, "r") as f:
+            for key in ["gp", "gg"]:
+                ratio = f[f"box_std_{key}"][:] / f[f"lightcone_std_{key}"][:]
+                assert np.all((ratio > 0.6) & (ratio < 1.15))
+
+    def test_boxstyle_reconstruction_matches_lightcone(self):
+        """Box-style estimator from lightcone counts reproduces lightcone stds."""
+        with h5py.File(_BRIDGE_REF, "r") as f:
+            for key in ["gp", "gg"]:
+                ratio = f[f"boxstyle_std_{key}"][:] / f[f"lightcone_std_{key}"][:]
+                assert np.all((ratio > 0.7) & (ratio < 1.15))
+
+    def test_analytic_rr_shape_approximation_is_small(self):
+        """The hole-boundary bin-shape the analytic RR misses stays ~2%."""
+        with h5py.File(_BRIDGE_REF, "r") as f:
+            assert f.attrs["rr_shape_error"] < 0.04
 
 
 class TestMockCatalogue:

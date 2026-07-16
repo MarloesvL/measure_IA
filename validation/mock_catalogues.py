@@ -323,8 +323,10 @@ def embed_box_mock_on_lightcone(mock, distance=3000.0, alpha0=45.0, delta0=0.0,
 
 	n_rand_d = n_randoms_factor * len(ra_d)
 	n_rand_s = n_randoms_factor * len(ra_s)
-	pos_rd = embed(rng.uniform(0.0, L, (n_rand_d, 3)))
-	pos_rs = embed(rng.uniform(0.0, L, (n_rand_s, 3)))
+	cube_rd = rng.uniform(0.0, L, (n_rand_d, 3))
+	cube_rs = rng.uniform(0.0, L, (n_rand_s, 3))
+	pos_rd = embed(cube_rd)
+	pos_rs = embed(cube_rs)
 	ra_rd, dec_rd, r_rd = _cartesian_to_radec(pos_rd)
 	ra_rs, dec_rs, r_rs = _cartesian_to_radec(pos_rs)
 
@@ -339,7 +341,16 @@ def embed_box_mock_on_lightcone(mock, distance=3000.0, alpha0=45.0, delta0=0.0,
 		"RA_shape_sample": ra_rs, "DEC_shape_sample": dec_rs, "r_com_shape_sample": r_rs,
 		"weight": np.ones(n_rand_d), "weight_shape_sample": np.ones(n_rand_s),
 	}
-	return data, randoms_data
+	cube_coords = {"randoms_position": cube_rd, "randoms_shape": cube_rs}
+	return data, randoms_data, cube_coords
+
+
+def subbox_labels(positions, boxsize, L):
+	"""Subbox index (0..L^3-1) per position — the same partition the box
+	jackknife uses, for supplying identical patches to the lightcone."""
+	idx = np.floor(np.asarray(positions) / (boxsize / L)).astype(int)
+	idx = np.clip(idx, 0, L - 1)
+	return idx[:, 0] * L ** 2 + idx[:, 1] * L + idx[:, 2]
 
 
 if __name__ == "__main__":
