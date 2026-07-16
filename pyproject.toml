@@ -17,6 +17,12 @@ dependencies = [
     "sympy~=1.12",
 ]
 
+[project.optional-dependencies]
+validation = [
+    "halotools>=0.9.4; python_version >= '3.11'",
+    "treecorr>=5.0",
+]
+
 [dependency-groups] # doc packages also in dev
 dev = ["pytest~=8.3.1"]
 
