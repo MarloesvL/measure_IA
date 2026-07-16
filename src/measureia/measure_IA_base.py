@@ -206,16 +206,25 @@ class MeasureIABase(SimInfo):
 
 	@staticmethod
 	def get_ellipticity(e, phi):
-		"""Calculates the radial and tangential components of the ellipticity, given the size of the ellipticty vector
-		and the angle between the semimajor or semiminor axis and the separation vector.
+		"""Calculates the radial (+) and cross (x) components of the ellipticity with respect to the
+		separation vector, following the intrinsic-alignment sign convention: e_+ > 0 means the
+		major axis points along the separation vector (radial alignment), so radial alignment
+		gives w_g+ > 0.
+
+		For 2D input, e1 and e2 must follow the standard survey shear-catalogue convention
+		(components defined on the local (RA, DEC) axes as delivered by e.g. lensfit/metacal-style
+		catalogues and expected by TreeCorr). Note that the IA e_+ has the opposite sign to the
+		lensing tangential shear: e_+ = -gamma_t.
 
 		Parameters
 		----------
 		e : ndarray
 			if 1D: size of the ellipticity vector; if 2D: e1,e2 components of the ellipticity vector
+			in the survey shear-catalogue convention
 		phi : ndarray
 			if e 1D: angle between semimajor/semiminor axis and separation vector;
-			if 2D: angle of separation vector wrt RA
+			if 2D: angle of the projected separation vector in the internal (east, north) frame,
+			arctan2(north, east)
 
 		Returns
 		-------
@@ -224,8 +233,8 @@ class MeasureIABase(SimInfo):
 
 		"""
 		if len(np.shape(e)) > 1:
-			e_plus = -(e[:, 0] * np.cos(2 * phi) + e[:, 1] * np.sin(2 * phi))
-			e_cross = e[:, 0] * np.sin(2 * phi) - e[:, 1] * np.cos(2 * phi)
+			e_plus = e[:, 0] * np.cos(2 * phi) - e[:, 1] * np.sin(2 * phi)
+			e_cross = e[:, 0] * np.sin(2 * phi) + e[:, 1] * np.cos(2 * phi)
 		else:
 			e_plus, e_cross = e * np.cos(2 * phi), e * np.sin(2 * phi)
 		return e_plus, e_cross

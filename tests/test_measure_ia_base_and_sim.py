@@ -237,17 +237,31 @@ class TestGetEllipticity:
         np.testing.assert_allclose(e_x, [1.0], atol=1e-15)
 
     def test_2d_components(self):
-        """For 2D input: e_+ = -(e1*cos2phi + e2*sin2phi)"""
+        """For 2D input (survey shear-catalogue convention, IA sign):
+        e_+ = e1*cos2phi - e2*sin2phi, e_x = e1*sin2phi + e2*cos2phi"""
         e1   = np.array([1.0, 0.0])
         e2   = np.array([0.0, 1.0])
         phi  = np.zeros(2)
         e    = np.column_stack([e1, e2])
         e_p, e_x = MeasureIABase.get_ellipticity(e, phi)
         # phi=0 → cos2phi=1, sin2phi=0
-        # e_+ = -(e1*1 + e2*0) = -e1
-        np.testing.assert_allclose(e_p, -e1)
-        # e_x = e1*0 - e2*1 = -e2
-        np.testing.assert_allclose(e_x, -e2)
+        # e_+ = e1*1 - e2*0 = e1
+        np.testing.assert_allclose(e_p, e1)
+        # e_x = e1*0 + e2*1 = e2
+        np.testing.assert_allclose(e_x, e2)
+
+    def test_2d_radial_alignment_is_positive(self):
+        """IA sign convention: a galaxy whose major axis points along the
+        separation vector (radial alignment) must have e_+ > 0.
+
+        A separation along the internal east axis (phi = 0) corresponds to
+        a survey-frame position angle of 0, where a radially aligned galaxy
+        has e1 = +e, e2 = 0."""
+        e = np.array([[0.6, 0.0]])
+        e_p, e_x = MeasureIABase.get_ellipticity(e, np.zeros(1))
+        assert e_p[0] > 0
+        np.testing.assert_allclose(e_p, [0.6])
+        np.testing.assert_allclose(e_x, [0.0], atol=1e-15)
 
     def test_1d_output_shape(self):
         e   = np.ones(10)
