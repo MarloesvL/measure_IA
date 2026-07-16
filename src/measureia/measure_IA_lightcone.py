@@ -350,7 +350,7 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 
 	def measure_xi_w(self, IA_estimator, dataset_name, corr_type, jk_patches=None, num_jk=None,
 					 measure_cov=True, masks=None, masks_randoms=None, cosmology=None, over_h=False, tree=True,
-					 chunk_size=1000, temp_file_path=None, seed=None):
+					 chunk_size=1000, temp_file_path=None, seed=None, responsivity=False):
 		"""Measures xi_gg, xi_g+ and w_gg, w_g+ including jackknife covariance if desired for lightcone data.
 		Manages the various _measure_xi_rp_pi_obs and _measure_jackknife_covariance options in MeasureWObservations
 		and MeasureJackknife.
@@ -409,6 +409,7 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 		else:
 			raise KeyError("Unknown input for IA_estimator, choose from [clusters, galaxies].")
 
+		self.responsivity_correction = responsivity
 		# todo: Expand to include methods with trees and internal multiproc
 		# todo: Checks to see if data directories include everything they need
 		data = self.data  # temporary save so it can be restored at the end of the calculation
@@ -560,7 +561,7 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 
 	def measure_xi_multipoles(self, IA_estimator, dataset_name, corr_type, jk_patches=None, num_jk=None,
 							  measure_cov=True, masks=None, masks_randoms=None, cosmology=None, over_h=False,
-							  tree=True, chunk_size=1000, temp_file_path=None, seed=None):
+							  tree=True, chunk_size=1000, temp_file_path=None, seed=None, responsivity=False):
 		"""Measures xi_gg, xi_g+ and multipoles including jackknife covariance if desired for lightcone data.
 		Manages the various _measure_xi_rp_pi_obs and _measure_jackknife_covariance options in MeasureWObservations
 		and MeasureJackknife.
@@ -619,6 +620,7 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 		else:
 			raise KeyError("Unknown input for IA_estimator, choose from [clusters, galaxies].")
 
+		self.responsivity_correction = responsivity
 		# todo: Expand to include methods with trees and internal multiproc
 		# todo: Checks to see if data directories include everything they need
 		data = self.data  # temporary save so it can be restored at the end of the calculation

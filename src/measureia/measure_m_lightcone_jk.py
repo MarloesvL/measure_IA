@@ -144,6 +144,9 @@ class MeasureMultipolesLightconeJackknife(MeasureIABase):
 			LOS_all_shape_sample *= h
 		del redshift, redshift_shape_sample, cosmology
 
+		if getattr(self, "responsivity_correction", False):
+			R = sum(weight_shape * (1 - (e1 ** 2 + e2 ** 2) / 2.0)) / sum(weight_shape)
+			e1, e2 = e1 / (2 * R), e2 / (2 * R)
 		e = np.array([e1, e2]).transpose()
 		RA_rad = RA / 180 * np.pi
 		RA_shape_sample_rad = RA_shape_sample / 180 * np.pi
@@ -367,6 +370,9 @@ class MeasureMultipolesLightconeJackknife(MeasureIABase):
 			LOS_all_shape_sample *= h
 		del redshift, redshift_shape_sample, cosmology
 
+		if getattr(self, "responsivity_correction", False):
+			R = sum(weight_shape * (1 - (e1 ** 2 + e2 ** 2) / 2.0)) / sum(weight_shape)
+			e1, e2 = e1 / (2 * R), e2 / (2 * R)
 		e = np.array([e1, e2]).transpose()
 		RA_rad = RA / 180 * np.pi
 		RA_shape_sample_rad = RA_shape_sample / 180 * np.pi

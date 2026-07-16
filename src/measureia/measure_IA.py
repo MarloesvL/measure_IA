@@ -66,7 +66,7 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 		return
 
 	def measure_xi_w(self, dataset_name, corr_type, num_jk=0, temp_file_path=None, masks=None,
-					 ellipticity='distortion', chunk_size=1000):
+					 ellipticity='distortion', chunk_size=1000, responsivity=True):
 		r"""Measures $\xi_{gg}$, $\xi_{g+}$ and $w_{gg}$, $w_{g+}$ including jackknife covariance if desired.
 		Manages the various _measure_xi_rp_pi_box method options in MeasureWBox and MeasureWBoxJackknife.
 
@@ -92,6 +92,7 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			 as (1-q)/(1+q). Default is 'distortion'.
 
 		"""
+		self.responsivity_correction = responsivity
 		if num_jk > 0:
 			try:
 				assert sympy.integer_nthroot(num_jk, 3)[1]
@@ -163,7 +164,7 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 		return
 
 	def measure_xi_multipoles(self, dataset_name, corr_type, num_jk=0, temp_file_path=None, masks=None, rp_cut=None,
-							  ellipticity='distortion', chunk_size=1000):
+							  ellipticity='distortion', chunk_size=1000, responsivity=True):
 		r"""Measures $\xi_{gg}$, $\xi_{g+}$ and $\tilde{\xi}_{gg,0}$, $\tilde{\xi}_{g+,2}$ including jackknife covariance
 		if desired. Manages the various _measure_xi_r_mur_box method options in MeasureMultipolesBox and
 		MeasureMultipolesBoxJackknife.
@@ -190,6 +191,7 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			 as (1-q)/(1+q). Default is 'distortion'.
 		"""
 
+		self.responsivity_correction = responsivity
 		if num_jk > 0:
 			try:
 				assert sympy.integer_nthroot(num_jk, 3)[1]

@@ -174,6 +174,61 @@ class TestPlaneParallelConsistency:
         np.testing.assert_allclose((wgp_ana / box["w_g_plus"])[1:6], 1.0, atol=0.05)
 
 
+class TestResponsivityOption:
+    """The responsivity flag divides all S+ terms by 2R. Defaults: box True
+    (shapes derive from raw axis ratios), lightcone False (e1/e2 are treated
+    as calibrated shear estimates). Toggling the flag must rescale w_g+ by
+    exactly 2R and leave w_gg untouched."""
+
+    def test_box_flag_rescales_by_2R(self, tmp_path):
+        import run_box_halotools as v
+        mock = radial_alignment_box_mock()
+        R = responsivity(mock)
+        data = {k: mock[k] for k in
+                ["Position", "Position_shape_sample", "Axis_Direction", "q", "LOS"]}
+        from measureia import MeasureIABox
+        results = {}
+        for flag in (True, False):
+            ia = MeasureIABox(
+                data, str(tmp_path / f"box_resp_{flag}.hdf5"),
+                simulation=None, snapshot=None,
+                separation_limits=v.RP_LIMS, num_bins_r=v.NUM_BINS_RP,
+                num_bins_pi=v.NUM_BINS_PI, pi_max=v.PI_MAX,
+                boxsize=mock["boxsize"], num_nodes=1)
+            ia.measure_xi_w(v.DATASET, "both", 0, temp_file_path=False,
+                            responsivity=flag)
+            with h5py.File(str(tmp_path / f"box_resp_{flag}.hdf5")) as f:
+                results[flag] = (f[f"w_g_plus/{v.DATASET}"][:], f[f"w_gg/{v.DATASET}"][:])
+        np.testing.assert_allclose(results[False][0], results[True][0] * 2 * R,
+                                   rtol=1e-12)
+        np.testing.assert_allclose(results[False][1], results[True][1], rtol=1e-12)
+
+    def test_lightcone_flag_rescales_by_2R(self, tmp_path):
+        import run_lightcone_treecorr as v
+        data, randoms, info, dist = v.build_catalogues()
+        e = np.sqrt(data["e1"] ** 2 + data["e2"] ** 2)
+        w = data["weight_shape_sample"]
+        R = np.sum(w * (1 - e ** 2 / 2.0)) / np.sum(w)
+        from measureia import MeasureIALightcone
+        results = {}
+        for flag in (True, False):
+            out = str(tmp_path / f"lc_resp_{flag}.hdf5")
+            ia = MeasureIALightcone(
+                data={k: v_ for k, v_ in data.items()},
+                randoms_data={k: v_ for k, v_ in randoms.items()},
+                output_file_name=out,
+                separation_limits=v.RP_LIMS, num_bins_r=v.NUM_BINS_RP,
+                num_bins_pi=v.NUM_BINS_PI, pi_max=v.PI_MAX, num_nodes=1)
+            ia.measure_xi_w("galaxies", v.DATASET, "both", measure_cov=False,
+                            tree=True, cosmology=v.COSMOLOGY, over_h=False,
+                            temp_file_path=str(tmp_path) + "/", responsivity=flag)
+            with h5py.File(out) as f:
+                results[flag] = (f[f"w_g_plus/{v.DATASET}"][:], f[f"w_gg/{v.DATASET}"][:])
+        np.testing.assert_allclose(results[False][0], results[True][0] * 2 * R,
+                                   rtol=1e-10)
+        np.testing.assert_allclose(results[False][1], results[True][1], rtol=1e-12)
+
+
 class TestMockCatalogue:
     """The mock itself must stay byte-identical across versions — the committed
     reference outputs are only valid for this exact catalogue."""

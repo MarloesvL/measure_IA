@@ -138,7 +138,8 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 		else:
 			raise ValueError("Invalid value for ellipticity. Choose 'distortion' or 'ellipticity'.")
 		del q
-		R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape)
+		R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape) \
+			if getattr(self, "responsivity_correction", True) else 0.5
 		# R = 1 - np.mean(e ** 2) / 2.0  # responsitivity factor
 		L3 = self.boxsize ** 3  # box volume
 		if rp_cut == None:
@@ -373,7 +374,8 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 		else:
 			raise ValueError("Invalid value for ellipticity. Choose 'distortion' or 'ellipticity'.")
 		del q
-		R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape)
+		R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape) \
+			if getattr(self, "responsivity_correction", True) else 0.5
 		# R = 1 - np.mean(e ** 2) / 2.0  # responsitivity factor
 		L3 = self.boxsize ** 3  # box volume
 		if rp_cut == None:
@@ -770,7 +772,8 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 		else:
 			raise ValueError("Invalid value for ellipticity. Choose 'distortion' or 'ellipticity'.")
 		del q
-		self.R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape)
+		self.R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape) \
+			if getattr(self, "responsivity_correction", True) else 0.5
 		# R = 1 - np.mean(e ** 2) / 2.0  # responsitivity factor
 		L3 = self.boxsize ** 3  # box volume
 		if rp_cut == None:

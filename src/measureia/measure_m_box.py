@@ -133,7 +133,8 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 		else:
 			raise ValueError("Invalid value for ellipticity. Choose 'distortion' or 'ellipticity'.")
 		del q
-		R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape)
+		R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape) \
+			if getattr(self, "responsivity_correction", True) else 0.5
 		# R = 1 - np.mean(e ** 2) / 2.0  # responsivity factor
 		L3 = self.boxsize ** 3  # box volume
 		sub_box_len_logr = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
@@ -321,7 +322,8 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 		else:
 			raise ValueError("Invalid value for ellipticity. Choose 'distortion' or 'ellipticity'.")
 		del q
-		R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape)
+		R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape) \
+			if getattr(self, "responsivity_correction", True) else 0.5
 		# R = 1 - np.mean(e ** 2) / 2.0  # responsivity factor
 		L3 = self.boxsize ** 3  # box volume
 		sub_box_len_logr = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
@@ -497,7 +499,8 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 			e = (1 - q) / (1 + q)
 		else:
 			raise ValueError("Invalid value for ellipticity. Choose 'distortion' or 'ellipticity'.")
-		R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape)
+		R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape) \
+			if getattr(self, "responsivity_correction", True) else 0.5
 		# R = 1 - np.mean(e ** 2) / 2.0  # responsivity factor
 		L3 = self.boxsize ** 3  # box volume
 		sub_box_len_logr = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
@@ -799,7 +802,8 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 			e = (1 - q) / (1 + q)
 		else:
 			raise ValueError("Invalid value for ellipticity. Choose 'distortion' or 'ellipticity'.")
-		self.R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape)
+		self.R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape) \
+			if getattr(self, "responsivity_correction", True) else 0.5
 		# self.R = 1 - np.mean(self.e ** 2) / 2.0  # responsivity factor
 		L3 = self.boxsize ** 3  # box volume
 		self.sub_box_len_logr = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
