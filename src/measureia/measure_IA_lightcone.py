@@ -78,6 +78,44 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 
 		return
 
+	def _merged_masks(self, masks_position, masks_shape):
+		"""Combines the masks for a pair-count pass where the position and shape slots of self.data may hold
+		different samples (data or randoms). Each slot's mask is taken from the mask dictionary of the sample
+		that occupies it. Must be called after self.data has been set for the pass.
+
+		Parameters
+		----------
+		masks_position : dict or NoneType
+			Mask dictionary of the sample occupying the position slots ('Redshift', 'RA', 'DEC', 'weight').
+		masks_shape : dict or NoneType
+			Mask dictionary of the sample occupying the shape slots ('*_shape_sample', 'e1', 'e2').
+
+		Returns
+		-------
+		dict or NoneType
+			Combined mask dictionary, or None if no mask applies to either slot. A missing dictionary means no
+			selection (all True); missing keys default to the slot's coordinate mask so all fields of one
+			sample stay aligned.
+
+		"""
+		if masks_position is None and masks_shape is None:
+			return None
+		if masks_position is None:
+			masks_position = {}
+		if masks_shape is None:
+			masks_shape = {}
+		pos_default = np.ones(len(self.data["RA"]), dtype=bool)
+		shape_default = np.ones(len(self.data["RA_shape_sample"]), dtype=bool)
+		pos_mask = masks_position.get("RA", pos_default)
+		shape_mask = masks_shape.get("RA_shape_sample", shape_default)
+		merged = {}
+		for key in ("Redshift", "RA", "DEC", "weight"):
+			merged[key] = masks_position.get(key, pos_mask)
+		for key in ("Redshift_shape_sample", "RA_shape_sample", "DEC_shape_sample", "weight_shape_sample",
+					"e1", "e2"):
+			merged[key] = masks_shape.get(key, shape_mask)
+		return merged
+
 	def measure_xi_helper(self, method_count_pairs, method_shape_correlation, IA_estimator, dataset_name, corr_type,
 						  masks=None, masks_randoms=None, cosmology=None, over_h=False, chunk_size=1000, num_nodes=1,
 						  temp_file_path=None):
@@ -87,7 +125,7 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 		if corr_type == "g+" or corr_type == "both":
 			# S+D
 			self.data = self.data_dir
-			method_shape_correlation(masks=masks, dataset_name=dataset_name,
+			method_shape_correlation(masks=self._merged_masks(masks, masks), dataset_name=dataset_name,
 									 over_h=over_h, data_suffix="_SplusD",
 									 cosmology=cosmology, chunk_size=chunk_size, num_nodes=num_nodes,
 									 temp_file_path=temp_file_path)
@@ -105,7 +143,7 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 				"weight_shape_sample": self.data_dir["weight_shape_sample"]
 			}
 			# print(self.data)
-			method_shape_correlation(masks=masks, dataset_name=f"{dataset_name}",
+			method_shape_correlation(masks=self._merged_masks(masks_randoms, masks), dataset_name=f"{dataset_name}",
 									 over_h=over_h, data_suffix="_SplusR",
 									 cosmology=cosmology, chunk_size=chunk_size, num_nodes=num_nodes,
 									 temp_file_path=temp_file_path)
@@ -128,7 +166,7 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 				"weight": self.data_dir["weight"],
 				"weight_shape_sample": self.data_dir["weight_shape_sample"]
 			}
-			method_count_pairs(masks=masks, dataset_name=dataset_name, over_h=over_h,
+			method_count_pairs(masks=self._merged_masks(masks, masks), dataset_name=dataset_name, over_h=over_h,
 							   cosmology=cosmology,
 							   data_suffix="_DD", chunk_size=chunk_size, num_nodes=num_nodes,
 							   temp_file_path=temp_file_path)
@@ -144,8 +182,8 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 				"weight": self.randoms_data["weight"],
 				"weight_shape_sample": self.data_dir["weight_shape_sample"]
 			}
-			method_count_pairs(masks=masks, dataset_name=dataset_name, over_h=over_h,
-							   cosmology=cosmology,
+			method_count_pairs(masks=self._merged_masks(masks_randoms, masks), dataset_name=dataset_name,
+							   over_h=over_h, cosmology=cosmology,
 							   data_suffix="_SR", chunk_size=chunk_size, num_nodes=num_nodes,
 							   temp_file_path=temp_file_path)
 
@@ -161,8 +199,8 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 				"weight": self.data_dir["weight"],
 				"weight_shape_sample": self.randoms_data["weight_shape_sample"]
 			}
-			method_count_pairs(masks=masks, dataset_name=dataset_name, over_h=over_h,
-							   cosmology=cosmology,
+			method_count_pairs(masks=self._merged_masks(masks, masks_randoms), dataset_name=dataset_name,
+							   over_h=over_h, cosmology=cosmology,
 							   data_suffix="_RD", chunk_size=chunk_size, num_nodes=num_nodes,
 							   temp_file_path=temp_file_path)
 
@@ -178,8 +216,8 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 				"weight": self.randoms_data["weight"],
 				"weight_shape_sample": self.randoms_data["weight_shape_sample"]
 			}
-			method_count_pairs(masks=masks, dataset_name=dataset_name, over_h=over_h,
-							   cosmology=cosmology,
+			method_count_pairs(masks=self._merged_masks(masks_randoms, masks_randoms), dataset_name=dataset_name,
+							   over_h=over_h, cosmology=cosmology,
 							   data_suffix="_RR", chunk_size=chunk_size, num_nodes=num_nodes,
 							   temp_file_path=temp_file_path)
 		return
@@ -195,7 +233,8 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			# S+D
 			self.data = self.data_dir
 			method_shape_correlation(jackknife_region_indices_pos=jk_patches["position"],
-									 jackknife_region_indices_shape=jk_patches["shape"], masks=masks,
+									 jackknife_region_indices_shape=jk_patches["shape"],
+									 masks=self._merged_masks(masks, masks),
 									 dataset_name=dataset_name,
 									 jk_group_name=f"{dataset_name}_jk{num_jk}",
 									 over_h=over_h, data_suffix="_SplusD",
@@ -215,7 +254,8 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 				"weight_shape_sample": self.data_dir["weight_shape_sample"]
 			}
 			method_shape_correlation(jackknife_region_indices_pos=jk_patches["randoms_position"],
-									 jackknife_region_indices_shape=jk_patches["shape"], masks=masks,
+									 jackknife_region_indices_shape=jk_patches["shape"],
+									 masks=self._merged_masks(masks_randoms, masks),
 									 dataset_name=f"{dataset_name}", data_suffix="_SplusR",
 									 over_h=over_h, jk_group_name=f"{dataset_name}_jk{num_jk}",
 									 cosmology=cosmology, chunk_size=chunk_size, num_nodes=num_nodes,
@@ -241,7 +281,7 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			}
 			method_count_pairs(jackknife_region_indices_pos=jk_patches["position"],
 							   jackknife_region_indices_shape=jk_patches["shape"],
-							   masks=masks, dataset_name=dataset_name, over_h=over_h,
+							   masks=self._merged_masks(masks, masks), dataset_name=dataset_name, over_h=over_h,
 							   cosmology=cosmology,
 							   jk_group_name=f"{dataset_name}_jk{num_jk}",
 							   data_suffix="_DD", chunk_size=chunk_size, num_nodes=num_nodes,
@@ -260,8 +300,8 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			}
 			method_count_pairs(jackknife_region_indices_pos=jk_patches["randoms_position"],
 							   jackknife_region_indices_shape=jk_patches["shape"],
-							   masks=masks, dataset_name=dataset_name, over_h=over_h,
-							   cosmology=cosmology,
+							   masks=self._merged_masks(masks_randoms, masks), dataset_name=dataset_name,
+							   over_h=over_h, cosmology=cosmology,
 							   jk_group_name=f"{dataset_name}_jk{num_jk}",
 							   data_suffix="_SR", chunk_size=chunk_size, num_nodes=num_nodes,
 							   temp_file_path=temp_file_path)
@@ -280,8 +320,8 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			}
 			method_count_pairs(jackknife_region_indices_pos=jk_patches["position"],
 							   jackknife_region_indices_shape=jk_patches["randoms_shape"],
-							   masks=masks, dataset_name=dataset_name, over_h=over_h,
-							   cosmology=cosmology,
+							   masks=self._merged_masks(masks, masks_randoms), dataset_name=dataset_name,
+							   over_h=over_h, cosmology=cosmology,
 							   jk_group_name=f"{dataset_name}_jk{num_jk}",
 							   data_suffix="_RD", chunk_size=chunk_size, num_nodes=num_nodes,
 							   temp_file_path=temp_file_path)
@@ -300,8 +340,8 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			}
 			method_count_pairs(jackknife_region_indices_pos=jk_patches["randoms_position"],
 							   jackknife_region_indices_shape=jk_patches["randoms_shape"],
-							   masks=masks, dataset_name=dataset_name, over_h=over_h,
-							   cosmology=cosmology,
+							   masks=self._merged_masks(masks_randoms, masks_randoms), dataset_name=dataset_name,
+							   over_h=over_h, cosmology=cosmology,
 							   jk_group_name=f"{dataset_name}_jk{num_jk}",
 							   data_suffix="_RR", chunk_size=chunk_size, num_nodes=num_nodes,
 							   temp_file_path=temp_file_path)
@@ -310,7 +350,7 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 
 	def measure_xi_w(self, IA_estimator, dataset_name, corr_type, jk_patches=None, num_jk=None,
 					 measure_cov=True, masks=None, masks_randoms=None, cosmology=None, over_h=False, tree=True,
-					 chunk_size=1000, temp_file_path=None):
+					 chunk_size=1000, temp_file_path=None, seed=None):
 		"""Measures xi_gg, xi_g+ and w_gg, w_g+ including jackknife covariance if desired for lightcone data.
 		Manages the various _measure_xi_rp_pi_obs and _measure_jackknife_covariance options in MeasureWObservations
 		and MeasureJackknife.
@@ -343,6 +383,12 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			ccl.Cosmology(Omega_c=0.225, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.0)
 		over_h : bool, optional
 			If True, the units are assumed to be in not-over-h and converted to over-h units. Default is False.
+		chunk_size: int, optional
+			Size of the chunks of data sent to each multiprocessing node. If larger, more RAM is needed per node.
+			Default is 1000.
+		seed : int or NoneType, optional
+			Seed for the internal jackknife patch generation (used only when num_jk is given), making the patch
+			assignment reproducible. Default is None.
 
 		"""
 		if IA_estimator == "clusters":
@@ -390,7 +436,7 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 		if measure_cov:
 			if jk_patches is None:
 				if num_jk is not None:
-					jk_patches = self.assign_jackknife_patches(data, self.randoms_data, num_jk)
+					jk_patches = self.assign_jackknife_patches(data, self.randoms_data, num_jk, seed=seed)
 				else:
 					raise ValueError("Set measure_cov to False, or provide either jk_patches or num_jk input.")
 			else:
@@ -514,8 +560,8 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 
 	def measure_xi_multipoles(self, IA_estimator, dataset_name, corr_type, jk_patches=None, num_jk=None,
 							  measure_cov=True, masks=None, masks_randoms=None, cosmology=None, over_h=False,
-							  tree=True, temp_file_path=None):
-		"""Measures xi_gg, xi_g+ and w_gg, w_g+ including jackknife covariance if desired for lightcone data.
+							  tree=True, chunk_size=1000, temp_file_path=None, seed=None):
+		"""Measures xi_gg, xi_g+ and multipoles including jackknife covariance if desired for lightcone data.
 		Manages the various _measure_xi_rp_pi_obs and _measure_jackknife_covariance options in MeasureWObservations
 		and MeasureJackknife.
 
@@ -547,6 +593,12 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			ccl.Cosmology(Omega_c=0.225, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.0)
 		over_h : bool, optional
 			If True, the units are assumed to be in not-over-h and converted to over-h units. Default is False.
+		chunk_size: int, optional
+			Size of the chunks of data sent to each multiprocessing node. If larger, more RAM is needed per node.
+			Default is 1000.
+		seed : int or NoneType, optional
+			Seed for the internal jackknife patch generation (used only when num_jk is given), making the patch
+			assignment reproducible. Default is None.
 
 		"""
 		if IA_estimator == "clusters":
@@ -594,7 +646,7 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 		if measure_cov:
 			if jk_patches is None:
 				if num_jk is not None:
-					jk_patches = self.assign_jackknife_patches(data, self.randoms_data, num_jk)
+					jk_patches = self.assign_jackknife_patches(data, self.randoms_data, num_jk, seed=seed)
 				else:
 					raise ValueError("Set measure_cov to False, or provide either jk_patches or num_jk input.")
 			else:
@@ -650,12 +702,14 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 										  self._measure_xi_r_mur_lightcone_jk_tree, IA_estimator, dataset_name,
 										  corr_type, jk_patches=jk_patches, masks=masks,
 										  masks_randoms=masks_randoms, cosmology=cosmology, over_h=over_h,
+										  chunk_size=chunk_size, num_nodes=self.num_nodes,
 										  temp_file_path=temp_file_path)
 			else:
 				self.measure_xi_jk_helper(self._count_pairs_xi_r_mur_lightcone_jk_brute,
 										  self._measure_xi_r_mur_lightcone_jk_brute, IA_estimator, dataset_name,
 										  corr_type, jk_patches=jk_patches, masks=masks,
 										  masks_randoms=masks_randoms, cosmology=cosmology, over_h=over_h,
+										  chunk_size=chunk_size, num_nodes=self.num_nodes,
 										  temp_file_path=temp_file_path)
 			self._obs_estimator([corr_type, "multipoles"], IA_estimator, dataset_name, num_samples)
 			self._measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
@@ -690,12 +744,14 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 									   self._measure_xi_r_mur_lightcone_tree,
 									   IA_estimator, dataset_name, corr_type, masks=masks,
 									   temp_file_path=temp_file_path,
+									   chunk_size=chunk_size, num_nodes=self.num_nodes,
 									   masks_randoms=masks_randoms, cosmology=cosmology, over_h=over_h)
 			else:
 				self.measure_xi_helper(self._count_pairs_xi_r_mur_lightcone_brute,
 									   self._measure_xi_r_mur_lightcone_brute,
 									   IA_estimator, dataset_name, corr_type, masks=masks,
 									   temp_file_path=temp_file_path,
+									   chunk_size=chunk_size, num_nodes=self.num_nodes,
 									   masks_randoms=masks_randoms, cosmology=cosmology, over_h=over_h)
 			self._obs_estimator([corr_type, "multipoles"], IA_estimator, dataset_name, num_samples)
 			self._measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)

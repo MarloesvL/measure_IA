@@ -1,3 +1,5 @@
+import random as _random
+
 import numpy as np
 import h5py
 from kmeans_radec import kmeans_sample
@@ -54,7 +56,7 @@ class MeasureJackknife(MeasureIABase):
 						 pi_max, boxsize, periodicity)
 		return
 
-	def assign_jackknife_patches(self, data, randoms_data, num_jk):
+	def assign_jackknife_patches(self, data, randoms_data, num_jk, seed=None):
 		"""Assigns jackknife patches to data and randoms given a number of patches.
 		Based on https://github.com/esheldon/kmeans_radec
 
@@ -68,6 +70,9 @@ class MeasureJackknife(MeasureIABase):
 			"DEC_shape_sample"
 		num_jk : int
 			Number of jackknife patches
+		seed : int or NoneType, optional
+			Seed for the k-means initialisation, making the patch assignment reproducible. If None (default),
+			the patches differ between runs. The global numpy random state is restored afterwards.
 
 		Returns
 		-------
@@ -85,7 +90,18 @@ class MeasureJackknife(MeasureIABase):
 
 		# Define a number of jaccknife regions and find their centres using kmans
 		X = np.column_stack((RA, DEC))
-		km = kmeans_sample(X, num_jk, maxiter=100, tol=1.0e-5)
+		if seed is None:
+			km = kmeans_sample(X, num_jk, maxiter=100, tol=1.0e-5)
+		else:
+			# kmeans_radec draws its starting sample with the stdlib random module
+			np_state, py_state = np.random.get_state(), _random.getstate()
+			np.random.seed(seed)
+			_random.seed(seed)
+			try:
+				km = kmeans_sample(X, num_jk, maxiter=100, tol=1.0e-5)
+			finally:
+				np.random.set_state(np_state)
+				_random.setstate(py_state)
 		jk_labels = km.labels
 
 		jk_patches['randoms_position'] = jk_labels
@@ -139,7 +155,7 @@ class MeasureJackknife(MeasureIABase):
 		covs, stds = [], []
 		for d in np.arange(0, len(corr_group)):
 			data_file = h5py.File(self.output_file_name, "a")
-			group_multipoles = data_file[f"{self.snap_group}/{corr_group[d]}/{jk_group_name}/"]
+			group_multipoles = data_file[f"{self.snap_group}{corr_group[d]}/{jk_group_name}/"]
 			# calculating mean of the datavectors
 			mean_multipoles = np.zeros(self.num_bins_r)
 			for b in np.arange(0, num_box):
@@ -164,7 +180,7 @@ class MeasureJackknife(MeasureIABase):
 				stds.append(std)
 			else:
 				output_file = h5py.File(self.output_file_name, "a")
-				group_multipoles = create_group_hdf5(output_file, f"{self.snap_group}/" + corr_group[d])
+				group_multipoles = create_group_hdf5(output_file, f"{self.snap_group}" + corr_group[d])
 				write_dataset_hdf5(group_multipoles, dataset_name + "_mean_" + str(num_box), data=mean_multipoles)
 				write_dataset_hdf5(group_multipoles, dataset_name + "_jackknife_" + str(num_box), data=std)
 				write_dataset_hdf5(group_multipoles, dataset_name + "_jackknife_cov_" + str(num_box), data=cov)
@@ -256,7 +272,7 @@ class MeasureJackknife(MeasureIABase):
 		mean_list = []  # list of arrays
 
 		for d, dataset_name in enumerate(dataset_names):
-			group = data_file[f"{self.snap_group}/{corr_types[d]}/{dataset_name}_jk{num_box}"]
+			group = data_file[f"{self.snap_group}{corr_types[d]}/{dataset_name}_jk{num_box}"]
 			mean_multipoles = np.zeros(self.num_bins_r)
 			for b in np.arange(0, num_box):
 				mean_multipoles += group[dataset_name + "_" + str(b)]
@@ -269,7 +285,7 @@ class MeasureJackknife(MeasureIABase):
 
 		if len(dataset_names) == 1:  # covariance with itself
 			dataset_name = dataset_names[0]
-			group = data_file[f"{self.snap_group}/{corr_types[0]}/{dataset_name}_jk{num_box}"]
+			group = data_file[f"{self.snap_group}{corr_types[0]}/{dataset_name}_jk{num_box}"]
 			for b in np.arange(0, num_box):
 				std += (group[dataset_name + "_" + str(b)] - mean_list[0]) ** 2
 				for i in np.arange(self.num_bins_r):
@@ -277,8 +293,8 @@ class MeasureJackknife(MeasureIABase):
 							group[dataset_name + "_" + str(b)][i] - mean_list[0][i]
 					)
 		elif len(dataset_names) == 2:
-			group0 = data_file[f"{self.snap_group}/{corr_types[0]}/{dataset_names[0]}_jk{num_box}"]
-			group1 = data_file[f"{self.snap_group}/{corr_types[1]}/{dataset_names[1]}_jk{num_box}"]
+			group0 = data_file[f"{self.snap_group}{corr_types[0]}/{dataset_names[0]}_jk{num_box}"]
+			group1 = data_file[f"{self.snap_group}{corr_types[1]}/{dataset_names[1]}_jk{num_box}"]
 			for b in np.arange(0, num_box):
 				std += (group0[dataset_names[0] + "_" + str(b)] - mean_list[0]) * (
 						group1[dataset_names[1] + "_" + str(b)] - mean_list[1])
@@ -294,14 +310,14 @@ class MeasureJackknife(MeasureIABase):
 		cov *= (num_box - 1) / num_box  # cov not sqrt so to get std, sqrt of diag would need to be taken
 
 		data_file.close()
-		if corr_types[0] == corr_types[1]:
+		if len(corr_types) == 1 or corr_types[0] == corr_types[1]:
 			corr_group_name = corr_types[0]
 		else:
 			corr_group_name = f"{corr_types[0]}_{corr_types[1]}"
 
 		if (self.output_file_name != None) and (return_output == False):
 			output_file = h5py.File(self.output_file_name, "a")
-			group = create_group_hdf5(output_file, f"{self.snap_group}/{corr_group_name}")
+			group = create_group_hdf5(output_file, f"{self.snap_group}{corr_group_name}")
 			if len(dataset_names) == 2:
 				write_dataset_hdf5(group, dataset_names[0] + "_" + dataset_names[1] + "_jackknife_cov_" + str(
 					num_box), data=cov)
@@ -339,24 +355,42 @@ class MeasureJackknife(MeasureIABase):
 			covariance for 3 projections, covariance for x and y, covariance for x and z, covariance for y and z
 
 		"""
-		self.measure_covariance_multiple_datasets(corr_type=corr_type,
+		# corr_type may be given as a single string (applies to all three
+		# projections) or as a list/tuple of 3 strings (one per projection,
+		# all of which must currently be identical).
+		if isinstance(corr_type, (list, tuple)):
+			if len(set(corr_type)) != 1:
+				raise ValueError(
+					"All entries of corr_type must currently be identical.")
+			corr_type = corr_type[0]
+		valid_corr_types = ["w_g_plus", "multipoles_g_plus", "w_gg", "multipoles_gg"]
+		if corr_type not in valid_corr_types:
+			raise ValueError("corr_type must be 'w_g_plus', 'w_gg', 'multipoles_g_plus' or 'multipoles_gg'.")
+
+		self.measure_covariance_multiple_datasets(corr_types=[corr_type],
+												  dataset_names=[dataset_names[0]], num_box=num_box)
+		self.measure_covariance_multiple_datasets(corr_types=[corr_type],
+												  dataset_names=[dataset_names[1]], num_box=num_box)
+		self.measure_covariance_multiple_datasets(corr_types=[corr_type],
+												  dataset_names=[dataset_names[2]], num_box=num_box)
+		self.measure_covariance_multiple_datasets(corr_types=[corr_type, corr_type],
 												  dataset_names=[dataset_names[0], dataset_names[1]], num_box=num_box)
-		self.measure_covariance_multiple_datasets(corr_type=corr_type,
+		self.measure_covariance_multiple_datasets(corr_types=[corr_type, corr_type],
 												  dataset_names=[dataset_names[0], dataset_names[2]], num_box=num_box)
-		self.measure_covariance_multiple_datasets(corr_type=corr_type,
+		self.measure_covariance_multiple_datasets(corr_types=[corr_type, corr_type],
 												  dataset_names=[dataset_names[1], dataset_names[2]], num_box=num_box)
 
 		# import needed datasets
 		output_file = h5py.File(self.output_file_name, "a")
-		group = output_file[f"{self.snap_group}/{corr_type}"]
+		group = output_file[f"{self.snap_group}{corr_type}"]
 
 		# cov matrix between datasets
 		cov_xx = group[f'{dataset_names[0]}_jackknife_cov_{num_box}'][:]
 		cov_yy = group[f'{dataset_names[1]}_jackknife_cov_{num_box}'][:]
 		cov_zz = group[f'{dataset_names[2]}_jackknife_cov_{num_box}'][:]
 		cov_xy = group[f'{dataset_names[0]}_{dataset_names[1]}_jackknife_cov_{num_box}'][:]
-		cov_yz = group[f'{dataset_names[0]}_{dataset_names[2]}_jackknife_cov_{num_box}'][:]
-		cov_xz = group[f'{dataset_names[1]}_{dataset_names[2]}_jackknife_cov_{num_box}'][:]
+		cov_xz = group[f'{dataset_names[0]}_{dataset_names[2]}_jackknife_cov_{num_box}'][:]
+		cov_yz = group[f'{dataset_names[1]}_{dataset_names[2]}_jackknife_cov_{num_box}'][:]
 
 		# 3 projections
 		cov_top = np.concatenate((cov_xx, cov_xy, cov_xz), axis=1)

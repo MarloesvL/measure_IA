@@ -99,22 +99,22 @@ class MeasureWBox(MeasureIABase, ReadData):
 			weight = self.data["weight"]
 			weight_shape = self.data["weight_shape_sample"]
 		else:
-			positions = self.data["Position"][masks["Position"]]
-			positions_shape_sample = self.data["Position_shape_sample"][masks["Position_shape_sample"]]
-			axis_direction_v = self.data["Axis_Direction"][masks["Axis_Direction"]]
+			pos_mask   = masks.get("Position",              np.ones(self.Num_position, dtype=bool))
+			shape_mask = masks.get("Position_shape_sample", np.ones(self.Num_shape,    dtype=bool))
+			dir_mask   = masks.get("Axis_Direction",        shape_mask)
+			q_mask     = masks.get("q",                     shape_mask)
+			positions = self.data["Position"][pos_mask]
+			positions_shape_sample = self.data["Position_shape_sample"][shape_mask]
+			axis_direction_v = self.data["Axis_Direction"][dir_mask]
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
-			q = self.data["q"][masks["q"]]
-			try:
-				weight_mask = masks["weight"]
-			except:
+			q = self.data["q"][q_mask]
+			if "weight" not in masks:
 				masks["weight"] = np.ones(self.Num_position, dtype=bool)
-				masks["weight"][sum(masks["Position"]):self.Num_position] = 0
-			try:
-				weight_mask = masks["weight_shape_sample"]
-			except:
+				masks["weight"][sum(pos_mask):self.Num_position] = 0
+			if "weight_shape_sample" not in masks:
 				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
-				masks["weight_shape_sample"][sum(masks["Position_shape_sample"]):self.Num_shape] = 0
+				masks["weight_shape_sample"][sum(shape_mask):self.Num_shape] = 0
 			weight = self.data["weight"][masks["weight"]]
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		Num_position = len(positions)
@@ -267,22 +267,22 @@ class MeasureWBox(MeasureIABase, ReadData):
 			weight = self.data["weight"]
 			weight_shape = self.data["weight_shape_sample"]
 		else:
-			positions = self.data["Position"][masks["Position"]]
-			positions_shape_sample = self.data["Position_shape_sample"][masks["Position_shape_sample"]]
-			axis_direction_v = self.data["Axis_Direction"][masks["Axis_Direction"]]
+			pos_mask   = masks.get("Position",              np.ones(self.Num_position, dtype=bool))
+			shape_mask = masks.get("Position_shape_sample", np.ones(self.Num_shape,    dtype=bool))
+			dir_mask   = masks.get("Axis_Direction",        shape_mask)
+			q_mask     = masks.get("q",                     shape_mask)
+			positions = self.data["Position"][pos_mask]
+			positions_shape_sample = self.data["Position_shape_sample"][shape_mask]
+			axis_direction_v = self.data["Axis_Direction"][dir_mask]
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
-			q = self.data["q"][masks["q"]]
-			try:
-				weight_mask = masks["weight"]
-			except:
+			q = self.data["q"][q_mask]
+			if "weight" not in masks:
 				masks["weight"] = np.ones(self.Num_position, dtype=bool)
-				masks["weight"][sum(masks["Position"]):self.Num_position] = 0
-			try:
-				weight_mask = masks["weight_shape_sample"]
-			except:
+				masks["weight"][sum(pos_mask):self.Num_position] = 0
+			if "weight_shape_sample" not in masks:
 				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
-				masks["weight_shape_sample"][sum(masks["Position_shape_sample"]):self.Num_shape] = 0
+				masks["weight_shape_sample"][sum(shape_mask):self.Num_shape] = 0
 			weight = self.data["weight"][masks["weight"]]
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		# masking changes the number of galaxies
@@ -540,22 +540,22 @@ class MeasureWBox(MeasureIABase, ReadData):
 			weight = self.data["weight"]
 			weight_shape = self.data["weight_shape_sample"]
 		else:
-			positions = self.data["Position"][masks["Position"]]
-			positions_shape_sample = self.data["Position_shape_sample"][masks["Position_shape_sample"]]
-			axis_direction_v = self.data["Axis_Direction"][masks["Axis_Direction"]]
+			pos_mask   = masks.get("Position",              np.ones(self.Num_position, dtype=bool))
+			shape_mask = masks.get("Position_shape_sample", np.ones(self.Num_shape,    dtype=bool))
+			dir_mask   = masks.get("Axis_Direction",        shape_mask)
+			q_mask     = masks.get("q",                     shape_mask)
+			positions = self.data["Position"][pos_mask]
+			positions_shape_sample = self.data["Position_shape_sample"][shape_mask]
+			axis_direction_v = self.data["Axis_Direction"][dir_mask]
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
-			q = self.data["q"][masks["q"]]
-			try:
-				weight_mask = masks["weight"]
-			except:
+			q = self.data["q"][q_mask]
+			if "weight" not in masks:
 				masks["weight"] = np.ones(self.Num_position, dtype=bool)
-				masks["weight"][sum(masks["Position"]):self.Num_position] = 0
-			try:
-				weight_mask = masks["weight_shape_sample"]
-			except:
+				masks["weight"][sum(pos_mask):self.Num_position] = 0
+			if "weight_shape_sample" not in masks:
 				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
-				masks["weight_shape_sample"][sum(masks["Position_shape_sample"]):self.Num_shape] = 0
+				masks["weight_shape_sample"][sum(shape_mask):self.Num_shape] = 0
 			weight = self.data["weight"][masks["weight"]]
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		# masking changes the number of galaxies

@@ -114,8 +114,10 @@ class MeasureWLightcone(MeasureIABase):
 
 		if data_suffix == "_SplusD":
 			DD_suff = "_DD"
+			Scross_suff = "_ScrossD"
 		elif data_suffix == "_SplusR":
 			DD_suff = "_SR"
+			Scross_suff = "_ScrossR"
 		else:
 			raise ValueError("data_suffix must be _SplusD or _SplusR")
 		sub_box_len_logrp = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
@@ -210,9 +212,10 @@ class MeasureWLightcone(MeasureIABase):
 		# if Num_position == Num_shape:
 		# 	DD = DD / 2.0  # auto correlation, all pairs are double
 
-		DD[np.where(DD == 0)] = 1
+		DD_denom = DD.copy()  # guard against empty bins in the division; the raw pair counts are written to file
+		DD_denom[DD_denom == 0] = 1
 
-		correlation = Splus_D / DD
+		correlation = Splus_D / DD_denom
 		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
 		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
 		dpi = (self.pi_bins[1:] - self.pi_bins[:-1]) / 2.0
@@ -226,7 +229,7 @@ class MeasureWLightcone(MeasureIABase):
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_g_cross/{jk_group_name}")
-			write_dataset_hdf5(group, dataset_name + "_ScrossD", data=Scross_D)
+			write_dataset_hdf5(group, dataset_name + Scross_suff, data=Scross_D)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_gg/{jk_group_name}")
@@ -319,8 +322,10 @@ class MeasureWLightcone(MeasureIABase):
 		h = cosmology["h"]
 		if data_suffix == "_SplusD":
 			DD_suff = "_DD"
+			Scross_suff = "_ScrossD"
 		elif data_suffix == "_SplusR":
 			DD_suff = "_SR"
+			Scross_suff = "_ScrossR"
 		else:
 			raise ValueError("data_suffix must be _SplusD or _SplusR")
 
@@ -402,9 +407,10 @@ class MeasureWLightcone(MeasureIABase):
 		# if Num_position == Num_shape:
 		# 	DD = DD / 2.0  # auto correlation, all pairs are double
 
-		DD[np.where(DD == 0)] = 1
+		DD_denom = DD.copy()  # guard against empty bins in the division; the raw pair counts are written to file
+		DD_denom[DD_denom == 0] = 1
 
-		correlation = Splus_D / DD
+		correlation = Splus_D / DD_denom
 		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
 		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
 		dpi = (self.pi_bins[1:] - self.pi_bins[:-1]) / 2.0
@@ -418,7 +424,7 @@ class MeasureWLightcone(MeasureIABase):
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_g_cross/{jk_group_name}")
-			write_dataset_hdf5(group, dataset_name + "_ScrossD", data=Scross_D)
+			write_dataset_hdf5(group, dataset_name + Scross_suff, data=Scross_D)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_gg/{jk_group_name}")
@@ -500,8 +506,10 @@ class MeasureWLightcone(MeasureIABase):
 				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
 		if data_suffix == "_SplusD":
 			DD_suff = "_DD"
+			Scross_suff = "_ScrossD"
 		elif data_suffix == "_SplusR":
 			DD_suff = "_SR"
+			Scross_suff = "_ScrossR"
 		else:
 			raise ValueError("data_suffix must be _SplusD or _SplusR")
 		sub_box_len_logrp = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
@@ -623,7 +631,7 @@ class MeasureWLightcone(MeasureIABase):
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_g_cross/")
-			write_dataset_hdf5(group, dataset_name + "_ScrossD", data=Scross_D)
+			write_dataset_hdf5(group, dataset_name + Scross_suff, data=Scross_D)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_gg/")
@@ -885,8 +893,6 @@ class MeasureWLightcone(MeasureIABase):
 
 		# if Num_position == Num_shape:
 		# 	DD = DD / 2.0  # auto correlation, all pairs are double
-
-		DD[np.where(DD == 0)] = 1
 
 		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
 		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins

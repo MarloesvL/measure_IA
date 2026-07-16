@@ -412,8 +412,8 @@ class MeasureIABase(SimInfo):
 			correlation_data_file = h5py.File(self.output_file_name, "a")
 			group = correlation_data_file[f"{self.snap_group}w/{xi_data[i]}/{jk_group_name}"]
 			correlation_data = group[dataset_name][:]
-			pi = group[dataset_name + "_pi"]
-			rp = group[dataset_name + "_rp"]
+			pi = group[dataset_name + "_pi"][:]
+			rp = group[dataset_name + "_rp"][:]
 			dpi = (self.pi_bins[1:] - self.pi_bins[:-1])
 			pi_bins = self.pi_bins[:-1] + abs(dpi) / 2.0  # middle of bins
 			# variance = group[dataset_name + "_sigmasq"][:]
@@ -521,7 +521,7 @@ class MeasureIABase(SimInfo):
 			separation = self.r_bins[:-1] + abs(dsep)  # middle of bins
 			if return_output:
 				correlation_data_file.close()
-				np.array([separation, multipoles]).transpose()
+				return np.array([separation, multipoles]).transpose()
 			else:
 				group_out = create_group_hdf5(
 					correlation_data_file, f"{self.snap_group}multipoles_{corr_type_i}/{jk_group_name}"
@@ -562,9 +562,16 @@ class MeasureIABase(SimInfo):
 			SpD /= (num_samples["S"] * num_samples["D"] - num_samples["D_S"])
 			SpR = group_gp[f"{dataset_name}_SplusR"][:]
 			SpR /= (num_samples["S"] * num_samples["R_D"])
-		if corr_type[0] == "gg" or corr_type[0] == "both":
+			if jk_group_name == "":  # cross (parity null test) only for the full sample
+				group_gc = output_file[f"{self.snap_group}{corr_type[1]}/xi_g_cross/"]
+				ScD = group_gc[f"{dataset_name}_ScrossD"][:]
+				ScD /= (num_samples["S"] * num_samples["D"] - num_samples["D_S"])
+				ScR = group_gc[f"{dataset_name}_ScrossR"][:]
+				ScR /= (num_samples["S"] * num_samples["R_D"])
+		if corr_type[0] == "gg" or corr_type[0] == "both" or IA_estimator == "clusters":
 			SR = group_gg[f"{dataset_name}_SR"][:]
 			SR /= (num_samples["S"] * num_samples["R_D"])
+		if corr_type[0] == "gg" or corr_type[0] == "both":
 			RD = group_gg[f"{dataset_name}_RD"][:]
 			RD /= (num_samples["D"] * num_samples["R_S"])
 		if IA_estimator == 'clusters' or corr_type[0] == "gg" or corr_type[0] == "both":
@@ -579,6 +586,9 @@ class MeasureIABase(SimInfo):
 			if corr_type[0] == "g+" or corr_type[0] == "both":
 				correlation_gp = SpD / DD - SpR / SR
 				write_dataset_hdf5(group_gp, dataset_name, correlation_gp)
+				if jk_group_name == "":
+					correlation_gc = ScD / DD - ScR / SR
+					write_dataset_hdf5(group_gc, dataset_name, correlation_gc)
 			if corr_type[0] == "gg" or corr_type[0] == "both":
 				correlation_gg = (DD - RD - SR) / RR + 1
 				write_dataset_hdf5(group_gg, dataset_name, correlation_gg)
@@ -586,6 +596,9 @@ class MeasureIABase(SimInfo):
 			if corr_type[0] == "g+" or corr_type[0] == "both":
 				correlation_gp = (SpD - SpR) / RR
 				write_dataset_hdf5(group_gp, dataset_name, correlation_gp)
+				if jk_group_name == "":
+					correlation_gc = (ScD - ScR) / RR
+					write_dataset_hdf5(group_gc, dataset_name, correlation_gc)
 			if corr_type[0] == "gg" or corr_type[0] == "both":
 				correlation_gg = (DD - RD - SR) / RR + 1
 				write_dataset_hdf5(group_gg, dataset_name, correlation_gg)

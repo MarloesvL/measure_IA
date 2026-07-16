@@ -375,6 +375,30 @@ class ReadData(SimInfo):
 		file.close()
 		return
 
+	def read_modelling_outputs(self, catalogue):
+		file = h5py.File(f"{self.data_path}{catalogue}.hdf5", "r")
+		if self.snap_group != "":
+			data_group = file[self.snap_group]
+			self.z = data_group.attrs["z"]
+		else:
+			data_group = file
+		try:
+			self.w_A_IA = data_group[f"w"].attrs["A_IA"]
+			self.w_A_IA_err = data_group[f"w"].attrs["A_IA_err"]
+			self.w_b_g = data_group[f"w"].attrs["b_g"]
+			self.w_b_g_err = data_group[f"w"].attrs["b_g_err"]
+		except KeyError:
+			pass
+		try:
+			self.multipoles_A_IA = data_group[f"multipoles"].attrs["A_IA"]
+			self.multipoles_A_IA_err = data_group[f"multipoles"].attrs["A_IA_err"]
+			self.multipoles_b_g = data_group[f"multipoles"].attrs["b_g"]
+			self.multipoles_b_g_err = data_group[f"multipoles"].attrs["b_g_err"]
+		except KeyError:
+			pass
+		file.close()
+		return
+
 
 if __name__ == "__main__":
 	pass

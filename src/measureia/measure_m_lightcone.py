@@ -113,8 +113,10 @@ class MeasureMultipolesLightcone(MeasureIABase):
 				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
 		if data_suffix == "_SplusD":
 			DD_suff = "_DD"
+			Scross_suff = "_ScrossD"
 		elif data_suffix == "_SplusR":
 			DD_suff = "_SR"
+			Scross_suff = "_ScrossR"
 		else:
 			raise ValueError("data_suffix must be _SplusD or _SplusR")
 		sub_box_len_logrp = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
@@ -223,7 +225,7 @@ class MeasureMultipolesLightcone(MeasureIABase):
 			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/multipoles/xi_g_cross/")
-			write_dataset_hdf5(group, dataset_name + "_ScrossD", data=Scross_D)
+			write_dataset_hdf5(group, dataset_name + Scross_suff, data=Scross_D)
 			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/multipoles/xi_gg/")
@@ -305,8 +307,10 @@ class MeasureMultipolesLightcone(MeasureIABase):
 				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
 		if data_suffix == "_SplusD":
 			DD_suff = "_DD"
+			Scross_suff = "_ScrossD"
 		elif data_suffix == "_SplusR":
 			DD_suff = "_SR"
+			Scross_suff = "_ScrossR"
 		else:
 			raise ValueError("data_suffix must be _SplusD or _SplusR")
 		sub_box_len_logrp = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
@@ -369,7 +373,7 @@ class MeasureMultipolesLightcone(MeasureIABase):
 					n_LOS = L / np.sqrt(np.sum(L ** 2, axis=1))[:, None]
 					# n_LOS = (n_pos_i[n] + n_shape[ind_rbin_i[n]]) / np.array(
 					# 	[np.sqrt(np.sum((n_pos_i[n] + n_shape[ind_rbin_i[n]]) ** 2, axis=1))]).transpose()
-					s = s_pos_i[n] - s_shape[ind_rbin_i[n]]
+					s = s_shape[ind_rbin_i[n]] - s_pos_i[n]
 					LOS = self.calculate_dot_product_arrays(s, n_LOS)
 					separation_len = np.sqrt(np.sum(s ** 2, axis=1))
 					mu_r = LOS / separation_len
@@ -428,7 +432,7 @@ class MeasureMultipolesLightcone(MeasureIABase):
 			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/multipoles/xi_g_cross/")
-			write_dataset_hdf5(group, dataset_name + "_ScrossD", data=Scross_D)
+			write_dataset_hdf5(group, dataset_name + Scross_suff, data=Scross_D)
 			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/multipoles/xi_gg/")
@@ -687,7 +691,7 @@ class MeasureMultipolesLightcone(MeasureIABase):
 					n_LOS = L / np.sqrt(np.sum(L ** 2, axis=1))[:, None]
 					# n_LOS = (n_pos_i[n] + n_shape[ind_rbin_i[n]]) / np.array(
 					# 	[np.sqrt(np.sum((n_pos_i[n] + n_shape[ind_rbin_i[n]]) ** 2, axis=1))]).transpose()
-					s = s_pos_i[n] - s_shape[ind_rbin_i[n]]
+					s = s_shape[ind_rbin_i[n]] - s_pos_i[n]
 					LOS = self.calculate_dot_product_arrays(s, n_LOS)
 					separation_len = np.sqrt(np.sum(s ** 2, axis=1))  # len of s-pi*nlos ->check
 					mu_r = LOS / separation_len

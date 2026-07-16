@@ -118,8 +118,10 @@ class MeasureWLightconeJackknife(MeasureIABase):
 				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
 		if data_suffix == "_SplusD":
 			DD_suff = "_DD"
+			Scross_suff = "_ScrossD"
 		elif data_suffix == "_SplusR":
 			DD_suff = "_SR"
+			Scross_suff = "_ScrossR"
 		else:
 			raise ValueError("data_suffix must be _SplusD or _SplusR")
 		sub_box_len_logrp = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
@@ -250,7 +252,7 @@ class MeasureWLightconeJackknife(MeasureIABase):
 				write_dataset_hdf5(group, dataset_name + f"_{i}_rp", data=separation_bins)
 				write_dataset_hdf5(group, dataset_name + f"_{i}_pi", data=pi_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_g_cross/")
-			write_dataset_hdf5(group, dataset_name + "_ScrossD", data=Scross_D)
+			write_dataset_hdf5(group, dataset_name + Scross_suff, data=Scross_D)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_gg/")
@@ -338,8 +340,10 @@ class MeasureWLightconeJackknife(MeasureIABase):
 				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
 		if data_suffix == "_SplusD":
 			DD_suff = "_DD"
+			Scross_suff = "_ScrossD"
 		elif data_suffix == "_SplusR":
 			DD_suff = "_SR"
+			Scross_suff = "_ScrossR"
 		else:
 			raise ValueError("data_suffix must be _SplusD or _SplusR")
 		sub_box_len_logrp = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
@@ -493,7 +497,7 @@ class MeasureWLightconeJackknife(MeasureIABase):
 				write_dataset_hdf5(group, dataset_name + f"_{i}_rp", data=separation_bins)
 				write_dataset_hdf5(group, dataset_name + f"_{i}_pi", data=pi_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_g_cross/")
-			write_dataset_hdf5(group, dataset_name + "_ScrossD", data=Scross_D)
+			write_dataset_hdf5(group, dataset_name + Scross_suff, data=Scross_D)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_gg/")
@@ -712,8 +716,10 @@ class MeasureWLightconeJackknife(MeasureIABase):
 			f"There are {self.Num_shape_masked} galaxies in the shape sample and {self.Num_position_masked} galaxies in the position sample.")
 		if data_suffix == "_SplusD":
 			DD_suff = "_DD"
+			Scross_suff = "_ScrossD"
 		elif data_suffix == "_SplusR":
 			DD_suff = "_SR"
+			Scross_suff = "_ScrossR"
 		else:
 			raise ValueError("data_suffix must be _SplusD or _SplusR")
 		self.sub_box_len_logrp = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
@@ -858,7 +864,7 @@ class MeasureWLightconeJackknife(MeasureIABase):
 				write_dataset_hdf5(group, dataset_name + f"_{i}_rp", data=separation_bins)
 				write_dataset_hdf5(group, dataset_name + f"_{i}_pi", data=pi_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_g_cross/")
-			write_dataset_hdf5(group, dataset_name + "_ScrossD", data=Scross_D)
+			write_dataset_hdf5(group, dataset_name + Scross_suff, data=Scross_D)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_gg/")
