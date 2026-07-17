@@ -25,6 +25,7 @@ sys.path.insert(0, _VALIDATION_DIR)
 import run_box_halotools as box_halotools
 import run_box_cov_bridge as box_cov_bridge
 import run_box_multipoles_corrpc as box_multipoles
+import run_lightcone_corrpc as lc_corrpc
 import run_lightcone_treecorr as lc_treecorr
 import run_plane_parallel as plane_parallel
 from mock_catalogues import (radial_alignment_box_mock, responsivity,
@@ -288,6 +289,40 @@ class TestResponsivityOption:
         np.testing.assert_allclose(results[False][0], results[True][0] * 2 * R,
                                    rtol=1e-10)
         np.testing.assert_allclose(results[False][1], results[True][1], rtol=1e-12)
+
+
+_LC_CORRPC_REF = lc_corrpc.REFERENCE_FILE
+
+requires_lc_corrpc_reference = pytest.mark.skipif(
+    not os.path.exists(_LC_CORRPC_REF),
+    reason="no committed corr_pc lightcone reference; build corr_pc (with the "
+           "DRs patch) and run validation/run_lightcone_corrpc.py",
+)
+
+
+@requires_lc_corrpc_reference
+class TestLightconeAgainstCorrPC:
+    """measureia's lightcone 'galaxies' estimator vs corr_pc sky mode
+    (coordinates=0), which implements the identical estimator with explicit
+    randoms — a second, independent lightcone cross-check besides treecorr.
+    Differences are limited by the rp/pi separation definitions (corr_pc:
+    great-circle angle x mean comoving distance, plane-parallel radial pi;
+    measureia: midpoint-LOS projections), the same class as treecorr's
+    Rperp. On this mock: w_g+ agrees to <=0.15%, w_gg to <=0.4% (near-zero
+    outer bins covered by the atol term). Reuses the treecorr-comparison
+    mock and configuration, hence the shared fixture."""
+
+    def test_w_g_plus_matches_corrpc(self, lc_measureia_results):
+        with h5py.File(_LC_CORRPC_REF, "r") as f:
+            wgp_pc = f["w_g_plus"][:]
+        np.testing.assert_allclose(lc_measureia_results["w_g_plus"], wgp_pc,
+                                   rtol=5e-3, atol=0.05)
+
+    def test_w_gg_matches_corrpc(self, lc_measureia_results):
+        with h5py.File(_LC_CORRPC_REF, "r") as f:
+            wgg_pc = f["w_gg"][:]
+        np.testing.assert_allclose(lc_measureia_results["w_gg"], wgg_pc,
+                                   rtol=5e-3, atol=0.05)
 
 
 _MULTIPOLES_REF = box_multipoles.REFERENCE_FILE

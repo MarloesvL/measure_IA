@@ -149,14 +149,59 @@ and the multipole integration.
   i.e. machine-precision agreement. Enforced at rtol=1e-4 in
   `tests/test_validation_references.py`.
 
+### Lightcone w_gg / w_g+ vs corr_pc (`run_lightcone_corrpc.py`)
+
+A second, independent lightcone cross-check besides treecorr: corr_pc's
+sky mode (`coordinates=0`) implements *exactly* measureia's 'galaxies'
+estimator — ξ_g+ = S+D/RR − S+R/RR and the Landy–Szalay
+ξ_gg = (SD − SR − DR)/RR + 1 with explicit randoms — so the same mock and
+configuration as the treecorr comparison are reused and the enforced
+comparison is w_g+ / w_gg.
+
+- **Separation definitions**: corr_pc uses rp = great-circle angle ×
+  pair-mean comoving distance and π = difference of radial comoving
+  distances (plane-parallel), vs measureia's midpoint-LOS projections —
+  the same class of curvature-term/bin-migration differences as
+  treecorr's Rperp. corr_pc also looks distances up from a tabulated
+  z-grid with floor (no interpolation) lookup; the table is generated
+  from the same CCL cosmology at dz=2×10⁻⁶ so the ~0.01 Mpc quantisation
+  is negligible.
+- **Ellipticity components**: corr_pc's rotation
+  e+ = cos(2θ)e1 − sin(2θ)e2 applied to the raw survey-convention e1/e2
+  reproduces measureia's radial-positive e+ directly — no sign flip
+  (empirically verified; a single-component flip washes w_g+ out to
+  noise, both-component flip only changes the overall sign). The e2 flip
+  in corr_pc's HSC example notebook belongs to that catalogue, not to
+  survey-convention inputs. Note this differs from the *box* comparison
+  (`run_box_multipoles_corrpc.py`), where the inputs are built from
+  raw axis angles and corr_pc's chirality requires e2 = −e·sin(2φ).
+- **Signed-π orientation**: corr_pc reorders each pair-count run by
+  sample size, so different terms can carry mirrored signed-π
+  conventions; this cancels in w (symmetric π range), which is why the
+  comparison is enforced at the w level. The ξ(rp, π) grids are stored
+  in the reference file for inspection only.
+- **Result** (2026-07-17): w_g+ agrees to ≤0.15% in every bin (most
+  ≤0.03%), w_gg to ≤0.4% (near-zero outer bins within atol). Enforced at
+  rtol=5e-3, atol=0.05 in `tests/test_validation_references.py` — the
+  same tolerances as the treecorr comparison.
+
 **Building corr_pc without MPI**: corr_pc's Makefile asks for `mpic++`,
 but its only MPI usage is `MPI::Init/Finalize` and
 `MPI::COMM_WORLD.Get_size/Get_rank` via the deprecated C++ bindings. The
 single-process stub header in `corrpc_mpi_stub/mpi.h` replaces the whole
-dependency. On macOS with homebrew gsl + libomp:
+dependency. The sky-mode (lightcone) run additionally needs the one-line
+patch in `corrpc_patches/drs_pair_count.patch`: for shape-density
+correlations corr_pc dispatches the D×R_s pair count to the
+shape-rotating kernel even though neither sample has ellipticities
+(randoms never read them), dereferencing an unallocated pointer — it
+happens not to crash on some platforms (and the stray sums are never
+used), but it segfaults reproducibly on macOS. The patch routes that
+term to the plain pair counter; it changes no numbers. On macOS with
+homebrew gsl + libomp:
 
 ```bash
 git clone https://github.com/sukhdeep2/corr_pc && cd corr_pc
+git apply /path/to/measure_IA/validation/corrpc_patches/drs_pair_count.patch
 make compiler=clang++ \
   CFLAGS="-c -I/path/to/measure_IA/validation/corrpc_mpi_stub \
           -I/opt/homebrew/opt/gsl/include -Xpreprocessor -fopenmp \
@@ -164,6 +209,7 @@ make compiler=clang++ \
   LDFLAGS="-L/opt/homebrew/opt/gsl/lib -lgsl -lgslcblas \
            -L/opt/homebrew/opt/libomp/lib -lomp"
 CORR_PC_BIN=$PWD/corr_pc python run_box_multipoles_corrpc.py
+CORR_PC_BIN=$PWD/corr_pc python run_lightcone_corrpc.py
 ```
 
 ### Jackknife covariance vs treecorr (`run_lightcone_treecorr_cov.py`)
