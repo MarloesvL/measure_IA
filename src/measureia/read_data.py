@@ -150,7 +150,10 @@ class ReadData(SimInfo):
 			Nfiles = self.N_files
 
 		for n in np.arange(1, Nfiles):
-			subhalo_file = h5py.File(f"{self.data_path}{self.fof_folder}.{n}.hdf5", "r")
+			try:
+				subhalo_file = h5py.File(f"{self.data_path}{self.fof_folder}.{n}.hdf5", "r")
+			except OSError as e:
+				raise OSError(f"Could not open file {n} ({self.data_path}{self.fof_folder}.{n}.hdf5).") from e
 			try:
 				Subhalo = subhalo_file[self.catalogue]
 				data_n = Subhalo[dataset_name][:]  # get data single file
