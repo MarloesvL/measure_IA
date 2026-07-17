@@ -24,6 +24,7 @@ sys.path.insert(0, _VALIDATION_DIR)
 
 import run_box_halotools as box_halotools
 import run_box_cov_bridge as box_cov_bridge
+import run_box_multipoles_corrpc as box_multipoles
 import run_lightcone_treecorr as lc_treecorr
 import run_plane_parallel as plane_parallel
 from mock_catalogues import (radial_alignment_box_mock, responsivity,
@@ -287,6 +288,73 @@ class TestResponsivityOption:
         np.testing.assert_allclose(results[False][0], results[True][0] * 2 * R,
                                    rtol=1e-10)
         np.testing.assert_allclose(results[False][1], results[True][1], rtol=1e-12)
+
+
+_MULTIPOLES_REF = box_multipoles.REFERENCE_FILE
+
+requires_multipoles_reference = pytest.mark.skipif(
+    not os.path.exists(_MULTIPOLES_REF),
+    reason="no committed corr_pc reference outputs; build corr_pc and run "
+           "validation/run_box_multipoles_corrpc.py with CORR_PC_BIN set",
+)
+
+
+@pytest.fixture(scope="module")
+def multipoles_measureia_results(tmp_path_factory):
+    """measureia box multipoles on the validation mock (same config as
+    run_box_multipoles_corrpc.py)."""
+    mock = radial_alignment_box_mock()
+    out = str(tmp_path_factory.mktemp("validation_mp") / "multipoles.hdf5")
+    mia = box_multipoles.run_measureia(mock, out)
+    n_pos = len(mock["Position"])
+    return {"mia": mia, "R": responsivity(mock),
+            "rr_norm": (n_pos - 1.0) / n_pos}
+
+
+@requires_multipoles_reference
+class TestBoxMultipolesAgainstCorrPC:
+    """measureia's box multipoles vs corr_pc (github.com/sukhdeep2/corr_pc,
+    Singh 2021) in periodic-box (r, mu) mode, with measureia's own Legendre
+    integration applied to the corr_pc grid. Documented convention
+    adjustments: responsivity 2R, the (N_pos-1)/N_pos analytic-RR
+    normalisation, and corr_pc's opposite e2 chirality (handled when writing
+    its inputs). Agreement is limited only by corr_pc's 6-significant-digit
+    text output (~1e-6; a few 1e-5 in near-zero bins)."""
+
+    def test_reference_binning_matches(self, multipoles_measureia_results):
+        """Bin centres agree to corr_pc's 6-significant-digit text output."""
+        with h5py.File(_MULTIPOLES_REF, "r") as f:
+            np.testing.assert_allclose(f["r"][:], multipoles_measureia_results["mia"]["r"],
+                                       rtol=1e-5)
+            np.testing.assert_allclose(f["mu"][:], multipoles_measureia_results["mia"]["mu"],
+                                       rtol=1e-5)
+
+    def test_xi_grids_match_corrpc(self, multipoles_measureia_results):
+        res = multipoles_measureia_results
+        with h5py.File(_MULTIPOLES_REF, "r") as f:
+            xi_gp_pc, xi_gg_pc = f["xi_gp"][:], f["xi_gg"][:]
+        np.testing.assert_allclose(
+            res["mia"]["xi_gp"] * 2 * res["R"] * res["rr_norm"], xi_gp_pc,
+            rtol=1e-4, atol=1e-6)
+        np.testing.assert_allclose(
+            (res["mia"]["xi_gg"] + 1) * res["rr_norm"], xi_gg_pc + 1,
+            rtol=1e-4, atol=1e-6)
+
+    def test_multipoles_match_corrpc(self, multipoles_measureia_results):
+        res = multipoles_measureia_results
+        with h5py.File(_MULTIPOLES_REF, "r") as f:
+            mp_gp_pc, mp_gg_pc = f["multipole_gp"][:], f["multipole_gg"][:]
+        np.testing.assert_allclose(
+            res["mia"]["multipole_gp"] * 2 * res["R"] * res["rr_norm"], mp_gp_pc,
+            rtol=1e-4, atol=1e-6)
+        np.testing.assert_allclose(
+            (res["mia"]["multipole_gg"] + 1) * res["rr_norm"], mp_gg_pc + 1,
+            rtol=1e-4, atol=1e-6)
+
+    def test_signal_is_non_null(self, multipoles_measureia_results):
+        mia = multipoles_measureia_results["mia"]
+        assert np.max(np.abs(mia["multipole_gp"])) > 1.0
+        assert mia["multipole_gg"][0] > 10.0
 
 
 @pytest.fixture(scope="module")

@@ -119,10 +119,52 @@ lightcone default `False`); toggling it rescales w_g+ by exactly 2R
 on the lightcone when feeding raw distortions rather than calibrated
 shears.
 
-### Multipoles (planned)
+### Box multipoles vs corr_pc (`run_box_multipoles_corrpc.py`)
 
-Compared against reference outputs from a private code (not redistributable;
-outputs only), plus internal consistency with the validated xi(rp, pi) grid.
+Compares `MeasureIABox.measure_xi_multipoles` against
+[corr_pc](https://github.com/sukhdeep2/corr_pc) ([Singh
+2021](https://ui.adsabs.harvard.edu/abs/2021MNRAS.508.1632S/abstract)), the
+C++ code used for the original multipole validation of this package.
+corr_pc's periodic-box mode with `coordinates=7` measures ξ_gg(r, μ) and
+ξ_g+(r, μ) on the identical log-r / linear-μ grid with the same natural
+estimators and analytic RR; measureia's own associated-Legendre integration
+is then applied to the corr_pc grid, so the comparison covers both the grid
+and the multipole integration.
+
+- **Responsivity**: as with halotools, measureia divides S+ terms by 2R,
+  corr_pc does not: `ξ_g+^measureia × 2R = ξ_g+^corr_pc`.
+- **Analytic RR normalisation**: measureia's `get_random_pairs_r_mur`
+  uses (N_pos − 1) · N_shape while corr_pc uses N_pos · N_shape — a
+  deterministic (N_pos − 1)/N_pos factor applied in the comparison.
+- **Ellipticity chirality**: corr_pc rotates components as
+  e+ = cos(2θ)e1 − sin(2θ)e2, i.e. its expected input convention is
+  e1 = e·cos(2φ_axis), **e2 = −e·sin(2φ_axis)** (opposite chirality to
+  the survey shear convention used by measureia's lightcone pipeline and
+  treecorr). With that input its e+ is radial-positive, matching
+  measureia. As with treecorr, getting the chirality wrong washes the
+  signal out rather than flipping its sign.
+- **Result** (2026-07-16): ξ(r, μ) grids agree to ≤5×10⁻⁶ in every bin
+  and the multipoles ξ_g+,2 / ξ_gg,0 to ~10⁻⁶ (a few ×10⁻⁵ in near-zero
+  bins) — limited purely by corr_pc's 6-significant-digit text output,
+  i.e. machine-precision agreement. Enforced at rtol=1e-4 in
+  `tests/test_validation_references.py`.
+
+**Building corr_pc without MPI**: corr_pc's Makefile asks for `mpic++`,
+but its only MPI usage is `MPI::Init/Finalize` and
+`MPI::COMM_WORLD.Get_size/Get_rank` via the deprecated C++ bindings. The
+single-process stub header in `corrpc_mpi_stub/mpi.h` replaces the whole
+dependency. On macOS with homebrew gsl + libomp:
+
+```bash
+git clone https://github.com/sukhdeep2/corr_pc && cd corr_pc
+make compiler=clang++ \
+  CFLAGS="-c -I/path/to/measure_IA/validation/corrpc_mpi_stub \
+          -I/opt/homebrew/opt/gsl/include -Xpreprocessor -fopenmp \
+          -I/opt/homebrew/opt/libomp/include" \
+  LDFLAGS="-L/opt/homebrew/opt/gsl/lib -lgsl -lgslcblas \
+           -L/opt/homebrew/opt/libomp/lib -lomp"
+CORR_PC_BIN=$PWD/corr_pc python run_box_multipoles_corrpc.py
+```
 
 ### Jackknife covariance vs treecorr (`run_lightcone_treecorr_cov.py`)
 
