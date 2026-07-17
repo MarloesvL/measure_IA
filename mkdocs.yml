@@ -1,0 +1,41 @@
+site_name: MeasureIA Documentation
+site_description: Measurement of intrinsic alignment correlation functions
+site_author: Marloes van Heukelum
+nav:
+  - Home: index.md
+  - Estimator definitions: estimator_definitions.md
+  - Installation: installation.md
+  - Input: input.md
+  - Usage: usage.md
+  - Output: output_structure.md
+  - Roadmap: roadmap.md
+  - API Reference:
+      - MeasureIABox: api/measureIABox.md
+      - MeasureIALightcone: api/measureIALightcone.md
+      - MeasureIABase: api/MeasureIABase.md
+      - MeasureJackknife: api/MeasureJackknife.md
+      - MeasureWBox: api/MeasureWBox.md
+      - MeasureMultipolesBox: api/MeasureMBox.md
+      - MeasureWBoxJackknife: api/MeasureWBoxJackknife.md
+      - MeasureMBoxJackknife: api/MeasureMBoxJackknife.md
+      - SimInfo: api/SimInfo.md
+      - ReadData: api/ReadData.md
+theme: readthedocs
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: ["src"]
+          options:
+            docstring_style: numpy
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.arithmatex:
+      generic: true
+
+extra_javascript:
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js

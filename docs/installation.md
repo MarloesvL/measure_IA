@@ -6,8 +6,8 @@ You can install MeasureIA via:
 pip install measureia
 ```
 
-Note: the package depends on kmeans_radec, which is not pip‑installable. You need to install it manually (
-see https://github.com/esheldon/kmeans_radec).
+Note: the package depends on kmeans_radec, which is not pip‑installable. You need to install it manually
+(see https://github.com/esheldon/kmeans_radec).
 
 Alternatively, you can use [uv](https://docs.astral.sh/uv/getting-started/installation/) for dependency management:
 
