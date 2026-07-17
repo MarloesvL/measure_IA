@@ -4,6 +4,7 @@
 from .measure_IA import MeasureIABox
 from .measure_IA_lightcone import MeasureIALightcone
 from .measure_IA_base import MeasureIABase
+from .check_input import CheckInput
 
 # import covariance measurement class
 from .measure_jackknife import MeasureJackknife

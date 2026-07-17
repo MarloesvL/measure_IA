@@ -5,9 +5,11 @@ from .measure_m_box_jk import MeasureMBoxJackknife
 from .measure_w_box import MeasureWBox
 from .measure_m_box import MeasureMultipolesBox
 from .measure_jackknife import MeasureJackknife
+from .check_input import CheckInput
 
 
-class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, MeasureMBoxJackknife, MeasureJackknife):
+class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, MeasureMBoxJackknife, MeasureJackknife,
+				   CheckInput):
 	r"""Manages the IA correlation function measurement methods used in the MeasureIA package based on speed and input.
 	This class is used to call the methods that measure $w_{gg}$, $w_{g+}$ and multipoles for simulations in cartesian
 	coordinates. Depending on the input parameters, various correlations incl covariance estimates are measured for
@@ -41,6 +43,13 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			boxsize=None,
 			periodicity=True,
 			num_nodes=1,
+			positions_density_sample_name="Position",
+			positions_shape_sample_name="Position_shape_sample",
+			axis_direction_name="Axis_Direction",
+			axis_ratio_name="q",
+			line_of_sight_index_name="LOS",
+			weight_density_sample_name="weight",
+			weight_shape_sample_name="weight_shape_sample",
 	):
 		"""
 		The __init__ method of the MeasureIABox class.
@@ -49,15 +58,52 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 		----------
 		num_nodes : int, optional
 			Number of cores to be used in multiprocessing. Default is 1.
+		positions_density_sample_name : str, optional
+			Name of the key in the data dictionary that contains the positions of the density sample.
+		positions_shape_sample_name : str, optional
+			Name of the key in the data dictionary that contains the positions of the shape sample.
+		axis_direction_name : str, optional
+			Name of the key in the data dictionary that contains the axis direction vectors of the shape sample.
+		axis_ratio_name : str, optional
+			Name of the key in the data dictionary that contains the axis ratios of the shape sample.
+		line_of_sight_index_name : str, optional
+			Name of the key in the data dictionary that contains the column index of the line of sight in the
+			position vectors.
+		weight_density_sample_name : str, optional
+			Name of the key in the data dictionary that contains the weights of the density sample.
+		weight_shape_sample_name : str, optional
+			Name of the key in the data dictionary that contains the weights of the shape sample.
 
 		Notes
 		-----
 		Constructor parameters 'data', 'output_file_name', 'simulation', 'snapshot', 'separation_limits', 'num_bins_r',
 		'num_bins_pi', 'pi_max', 'boxsize' and 'periodicity' are passed to MeasureIABase.
+		The data dictionary (and any mask dictionaries passed to the measurement methods) may use any key names;
+		they are given through the *_name parameters and translated to the internal default names on input.
 
 		"""
+		self._input_name_map = {
+			positions_density_sample_name: "Position",
+			positions_shape_sample_name: "Position_shape_sample",
+			axis_direction_name: "Axis_Direction",
+			axis_ratio_name: "q",
+			line_of_sight_index_name: "LOS",
+			weight_density_sample_name: "weight",
+			weight_shape_sample_name: "weight_shape_sample",
+		}
+		if output_file_name is not None:
+			self.check_paths([output_file_name])
+		if data is not None:
+			self.check_dict(data, [positions_density_sample_name, positions_shape_sample_name, axis_direction_name,
+								   axis_ratio_name, line_of_sight_index_name])
+			self.check_type_input_data(data,
+									   (positions_density_sample_name, positions_shape_sample_name, axis_direction_name,
+										axis_ratio_name, line_of_sight_index_name))
+			data = self.rename_input_keys(data, self._input_name_map)
 		super().__init__(data, output_file_name, simulation, snapshot, separation_limits, num_bins_r, num_bins_pi,
 						 pi_max, boxsize, periodicity)
+		if self.data is not None and self.boxsize is not None:
+			self.check_units_coordinates(self.data["Position"], self.boxsize)
 		self.num_nodes = num_nodes
 		self.randoms_data = None
 		self.data_dir = None
@@ -93,10 +139,12 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 
 		"""
 		self.responsivity_correction = responsivity
+		masks = self.rename_input_keys(masks, self._input_name_map)
 		if num_jk > 0:
 			try:
 				assert sympy.integer_nthroot(num_jk, 3)[1]
 				L = sympy.integer_nthroot(num_jk, 3)[0]
+				self.check_jackknife_max_separation(num_jk, self.boxsize, self.r_max, self.num_bins_r)
 			except AssertionError:
 				raise ValueError(
 					f"Use x^3 as input for num_jk, with x as an int. {float(int(num_jk ** (1. / 3)))},{num_jk ** (1. / 3)}")
@@ -192,10 +240,12 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 		"""
 
 		self.responsivity_correction = responsivity
+		masks = self.rename_input_keys(masks, self._input_name_map)
 		if num_jk > 0:
 			try:
 				assert sympy.integer_nthroot(num_jk, 3)[1]
 				L = sympy.integer_nthroot(num_jk, 3)[0]
+				self.check_jackknife_max_separation(num_jk, self.boxsize, self.r_max, self.num_bins_r)
 			except AssertionError:
 				raise ValueError(
 					f"Use x^3 as input for num_jk, with x as an int. {float(int(num_jk ** (1. / 3)))},{num_jk ** (1. / 3)}")

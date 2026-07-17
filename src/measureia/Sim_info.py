@@ -152,7 +152,7 @@ class SimInfo:
 			self.N_files = 600
 		elif self.simname == "EAGLE":
 			znames = {"28": "z000p000", "17": "z001p487", "19": "z001p004", "21": "z000p736", "23": "z000p503",
-					  "25": "z000p271"}
+					  "25": "z000p271", None: None}
 			zname = znames[self.snapshot]
 			self.snap_folder = f"/snap_0{self.snapshot}/RefL0100N1504/snapshot_0{self.snapshot}_{zname}/snap_0{self.snapshot}_{zname}"  # update for different z?
 			self.fof_folder = None
