@@ -3,7 +3,6 @@ import h5py
 import pickle
 import os
 import sys
-# from pathos.multiprocessing import ProcessingPool
 from multiprocessing import Pool, shared_memory
 import multiprocessing as mp
 from scipy.spatial import KDTree
