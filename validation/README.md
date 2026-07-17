@@ -185,6 +185,26 @@ comparison is w_g+ / w_gg.
   rtol=5e-3, atol=0.05 in `tests/test_validation_references.py` — the
   same tolerances as the treecorr comparison.
 
+### Lightcone multipoles vs corr_pc (`run_lightcone_multipoles_corrpc.py`)
+
+Compares `MeasureIALightcone.measure_xi_multipoles` against corr_pc's sky
+r–μ mode (`coordinates=1`) — identical 'galaxies' estimator and randoms
+handling as the w comparison above, with measureia's associated-Legendre
+integration applied to the corr_pc ξ(r, μ) grid. The even-in-μ Legendre
+weights cancel corr_pc's internal signed-π reordering exactly, so the
+multipole level is the meaningful comparison (grids stored for
+inspection only).
+
+- **Randoms density**: the (r, μ) grid dilutes the randoms over many more
+  cells than the π-integrated w, so this comparison uses r ≥ 2 Mpc and a
+  5× larger randoms factor than the w scripts — with the defaults the
+  smallest cells have empty empirical RR (ξ undefined) on the measureia
+  side.
+- **Result** (2026-07-17): ξ_g+,2 agrees to ≤0.2% and ξ_gg,0 to ≤0.3% in
+  all signal bins (near-zero outer bins within atol) — the same
+  separation-definition-limited agreement as the w comparison. Enforced
+  at rtol=5e-3, atol=0.05 in `tests/test_validation_references.py`.
+
 **Building corr_pc without MPI**: corr_pc's Makefile asks for `mpic++`,
 but its only MPI usage is `MPI::Init/Finalize` and
 `MPI::COMM_WORLD.Get_size/Get_rank` via the deprecated C++ bindings. The
@@ -210,6 +230,7 @@ make compiler=clang++ \
            -L/opt/homebrew/opt/libomp/lib -lomp"
 CORR_PC_BIN=$PWD/corr_pc python run_box_multipoles_corrpc.py
 CORR_PC_BIN=$PWD/corr_pc python run_lightcone_corrpc.py
+CORR_PC_BIN=$PWD/corr_pc python run_lightcone_multipoles_corrpc.py
 ```
 
 ### Jackknife covariance vs treecorr (`run_lightcone_treecorr_cov.py`)

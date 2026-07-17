@@ -26,6 +26,7 @@ import run_box_halotools as box_halotools
 import run_box_cov_bridge as box_cov_bridge
 import run_box_multipoles_corrpc as box_multipoles
 import run_lightcone_corrpc as lc_corrpc
+import run_lightcone_multipoles_corrpc as lc_multipoles
 import run_lightcone_treecorr as lc_treecorr
 import run_plane_parallel as plane_parallel
 from mock_catalogues import (radial_alignment_box_mock, responsivity,
@@ -323,6 +324,50 @@ class TestLightconeAgainstCorrPC:
             wgg_pc = f["w_gg"][:]
         np.testing.assert_allclose(lc_measureia_results["w_gg"], wgg_pc,
                                    rtol=5e-3, atol=0.05)
+
+
+_LC_MULTIPOLES_REF = lc_multipoles.REFERENCE_FILE
+
+requires_lc_multipoles_reference = pytest.mark.skipif(
+    not os.path.exists(_LC_MULTIPOLES_REF),
+    reason="no committed corr_pc lightcone multipoles reference; build corr_pc "
+           "(with the DRs patch) and run "
+           "validation/run_lightcone_multipoles_corrpc.py",
+)
+
+
+@requires_lc_multipoles_reference
+class TestLightconeMultipolesAgainstCorrPC:
+    """measureia's lightcone multipoles vs corr_pc sky r-mu mode
+    (coordinates=1), with measureia's Legendre integration applied to the
+    corr_pc grid. The even-in-mu Legendre weights cancel corr_pc's internal
+    signed-pi reordering, so the multipole level is the meaningful
+    comparison. Differences are limited by the separation-definition
+    curvature terms (as for w): <=0.4% in all signal bins on this mock,
+    near-zero outer bins covered by atol."""
+
+    @pytest.fixture(scope="class")
+    def mp_results(self, tmp_path_factory):
+        data, randoms, info = lc_multipoles.build_catalogues()
+        tmp = tmp_path_factory.mktemp("validation_lc_mp")
+        out = str(tmp / "lc_multipoles.hdf5")
+        return lc_multipoles.run_measureia(data, randoms, out, str(tmp) + "/")
+
+    def test_multipole_g_plus_matches_corrpc(self, mp_results):
+        with h5py.File(_LC_MULTIPOLES_REF, "r") as f:
+            mp_gp_pc = f["multipole_gp"][:]
+        np.testing.assert_allclose(mp_results["multipole_gp"], mp_gp_pc,
+                                   rtol=5e-3, atol=0.05)
+
+    def test_multipole_gg_matches_corrpc(self, mp_results):
+        with h5py.File(_LC_MULTIPOLES_REF, "r") as f:
+            mp_gg_pc = f["multipole_gg"][:]
+        np.testing.assert_allclose(mp_results["multipole_gg"], mp_gg_pc,
+                                   rtol=5e-3, atol=0.05)
+
+    def test_signal_is_non_null(self, mp_results):
+        assert mp_results["multipole_gp"][0] > 10.0
+        assert mp_results["multipole_gg"][0] > 100.0
 
 
 _MULTIPOLES_REF = box_multipoles.REFERENCE_FILE
