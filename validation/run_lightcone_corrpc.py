@@ -71,12 +71,13 @@ def write_distance_table(path):
 	np.savetxt(path, np.column_stack((z, H, np.zeros_like(z), chi, chi)))
 
 
-def _write_sample(prefix, ra, dec, z, e1=None, e2=None):
+def _write_sample(prefix, ra, dec, z, e1=None, e2=None, jk=None):
 	"""Write one corr_pc sample, z-sorted (corr_pc's data_sorted=1)."""
 	order = np.argsort(z)
 	np.savetxt(prefix + "_pos.dat", np.column_stack((ra[order], dec[order])))
 	np.savetxt(prefix + "_z.dat", z[order])
-	np.savetxt(prefix + "_jk.dat", np.zeros(len(z)), fmt="%i")
+	jk = np.zeros(len(z)) if jk is None else np.asarray(jk)[order]
+	np.savetxt(prefix + "_jk.dat", jk, fmt="%i")
 	if e1 is not None:
 		# corr_pc's rotation e+ = cos(2t) e1 - sin(2t) e2 applied to the raw
 		# survey-convention e1/e2 reproduces measureia's radial-positive e+
@@ -85,17 +86,22 @@ def _write_sample(prefix, ra, dec, z, e1=None, e2=None):
 				   np.column_stack((e1[order], e2[order])))
 
 
-def corrpc_write_inputs(data, randoms, workdir):
+def corrpc_write_inputs(data, randoms, workdir, jk_patches=None, n_jk=0):
+	"""jk_patches (measureia's assign_jackknife_patches dict) + n_jk switch
+	on corr_pc's built-in delete-one jackknife (do_jk=1)."""
+	jk = jk_patches or {}
 	pref = {k: os.path.join(workdir, k) for k in
 			["shape", "density", "srand", "drand"]}
 	_write_sample(pref["shape"], data["RA_shape_sample"],
 				  data["DEC_shape_sample"], data["Redshift_shape_sample"],
-				  data["e1"], data["e2"])
-	_write_sample(pref["density"], data["RA"], data["DEC"], data["Redshift"])
+				  data["e1"], data["e2"], jk=jk.get("shape"))
+	_write_sample(pref["density"], data["RA"], data["DEC"], data["Redshift"],
+				  jk=jk.get("position"))
 	_write_sample(pref["srand"], randoms["RA_shape_sample"],
-				  randoms["DEC_shape_sample"], randoms["Redshift_shape_sample"])
+				  randoms["DEC_shape_sample"], randoms["Redshift_shape_sample"],
+				  jk=jk.get("randoms_shape"))
 	_write_sample(pref["drand"], randoms["RA"], randoms["DEC"],
-				  randoms["Redshift"])
+				  randoms["Redshift"], jk=jk.get("randoms_position"))
 	dist_file = os.path.join(workdir, "distances.dat")
 	write_distance_table(dist_file)
 
@@ -104,7 +110,8 @@ def corrpc_write_inputs(data, randoms, workdir):
 	out_pref = os.path.join(out_dir, "mia_")
 	lines = [
 		("which_corr", 1), ("coordinates", 0), ("estimator", 0),
-		("data_sorted", 1), ("use_comoving", 1), ("do_jk", 0),
+		("data_sorted", 1), ("use_comoving", 1),
+		("do_jk", 1 if n_jk else 0),
 		("sig_crit", 0),
 		("shape_pos", pref["shape"] + "_pos.dat"),
 		("shape_z", pref["shape"] + "_z.dat"),
@@ -130,7 +137,7 @@ def corrpc_write_inputs(data, randoms, workdir):
 		("n_Srand", len(randoms["RA_shape_sample"])),
 		("n_Drand", len(randoms["RA"])),
 		("rand_subsample", 0),
-		("n_jk", 0), ("n_patch", 0),
+		("n_jk", n_jk), ("n_patch", 0),
 		("binR_min", lc.RP_LIMS[0]), ("binR_max", lc.RP_LIMS[1]),
 		("n_bins", lc.NUM_BINS_RP), ("lin_bin", 0),
 		("n_p_bin", lc.NUM_BINS_PI),
