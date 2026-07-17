@@ -114,7 +114,8 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			weight_density_sample_name: "weight",
 			weight_shape_sample_name: "weight_shape_sample",
 		}
-		self.check_paths([output_file_name])
+		if output_file_name is not None:
+			self.check_paths([output_file_name])
 		if data is not None:
 			self.check_dict(data, [RA_density_sample_name, RA_shape_sample_name, DEC_density_sample_name,
 								   DEC_shape_sample_name, redshift_density_sample_name, redshift_shape_sample_name,

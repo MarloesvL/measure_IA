@@ -91,7 +91,8 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			weight_density_sample_name: "weight",
 			weight_shape_sample_name: "weight_shape_sample",
 		}
-		self.check_paths([output_file_name])
+		if output_file_name is not None:
+			self.check_paths([output_file_name])
 		if data is not None:
 			self.check_dict(data, [positions_density_sample_name, positions_shape_sample_name, axis_direction_name,
 								   axis_ratio_name, line_of_sight_index_name])
