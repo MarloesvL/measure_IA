@@ -4,10 +4,11 @@ from .measure_w_lightcone import MeasureWLightcone
 from .measure_m_lightcone_jk import MeasureMultipolesLightconeJackknife
 from .measure_m_lightcone import MeasureMultipolesLightcone
 from .measure_jackknife import MeasureJackknife
+from .check_input import CheckInput
 
 
 class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureWLightconeJackknife,
-						 MeasureMultipolesLightconeJackknife, MeasureJackknife):
+						 MeasureMultipolesLightconeJackknife, MeasureJackknife, CheckInput):
 	r"""Manages the IA correlation function measurement methods used in the MeasureIA package based on speed and input.
 	This class is used to call the methods that measure w_gg, w_g+ and multipoles for simulations (and observations),
 	with lightcone data.
@@ -47,6 +48,16 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			num_bins_pi=20,
 			pi_max=None,
 			num_nodes=1,
+			RA_density_sample_name="RA",
+			RA_shape_sample_name="RA_shape_sample",
+			DEC_density_sample_name="DEC",
+			DEC_shape_sample_name="DEC_shape_sample",
+			redshift_density_sample_name="Redshift",
+			redshift_shape_sample_name="Redshift_shape_sample",
+			e1_name="e1",
+			e2_name="e2",
+			weight_density_sample_name="weight",
+			weight_shape_sample_name="weight_shape_sample",
 	):
 		"""
 		The __init__ method of the MeasureIALightcone class.
@@ -62,13 +73,57 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			If only 'Redshift', 'RA' and 'DEC' are added, the sample will be used for both position and shape sample randoms.
 		num_nodes : int, optional
 			Number of cores to be used in multiprocessing. Default is 1.
+		RA_density_sample_name : str, optional
+			Name of the key in the data (and randoms) dictionary that contains the RA of the density sample.
+		RA_shape_sample_name : str, optional
+			Name of the key in the data (and randoms) dictionary that contains the RA of the shape sample.
+		DEC_density_sample_name : str, optional
+			Name of the key in the data (and randoms) dictionary that contains the DEC of the density sample.
+		DEC_shape_sample_name : str, optional
+			Name of the key in the data (and randoms) dictionary that contains the DEC of the shape sample.
+		redshift_density_sample_name : str, optional
+			Name of the key in the data (and randoms) dictionary that contains the redshift of the density sample.
+		redshift_shape_sample_name : str, optional
+			Name of the key in the data (and randoms) dictionary that contains the redshift of the shape sample.
+		e1_name : str, optional
+			Name of the key in the data dictionary that contains the first ellipticity component of the shape sample.
+		e2_name : str, optional
+			Name of the key in the data dictionary that contains the second ellipticity component of the shape sample.
+		weight_density_sample_name : str, optional
+			Name of the key in the data (and randoms) dictionary that contains the weights of the density sample.
+		weight_shape_sample_name : str, optional
+			Name of the key in the data (and randoms) dictionary that contains the weights of the shape sample.
 
 		Notes
 		-----
 		Constructor parameters 'data', 'output_file_name', 'separation_limits', 'num_bins_r',
 		'num_bins_pi', 'pi_max', are passed to MeasureIABase.
+		The data, randoms and mask dictionaries may use any key names; they are given through the *_name
+		parameters and translated to the internal default names on input.
 
 		"""
+		self._input_name_map = {
+			RA_density_sample_name: "RA",
+			RA_shape_sample_name: "RA_shape_sample",
+			DEC_density_sample_name: "DEC",
+			DEC_shape_sample_name: "DEC_shape_sample",
+			redshift_density_sample_name: "Redshift",
+			redshift_shape_sample_name: "Redshift_shape_sample",
+			e1_name: "e1",
+			e2_name: "e2",
+			weight_density_sample_name: "weight",
+			weight_shape_sample_name: "weight_shape_sample",
+		}
+		self.check_paths([output_file_name])
+		if data is not None:
+			self.check_dict(data, [RA_density_sample_name, RA_shape_sample_name, DEC_density_sample_name,
+								   DEC_shape_sample_name, redshift_density_sample_name, redshift_shape_sample_name,
+								   e1_name, e2_name])
+			data = self.rename_input_keys(data, self._input_name_map)
+		if randoms_data is not None:
+			self.check_dict(randoms_data,
+							[RA_density_sample_name, DEC_density_sample_name, redshift_density_sample_name])
+			randoms_data = self.rename_input_keys(randoms_data, self._input_name_map)
 		super().__init__(data, output_file_name, False, None, separation_limits, num_bins_r, num_bins_pi,
 						 pi_max, None, False)
 		self.num_nodes = num_nodes
@@ -410,6 +465,8 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			raise KeyError("Unknown input for IA_estimator, choose from [clusters, galaxies].")
 
 		self.responsivity_correction = responsivity
+		masks = self.rename_input_keys(masks, self._input_name_map)
+		masks_randoms = self.rename_input_keys(masks_randoms, self._input_name_map)
 		# todo: Expand to include methods with trees and internal multiproc
 		# todo: Checks to see if data directories include everything they need
 		data = self.data  # temporary save so it can be restored at the end of the calculation
@@ -621,6 +678,8 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			raise KeyError("Unknown input for IA_estimator, choose from [clusters, galaxies].")
 
 		self.responsivity_correction = responsivity
+		masks = self.rename_input_keys(masks, self._input_name_map)
+		masks_randoms = self.rename_input_keys(masks_randoms, self._input_name_map)
 		# todo: Expand to include methods with trees and internal multiproc
 		# todo: Checks to see if data directories include everything they need
 		data = self.data  # temporary save so it can be restored at the end of the calculation
