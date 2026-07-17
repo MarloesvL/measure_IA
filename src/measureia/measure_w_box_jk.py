@@ -212,7 +212,8 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 		R_jk = np.zeros(num_box)
 		for i in np.arange(num_box):
 			jk_mask = np.where(jackknife_region_indices_shape != i)
-			R_jk[i] = sum(weight_shape[jk_mask] * (1 - e[jk_mask] ** 2 / 2.0)) / sum(weight_shape[jk_mask])
+			R_jk[i] = sum(weight_shape[jk_mask] * (1 - e[jk_mask] ** 2 / 2.0)) / sum(weight_shape[jk_mask]) \
+				if getattr(self, "responsivity_correction", True) else 0.5
 
 		corrtype = "cross"
 
@@ -463,7 +464,8 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 		R_jk = np.zeros(num_box)
 		for i in np.arange(num_box):
 			jk_mask = np.where(jackknife_region_indices_shape != i)
-			R_jk[i] = sum(weight_shape[jk_mask] * (1 - e[jk_mask] ** 2 / 2.0)) / sum(weight_shape[jk_mask])
+			R_jk[i] = sum(weight_shape[jk_mask] * (1 - e[jk_mask] ** 2 / 2.0)) / sum(weight_shape[jk_mask]) \
+				if getattr(self, "responsivity_correction", True) else 0.5
 
 		corrtype = "cross"
 
@@ -838,7 +840,8 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 		R_jk = np.zeros(self.num_box)
 		for i in np.arange(self.num_box):
 			jk_mask = np.where(jackknife_region_indices_shape != i)
-			R_jk[i] = sum(weight_shape[jk_mask] * (1 - e[jk_mask] ** 2 / 2.0)) / sum(weight_shape[jk_mask])
+			R_jk[i] = sum(weight_shape[jk_mask] * (1 - e[jk_mask] ** 2 / 2.0)) / sum(weight_shape[jk_mask]) \
+				if getattr(self, "responsivity_correction", True) else 0.5
 
 		corrtype = "cross"
 
