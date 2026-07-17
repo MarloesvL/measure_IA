@@ -24,10 +24,14 @@ sys.path.insert(0, _VALIDATION_DIR)
 
 import run_box_halotools as box_halotools
 import run_box_cov_bridge as box_cov_bridge
+import run_box_corrpc_cov as box_corrpc_cov
 import run_box_multipoles_corrpc as box_multipoles
 import run_lightcone_corrpc as lc_corrpc
+import run_lightcone_corrpc_cov as lc_corrpc_cov
 import run_lightcone_multipoles_corrpc as lc_multipoles
+import run_lightcone_multipoles_corrpc_cov as lc_mp_corrpc_cov
 import run_lightcone_treecorr as lc_treecorr
+import run_lightcone_treecorr_cov as lc_treecorr_cov
 import run_plane_parallel as plane_parallel
 from mock_catalogues import (radial_alignment_box_mock, responsivity,
                              radial_alignment_lightcone_mock)
@@ -291,6 +295,48 @@ class TestResponsivityOption:
                                    rtol=1e-10)
         np.testing.assert_allclose(results[False][1], results[True][1], rtol=1e-12)
 
+    def test_box_jackknife_realisations_honour_flag(self, tmp_path):
+        """The flag must reach the per-realisation responsivity too: each
+        delete-one w_g+ realisation rescales by exactly its own 2 R_jk(i)
+        and the w_gg realisations are untouched. Regression test: R_jk used
+        to be computed unconditionally, so responsivity=False produced
+        realisations (and covariances) still divided by 2R — caught by the
+        corr_pc delete-one comparison (TestBoxJackknifeAgainstCorrPC)."""
+        v = box_corrpc_cov
+        mock = radial_alignment_box_mock()
+        data = {k: mock[k] for k in
+                ["Position", "Position_shape_sample", "Axis_Direction", "q", "LOS"]}
+        from measureia import MeasureIABox
+        jk = f"{v.DATASET}_jk{v.NUM_JK}"
+        results = {}
+        labels_shape = None
+        for flag in (True, False):
+            out = str(tmp_path / f"box_jk_resp_{flag}.hdf5")
+            ia = MeasureIABox(
+                data, out, simulation=None, snapshot=None,
+                separation_limits=v.SEP_LIMS, num_bins_r=v.NUM_BINS_R,
+                num_bins_pi=v.NUM_BINS_PI, pi_max=v.PI_MAX,
+                boxsize=mock["boxsize"], num_nodes=1)
+            ia.measure_xi_w(v.DATASET, "both", num_jk=v.NUM_JK,
+                            temp_file_path=str(tmp_path) + "/", responsivity=flag)
+            labels_shape = ia._get_jackknife_region_indices(
+                None, round(v.NUM_JK ** (1 / 3)))[1]
+            with h5py.File(out) as f:
+                results[flag] = {
+                    "gp": np.array([f[f"w_g_plus/{jk}/{v.DATASET}_{i}"][:]
+                                    for i in range(v.NUM_JK)]),
+                    "gg": np.array([f[f"w_gg/{jk}/{v.DATASET}_{i}"][:]
+                                    for i in range(v.NUM_JK)]),
+                }
+        e = (1 - mock["q"] ** 2) / (1 + mock["q"] ** 2)
+        for i in range(v.NUM_JK):
+            R_i = np.mean(1 - e[labels_shape != i] ** 2 / 2.0)
+            np.testing.assert_allclose(results[False]["gp"][i],
+                                       results[True]["gp"][i] * 2 * R_i,
+                                       rtol=1e-10)
+        np.testing.assert_allclose(results[False]["gg"], results[True]["gg"],
+                                   rtol=1e-12)
+
 
 _LC_CORRPC_REF = lc_corrpc.REFERENCE_FILE
 
@@ -534,6 +580,245 @@ class TestBoxCovarianceBridge:
         """The hole-boundary bin-shape the analytic RR misses stays ~2%."""
         with h5py.File(_BRIDGE_REF, "r") as f:
             assert f.attrs["rr_shape_error"] < 0.04
+
+
+_BOX_CORRPC_COV_REF = box_corrpc_cov.REFERENCE_FILE
+
+requires_box_corrpc_cov_reference = pytest.mark.skipif(
+    not os.path.exists(_BOX_CORRPC_COV_REF),
+    reason="no committed corr_pc box covariance reference; build corr_pc and "
+           "run validation/run_box_corrpc_cov.py first",
+)
+
+
+@pytest.fixture(scope="module")
+def box_corrpc_cov_results(tmp_path_factory):
+    """measureia box jackknife (w + multipoles, responsivity off) with the
+    script's configuration, plus the committed corr_pc delete-one reference
+    mapped into the jackknife-realisation convention."""
+    mock = radial_alignment_box_mock()
+    out = str(tmp_path_factory.mktemp("validation") / "box_corrpc_cov.hdf5")
+    temp = str(tmp_path_factory.mktemp("validation_tmp")) + "/"
+    mia, _ = box_corrpc_cov.run_measureia_jk(mock, out, temp)
+    pc = {}
+    with h5py.File(_BOX_CORRPC_COV_REF, "r") as f:
+        for k in ["w_gp_full", "w_gg_full", "mult_gp_full", "mult_gg_full",
+                  "w_gp", "w_gg", "mult_gp", "mult_gg", "n_pos"]:
+            pc[k] = f[k][:]
+        pc["n_pos_full"] = f.attrs["n_pos_full"]
+    return mia, pc, box_corrpc_cov.map_corrpc_to_jk(pc)
+
+
+@requires_box_corrpc_cov_reference
+class TestBoxJackknifeAgainstCorrPC:
+    """Explicit delete-one loop against corr_pc's periodic-box pipeline: each
+    of the L^3 subboxes is physically removed from both samples and corr_pc
+    measures the full estimator on the deleted catalogue, in rp-pi mode
+    (coordinates=6 -> w) and r-mu mode (coordinates=7 -> multipoles). The
+    direct measurements are mapped into measureia's jackknife-realisation
+    convention through the exact affine volume-factor relations (see
+    validation/run_box_corrpc_cov.py), so measureia's count-subtraction
+    reconstructions must match realisation by realisation and at the
+    covariance level. corr_pc's built-in periodic-box do_jk is NOT used: it
+    tallies cross-region pairs stochastically (random per-galaxy jk_prob),
+    which is a different jackknife definition from union deletion."""
+
+    def test_full_sample_w_signal(self, box_corrpc_cov_results):
+        """Box w vs corr_pc coordinates=6 (previously halotools-only); no
+        RR-normalisation factor in this mode, responsivity off on both
+        sides, so the vectors match directly."""
+        mia, pc, _ = box_corrpc_cov_results
+        np.testing.assert_allclose(mia["w_gp_full"], pc["w_gp_full"], rtol=1e-4)
+        np.testing.assert_allclose(mia["w_gg_full"], pc["w_gg_full"], rtol=1e-4)
+
+    def test_full_sample_multipole_signal(self, box_corrpc_cov_results):
+        """Multipoles vs corr_pc coordinates=7 with the (N-1)/N analytic-RR
+        normalisation difference applied (r-mu mode only)."""
+        mia, pc, _ = box_corrpc_cov_results
+        rr_norm = (pc["n_pos_full"] - 1.0) / pc["n_pos_full"]
+        np.testing.assert_allclose(mia["mult_gp_full"] * rr_norm,
+                                   pc["mult_gp_full"], rtol=1e-4)
+        np.testing.assert_allclose((mia["mult_gg_full"] + 1) * rr_norm - 1,
+                                   pc["mult_gg_full"], rtol=1e-4)
+
+    def test_delete_one_realisations(self, box_corrpc_cov_results):
+        """Every jackknife realisation equals corr_pc's direct measurement
+        on the physically deleted catalogue (mapped, all four channels)."""
+        mia, _, mapped = box_corrpc_cov_results
+        for key in ["w_gp", "w_gg", "mult_gp", "mult_gg"]:
+            scale = np.maximum(np.abs(mapped[key]),
+                               1e-3 * np.max(np.abs(mapped[key])))
+            assert np.max(np.abs(mia[key] - mapped[key]) / scale) < 5e-4, key
+
+    def test_jackknife_std(self, box_corrpc_cov_results):
+        mia, _, mapped = box_corrpc_cov_results
+        for key in ["w_gp", "w_gg", "mult_gp", "mult_gg"]:
+            std_pc = np.sqrt(np.diag(box_corrpc_cov.jk_cov(mapped[key])))
+            ratio = mia[f"std_{key}"] / std_pc
+            assert np.max(np.abs(ratio - 1)) < 1e-3, key
+
+    def test_correlation_matrices(self, box_corrpc_cov_results):
+        mia, _, mapped = box_corrpc_cov_results
+        for key in ["w_gp", "w_gg", "mult_gp", "mult_gg"]:
+            corr_pc_mat = box_corrpc_cov.corrmat(box_corrpc_cov.jk_cov(mapped[key]))
+            corr_mia = box_corrpc_cov.corrmat(mia[f"cov_{key}"])
+            assert np.max(np.abs(corr_mia - corr_pc_mat)) < 1e-3, key
+
+
+_LC_CORRPC_COV_REF = lc_corrpc_cov.REFERENCE_FILE
+_LC_MP_CORRPC_COV_REF = lc_mp_corrpc_cov.REFERENCE_FILE
+
+requires_lc_corrpc_cov_reference = pytest.mark.skipif(
+    not os.path.exists(_LC_CORRPC_COV_REF),
+    reason="no committed corr_pc lightcone covariance reference; build "
+           "corr_pc (both patches) and run validation/run_lightcone_corrpc_cov.py",
+)
+
+requires_lc_mp_corrpc_cov_reference = pytest.mark.skipif(
+    not os.path.exists(_LC_MP_CORRPC_COV_REF),
+    reason="no committed corr_pc lightcone multipole covariance reference; "
+           "build corr_pc (both patches) and run "
+           "validation/run_lightcone_multipoles_corrpc_cov.py",
+)
+
+
+def _load_pc_cov_reference(path, value_keys):
+    pc = {"counts": {}, "counts_full": {}}
+    with h5py.File(path, "r") as f:
+        for k in value_keys:
+            pc[k] = f[k][:]
+        for k in lc_corrpc_cov.COUNT_KEYS:
+            pc["counts_full"][k] = f[f"counts_full/{k}"][:]
+            pc["counts"][k] = f[f"counts/{k}"][:]
+    return pc
+
+
+@pytest.fixture(scope="module")
+def lc_corrpc_cov_results(tmp_path_factory):
+    """measureia lightcone jackknife (identical seeded patches as the
+    committed corr_pc do_jk run) plus the corr_pc reference."""
+    data, randoms, info, dist = lc_treecorr.build_catalogues()
+    out = str(tmp_path_factory.mktemp("validation") / "lc_corrpc_cov.hdf5")
+    temp = str(tmp_path_factory.mktemp("validation_tmp")) + "/"
+    ia = lc_treecorr_cov.make_measureia(data, randoms, out)
+    patches = ia.assign_jackknife_patches(data, randoms, lc_corrpc_cov.NUM_JK,
+                                          seed=lc_corrpc_cov.PATCH_SEED)
+    if "randoms_position" not in patches:
+        patches["randoms_position"] = patches["randoms"]
+        patches["randoms_shape"] = patches["randoms"]
+    if os.path.exists(out):
+        os.remove(out)
+    mia = lc_corrpc_cov.run_measureia_jk(data, randoms, patches, out, temp)
+    pc = _load_pc_cov_reference(
+        _LC_CORRPC_COV_REF, ["w_gp_full", "w_gg_full", "w_gp_own", "w_gg_own"])
+    return mia, pc, lc_corrpc_cov.sample_sizes(data, randoms)
+
+
+@requires_lc_corrpc_cov_reference
+class TestLightconeJackknifeAgainstCorrPC:
+    """measureia's lightcone jackknife vs corr_pc's built-in delete-one
+    jackknife (do_jk=1) with the identical seeded kmeans patches. corr_pc's
+    sky-mode jackknife has the same union (two-sided) pair-deletion
+    semantics, so the retained counts must match; the estimator conventions
+    differ in two documented ways (corr_pc normalises every delete-one
+    sample by full-sample weights and zeroes xi_g+ cells whose SD, SR or RR
+    term is empty), so the covariance comparison is enforced with the
+    convention held fixed (corr_pc's convention rebuilt from measureia's
+    counts) and the own-convention ratio is only banded. See
+    validation/run_lightcone_corrpc_cov.py."""
+
+    def test_retained_counts(self, lc_corrpc_cov_results):
+        """Union-deletion count subtraction matches corr_pc's externally:
+        pair counts exactly (+-1-2 boundary pairs), e+ sums to the
+        signed-pi-mirroring level."""
+        mia, pc, N = lc_corrpc_cov_results
+        for k, tol in [("DD", 1e-5), ("RD", 1e-5), ("SR", 1e-5),
+                       ("RR", 2e-3), ("SpD", 2e-3), ("SpR", 2e-2)]:
+            assert lc_corrpc_cov.maxrel(
+                mia[k].sum(axis=2), pc["counts"][k].sum(axis=2)) < tol, k
+
+    def test_matched_convention_realisations(self, lc_corrpc_cov_results):
+        mia, pc, N = lc_corrpc_cov_results
+        wgp_conv, wgg_conv = lc_corrpc_cov.pc_convention_w(mia, N)
+        assert lc_corrpc_cov.maxrel(wgp_conv, pc["w_gp_own"]) < 2e-3
+        assert lc_corrpc_cov.maxrel(wgg_conv, pc["w_gg_own"]) < 5e-3
+
+    def test_matched_convention_std(self, lc_corrpc_cov_results):
+        mia, pc, N = lc_corrpc_cov_results
+        wgp_conv, wgg_conv = lc_corrpc_cov.pc_convention_w(mia, N)
+        for conv, own in [(wgp_conv, pc["w_gp_own"]), (wgg_conv, pc["w_gg_own"])]:
+            ratio = (np.sqrt(np.diag(lc_corrpc_cov.jk_cov(conv)))
+                     / np.sqrt(np.diag(lc_corrpc_cov.jk_cov(own))))
+            assert np.max(np.abs(ratio - 1)) < 1e-2
+
+    def test_own_convention_band(self, lc_corrpc_cov_results):
+        """Each code's own normalisation: expected to differ (documented),
+        stays within a loose band."""
+        mia, pc, N = lc_corrpc_cov_results
+        for key, own in [("gp", pc["w_gp_own"]), ("gg", pc["w_gg_own"])]:
+            ratio = mia[f"std_{key}"] / np.sqrt(np.diag(lc_corrpc_cov.jk_cov(own)))
+            assert np.all((ratio > 0.5) & (ratio < 1.5)), key
+
+
+@pytest.fixture(scope="module")
+def lc_mp_corrpc_cov_results(tmp_path_factory):
+    data, randoms, info = lc_multipoles.build_catalogues()
+    out = str(tmp_path_factory.mktemp("validation") / "lc_mp_corrpc_cov.hdf5")
+    temp = str(tmp_path_factory.mktemp("validation_tmp")) + "/"
+    ia = lc_mp_corrpc_cov.make_measureia(data, randoms, out)
+    patches = ia.assign_jackknife_patches(data, randoms, lc_corrpc_cov.NUM_JK,
+                                          seed=lc_corrpc_cov.PATCH_SEED)
+    if "randoms_position" not in patches:
+        patches["randoms_position"] = patches["randoms"]
+        patches["randoms_shape"] = patches["randoms"]
+    if os.path.exists(out):
+        os.remove(out)
+    mia = lc_mp_corrpc_cov.run_measureia_jk(data, randoms, patches, out, temp)
+    pc = _load_pc_cov_reference(
+        _LC_MP_CORRPC_COV_REF,
+        ["mu", "mult_gp_full", "mult_gg_full", "mult_gp_own", "mult_gg_own"])
+    return mia, pc, lc_corrpc_cov.sample_sizes(data, randoms)
+
+
+@requires_lc_mp_corrpc_cov_reference
+class TestLightconeMultipolesJackknifeAgainstCorrPC:
+    """Multipole-level version of TestLightconeJackknifeAgainstCorrPC
+    (corr_pc sky r-mu mode, coordinates=1; measureia's Legendre integration
+    on both sides). Tolerances are wider than the w leg because the two
+    codes' r and mu definitions differ at the curvature level, migrating
+    ~1e-3 of pairs across (r, mu) cell edges (the w-level rp binning is
+    identical, the r-mu binning is not); the multipole signal agreement is
+    0.2-0.3% and the matched-convention delete-one stds inherit that at the
+    few-percent level. See validation/run_lightcone_multipoles_corrpc_cov.py."""
+
+    def test_retained_counts(self, lc_mp_corrpc_cov_results):
+        mia, pc, N = lc_mp_corrpc_cov_results
+        for k in ["DD", "RD", "SR", "RR"]:
+            assert lc_corrpc_cov.maxrel(
+                mia[k].sum(axis=2), pc["counts"][k].sum(axis=2)) < 1e-2, k
+
+    def test_matched_convention_realisations(self, lc_mp_corrpc_cov_results):
+        mia, pc, N = lc_mp_corrpc_cov_results
+        mgp_conv, mgg_conv = lc_mp_corrpc_cov.pc_convention_multipoles(
+            {k: mia[k] for k in lc_corrpc_cov.COUNT_KEYS}, N, pc["mu"])
+        assert lc_corrpc_cov.maxrel(mgp_conv, pc["mult_gp_own"]) < 2e-2
+        assert lc_corrpc_cov.maxrel(mgg_conv, pc["mult_gg_own"]) < 2e-2
+
+    def test_matched_convention_std(self, lc_mp_corrpc_cov_results):
+        mia, pc, N = lc_mp_corrpc_cov_results
+        mgp_conv, mgg_conv = lc_mp_corrpc_cov.pc_convention_multipoles(
+            {k: mia[k] for k in lc_corrpc_cov.COUNT_KEYS}, N, pc["mu"])
+        for conv, own in [(mgp_conv, pc["mult_gp_own"]),
+                          (mgg_conv, pc["mult_gg_own"])]:
+            ratio = (np.sqrt(np.diag(lc_corrpc_cov.jk_cov(conv)))
+                     / np.sqrt(np.diag(lc_corrpc_cov.jk_cov(own))))
+            assert np.max(np.abs(ratio - 1)) < 0.1
+
+    def test_own_convention_band(self, lc_mp_corrpc_cov_results):
+        mia, pc, N = lc_mp_corrpc_cov_results
+        for key, own in [("gp", pc["mult_gp_own"]), ("gg", pc["mult_gg_own"])]:
+            ratio = mia[f"std_{key}"] / np.sqrt(np.diag(lc_corrpc_cov.jk_cov(own)))
+            assert np.all((ratio > 0.3) & (ratio < 2.0)), key
 
 
 class TestMockCatalogue:

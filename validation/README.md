@@ -216,12 +216,16 @@ shape-rotating kernel even though neither sample has ellipticities
 (randoms never read them), dereferencing an unallocated pointer — it
 happens not to crash on some platforms (and the stray sums are never
 used), but it segfaults reproducibly on macOS. The patch routes that
-term to the plain pair counter; it changes no numbers. On macOS with
-homebrew gsl + libomp:
+term to the plain pair counter; it changes no numbers. The covariance
+legs additionally want `corrpc_patches/outp_2dbins_precision.patch`,
+which re-enables the (commented-out) `setprecision` call in the 2D bin
+writer so the outputs are not truncated to 6 significant digits — a
+formatting-only change. On macOS with homebrew gsl + libomp:
 
 ```bash
 git clone https://github.com/sukhdeep2/corr_pc && cd corr_pc
 git apply /path/to/measure_IA/validation/corrpc_patches/drs_pair_count.patch
+git apply /path/to/measure_IA/validation/corrpc_patches/outp_2dbins_precision.patch
 make compiler=clang++ \
   CFLAGS="-c -I/path/to/measure_IA/validation/corrpc_mpi_stub \
           -I/opt/homebrew/opt/gsl/include -Xpreprocessor -fopenmp \
@@ -298,3 +302,89 @@ rescaled by retained counts and volume but keeps the full-box bin shape;
 the ~2% hole-boundary shape effect above shrinks as the number of patches
 grows (the deleted hole gets smaller). Users needing that last few percent
 should use more patches or the lightcone pipeline with explicit randoms.
+
+### Box jackknife covariance vs corr_pc (`run_box_corrpc_cov.py`)
+
+External covariance validation of the box jackknife, for **w and
+multipoles**. corr_pc does have a built-in periodic-box jackknife, but it
+assigns each galaxy a *random* `jk_prob` (read_dat.cpp) so cross-region
+pairs are tallied stochastically (≈exclusive deletion in expectation) —
+a different jackknife definition from measureia's deterministic union
+deletion, so it is *not* used. Instead the delete-one loop is explicit:
+each of the L³ subboxes is physically removed from both samples and
+corr_pc's full pipeline is run on every deleted catalogue, in rp–π mode
+(`coordinates=6` → w; this doubles as the box-w signal validation against
+corr_pc, previously halotools-only) and r–μ mode (`coordinates=7` →
+multipoles, via measureia's Legendre integration as in the signal leg).
+
+The delete-one identity (`run_box_cov_bridge.py`) states that measureia's
+jackknife realisations equal direct measurements on the physically
+deleted catalogues up to the exact volume factor VF = V/V_del: ξ_jk =
+ξ_direct/VF (g+) and ξ_jk+1 = (ξ_direct+1)/VF (gg). The corr_pc
+realisations are mapped through this affine relation (per realisation, so
+covariances map exactly too) and compared realisation by realisation.
+
+- **Conventions**: measureia runs with `responsivity=False` (corr_pc has
+  no responsivity), and the r–μ-mode-only (N−1)/N analytic-RR factor is
+  applied with the retained N per realisation. The rp–π mode has no such
+  factor: full-sample w agrees to ~10⁻⁶ with no adjustment at all.
+- **Result** (2026-07-17, 8 subboxes, full-precision corr_pc output):
+  delete-one realisations match to ≤5×10⁻⁵ (all four channels), jackknife
+  stds to ≤5×10⁻⁷ and correlation matrices to ≤10⁻⁷ after the exact
+  affine mapping. Enforced in `tests/test_validation_references.py`
+  (`TestBoxJackknifeAgainstCorrPC`).
+- **Found by this comparison**: the box jackknife backends computed the
+  per-realisation responsivity R_jk unconditionally, so
+  `responsivity=False` was ignored inside the jk realisations (they came
+  out exactly 2R too small while the full-sample vector was correct).
+  Fixed in `measure_w_box_jk.py` / `measure_m_box_jk.py` (all six
+  brute/tree/multiproc sites) and locked by
+  `TestResponsivityOption::test_box_jackknife_realisations_honour_flag`.
+
+### Lightcone jackknife covariance vs corr_pc (`run_lightcone_corrpc_cov.py`)
+
+Fully independent end-to-end jackknife validation: unlike the treecorr
+leg (where the estimator had to be rebuilt externally in an explicit
+loop), corr_pc's sky-mode built-in jackknife (`do_jk=1`) implements the
+whole chain itself — per-galaxy jk-region files for all four samples,
+pair tallies into both members' regions (once if shared), subtraction
+from the full-sample counts (union deletion, the same semantics as
+measureia), its own compensated estimator per delete-one sample, and the
+(N−1)/N delete-one formula. The identical seeded kmeans patches as the
+treecorr covariance leg are used, so all three codes' covariances are
+mutually comparable.
+
+Two genuine convention differences were found and are held fixed in the
+enforced comparison:
+
+- **Normalisation**: corr_pc normalises every delete-one sample by the
+  *full-sample* weight products (`final_calc` uses the global S/D/R
+  weights), measureia by the *retained* sample sizes.
+- **Empty-cell policy**: corr_pc zeroes a ξ_g+ (rp, π) cell whenever its
+  SD, SR or RR term has zero raw pairs (`final_calc_bins`), measureia
+  only needs RR > 0. In sparse cells of delete-one realisations this
+  moves single bins substantially.
+
+- **Result** (2026-07-17, 9 patches): retained pair counts match corr_pc's
+  exactly (±1–2 boundary pairs; DD/RD/SR identically zero difference,
+  π-summed) — the union-deletion count subtraction is locked externally.
+  With corr_pc's convention rebuilt from measureia's own retained counts,
+  delete-one w realisations agree to ≤3×10⁻⁴ (g+) / ≤1.4×10⁻³ (gg) and
+  jackknife stds to ≤10⁻³ in every bin. Each code's own convention
+  differs by the documented normalisation/empty-cell effects (std ratios
+  0.68–1.31, banded at 0.5–1.5 in the tests).
+
+### Lightcone multipole jackknife covariance vs corr_pc (`run_lightcone_multipoles_corrpc_cov.py`)
+
+The multipole-level version of the previous leg (`coordinates=1`, sky
+r–μ mode, same mock/config as the multipole signal leg: r ≥ 2 Mpc, 25×
+randoms; measureia's even-in-μ Legendre weights cancel corr_pc's internal
+signed-μ mirroring). Tolerances are wider than the w leg because the two
+codes' r and μ definitions differ at the curvature level, migrating
+~10⁻³ of pairs across (r, μ) cell edges — the w-level rp binning is
+identical between the codes, the r–μ binning is not.
+
+- **Result** (2026-07-17, 9 patches): matched-convention delete-one
+  multipole realisations agree to ≤0.6%, jackknife stds to ≤3.5% (worst
+  bin); pair counts to ≤2×10⁻³. Own-convention std ratios are banded at
+  0.3–2.0 (the empty-cell policy bites harder on the sparser r–μ grid).
