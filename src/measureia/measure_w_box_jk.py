@@ -134,7 +134,8 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 		else:
 			raise ValueError("Invalid value for ellipticity. Choose 'distortion' or 'ellipticity'.")
 		del q
-		R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape)
+		R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape) \
+			if getattr(self, "responsivity_correction", True) else 0.5
 		# R = 1 - np.mean(e ** 2) / 2.0  # responsitivity factor
 		L3 = self.boxsize ** 3  # box volume
 		sub_box_len_logrp = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
@@ -211,7 +212,8 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 		R_jk = np.zeros(num_box)
 		for i in np.arange(num_box):
 			jk_mask = np.where(jackknife_region_indices_shape != i)
-			R_jk[i] = sum(weight_shape[jk_mask] * (1 - e[jk_mask] ** 2 / 2.0)) / sum(weight_shape[jk_mask])
+			R_jk[i] = sum(weight_shape[jk_mask] * (1 - e[jk_mask] ** 2 / 2.0)) / sum(weight_shape[jk_mask]) \
+				if getattr(self, "responsivity_correction", True) else 0.5
 
 		corrtype = "cross"
 
@@ -359,7 +361,8 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 		else:
 			raise ValueError("Invalid value for ellipticity. Choose 'distortion' or 'ellipticity'.")
 		del q
-		R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape)
+		R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape) \
+			if getattr(self, "responsivity_correction", True) else 0.5
 		# R = 1 - np.mean(e ** 2) / 2.0  # responsitivity factor
 		L3 = self.boxsize ** 3  # box volume
 		sub_box_len_logrp = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
@@ -461,7 +464,8 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 		R_jk = np.zeros(num_box)
 		for i in np.arange(num_box):
 			jk_mask = np.where(jackknife_region_indices_shape != i)
-			R_jk[i] = sum(weight_shape[jk_mask] * (1 - e[jk_mask] ** 2 / 2.0)) / sum(weight_shape[jk_mask])
+			R_jk[i] = sum(weight_shape[jk_mask] * (1 - e[jk_mask] ** 2 / 2.0)) / sum(weight_shape[jk_mask]) \
+				if getattr(self, "responsivity_correction", True) else 0.5
 
 		corrtype = "cross"
 
@@ -731,7 +735,8 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 		else:
 			raise ValueError("Invalid value for ellipticity. Choose 'distortion' or 'ellipticity'.")
 		del q
-		self.R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape)
+		self.R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape) \
+			if getattr(self, "responsivity_correction", True) else 0.5
 		# R = 1 - np.mean(e ** 2) / 2.0  # responsitivity factor
 		L3 = self.boxsize ** 3  # box volume
 		self.sub_box_len_logrp = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
@@ -835,7 +840,8 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 		R_jk = np.zeros(self.num_box)
 		for i in np.arange(self.num_box):
 			jk_mask = np.where(jackknife_region_indices_shape != i)
-			R_jk[i] = sum(weight_shape[jk_mask] * (1 - e[jk_mask] ** 2 / 2.0)) / sum(weight_shape[jk_mask])
+			R_jk[i] = sum(weight_shape[jk_mask] * (1 - e[jk_mask] ** 2 / 2.0)) / sum(weight_shape[jk_mask]) \
+				if getattr(self, "responsivity_correction", True) else 0.5
 
 		corrtype = "cross"
 

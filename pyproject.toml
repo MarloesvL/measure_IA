@@ -11,10 +11,15 @@ dependencies = [
     "kmeans-radec",
     "matplotlib~=3.10.6",
     "numpy~=1.26.2",
-    "pathos~=0.3.1",
     "pyccl~=3.2",
     "scipy~=1.11.4",
     "sympy~=1.12",
+]
+
+[project.optional-dependencies]
+validation = [
+    "halotools>=0.9.4; python_version >= '3.11'",
+    "treecorr>=5.0",
 ]
 
 [dependency-groups] # doc packages also in dev

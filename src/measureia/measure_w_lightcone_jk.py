@@ -1,0 +1,1517 @@
+import numpy as np
+import h5py
+import pyccl as ccl
+import os
+from multiprocessing import Pool, shared_memory
+import multiprocessing as mp
+from scipy.spatial import KDTree
+from .write_data import write_dataset_hdf5, create_group_hdf5
+from .measure_IA_base import MeasureIABase
+from .read_data import ReadData
+
+
+class MeasureWLightconeJackknife(MeasureIABase):
+	"""Class that contains all methods for the measurements of xi_gg and xi_g+ for w_gg and w_g+ with lightcone data.
+
+	Notes
+	-----
+	Inherits attributes from 'SimInfo', where 'boxsize', 'L_0p5' and 'snap_group' are used in this class.
+	Inherits attributes from 'MeasureIABase', where 'data', 'output_file_name', 'periodicity', 'Num_position',
+	'Num_shape', 'r_min', 'r_max', 'num_bins_r', 'num_bins_pi', 'r_bins', 'pi_bins', 'mu_r_bins' are used.
+
+	"""
+
+	def __init__(
+			self,
+			data,
+			output_file_name,
+			simulation=None,
+			snapshot=None,
+			separation_limits=[0.1, 20.0],
+			num_bins_r=8,
+			num_bins_pi=20,
+			pi_max=None,
+			boxsize=None,
+			periodicity=True,
+	):
+		"""
+		The __init__ method of the MeasureWObservations class.
+
+		Notes
+		-----
+		Constructor parameters 'data', 'output_file_name', 'simulation', 'snapshot', 'separation_limits', 'num_bins_r',
+		'num_bins_pi', 'pi_max', 'boxsize' and 'periodicity' are passed to MeasureIABase.
+
+		"""
+		super().__init__(data, output_file_name, simulation, snapshot, separation_limits, num_bins_r, num_bins_pi,
+						 pi_max, boxsize, periodicity)
+		return
+
+	def _measure_xi_rp_pi_lightcone_jk_brute(self, dataset_name, jackknife_region_indices_pos,
+											 jackknife_region_indices_shape, masks=None, return_output=False,
+											 print_num=True, over_h=False, cosmology=None, jk_group_name="",
+											 data_suffix="_SplusD", chunk_size=1000, num_nodes=1, temp_file_path=None
+											 ):
+		"""Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
+		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
+		axes, q=b/a (q) and the index of the direction of the line of sight (LOS=2 for z axis).
+		Positions are assumed to be given in cMpc/h.
+
+		Parameters
+		----------
+		masks :
+			the masks for the data to select only part of the data (Default value = None)
+		dataset_name :
+			the dataset name given in the hdf5 file. (Default value = "All_galaxies")
+		return_output :
+			Output is returned if True, saved to file if False. (Default value = False)
+		print_num :
+			 (Default value = True)
+		over_h :
+			 (Default value = False)
+		cosmology :
+			 (Default value = None)
+		jk_group_name :
+			 (Default value = "")
+
+		Returns
+		-------
+		type
+			xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
+
+		"""
+
+		if masks == None:
+			redshift = self.data["Redshift"]
+			redshift_shape_sample = self.data["Redshift_shape_sample"]
+			RA = self.data["RA"]
+			RA_shape_sample = self.data["RA_shape_sample"]
+			DEC = self.data["DEC"]
+			DEC_shape_sample = self.data["DEC_shape_sample"]
+			e1 = self.data["e1"]
+			e2 = self.data["e2"]
+			weight = self.data["weight"]
+			weight_shape = self.data["weight_shape_sample"]
+		else:
+			redshift = self.data["Redshift"][masks["Redshift"]]
+			redshift_shape_sample = self.data["Redshift_shape_sample"][masks["Redshift_shape_sample"]]
+			RA = self.data["RA"][masks["RA"]]
+			RA_shape_sample = self.data["RA_shape_sample"][masks["RA_shape_sample"]]
+			DEC = self.data["DEC"][masks["DEC"]]
+			DEC_shape_sample = self.data["DEC_shape_sample"][masks["DEC_shape_sample"]]
+			e1 = self.data["e1"][masks["e1"]]
+			e2 = self.data["e2"][masks["e2"]]
+			try:
+				weight_mask = masks["weight"]
+			except:
+				masks["weight"] = np.ones(self.Num_position, dtype=bool)
+			try:
+				weight_mask = masks["weight_shape_sample"]
+			except:
+				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
+			weight = self.data["weight"][masks["weight"]]
+			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
+		Num_position = len(RA)
+		Num_shape = len(RA_shape_sample)
+		if print_num:
+			print(
+				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
+		if data_suffix == "_SplusD":
+			DD_suff = "_DD"
+			Scross_suff = "_ScrossD"
+		elif data_suffix == "_SplusR":
+			DD_suff = "_SR"
+			Scross_suff = "_ScrossR"
+		else:
+			raise ValueError("data_suffix must be _SplusD or _SplusR")
+		sub_box_len_logrp = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
+		sub_box_len_pi = (self.pi_bins[-1] - self.pi_bins[0]) / self.num_bins_pi
+		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		num_jk = max(jackknife_region_indices_pos) - min(jackknife_region_indices_pos) + 1
+		jackknife_region_indices_pos -= min(jackknife_region_indices_pos)
+		jackknife_region_indices_shape -= min(jackknife_region_indices_shape)
+		DD_jk = np.zeros((num_jk, self.num_bins_r, self.num_bins_pi))
+		Splus_D_jk = np.zeros((num_jk, self.num_bins_r, self.num_bins_pi))
+
+		if cosmology == None:
+			cosmology = ccl.Cosmology(Omega_c=0.225, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.0)
+			if print_num:
+				print("No cosmology given, using Omega_m=0.27, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.")
+		h = cosmology["h"]
+
+		LOS_all = ccl.comoving_radial_distance(cosmology, 1 / (1 + redshift))
+		LOS_all_shape_sample = ccl.comoving_radial_distance(cosmology, 1 / (1 + redshift_shape_sample))
+		if over_h:
+			LOS_all *= h
+			LOS_all_shape_sample *= h
+		del redshift, redshift_shape_sample, cosmology
+
+		if getattr(self, "responsivity_correction", False):
+			R = sum(weight_shape * (1 - (e1 ** 2 + e2 ** 2) / 2.0)) / sum(weight_shape)
+			e1, e2 = e1 / (2 * R), e2 / (2 * R)
+		e = np.array([e1, e2]).transpose()
+		RA_rad = RA / 180 * np.pi
+		RA_shape_sample_rad = RA_shape_sample / 180 * np.pi
+		DEC_rad = DEC / 180 * np.pi
+		DEC_shape_sample_rad = DEC_shape_sample / 180 * np.pi
+		n_shape = np.array([np.cos(DEC_shape_sample_rad) * np.cos(RA_shape_sample_rad),
+							np.cos(DEC_shape_sample_rad) * np.sin(RA_shape_sample_rad),
+							np.sin(DEC_shape_sample_rad)]).transpose()
+		del DEC_shape_sample, RA_shape_sample, DEC_shape_sample_rad, RA_shape_sample_rad
+		s_shape = n_shape * np.array([LOS_all_shape_sample]).transpose()
+		n_pos = np.array([np.cos(DEC_rad) * np.cos(RA_rad),
+						  np.cos(DEC_rad) * np.sin(RA_rad),
+						  np.sin(DEC_rad)]).transpose()
+		east = np.array([-np.sin(RA_rad), np.cos(RA_rad), np.zeros(Num_position)]).transpose()
+		north = np.array([
+			-np.sin(DEC_rad) * np.cos(RA_rad),
+			-np.sin(DEC_rad) * np.sin(RA_rad),
+			np.cos(DEC_rad)
+		]).transpose()
+		del RA, DEC, DEC_rad, RA_rad
+		s_pos = np.array([LOS_all]).transpose() * n_pos
+		del LOS_all, LOS_all_shape_sample
+
+		for n in np.arange(0, Num_position):
+			L = s_pos[n] + s_shape
+			n_LOS = L / np.sqrt(np.sum(L ** 2, axis=1))[:, None]
+			# n_LOS = (n_pos[n] + n_shape) / np.array([np.sqrt(np.sum((n_pos[n] + n_shape) ** 2, axis=1))]).transpose()
+			s = s_shape - s_pos[n]
+			LOS = self.calculate_dot_product_arrays(s, n_LOS)
+			separation_len = np.sqrt(np.sum(s ** 2, axis=1) - LOS ** 2)  # len of s-pi*nlos ->check
+
+			# Projected separation vector
+			s_perp = s - np.sum(s * n_LOS, axis=1, keepdims=True) * n_LOS
+
+			# Components of projected separation
+			x = np.sum(s_perp * east[n], axis=1)
+			y = np.sum(s_perp * north[n], axis=1)
+			# phi = np.arctan2(x, y)  # angle from north toward east
+			phi = np.arctan2(y, x)
+
+			e_plus, e_cross = self.get_ellipticity(e, phi)
+			# del phi_sep_dir
+			e_plus[np.isnan(e_plus)] = 0.0
+			e_cross[np.isnan(e_cross)] = 0.0
+
+			# get the indices for the binning
+			mask = (separation_len >= self.r_bins[0]) * (separation_len < self.r_bins[-1]) * (
+					LOS >= self.pi_bins[0]) * (LOS < self.pi_bins[-1])
+			ind_r = np.floor(
+				np.log10(separation_len[mask]) / sub_box_len_logrp - np.log10(self.r_bins[0]) / sub_box_len_logrp
+			)
+			del separation_len
+			ind_r = np.array(ind_r, dtype=int)
+			ind_pi = np.floor(
+				LOS[mask] / sub_box_len_pi - self.pi_bins[0] / sub_box_len_pi
+			)  # need length of LOS, so only positive values
+			del LOS
+			ind_pi = np.array(ind_pi, dtype=int)
+			if np.any(ind_r == np.shape(Splus_D)[0]):
+				ind_r[np.where(ind_r == np.shape(Splus_D)[0])] = np.shape(Splus_D)[0] - 1
+			if np.any(ind_pi == np.shape(Splus_D)[1]):
+				ind_pi[np.where(ind_pi == np.shape(Splus_D)[1])] = np.shape(Splus_D)[1] - 1
+			try:
+				np.add.at(Splus_D, (ind_r, ind_pi), (weight[n] * weight_shape[mask] * e_plus[mask]))
+			except:
+				print(ind_r, np.shape(Splus_D)[0], ind_r == 10, np.sum(ind_r == int(np.shape(Splus_D)[0])) > 0,
+					  ind_r == int(np.shape(Splus_D)[0]))
+			np.add.at(Scross_D, (ind_r, ind_pi), (weight[n] * weight_shape[mask] * e_cross[mask]))
+			np.add.at(DD, (ind_r, ind_pi), weight[n] * weight_shape[mask])
+
+			shape_mask = np.where(jackknife_region_indices_shape[mask] != jackknife_region_indices_pos[n])[0]
+			np.add.at(Splus_D_jk, (jackknife_region_indices_pos[n], ind_r, ind_pi),
+					  (weight[n] * weight_shape[mask] * e_plus[mask]))  # responsivity added later
+			np.add.at(Splus_D_jk,
+					  (jackknife_region_indices_shape[mask][shape_mask], ind_r[shape_mask], ind_pi[shape_mask]),
+					  (weight[n] * weight_shape[mask][shape_mask] * e_plus[mask][
+						  shape_mask]))  # responsivity added later
+
+			del e_plus, e_cross
+			np.add.at(DD_jk, (jackknife_region_indices_pos[n], ind_r, ind_pi),
+					  (weight[n] * weight_shape[mask]))
+			np.add.at(DD_jk, (jackknife_region_indices_shape[mask][shape_mask], ind_r[shape_mask], ind_pi[shape_mask]),
+					  (weight[n] * weight_shape[mask][shape_mask]))
+
+		# if Num_position == Num_shape:
+		# 	DD = DD / 2.0  # auto correlation, all pairs are double
+
+		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
+		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
+		dpi = (self.pi_bins[1:] - self.pi_bins[:-1]) / 2.0
+		pi_bins = self.pi_bins[:-1] + abs(dpi)  # middle of bins
+
+		if (self.output_file_name != None) and (return_output == False):
+			output_file = h5py.File(self.output_file_name, "a")
+			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_g_plus/")
+			write_dataset_hdf5(group, dataset_name + data_suffix, data=Splus_D)
+			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
+			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
+			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_g_plus/{jk_group_name}")
+			for i in np.arange(0, num_jk):
+				write_dataset_hdf5(group, dataset_name + f"_{i}{data_suffix}", data=(Splus_D - Splus_D_jk[i]))
+				write_dataset_hdf5(group, dataset_name + f"_{i}_rp", data=separation_bins)
+				write_dataset_hdf5(group, dataset_name + f"_{i}_pi", data=pi_bins)
+			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_g_cross/")
+			write_dataset_hdf5(group, dataset_name + Scross_suff, data=Scross_D)
+			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
+			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
+			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_gg/")
+			write_dataset_hdf5(group, dataset_name + DD_suff, data=DD)
+			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
+			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
+			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_gg/{jk_group_name}")
+			for i in np.arange(0, num_jk):
+				write_dataset_hdf5(group, dataset_name + f"_{i}{DD_suff}", data=(DD - DD_jk[i]))
+				write_dataset_hdf5(group, dataset_name + f"_{i}_rp", data=separation_bins)
+				write_dataset_hdf5(group, dataset_name + f"_{i}_pi", data=pi_bins)
+			output_file.close()
+			return
+		else:
+			return Splus_D, DD, separation_bins, pi_bins
+
+	def _measure_xi_rp_pi_lightcone_jk_tree(self, dataset_name, jackknife_region_indices_pos,
+											jackknife_region_indices_shape, masks=None, return_output=False,
+											print_num=True, over_h=False, cosmology=None, jk_group_name="",
+											data_suffix="_SplusD", chunk_size=1000, num_nodes=1, temp_file_path=None
+											):
+		"""Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
+		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
+		axes, q=b/a (q) and the index of the direction of the line of sight (LOS=2 for z axis).
+		Positions are assumed to be given in cMpc/h.
+
+		Parameters
+		----------
+		masks :
+			the masks for the data to select only part of the data (Default value = None)
+		dataset_name :
+			the dataset name given in the hdf5 file. (Default value = "All_galaxies")
+		return_output :
+			Output is returned if True, saved to file if False. (Default value = False)
+		print_num :
+			 (Default value = True)
+		over_h :
+			 (Default value = False)
+		cosmology :
+			 (Default value = None)
+		jk_group_name :
+			 (Default value = "")
+
+		Returns
+		-------
+		type
+			xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
+
+		"""
+
+		if masks == None:
+			redshift = self.data["Redshift"]
+			redshift_shape_sample = self.data["Redshift_shape_sample"]
+			RA = self.data["RA"]
+			RA_shape_sample = self.data["RA_shape_sample"]
+			DEC = self.data["DEC"]
+			DEC_shape_sample = self.data["DEC_shape_sample"]
+			e1 = self.data["e1"]
+			e2 = self.data["e2"]
+			weight = self.data["weight"]
+			weight_shape = self.data["weight_shape_sample"]
+		else:
+			redshift = self.data["Redshift"][masks["Redshift"]]
+			redshift_shape_sample = self.data["Redshift_shape_sample"][masks["Redshift_shape_sample"]]
+			RA = self.data["RA"][masks["RA"]]
+			RA_shape_sample = self.data["RA_shape_sample"][masks["RA_shape_sample"]]
+			DEC = self.data["DEC"][masks["DEC"]]
+			DEC_shape_sample = self.data["DEC_shape_sample"][masks["DEC_shape_sample"]]
+			e1 = self.data["e1"][masks["e1"]]
+			e2 = self.data["e2"][masks["e2"]]
+			try:
+				weight_mask = masks["weight"]
+			except:
+				masks["weight"] = np.ones(self.Num_position, dtype=bool)
+			try:
+				weight_mask = masks["weight_shape_sample"]
+			except:
+				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
+			weight = self.data["weight"][masks["weight"]]
+			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
+		Num_position = len(RA)
+		Num_shape = len(RA_shape_sample)
+		if print_num:
+			print(
+				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
+		if data_suffix == "_SplusD":
+			DD_suff = "_DD"
+			Scross_suff = "_ScrossD"
+		elif data_suffix == "_SplusR":
+			DD_suff = "_SR"
+			Scross_suff = "_ScrossR"
+		else:
+			raise ValueError("data_suffix must be _SplusD or _SplusR")
+		sub_box_len_logrp = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
+		sub_box_len_pi = (self.pi_bins[-1] - self.pi_bins[0]) / self.num_bins_pi
+		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		num_jk = max(jackknife_region_indices_pos) - min(jackknife_region_indices_pos) + 1
+		jackknife_region_indices_pos -= min(jackknife_region_indices_pos)
+		jackknife_region_indices_shape -= min(jackknife_region_indices_shape)
+		DD_jk = np.zeros((num_jk, self.num_bins_r, self.num_bins_pi))
+		Splus_D_jk = np.zeros((num_jk, self.num_bins_r, self.num_bins_pi))
+
+		if cosmology == None:
+			cosmology = ccl.Cosmology(Omega_c=0.225, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.0)
+			if print_num:
+				print("No cosmology given, using Omega_m=0.27, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.")
+		h = cosmology["h"]
+
+		LOS_all = ccl.comoving_radial_distance(cosmology, 1 / (1 + redshift))
+		LOS_all_shape_sample = ccl.comoving_radial_distance(cosmology, 1 / (1 + redshift_shape_sample))
+		if over_h:
+			LOS_all *= h
+			LOS_all_shape_sample *= h
+		del redshift, redshift_shape_sample, cosmology
+
+		r_max, r_min = np.sqrt(self.r_max ** 2 + self.pi_bins[-1] ** 2), self.r_min
+		if getattr(self, "responsivity_correction", False):
+			R = sum(weight_shape * (1 - (e1 ** 2 + e2 ** 2) / 2.0)) / sum(weight_shape)
+			e1, e2 = e1 / (2 * R), e2 / (2 * R)
+		e = np.array([e1, e2]).transpose()
+		RA_rad = RA / 180 * np.pi
+		RA_shape_sample_rad = RA_shape_sample / 180 * np.pi
+		DEC_rad = DEC / 180 * np.pi
+		DEC_shape_sample_rad = DEC_shape_sample / 180 * np.pi
+		n_shape = np.array([np.cos(DEC_shape_sample_rad) * np.cos(RA_shape_sample_rad),
+							np.cos(DEC_shape_sample_rad) * np.sin(RA_shape_sample_rad),
+							np.sin(DEC_shape_sample_rad)]).transpose()
+		del DEC_shape_sample, RA_shape_sample, DEC_shape_sample_rad, RA_shape_sample_rad
+		s_shape = n_shape * np.array([LOS_all_shape_sample]).transpose()
+		n_pos = np.array([np.cos(DEC_rad) * np.cos(RA_rad),
+						  np.cos(DEC_rad) * np.sin(RA_rad),
+						  np.sin(DEC_rad)]).transpose()
+		east = np.array([-np.sin(RA_rad), np.cos(RA_rad), np.zeros(Num_position)]).transpose()
+		north = np.array([
+			-np.sin(DEC_rad) * np.cos(RA_rad),
+			-np.sin(DEC_rad) * np.sin(RA_rad),
+			np.cos(DEC_rad)
+		]).transpose()
+		del RA, DEC, DEC_rad, RA_rad
+		s_pos = np.array([LOS_all]).transpose() * n_pos
+		del LOS_all, LOS_all_shape_sample
+		shape_tree = KDTree(s_shape)
+		for i in np.arange(0, Num_position, 100):  # RAM optimisation
+			i2 = min(Num_position, i + 100)
+			s_pos_i = s_pos[i:i2]
+			n_pos_i = n_pos[i:i2]
+			weight_i = weight[i:i2]
+			east_i = east[i:i2]
+			north_i = north[i:i2]
+			jackknife_region_indices_pos_i = jackknife_region_indices_pos[i:i2]
+			pos_tree = KDTree(s_pos_i)
+			ind_min_i = pos_tree.query_ball_tree(shape_tree, r_min)
+			ind_max_i = pos_tree.query_ball_tree(shape_tree, r_max)
+			ind_rbin_i = self.setdiff2D(ind_max_i, ind_min_i)
+			for n in np.arange(0, len(s_pos_i)):
+				if len(ind_rbin_i[n]) > 0:
+					# for Splus_D (calculate ellipticities around position sample)
+					L = s_pos_i[n] + s_shape[ind_rbin_i[n]]
+					n_LOS = L / np.sqrt(np.sum(L ** 2, axis=1))[:, None]
+					# n_LOS = (n_pos_i[n] + n_shape[ind_rbin_i[n]]) / np.array(
+					# 	[np.sqrt(np.sum((n_pos_i[n] + n_shape[ind_rbin_i[n]]) ** 2, axis=1))]).transpose()
+					s = s_shape[ind_rbin_i[n]] - s_pos_i[n]
+					LOS = self.calculate_dot_product_arrays(s, n_LOS)
+					separation_len = np.sqrt(np.sum(s ** 2, axis=1) - LOS ** 2)  # len of s-pi*nlos ->check
+
+					# Projected separation vector
+					s_perp = s - np.sum(s * n_LOS, axis=1, keepdims=True) * n_LOS
+
+					# Components of projected separation
+					x = np.sum(s_perp * east_i[n], axis=1)
+					y = np.sum(s_perp * north_i[n], axis=1)
+					# phi = np.arctan2(x, y)  # angle from north toward east
+					phi = np.arctan2(y, x)
+
+					e_plus, e_cross = self.get_ellipticity(e[ind_rbin_i[n]], phi)
+					e_plus[np.isnan(e_plus)] = 0.0
+					e_cross[np.isnan(e_cross)] = 0.0
+
+					# get the indices for the binning
+					mask = (separation_len >= self.r_bins[0]) * (separation_len < self.r_bins[-1]) * (
+							LOS >= self.pi_bins[0]) * (LOS < self.pi_bins[-1])
+					ind_r = np.floor(
+						np.log10(separation_len[mask]) / sub_box_len_logrp - np.log10(
+							self.r_bins[0]) / sub_box_len_logrp
+					)
+					del separation_len
+					ind_r = np.array(ind_r, dtype=int)
+					ind_pi = np.floor(
+						LOS[mask] / sub_box_len_pi - self.pi_bins[0] / sub_box_len_pi
+					)  # need length of LOS, so only positive values
+					del LOS
+					ind_pi = np.array(ind_pi, dtype=int)
+					if np.any(ind_r == np.shape(Splus_D)[0]):
+						ind_r[np.where(ind_r == np.shape(Splus_D)[0])] = np.shape(Splus_D)[0] - 1
+					if np.any(ind_pi == np.shape(Splus_D)[1]):
+						ind_pi[np.where(ind_pi == np.shape(Splus_D)[1])] = np.shape(Splus_D)[1] - 1
+					try:
+						np.add.at(Splus_D, (ind_r, ind_pi),
+								  (weight_i[n] * weight_shape[ind_rbin_i[n]][mask] * e_plus[mask]))
+					except:
+						print(ind_r, np.shape(Splus_D)[0], ind_r == 10, np.sum(ind_r == int(np.shape(Splus_D)[0])) > 0,
+							  ind_r == int(np.shape(Splus_D)[0]))
+					np.add.at(Scross_D, (ind_r, ind_pi),
+							  (weight_i[n] * weight_shape[ind_rbin_i[n]][mask] * e_cross[mask]))
+					np.add.at(DD, (ind_r, ind_pi), weight_i[n] * weight_shape[ind_rbin_i[n]][mask])
+
+					shape_mask = \
+						np.where(
+							jackknife_region_indices_shape[ind_rbin_i[n]][mask] != jackknife_region_indices_pos_i[n])[
+							0]
+					np.add.at(Splus_D_jk, (jackknife_region_indices_pos_i[n], ind_r, ind_pi),
+							  (weight_i[n] * weight_shape[ind_rbin_i[n]][mask] * e_plus[
+								  mask]))  # responsivity added later
+					np.add.at(Splus_D_jk,
+							  (jackknife_region_indices_shape[ind_rbin_i[n]][mask][shape_mask], ind_r[shape_mask],
+							   ind_pi[shape_mask]),
+							  (weight_i[n] * weight_shape[ind_rbin_i[n]][mask][shape_mask] * e_plus[mask][
+								  shape_mask]))  # responsivity added later
+
+					del e_plus, e_cross
+					np.add.at(DD_jk, (jackknife_region_indices_pos_i[n], ind_r, ind_pi),
+							  (weight_i[n] * weight_shape[ind_rbin_i[n]][mask]))
+					np.add.at(DD_jk,
+							  (jackknife_region_indices_shape[ind_rbin_i[n]][mask][shape_mask], ind_r[shape_mask],
+							   ind_pi[shape_mask]),
+							  (weight_i[n] * weight_shape[ind_rbin_i[n]][mask][shape_mask]))
+
+		# print(n_pairs_bin1)
+		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
+		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
+		dpi = (self.pi_bins[1:] - self.pi_bins[:-1]) / 2.0
+		pi_bins = self.pi_bins[:-1] + abs(dpi)  # middle of bins
+
+		if (self.output_file_name != None) and (return_output == False):
+			output_file = h5py.File(self.output_file_name, "a")
+			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_g_plus/")
+			write_dataset_hdf5(group, dataset_name + data_suffix, data=Splus_D)
+			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
+			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
+			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_g_plus/{jk_group_name}")
+			for i in np.arange(0, num_jk):
+				write_dataset_hdf5(group, dataset_name + f"_{i}{data_suffix}", data=(Splus_D - Splus_D_jk[i]))
+				write_dataset_hdf5(group, dataset_name + f"_{i}_rp", data=separation_bins)
+				write_dataset_hdf5(group, dataset_name + f"_{i}_pi", data=pi_bins)
+			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_g_cross/")
+			write_dataset_hdf5(group, dataset_name + Scross_suff, data=Scross_D)
+			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
+			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
+			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_gg/")
+			write_dataset_hdf5(group, dataset_name + DD_suff, data=DD)
+			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
+			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
+			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_gg/{jk_group_name}")
+			for i in np.arange(0, num_jk):
+				write_dataset_hdf5(group, dataset_name + f"_{i}{DD_suff}", data=(DD - DD_jk[i]))
+				write_dataset_hdf5(group, dataset_name + f"_{i}_rp", data=separation_bins)
+				write_dataset_hdf5(group, dataset_name + f"_{i}_pi", data=pi_bins)
+			output_file.close()
+			return
+		else:
+			return Splus_D, DD, separation_bins, pi_bins
+
+	def _measure_xi_rp_pi_lightcone_jk_batch(self, i):
+		r"""Measures components of $\xi_{gg}$ and $\xi_{g+}$ in (rp,pi) bins including jackknife realisations for a batch
+		of indices from i to i+chunk_size. Support function for _measure_xi_rp_pi_box_jk_multiprocessing().
+
+		Parameters
+		----------
+		i: int
+			Start index of the batch.
+
+		Returns
+		-------
+		ndarrays
+			S+D, SxD, DD, DD_jk, S+D_jk where the _jk versions store the necessary information of DD of S+D for
+			each jackknife realisation.
+		"""
+		if i + self.chunk_size > self.Num_shape_masked:
+			i2 = self.Num_shape_masked
+		else:
+			i2 = i + self.chunk_size
+		r_max, r_min = np.sqrt(self.r_max ** 2 + self.pi_bins[-1] ** 2), self.r_min
+
+		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		DD_jk = np.zeros((self.num_jk, self.num_bins_r, self.num_bins_pi))
+		Splus_D_jk = np.zeros((self.num_jk, self.num_bins_r, self.num_bins_pi))
+
+		shms = []
+		shared_data = {}
+		for name, shape, dtype in self.shm_infos:
+			shm = shared_memory.SharedMemory(name=name)
+			shared_data[name] = np.ndarray(shape, dtype=dtype, buffer=shm.buf)
+			shms.append(shm)
+		jackknife_region_indices_shape = shared_data["jackknife_region_indices_shape"]
+		n_shape = shared_data["n_shape"]
+		s_shape = shared_data["s_shape"]
+		e = shared_data["e"]
+		for j in np.arange(i, i2, 100):
+			j2 = min(j + 100, i2)
+			s_pos_i = shared_data["s_pos"][j:j2]
+			n_pos_i = shared_data["n_pos"][j:j2]
+			weight_i = shared_data["weight"][j:j2]
+			east_i = shared_data["east"][j:j2]
+			north_i = shared_data["north"][j:j2]
+			jackknife_region_indices_pos_i = shared_data["jackknife_region_indices_pos"][j:j2]
+			pos_tree = KDTree(s_pos_i)
+			ind_min_i = pos_tree.query_ball_tree(self.shape_tree, r_min)
+			ind_max_i = pos_tree.query_ball_tree(self.shape_tree, r_max)
+			ind_rbin_i = self.setdiff2D(ind_max_i, ind_min_i)
+			for n in np.arange(0, len(s_pos_i)):
+				if len(ind_rbin_i[n]) > 0:
+					# for Splus_D (calculate ellipticities around position sample)
+					L = s_pos_i[n] + s_shape[ind_rbin_i[n]]
+					n_LOS = L / np.sqrt(np.sum(L ** 2, axis=1))[:, None]
+					# n_LOS = (n_pos_i[n] + n_shape[ind_rbin_i[n]]) / np.array(
+					# 	[np.sqrt(np.sum((n_pos_i[n] + n_shape[ind_rbin_i[n]]) ** 2, axis=1))]).transpose()
+					s = s_shape[ind_rbin_i[n]] - s_pos_i[n]
+					LOS = self.calculate_dot_product_arrays(s, n_LOS)
+					separation_len = np.sqrt(np.sum(s ** 2, axis=1) - LOS ** 2)  # len of s-pi*nlos ->check
+
+					# Projected separation vector
+					s_perp = s - np.sum(s * n_LOS, axis=1, keepdims=True) * n_LOS
+
+					# Components of projected separation
+					x = np.sum(s_perp * east_i[n], axis=1)
+					y = np.sum(s_perp * north_i[n], axis=1)
+					# phi = np.arctan2(x, y)  # angle from north toward east
+					phi = np.arctan2(y, x)
+
+					e_plus, e_cross = self.get_ellipticity(e[ind_rbin_i[n]], phi)
+					# del phi_sep_dir
+					e_plus[np.isnan(e_plus)] = 0.0
+					e_cross[np.isnan(e_cross)] = 0.0
+
+					# get the indices for the binning
+					mask = (separation_len >= self.r_bins[0]) * (separation_len < self.r_bins[-1]) * (
+							LOS >= self.pi_bins[0]) * (LOS < self.pi_bins[-1])
+					ind_r = np.floor(
+						np.log10(separation_len[mask]) / self.sub_box_len_logrp - np.log10(
+							self.r_bins[0]) / self.sub_box_len_logrp
+					)
+					del separation_len
+					ind_r = np.array(ind_r, dtype=int)
+					ind_pi = np.floor(
+						LOS[mask] / self.sub_box_len_pi - self.pi_bins[0] / self.sub_box_len_pi
+					)  # need length of LOS, so only positive values
+					del LOS
+					ind_pi = np.array(ind_pi, dtype=int)
+					if np.any(ind_r == np.shape(Splus_D)[0]):
+						ind_r[np.where(ind_r == np.shape(Splus_D)[0])] = np.shape(Splus_D)[0] - 1
+					if np.any(ind_pi == np.shape(Splus_D)[1]):
+						ind_pi[np.where(ind_pi == np.shape(Splus_D)[1])] = np.shape(Splus_D)[1] - 1
+					weight_shape_i_n = shared_data["weight_shape"][ind_rbin_i[n]]
+					try:
+						np.add.at(Splus_D, (ind_r, ind_pi),
+								  (weight_i[n] * weight_shape_i_n[mask] * e_plus[mask]))
+					except:
+						print(ind_r, np.shape(Splus_D)[0], ind_r == 10, np.sum(ind_r == int(np.shape(Splus_D)[0])) > 0,
+							  ind_r == int(np.shape(Splus_D)[0]))
+					np.add.at(Scross_D, (ind_r, ind_pi),
+							  (weight_i[n] * weight_shape_i_n[mask] * e_cross[mask]))
+					np.add.at(DD, (ind_r, ind_pi), weight_i[n] * weight_shape_i_n[mask])
+
+					shape_mask = \
+						np.where(
+							jackknife_region_indices_shape[ind_rbin_i[n]][mask] != jackknife_region_indices_pos_i[n])[
+							0]
+					np.add.at(Splus_D_jk, (jackknife_region_indices_pos_i[n], ind_r, ind_pi),
+							  (weight_i[n] * weight_shape_i_n[mask] * e_plus[
+								  mask]))  # responsivity added later
+					np.add.at(Splus_D_jk,
+							  (jackknife_region_indices_shape[ind_rbin_i[n]][mask][shape_mask], ind_r[shape_mask],
+							   ind_pi[shape_mask]),
+							  (weight_i[n] * weight_shape_i_n[mask][shape_mask] * e_plus[mask][
+								  shape_mask]))  # responsivity added later
+
+					del e_plus, e_cross
+					np.add.at(DD_jk, (jackknife_region_indices_pos_i[n], ind_r, ind_pi),
+							  (weight_i[n] * weight_shape_i_n[mask]))
+					np.add.at(DD_jk,
+							  (jackknife_region_indices_shape[ind_rbin_i[n]][mask][shape_mask], ind_r[shape_mask],
+							   ind_pi[shape_mask]),
+							  (weight_i[n] * weight_shape_i_n[mask][shape_mask]))
+		for shm in shms:
+			shm.close()
+		return Splus_D, Scross_D, DD, DD_jk, Splus_D_jk
+
+	def _measure_xi_rp_pi_lightcone_jk_multiprocessing(self, dataset_name, jackknife_region_indices_pos,
+													   jackknife_region_indices_shape, temp_file_path,
+													   masks=None, return_output=False, jk_group_name="", over_h=False,
+													   cosmology=None,
+													   chunk_size=1000, num_nodes=1, data_suffix="_SplusD"
+													   ):
+		r"""Measures the projected correlation functions including jackknife realisations, $\xi_{gg}$ and $\xi_{g+}$,
+		in (rp, pi) bins for an object created with MeasureIABox. Uses >1 CPU. Uses KDTree for speedup.
+
+		Parameters
+		----------
+		dataset_name : str
+			Name of the dataset in the output file.
+		L_subboxes: int
+			Number of subboxes on one side of the box. L_subboxes^3 is the total number of jackknife realisations.
+		temp_file_path : str or NoneType, optional
+			Path to where the data is temporarily stored [file name generated automatically].
+		masks : dict or NoneType, optional
+			Dictionary with masks for the data to select only part of the data. Uses same keywords as data dictionary.
+			Default value = None.
+		return_output : bool, optional
+			If True, the output will be returned instead of written to a file. Default value is False.
+		jk_group_name : str, optional
+			Group in output file (hdf5) where jackknife realisations are stored. Default value is "".
+		chunk_size: int, optional
+			Size of the chunks of data sent to each multiprocessing node. If larger, more RAM is needed per node.
+			Default is 1000.
+		num_nodes : int, optional
+			Number of CPUs used in the multiprocessing. Default is 1.
+		ellipticity : str, optional
+			Definition of ellipticity. Choose from 'distortion', defined as (1-q^2)/(1+q^2), or 'ellipticity', defined
+			 as (1-q)/(1+q). Default is 'distortion'.
+
+		Returns
+		-------
+		ndarrays
+			$\xi_{gg}$ and $\xi_{g+}$, r_p bins, pi bins, S+D, DD, RR (if no output file is specified)
+
+		"""
+		if masks == None:
+			redshift = self.data["Redshift"]
+			redshift_shape_sample = self.data["Redshift_shape_sample"]
+			RA = self.data["RA"]
+			RA_shape_sample = self.data["RA_shape_sample"]
+			DEC = self.data["DEC"]
+			DEC_shape_sample = self.data["DEC_shape_sample"]
+			e1 = self.data["e1"]
+			e2 = self.data["e2"]
+			weight = self.data["weight"]
+			weight_shape = self.data["weight_shape_sample"]
+		else:
+			redshift = self.data["Redshift"][masks["Redshift"]]
+			redshift_shape_sample = self.data["Redshift_shape_sample"][masks["Redshift_shape_sample"]]
+			RA = self.data["RA"][masks["RA"]]
+			RA_shape_sample = self.data["RA_shape_sample"][masks["RA_shape_sample"]]
+			DEC = self.data["DEC"][masks["DEC"]]
+			DEC_shape_sample = self.data["DEC_shape_sample"][masks["DEC_shape_sample"]]
+			e1 = self.data["e1"][masks["e1"]]
+			e2 = self.data["e2"][masks["e2"]]
+			try:
+				weight_mask = masks["weight"]
+			except:
+				masks["weight"] = np.ones(self.Num_position, dtype=bool)
+			try:
+				weight_mask = masks["weight_shape_sample"]
+			except:
+				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
+			weight = self.data["weight"][masks["weight"]]
+			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
+		self.Num_position_masked = len(RA)
+		self.Num_shape_masked = len(RA_shape_sample)
+		print(
+			f"There are {self.Num_shape_masked} galaxies in the shape sample and {self.Num_position_masked} galaxies in the position sample.")
+		if data_suffix == "_SplusD":
+			DD_suff = "_DD"
+			Scross_suff = "_ScrossD"
+		elif data_suffix == "_SplusR":
+			DD_suff = "_SR"
+			Scross_suff = "_ScrossR"
+		else:
+			raise ValueError("data_suffix must be _SplusD or _SplusR")
+		self.sub_box_len_logrp = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
+		self.sub_box_len_pi = (self.pi_bins[-1] - self.pi_bins[0]) / self.num_bins_pi
+
+		self.num_jk = max(jackknife_region_indices_pos) - min(jackknife_region_indices_pos) + 1
+		jackknife_region_indices_pos -= min(jackknife_region_indices_pos)
+		jackknife_region_indices_shape -= min(jackknife_region_indices_shape)
+
+		if cosmology == None:
+			cosmology = ccl.Cosmology(Omega_c=0.225, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.0)
+			print("No cosmology given, using Omega_m=0.27, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.")
+		h = cosmology["h"]
+
+		LOS_all = ccl.comoving_radial_distance(cosmology, 1 / (1 + redshift))
+		LOS_all_shape_sample = ccl.comoving_radial_distance(cosmology, 1 / (1 + redshift_shape_sample))
+		if over_h:
+			LOS_all *= h
+			LOS_all_shape_sample *= h
+		del redshift, redshift_shape_sample, cosmology
+
+		if getattr(self, "responsivity_correction", False):
+			R = sum(weight_shape * (1 - (e1 ** 2 + e2 ** 2) / 2.0)) / sum(weight_shape)
+			e1, e2 = e1 / (2 * R), e2 / (2 * R)
+		e = np.array([e1, e2]).transpose()
+		RA_rad = RA / 180 * np.pi
+		RA_shape_sample_rad = RA_shape_sample / 180 * np.pi
+		DEC_rad = DEC / 180 * np.pi
+		DEC_shape_sample_rad = DEC_shape_sample / 180 * np.pi
+		n_shape = np.array([np.cos(DEC_shape_sample_rad) * np.cos(RA_shape_sample_rad),
+							np.cos(DEC_shape_sample_rad) * np.sin(RA_shape_sample_rad),
+							np.sin(DEC_shape_sample_rad)]).transpose()
+		del DEC_shape_sample, RA_shape_sample, DEC_shape_sample_rad, RA_shape_sample_rad
+		s_shape = n_shape * np.array([LOS_all_shape_sample]).transpose()
+		n_pos = np.array([np.cos(DEC_rad) * np.cos(RA_rad),
+						  np.cos(DEC_rad) * np.sin(RA_rad),
+						  np.sin(DEC_rad)]).transpose()
+		east = np.array([-np.sin(RA_rad), np.cos(RA_rad), np.zeros(self.Num_position_masked)]).transpose()
+		north = np.array([
+			-np.sin(DEC_rad) * np.cos(RA_rad),
+			-np.sin(DEC_rad) * np.sin(RA_rad),
+			np.cos(DEC_rad)
+		]).transpose()
+		del RA, DEC, DEC_rad, RA_rad
+		s_pos = np.array([LOS_all]).transpose() * n_pos
+		del LOS_all, LOS_all_shape_sample
+		self.shape_tree = KDTree(s_shape)
+		indices = np.arange(0, self.Num_position_masked, chunk_size)
+		self.chunk_size = chunk_size
+
+		# create temp hdf5 from which data can be read. del self.data, but save it in this method to reduce RAM
+		figname_dataset_name = dataset_name
+		if "/" in dataset_name:
+			figname_dataset_name = figname_dataset_name.replace("/", "_")
+		if "." in dataset_name:
+			figname_dataset_name = figname_dataset_name.replace(".", "p")
+		file_temp = h5py.File(f"{temp_file_path}/w_temp_data_{figname_dataset_name}.hdf5", "w")
+		keys = []
+		for k in self.data.keys():
+			if k != "LOS":
+				write_dataset_hdf5(file_temp, k, self.data[k])
+				if masks is not None:
+					write_dataset_hdf5(file_temp, f"mask_{k}", masks[k])
+				keys.append(k)
+		write_dataset_hdf5(file_temp, "jackknife_region_indices_shape", jackknife_region_indices_shape)
+		write_dataset_hdf5(file_temp, "jackknife_region_indices_pos", jackknife_region_indices_pos)
+		file_temp.close()
+		try:
+			shared_data = {
+				"s_pos": s_pos,
+				"n_pos": n_pos,
+				"s_shape": s_shape,
+				"n_shape": n_shape,
+				"e": e,
+				"east": east,
+				"north": north,
+				"weight": weight,
+				"weight_shape": weight_shape,
+				"jackknife_region_indices_pos": jackknife_region_indices_pos,
+				"jackknife_region_indices_shape": jackknife_region_indices_shape,
+			}
+			for k in shared_data.keys():
+				try:
+					old = shared_memory.SharedMemory(name=k)
+					old.unlink()
+				except FileNotFoundError:
+					pass
+			shm_blocks, self.shm_infos = [], []
+			for k in shared_data.keys():
+				shm = shared_memory.SharedMemory(name=k, create=True, size=shared_data[k].nbytes)
+				shared_arr = np.ndarray(shared_data[k].shape, dtype=shared_data[k].dtype, buffer=shm.buf)
+				np.copyto(shared_arr, shared_data[k])
+				shm_blocks.append(shm)
+				self.shm_infos.append([k, shared_data[k].shape, shared_data[k].dtype])
+			self.data = {}
+			if masks is not None:
+				masks = {}
+			del shared_data, shared_arr
+			del weight, weight_shape, jackknife_region_indices_pos, jackknife_region_indices_shape, s_pos, n_pos, e, s_shape, n_shape, east, north
+			mp.set_start_method("spawn", force=True)
+			with Pool(num_nodes) as p:
+				result = p.map(self._measure_xi_rp_pi_lightcone_jk_batch, indices)
+
+		finally:
+			for shm in shm_blocks:
+				shm.close()
+				shm.unlink()
+
+		temp_data_obj_m = ReadData(self.simname, f"w_temp_data_{figname_dataset_name}", None,
+								   data_path=temp_file_path)
+		for k in keys:
+			self.data[k] = temp_data_obj_m.read_cat(k)
+			if masks is not None:
+				masks[k] = temp_data_obj_m.read_cat(f"mask_{k}")
+		os.remove(
+			f"{temp_file_path}/w_temp_data_{figname_dataset_name}.hdf5")
+
+		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		DD_jk = np.zeros((self.num_jk, self.num_bins_r, self.num_bins_pi))
+		Splus_D_jk = np.zeros((self.num_jk, self.num_bins_r, self.num_bins_pi))
+
+		for i in np.arange(len(result)):
+			Splus_D += result[i][0]
+			Scross_D += result[i][1]
+			DD += result[i][2]
+			DD_jk += result[i][3]
+			Splus_D_jk += result[i][4]
+
+		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
+		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
+		dpi = (self.pi_bins[1:] - self.pi_bins[:-1]) / 2.0
+		pi_bins = self.pi_bins[:-1] + abs(dpi)  # middle of bins
+
+		if (self.output_file_name != None) and (return_output == False):
+			output_file = h5py.File(self.output_file_name, "a")
+			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_g_plus/")
+			write_dataset_hdf5(group, dataset_name + data_suffix, data=Splus_D)
+			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
+			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
+			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_g_plus/{jk_group_name}")
+			for i in np.arange(0, self.num_jk):
+				write_dataset_hdf5(group, dataset_name + f"_{i}{data_suffix}", data=(Splus_D - Splus_D_jk[i]))
+				write_dataset_hdf5(group, dataset_name + f"_{i}_rp", data=separation_bins)
+				write_dataset_hdf5(group, dataset_name + f"_{i}_pi", data=pi_bins)
+			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_g_cross/")
+			write_dataset_hdf5(group, dataset_name + Scross_suff, data=Scross_D)
+			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
+			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
+			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_gg/")
+			write_dataset_hdf5(group, dataset_name + DD_suff, data=DD)
+			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
+			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
+			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_gg/{jk_group_name}")
+			for i in np.arange(0, self.num_jk):
+				write_dataset_hdf5(group, dataset_name + f"_{i}{DD_suff}", data=(DD - DD_jk[i]))
+				write_dataset_hdf5(group, dataset_name + f"_{i}_rp", data=separation_bins)
+				write_dataset_hdf5(group, dataset_name + f"_{i}_pi", data=pi_bins)
+			output_file.close()
+			return
+		else:
+			return Splus_D, DD, separation_bins, pi_bins
+
+	def _count_pairs_xi_rp_pi_lightcone_jk_brute(self, dataset_name, jackknife_region_indices_pos,
+												 jackknife_region_indices_shape, masks=None, return_output=False,
+												 print_num=True, over_h=False, cosmology=None, data_suffix="_DD",
+												 jk_group_name="", chunk_size=1000, num_nodes=1, temp_file_path=None
+												 ):
+		"""Measures the projected clustering (xi_gg) for given coordinates of the position and shape sample
+		(Position, Position_shape_sample) and the index of the direction of the line of sight (LOS=2 for z axis).
+		Positions are assumed to be given in cMpc/h.
+
+		Parameters
+		----------
+		masks :
+			the masks for the data to select only part of the data (Default value = None)
+		dataset_name :
+			the dataset name given in the hdf5 file. (Default value = "All_galaxies")
+		return_output :
+			Output is returned if True, saved to file if False. (Default value = False)
+		print_num :
+			 (Default value = True)
+		over_h :
+			 (Default value = False)
+		cosmology :
+			 (Default value = None)
+		data_suffix :
+			 (Default value = "_DD")
+		jk_group_name :
+			 (Default value = "")
+
+		Returns
+		-------
+		type
+			xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
+
+		"""
+
+		if masks == None:
+			redshift = self.data["Redshift"]
+			redshift_shape_sample = self.data["Redshift_shape_sample"]
+			RA = self.data["RA"]
+			RA_shape_sample = self.data["RA_shape_sample"]
+			DEC = self.data["DEC"]
+			DEC_shape_sample = self.data["DEC_shape_sample"]
+			weight = self.data["weight"]
+			weight_shape = self.data["weight_shape_sample"]
+		else:
+			redshift = self.data["Redshift"][masks["Redshift"]]
+			redshift_shape_sample = self.data["Redshift_shape_sample"][masks["Redshift_shape_sample"]]
+			RA = self.data["RA"][masks["RA"]]
+			RA_shape_sample = self.data["RA_shape_sample"][masks["RA_shape_sample"]]
+			DEC = self.data["DEC"][masks["DEC"]]
+			DEC_shape_sample = self.data["DEC_shape_sample"][masks["DEC_shape_sample"]]
+			try:
+				weight_mask = masks["weight"]
+			except:
+				masks["weight"] = np.ones(self.Num_position, dtype=bool)
+			try:
+				weight_mask = masks["weight_shape_sample"]
+			except:
+				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
+			weight = self.data["weight"][masks["weight"]]
+			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
+		Num_position = len(RA)
+		Num_shape = len(RA_shape_sample)
+		if print_num:
+			print(
+				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
+
+		sub_box_len_logrp = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
+		sub_box_len_pi = (self.pi_bins[-1] - self.pi_bins[0]) / self.num_bins_pi
+		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		num_jk = max(jackknife_region_indices_pos) - min(jackknife_region_indices_pos) + 1
+		jackknife_region_indices_pos -= min(jackknife_region_indices_pos)
+		jackknife_region_indices_shape -= min(jackknife_region_indices_shape)
+		DD_jk = np.zeros((num_jk, self.num_bins_r, self.num_bins_pi))
+
+		if cosmology == None:
+			cosmology = ccl.Cosmology(Omega_c=0.225, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.0)
+			if print_num:
+				print("No cosmology given, using Omega_m=0.27, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.")
+		h = cosmology["h"]
+
+		LOS_all = ccl.comoving_radial_distance(cosmology, 1 / (1 + redshift))
+		LOS_all_shape_sample = ccl.comoving_radial_distance(cosmology, 1 / (1 + redshift_shape_sample))
+		if over_h:
+			LOS_all *= h
+			LOS_all_shape_sample *= h
+		del redshift, redshift_shape_sample, cosmology
+
+		RA_rad = RA / 180 * np.pi
+		RA_shape_sample_rad = RA_shape_sample / 180 * np.pi
+		DEC_rad = DEC / 180 * np.pi
+		DEC_shape_sample_rad = DEC_shape_sample / 180 * np.pi
+		n_shape = np.array([np.cos(DEC_shape_sample_rad) * np.cos(RA_shape_sample_rad),
+							np.cos(DEC_shape_sample_rad) * np.sin(RA_shape_sample_rad),
+							np.sin(DEC_shape_sample_rad)]).transpose()
+		del DEC_shape_sample, RA_shape_sample, DEC_shape_sample_rad, RA_shape_sample_rad
+		s_shape = n_shape * np.array([LOS_all_shape_sample]).transpose()
+		n_pos = np.array([np.cos(DEC_rad) * np.cos(RA_rad),
+						  np.cos(DEC_rad) * np.sin(RA_rad),
+						  np.sin(DEC_rad)]).transpose()
+		del RA, DEC, RA_rad, DEC_rad
+		s_pos = np.array([LOS_all]).transpose() * n_pos
+		del LOS_all, LOS_all_shape_sample
+
+		for n in np.arange(0, Num_position):
+			L = s_pos[n] + s_shape
+			n_LOS = L / np.sqrt(np.sum(L ** 2, axis=1))[:, None]
+			# n_LOS = (n_pos[n] + n_shape) / np.array([np.sqrt(np.sum((n_pos[n] + n_shape) ** 2, axis=1))]).transpose()
+			s = s_shape - s_pos[n]
+			LOS = self.calculate_dot_product_arrays(s, n_LOS)
+			separation_len = np.sqrt(np.sum(s ** 2, axis=1) - LOS ** 2)
+
+			# get the indices for the binning
+			mask = (separation_len >= self.r_bins[0]) * (separation_len < self.r_bins[-1]) * (
+					LOS >= self.pi_bins[0]) * (LOS < self.pi_bins[-1])
+			ind_r = np.floor(
+				np.log10(separation_len[mask]) / sub_box_len_logrp - np.log10(self.r_bins[0]) / sub_box_len_logrp
+			)
+			del separation_len
+			ind_r = np.array(ind_r, dtype=int)
+			ind_pi = np.floor(
+				LOS[mask] / sub_box_len_pi - self.pi_bins[0] / sub_box_len_pi
+			)  # need length of LOS, so only positive values
+			del LOS
+			ind_pi = np.array(ind_pi, dtype=int)
+			np.add.at(DD, (ind_r, ind_pi), weight[n] * weight_shape[mask])
+
+			shape_mask = np.where(jackknife_region_indices_shape[mask] != jackknife_region_indices_pos[n])[0]
+			np.add.at(DD_jk, (jackknife_region_indices_pos[n], ind_r, ind_pi),
+					  (weight[n] * weight_shape[mask]))
+			np.add.at(DD_jk, (jackknife_region_indices_shape[mask][shape_mask], ind_r[shape_mask], ind_pi[shape_mask]),
+					  (weight[n] * weight_shape[mask][shape_mask]))
+
+		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
+		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
+		dpi = (self.pi_bins[1:] - self.pi_bins[:-1]) / 2.0
+		pi_bins = self.pi_bins[:-1] + abs(dpi)  # middle of bins
+
+		if (self.output_file_name != None) and (return_output == False):
+			output_file = h5py.File(self.output_file_name, "a")
+			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_gg/")
+			write_dataset_hdf5(group, dataset_name + data_suffix, data=DD)
+			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
+			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
+			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_gg/{jk_group_name}")
+			for i in np.arange(0, num_jk):
+				write_dataset_hdf5(group, dataset_name + f"_{i}{data_suffix}", data=(DD - DD_jk[i]))
+				write_dataset_hdf5(group, dataset_name + f"_{i}_rp", data=separation_bins)
+				write_dataset_hdf5(group, dataset_name + f"_{i}_pi", data=pi_bins)
+			output_file.close()
+			return
+		else:
+			return DD, separation_bins, pi_bins
+
+	def _count_pairs_xi_rp_pi_lightcone_jk_tree(self, dataset_name, jackknife_region_indices_pos,
+												jackknife_region_indices_shape, masks=None, return_output=False,
+												print_num=True, over_h=False, cosmology=None, jk_group_name="",
+												data_suffix="_DD", chunk_size=1000, num_nodes=1, temp_file_path=None
+												):
+		"""Measures the projected correlation function (xi_g_plus, xi_gg) for given coordinates of the position and shape sample
+		(Position, Position_shape_sample), the projected axis direction (Axis_Direction), the ratio between projected
+		axes, q=b/a (q) and the index of the direction of the line of sight (LOS=2 for z axis).
+		Positions are assumed to be given in cMpc/h.
+
+		Parameters
+		----------
+		masks :
+			the masks for the data to select only part of the data (Default value = None)
+		dataset_name :
+			the dataset name given in the hdf5 file. (Default value = "All_galaxies")
+		return_output :
+			Output is returned if True, saved to file if False. (Default value = False)
+		print_num :
+			 (Default value = True)
+		over_h :
+			 (Default value = False)
+		cosmology :
+			 (Default value = None)
+		jk_group_name :
+			 (Default value = "")
+
+		Returns
+		-------
+		type
+			xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
+
+		"""
+
+		if masks == None:
+			redshift = self.data["Redshift"]
+			redshift_shape_sample = self.data["Redshift_shape_sample"]
+			RA = self.data["RA"]
+			RA_shape_sample = self.data["RA_shape_sample"]
+			DEC = self.data["DEC"]
+			DEC_shape_sample = self.data["DEC_shape_sample"]
+			weight = self.data["weight"]
+			weight_shape = self.data["weight_shape_sample"]
+		else:
+			redshift = self.data["Redshift"][masks["Redshift"]]
+			redshift_shape_sample = self.data["Redshift_shape_sample"][masks["Redshift_shape_sample"]]
+			RA = self.data["RA"][masks["RA"]]
+			RA_shape_sample = self.data["RA_shape_sample"][masks["RA_shape_sample"]]
+			DEC = self.data["DEC"][masks["DEC"]]
+			DEC_shape_sample = self.data["DEC_shape_sample"][masks["DEC_shape_sample"]]
+			try:
+				weight_mask = masks["weight"]
+			except:
+				masks["weight"] = np.ones(self.Num_position, dtype=bool)
+			try:
+				weight_mask = masks["weight_shape_sample"]
+			except:
+				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
+			weight = self.data["weight"][masks["weight"]]
+			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
+		Num_position = len(RA)
+		Num_shape = len(RA_shape_sample)
+		if print_num:
+			print(
+				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
+		sub_box_len_logrp = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
+		sub_box_len_pi = (self.pi_bins[-1] - self.pi_bins[0]) / self.num_bins_pi
+		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		num_jk = max(jackknife_region_indices_pos) - min(jackknife_region_indices_pos) + 1
+		jackknife_region_indices_pos -= min(jackknife_region_indices_pos)
+		jackknife_region_indices_shape -= min(jackknife_region_indices_shape)
+		DD_jk = np.zeros((num_jk, self.num_bins_r, self.num_bins_pi))
+
+		if cosmology == None:
+			cosmology = ccl.Cosmology(Omega_c=0.225, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.0)
+			if print_num:
+				print("No cosmology given, using Omega_m=0.27, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.")
+		h = cosmology["h"]
+
+		LOS_all = ccl.comoving_radial_distance(cosmology, 1 / (1 + redshift))
+		LOS_all_shape_sample = ccl.comoving_radial_distance(cosmology, 1 / (1 + redshift_shape_sample))
+		if over_h:
+			LOS_all *= h
+			LOS_all_shape_sample *= h
+		r_max, r_min = np.sqrt(self.r_max ** 2 + self.pi_bins[-1] ** 2), self.r_min
+		RA_rad = RA / 180 * np.pi
+		RA_shape_sample_rad = RA_shape_sample / 180 * np.pi
+		DEC_rad = DEC / 180 * np.pi
+		DEC_shape_sample_rad = DEC_shape_sample / 180 * np.pi
+		n_shape = np.array([np.cos(DEC_shape_sample_rad) * np.cos(RA_shape_sample_rad),
+							np.cos(DEC_shape_sample_rad) * np.sin(RA_shape_sample_rad),
+							np.sin(DEC_shape_sample_rad)]).transpose()
+		del DEC_shape_sample, RA_shape_sample, DEC_shape_sample_rad, RA_shape_sample_rad
+		s_shape = n_shape * np.array([LOS_all_shape_sample]).transpose()
+		n_pos = np.array([np.cos(DEC_rad) * np.cos(RA_rad),
+						  np.cos(DEC_rad) * np.sin(RA_rad),
+						  np.sin(DEC_rad)]).transpose()
+		del RA, DEC, DEC_rad, RA_rad
+		s_pos = np.array([LOS_all]).transpose() * n_pos
+		del LOS_all, LOS_all_shape_sample
+		shape_tree = KDTree(s_shape)
+		for i in np.arange(0, Num_position, 100):
+			i2 = min(Num_position, i + 100)
+			s_pos_i = s_pos[i:i2]
+			n_pos_i = n_pos[i:i2]
+			weight_i = weight[i:i2]
+			jackknife_region_indices_pos_i = jackknife_region_indices_pos[i:i2]
+			pos_tree = KDTree(s_pos_i)
+			ind_min_i = pos_tree.query_ball_tree(shape_tree, r_min)
+			ind_max_i = pos_tree.query_ball_tree(shape_tree, r_max)
+			ind_rbin_i = self.setdiff2D(ind_max_i, ind_min_i)
+			for n in np.arange(0, len(s_pos_i)):  # CHANGE2: loop now over shapes, not positions
+				if len(ind_rbin_i[n]) > 0:
+					# for Splus_D (calculate ellipticities around position sample)
+					L = s_pos_i[n] + s_shape[ind_rbin_i[n]]
+					n_LOS = L / np.sqrt(np.sum(L ** 2, axis=1))[:, None]
+					s = s_shape[ind_rbin_i[n]] - s_pos_i[n]
+					LOS = self.calculate_dot_product_arrays(s, n_LOS)
+					separation_len = np.sqrt(np.sum(s ** 2, axis=1) - LOS ** 2)  # len of s-pi*nlos ->check
+
+					# get the indices for the binning
+					mask = (separation_len >= self.r_bins[0]) * (separation_len < self.r_bins[-1]) * (
+							LOS >= self.pi_bins[0]) * (LOS < self.pi_bins[-1])
+					ind_r = np.floor(
+						np.log10(separation_len[mask]) / sub_box_len_logrp - np.log10(
+							self.r_bins[0]) / sub_box_len_logrp
+					)
+					# del separation_len
+					ind_r = np.array(ind_r, dtype=int)
+					ind_pi = np.floor(
+						LOS[mask] / sub_box_len_pi - self.pi_bins[0] / sub_box_len_pi
+					)  # need length of LOS, so only positive values
+					del LOS
+					ind_pi = np.array(ind_pi, dtype=int)
+					np.add.at(DD, (ind_r, ind_pi), weight_i[n] * weight_shape[ind_rbin_i[n]][mask])
+
+					shape_mask = \
+						np.where(
+							jackknife_region_indices_shape[ind_rbin_i[n]][mask] != jackknife_region_indices_pos_i[n])[
+							0]
+					np.add.at(DD_jk, (jackknife_region_indices_pos_i[n], ind_r, ind_pi),
+							  (weight_i[n] * weight_shape[ind_rbin_i[n]][mask]))
+					np.add.at(DD_jk,
+							  (jackknife_region_indices_shape[ind_rbin_i[n]][mask][shape_mask], ind_r[shape_mask],
+							   ind_pi[shape_mask]),
+							  (weight_i[n] * weight_shape[ind_rbin_i[n]][mask][shape_mask]))
+
+		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
+		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
+		dpi = (self.pi_bins[1:] - self.pi_bins[:-1]) / 2.0
+		pi_bins = self.pi_bins[:-1] + abs(dpi)  # middle of bins
+
+		if (self.output_file_name != None) and (return_output == False):
+			output_file = h5py.File(self.output_file_name, "a")
+			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_gg/")
+			write_dataset_hdf5(group, dataset_name + data_suffix, data=DD)
+			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
+			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
+			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_gg/{jk_group_name}")
+			for i in np.arange(0, num_jk):
+				write_dataset_hdf5(group, dataset_name + f"_{i}{data_suffix}", data=(DD - DD_jk[i]))
+				write_dataset_hdf5(group, dataset_name + f"_{i}_rp", data=separation_bins)
+				write_dataset_hdf5(group, dataset_name + f"_{i}_pi", data=pi_bins)
+			output_file.close()
+			return
+		else:
+			return DD, separation_bins, pi_bins
+
+	def _count_pairs_xi_rp_pi_lightcone_jk_batch(self, i):
+		r"""Measures components of $\xi_{gg}$ and $\xi_{g+}$ in (rp,pi) bins including jackknife realisations for a batch
+		of indices from i to i+chunk_size. Support function for _measure_xi_rp_pi_box_jk_multiprocessing().
+
+		Parameters
+		----------
+		i: int
+			Start index of the batch.
+
+		Returns
+		-------
+		ndarrays
+			S+D, SxD, DD, DD_jk, S+D_jk where the _jk versions store the necessary information of DD of S+D for
+			each jackknife realisation.
+		"""
+		# if i + self.chunk_size > self.Num_shape_masked:
+		# 	i2 = self.Num_shape_masked
+		if i + self.chunk_size > self.Num_position_masked:
+			i2 = self.Num_position_masked
+		else:
+			i2 = i + self.chunk_size
+		r_max, r_min = np.sqrt(self.r_max ** 2 + self.pi_bins[-1] ** 2), self.r_min
+
+		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		DD_jk = np.zeros((self.num_jk, self.num_bins_r, self.num_bins_pi))
+
+		shms = []
+		shared_data = {}
+		for name, shape, dtype in self.shm_infos:
+			shm = shared_memory.SharedMemory(name=name)
+			shared_data[name] = np.ndarray(shape, dtype=dtype, buffer=shm.buf)
+			shms.append(shm)
+		jackknife_region_indices_shape = shared_data["jackknife_region_indices_shape"]
+		n_shape = shared_data["n_shape"]
+		s_shape = shared_data["s_shape"]
+		for j in np.arange(i, i2, 100):
+			j2 = min(j + 100, i2)
+			s_pos_i = shared_data["s_pos"][j:j2]
+			n_pos_i = shared_data["n_pos"][j:j2]
+			weight_i = shared_data["weight"][j:j2]
+			jackknife_region_indices_pos_i = shared_data["jackknife_region_indices_pos"][j:j2]
+			pos_tree = KDTree(s_pos_i)
+			ind_min_i = pos_tree.query_ball_tree(self.shape_tree, r_min)
+			ind_max_i = pos_tree.query_ball_tree(self.shape_tree, r_max)
+			ind_rbin_i = self.setdiff2D(ind_max_i, ind_min_i)
+			for n in np.arange(0, len(s_pos_i)):
+				if len(ind_rbin_i[n]) > 0:
+					# for Splus_D (calculate ellipticities around position sample)
+					L = s_pos_i[n] + s_shape[ind_rbin_i[n]]
+					n_LOS = L / np.sqrt(np.sum(L ** 2, axis=1))[:, None]
+					s = s_shape[ind_rbin_i[n]] - s_pos_i[n]
+					LOS = self.calculate_dot_product_arrays(s, n_LOS)
+					separation_len = np.sqrt(np.sum(s ** 2, axis=1) - LOS ** 2)  # len of s-pi*nlos ->check
+
+					# get the indices for the binning
+					mask = (separation_len >= self.r_bins[0]) * (separation_len < self.r_bins[-1]) * (
+							LOS >= self.pi_bins[0]) * (LOS < self.pi_bins[-1])
+					ind_r = np.floor(
+						np.log10(separation_len[mask]) / self.sub_box_len_logrp - np.log10(
+							self.r_bins[0]) / self.sub_box_len_logrp
+					)
+					del separation_len
+					ind_r = np.array(ind_r, dtype=int)
+					ind_pi = np.floor(
+						LOS[mask] / self.sub_box_len_pi - self.pi_bins[0] / self.sub_box_len_pi
+					)  # need length of LOS, so only positive values
+					del LOS
+					ind_pi = np.array(ind_pi, dtype=int)
+					if np.any(ind_r == np.shape(Splus_D)[0]):
+						ind_r[np.where(ind_r == np.shape(Splus_D)[0])] = np.shape(Splus_D)[0] - 1
+					if np.any(ind_pi == np.shape(Splus_D)[1]):
+						ind_pi[np.where(ind_pi == np.shape(Splus_D)[1])] = np.shape(Splus_D)[1] - 1
+					weight_shape_i_n = shared_data["weight_shape"][ind_rbin_i[n]]
+					np.add.at(DD, (ind_r, ind_pi), weight_i[n] * weight_shape_i_n[mask])
+
+					shape_mask = \
+						np.where(
+							jackknife_region_indices_shape[ind_rbin_i[n]][mask] != jackknife_region_indices_pos_i[n])[
+							0]
+
+					np.add.at(DD_jk, (jackknife_region_indices_pos_i[n], ind_r, ind_pi),
+							  (weight_i[n] * weight_shape_i_n[mask]))
+					np.add.at(DD_jk,
+							  (jackknife_region_indices_shape[ind_rbin_i[n]][mask][shape_mask], ind_r[shape_mask],
+							   ind_pi[shape_mask]),
+							  (weight_i[n] * weight_shape_i_n[mask][shape_mask]))
+		for shm in shms:
+			shm.close()
+		return DD, DD_jk
+
+	def _count_pairs_xi_rp_pi_lightcone_jk_multiprocessing(self, dataset_name, jackknife_region_indices_pos,
+														   jackknife_region_indices_shape, temp_file_path,
+														   masks=None, return_output=False, jk_group_name="",
+														   over_h=False,
+														   cosmology=None,
+														   chunk_size=1000, num_nodes=1, data_suffix="_DD"
+														   ):
+		r"""Measures the projected correlation functions including jackknife realisations, $\xi_{gg}$ and $\xi_{g+}$,
+		in (rp, pi) bins for an object created with MeasureIABox. Uses >1 CPU. Uses KDTree for speedup.
+
+		Parameters
+		----------
+		dataset_name : str
+			Name of the dataset in the output file.
+		L_subboxes: int
+			Number of subboxes on one side of the box. L_subboxes^3 is the total number of jackknife realisations.
+		temp_file_path : str or NoneType, optional
+			Path to where the data is temporarily stored [file name generated automatically].
+		masks : dict or NoneType, optional
+			Dictionary with masks for the data to select only part of the data. Uses same keywords as data dictionary.
+			Default value = None.
+		return_output : bool, optional
+			If True, the output will be returned instead of written to a file. Default value is False.
+		jk_group_name : str, optional
+			Group in output file (hdf5) where jackknife realisations are stored. Default value is "".
+		chunk_size: int, optional
+			Size of the chunks of data sent to each multiprocessing node. If larger, more RAM is needed per node.
+			Default is 1000.
+		num_nodes : int, optional
+			Number of CPUs used in the multiprocessing. Default is 1.
+		ellipticity : str, optional
+			Definition of ellipticity. Choose from 'distortion', defined as (1-q^2)/(1+q^2), or 'ellipticity', defined
+			 as (1-q)/(1+q). Default is 'distortion'.
+
+		Returns
+		-------
+		ndarrays
+			$\xi_{gg}$ and $\xi_{g+}$, r_p bins, pi bins, S+D, DD, RR (if no output file is specified)
+
+		"""
+		if masks == None:
+			redshift = self.data["Redshift"]
+			redshift_shape_sample = self.data["Redshift_shape_sample"]
+			RA = self.data["RA"]
+			RA_shape_sample = self.data["RA_shape_sample"]
+			DEC = self.data["DEC"]
+			DEC_shape_sample = self.data["DEC_shape_sample"]
+			weight = self.data["weight"]
+			weight_shape = self.data["weight_shape_sample"]
+		else:
+			redshift = self.data["Redshift"][masks["Redshift"]]
+			redshift_shape_sample = self.data["Redshift_shape_sample"][masks["Redshift_shape_sample"]]
+			RA = self.data["RA"][masks["RA"]]
+			RA_shape_sample = self.data["RA_shape_sample"][masks["RA_shape_sample"]]
+			DEC = self.data["DEC"][masks["DEC"]]
+			DEC_shape_sample = self.data["DEC_shape_sample"][masks["DEC_shape_sample"]]
+			try:
+				weight_mask = masks["weight"]
+			except:
+				masks["weight"] = np.ones(self.Num_position, dtype=bool)
+			try:
+				weight_mask = masks["weight_shape_sample"]
+			except:
+				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
+			weight = self.data["weight"][masks["weight"]]
+			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
+		self.Num_position_masked = len(RA)
+		self.Num_shape_masked = len(RA_shape_sample)
+		print(
+			f"There are {self.Num_shape_masked} galaxies in the shape sample and {self.Num_position_masked} galaxies in the position sample.")
+		self.sub_box_len_logrp = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
+		self.sub_box_len_pi = (self.pi_bins[-1] - self.pi_bins[0]) / self.num_bins_pi
+
+		self.num_jk = max(jackknife_region_indices_pos) - min(jackknife_region_indices_pos) + 1
+		jackknife_region_indices_pos -= min(jackknife_region_indices_pos)
+		jackknife_region_indices_shape -= min(jackknife_region_indices_shape)
+
+		if cosmology == None:
+			cosmology = ccl.Cosmology(Omega_c=0.225, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.0)
+			print("No cosmology given, using Omega_m=0.27, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.")
+		h = cosmology["h"]
+
+		LOS_all = ccl.comoving_radial_distance(cosmology, 1 / (1 + redshift))
+		LOS_all_shape_sample = ccl.comoving_radial_distance(cosmology, 1 / (1 + redshift_shape_sample))
+		if over_h:
+			LOS_all *= h
+			LOS_all_shape_sample *= h
+		del redshift, redshift_shape_sample, cosmology
+
+		RA_rad = RA / 180 * np.pi
+		RA_shape_sample_rad = RA_shape_sample / 180 * np.pi
+		DEC_rad = DEC / 180 * np.pi
+		DEC_shape_sample_rad = DEC_shape_sample / 180 * np.pi
+		n_shape = np.array([np.cos(DEC_shape_sample_rad) * np.cos(RA_shape_sample_rad),
+							np.cos(DEC_shape_sample_rad) * np.sin(RA_shape_sample_rad),
+							np.sin(DEC_shape_sample_rad)]).transpose()
+		del DEC_shape_sample, RA_shape_sample, DEC_shape_sample_rad, RA_shape_sample_rad
+		s_shape = n_shape * np.array([LOS_all_shape_sample]).transpose()
+		n_pos = np.array([np.cos(DEC_rad) * np.cos(RA_rad),
+						  np.cos(DEC_rad) * np.sin(RA_rad),
+						  np.sin(DEC_rad)]).transpose()
+		east = np.array([-np.sin(RA_rad), np.cos(RA_rad), np.zeros(self.Num_position_masked)]).transpose()
+		north = np.array([
+			-np.sin(DEC_rad) * np.cos(RA_rad),
+			-np.sin(DEC_rad) * np.sin(RA_rad),
+			np.cos(DEC_rad)
+		]).transpose()
+		del DEC, DEC_rad, RA_rad
+		s_pos = np.array([LOS_all]).transpose() * n_pos
+		del LOS_all, LOS_all_shape_sample
+		self.shape_tree = KDTree(s_shape)
+		indices = np.arange(0, self.Num_position_masked, chunk_size)
+		del RA
+		self.chunk_size = chunk_size
+
+		# create temp hdf5 from which data can be read. del self.data, but save it in this method to reduce RAM
+		figname_dataset_name = dataset_name
+		if "/" in dataset_name:
+			figname_dataset_name = figname_dataset_name.replace("/", "_")
+		if "." in dataset_name:
+			figname_dataset_name = figname_dataset_name.replace(".", "p")
+		file_temp = h5py.File(f"{temp_file_path}/w_temp_data_{figname_dataset_name}.hdf5", "w")
+		keys = []
+		for k in self.data.keys():
+			if k != "LOS":
+				write_dataset_hdf5(file_temp, k, self.data[k])
+				if masks is not None:
+					write_dataset_hdf5(file_temp, f"mask_{k}", masks[k])
+				keys.append(k)
+		write_dataset_hdf5(file_temp, "jackknife_region_indices_shape", jackknife_region_indices_shape)
+		write_dataset_hdf5(file_temp, "jackknife_region_indices_pos", jackknife_region_indices_pos)
+		file_temp.close()
+		try:
+			shared_data = {
+				"s_pos": s_pos,
+				"n_pos": n_pos,
+				"s_shape": s_shape,
+				"n_shape": n_shape,
+				"east": east,
+				"north": north,
+				"weight": weight,
+				"weight_shape": weight_shape,
+				"jackknife_region_indices_pos": jackknife_region_indices_pos,
+				"jackknife_region_indices_shape": jackknife_region_indices_shape,
+			}
+			for k in shared_data.keys():
+				try:
+					old = shared_memory.SharedMemory(name=k)
+					old.unlink()
+				except FileNotFoundError:
+					pass
+			shm_blocks, self.shm_infos = [], []
+			for k in shared_data.keys():
+				shm = shared_memory.SharedMemory(name=k, create=True, size=shared_data[k].nbytes)
+				shared_arr = np.ndarray(shared_data[k].shape, dtype=shared_data[k].dtype, buffer=shm.buf)
+				np.copyto(shared_arr, shared_data[k])
+				shm_blocks.append(shm)
+				self.shm_infos.append([k, shared_data[k].shape, shared_data[k].dtype])
+			self.data = {}
+			if masks is not None:
+				masks = {}
+			del shared_data, shared_arr
+			del weight, weight_shape, jackknife_region_indices_pos, jackknife_region_indices_shape, s_pos, n_pos, s_shape, n_shape, east, north
+			mp.set_start_method("spawn", force=True)
+			with Pool(num_nodes) as p:
+				result = p.map(self._count_pairs_xi_rp_pi_lightcone_jk_batch, indices)
+
+		finally:
+			for shm in shm_blocks:
+				shm.close()
+				shm.unlink()
+
+		temp_data_obj_m = ReadData(self.simname, f"w_temp_data_{figname_dataset_name}", None,
+								   data_path=temp_file_path)
+		for k in keys:
+			self.data[k] = temp_data_obj_m.read_cat(k)
+			if masks is not None:
+				masks[k] = temp_data_obj_m.read_cat(f"mask_{k}")
+		os.remove(
+			f"{temp_file_path}/w_temp_data_{figname_dataset_name}.hdf5")
+
+		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		DD_jk = np.zeros((self.num_jk, self.num_bins_r, self.num_bins_pi))
+
+		for i in np.arange(len(result)):
+			DD += result[i][0]
+			DD_jk += result[i][1]
+
+		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
+		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
+		dpi = (self.pi_bins[1:] - self.pi_bins[:-1]) / 2.0
+		pi_bins = self.pi_bins[:-1] + abs(dpi)  # middle of bins
+
+		if (self.output_file_name != None) and (return_output == False):
+			output_file = h5py.File(self.output_file_name, "a")
+			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_gg/")
+			write_dataset_hdf5(group, dataset_name + data_suffix, data=DD)
+			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
+			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
+			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_gg/{jk_group_name}")
+			for i in np.arange(0, self.num_jk):
+				write_dataset_hdf5(group, dataset_name + f"_{i}{data_suffix}", data=(DD - DD_jk[i]))
+				write_dataset_hdf5(group, dataset_name + f"_{i}_rp", data=separation_bins)
+				write_dataset_hdf5(group, dataset_name + f"_{i}_pi", data=pi_bins)
+			output_file.close()
+			return
+		else:
+			return DD, separation_bins, pi_bins
+
+
+if __name__ == "__main__":
+	pass

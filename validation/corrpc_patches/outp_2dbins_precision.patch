@@ -1,0 +1,13 @@
+diff --git a/outp.cpp b/outp.cpp
+index 780776a..3038cf1 100755
+--- a/outp.cpp
++++ b/outp.cpp
+@@ -292,7 +292,7 @@ int outp_2Dbins(bin b[],data_info data_inf, string FileName)      //output bins
+ {
+   ofstream writ2;
+   writ2.open(FileName.c_str());
+-  //  writ2<<std::setprecision(std::numeric_limits<long double>::digits10);
++  writ2<<std::setprecision(std::numeric_limits<long double>::digits10);
+   if (!writ2.is_open())
+     {
+       cout<<FileName<<" not open"<<endl;
