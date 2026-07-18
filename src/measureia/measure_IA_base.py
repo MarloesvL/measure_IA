@@ -1,4 +1,5 @@
 import math
+import warnings
 import numpy as np
 import h5py
 from scipy.special import lpmn
@@ -581,18 +582,24 @@ class MeasureIABase(SimInfo):
 			RD /= max(num_samples["D"] * num_samples["R_S"], 1)
 		if IA_estimator == 'clusters' or corr_type[0] == "gg" or corr_type[0] == "both":
 			DD = group_gg[f"{dataset_name}_DD"][:]
-			DD[DD == 0] = 1.
 			DD /= max(num_samples["D"] * num_samples["S"] - num_samples["D_S"], 1)
+			DD_denom = DD.copy()  # guard for the clusters division; raw DD keeps 0 in the gg numerator
+			DD_denom[DD_denom == 0] = 1.
 		if IA_estimator == "galaxies" or corr_type[0] == "gg" or corr_type[0] == "both":
 			RR = group_gg[f"{dataset_name}_RR"][:]
+			if jk_group_name == "" and np.any(RR == 0):
+				warnings.warn(
+					f"{int(np.sum(RR == 0))} bin(s) of '{dataset_name}' contain zero random-random pairs; "
+					"the estimator is undefined (NaN) there and any w/multipole integral over these bins "
+					"will be NaN. Increase the number of randoms to fill all bins.", RuntimeWarning)
 			RR /= max(num_samples["R_D"] * num_samples["R_S"], 1)
 
 		if IA_estimator == "clusters":
 			if corr_type[0] == "g+" or corr_type[0] == "both":
-				correlation_gp = SpD / DD - SpR / SR
+				correlation_gp = SpD / DD_denom - SpR / SR
 				write_dataset_hdf5(group_gp, dataset_name, correlation_gp)
 				if jk_group_name == "":
-					correlation_gc = ScD / DD - ScR / SR
+					correlation_gc = ScD / DD_denom - ScR / SR
 					write_dataset_hdf5(group_gc, dataset_name, correlation_gc)
 			if corr_type[0] == "gg" or corr_type[0] == "both":
 				correlation_gg = (DD - RD - SR) / RR + 1

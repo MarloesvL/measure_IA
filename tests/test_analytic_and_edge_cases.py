@@ -628,6 +628,70 @@ class TestObsEstimatorFormula:
         expected = SplusD / (N_SD * DD / N_SD) - SplusR / (N_SR * SR / N_SR)
         np.testing.assert_allclose(xi_gp, expected, rtol=1e-10)
 
+    def _make_lc_gg_obj(self, tmp_path, fname):
+        rng  = np.random.default_rng(_SEED)
+        N    = 10
+        data = {
+            "RA": rng.uniform(150, 155, N), "DEC": rng.uniform(2, 6, N),
+            "Redshift": rng.uniform(0.1, 0.3, N),
+            "RA_shape_sample": rng.uniform(150, 155, N),
+            "DEC_shape_sample": rng.uniform(2, 6, N),
+            "Redshift_shape_sample": rng.uniform(0.1, 0.3, N),
+            "e1": np.zeros(N), "e2": np.zeros(N),
+            "weight": np.ones(N), "weight_shape_sample": np.ones(N),
+        }
+        NR = 30
+        rand = {k.replace("_shape_sample", ""): rng.uniform(0, 1, NR)
+                for k in data if "shape" not in k and k not in ("e1", "e2")}
+        return MeasureIALightcone(data, rand, str(tmp_path / fname),
+                                  separation_limits=_SEP, num_bins_r=2,
+                                  num_bins_pi=2, pi_max=60.0)
+
+    def _inject_gg(self, obj, name, DD, SR, RD, RR):
+        with h5py.File(obj.output_file_name, "a") as f:
+            grp = f.require_group("w/xi_gg")
+            for ds_name, arr in ((f"{name}_DD", DD), (f"{name}_SR", SR),
+                                 (f"{name}_RD", RD), (f"{name}_RR", RR)):
+                if ds_name in grp:
+                    del grp[ds_name]
+                grp.create_dataset(ds_name, data=arr)
+
+    def test_lc_gg_empty_dd_bin_unbiased(self, tmp_path):
+        """Regression: a bin with zero DD pairs must contribute DD=0 to the
+        Landy-Szalay gg numerator — the old DD[DD==0]=1 guard injected a
+        spurious 1/norm into empty bins."""
+        obj = self._make_lc_gg_obj(tmp_path, "lc_gg_empty_dd.hdf5")
+        DD = np.array([[0.0, 10.0], [8.0, 16.0]])   # empty bin at [0, 0]
+        SR = np.array([[15.0, 7.5], [6.0, 12.0]])
+        RD = np.array([[12.0, 6.0], [4.0, 9.0]])
+        RR = np.array([[10.0, 5.0], [4.0, 8.0]])
+        self._inject_gg(obj, "lgg", DD, SR, RD, RR)
+        N_D, N_S, N_R = 10, 10, 30
+        num_samples = {"S": N_S, "D": N_D, "D_S": 0, "R_D": N_R, "R_S": N_R}
+        obj._obs_estimator(("gg", "w"), "galaxies", "lgg", num_samples)
+        with h5py.File(obj.output_file_name, "r") as f:
+            xi_gg = f["w/xi_gg/lgg"][:]
+        expected = (DD / (N_S * N_D) - RD / (N_D * N_R) - SR / (N_S * N_R)) \
+            / (RR / (N_R * N_R)) + 1
+        np.testing.assert_allclose(xi_gg, expected, rtol=1e-10)
+
+    def test_lc_gg_empty_rr_bin_warns(self, tmp_path):
+        """A bin with zero random-random pairs must trigger a RuntimeWarning
+        naming the problem (the estimator is NaN there)."""
+        obj = self._make_lc_gg_obj(tmp_path, "lc_gg_empty_rr.hdf5")
+        DD = np.array([[20.0, 10.0], [8.0, 16.0]])
+        SR = np.array([[15.0, 7.5], [6.0, 12.0]])
+        RD = np.array([[12.0, 6.0], [4.0, 9.0]])
+        RR = np.array([[0.0, 5.0], [4.0, 8.0]])    # empty bin at [0, 0]
+        self._inject_gg(obj, "lwz", DD, SR, RD, RR)
+        num_samples = {"S": 10, "D": 10, "D_S": 0, "R_D": 30, "R_S": 30}
+        with pytest.warns(RuntimeWarning, match="random-random"):
+            obj._obs_estimator(("gg", "w"), "galaxies", "lwz", num_samples)
+        with h5py.File(obj.output_file_name, "r") as f:
+            xi_gg = f["w/xi_gg/lwz"][:]
+        assert not np.isfinite(xi_gg[0, 0])
+        assert np.all(np.isfinite(xi_gg[RR != 0]))
+
 
 # ===========================================================================
 # 4. Cosmology coordinate conversion

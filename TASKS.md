@@ -105,6 +105,14 @@ P1 = features, P2 = input validation, P3 = test suite, P4 = cleanup & docs.
   monkeypatch `Pool` to fail after offloading and now passes as a regular test — the suite has
   zero xfails.*
 
+- [x] **`_obs_estimator` empty-bin semantics (user-approved 2026-07-18).**
+  *Empty-DD bins: the `DD[DD==0]=1` guard was applied to raw counts, biasing the gg
+  Landy-Szalay numerator by 1/norm in empty bins; now the guard applies only to a denominator
+  copy used by the clusters division — empty bins contribute 0 to gg (formula test added).
+  Empty empirical-RR bins: stay NaN/inf (estimator undefined; references depend on it) but a
+  RuntimeWarning now fires on the full-sample pass naming the number of affected bins and
+  advising more randoms (test added).*
+
 ## P2 — Input validation & error messages
 
 - [ ] **Symmetrize validation: add Lightcone type/shape checks.** The Box got
