@@ -203,11 +203,8 @@ class ReadData(SimInfo):
 		else:
 			stack = False
 		if write_output:
-			try:
-				dataset = group_out[dataset_name]
+			if dataset_name in group_out:
 				del group_out[dataset_name]
-			except:
-				pass
 			if stack:
 				group_out.create_dataset(dataset_name, data=data, maxshape=(None, np.shape(data)[1]), chunks=True)
 			else:
@@ -272,11 +269,8 @@ class ReadData(SimInfo):
 			else:
 				stack.append(False)
 			if write_output:
-				try:
-					dataset = group_out[variable]
+				if variable in group_out:
 					del group_out[variable]
-				except:
-					pass
 				if stack[i]:
 					group_out.create_dataset(variable, data=data, maxshape=(None, np.shape(data)[1]), chunks=True)
 				else:

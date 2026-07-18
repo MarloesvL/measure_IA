@@ -475,7 +475,7 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 		try:  # Are there one or two random samples given?
 			random_shape = self.randoms_data["RA_shape_sample"]
 			one_random_sample = False
-		except:
+		except (KeyError, TypeError):  # TypeError: randoms_data is None
 			one_random_sample = True
 			self.randoms_data["RA_shape_sample"] = self.randoms_data["RA"]
 			self.randoms_data["DEC_shape_sample"] = self.randoms_data["DEC"]
@@ -680,7 +680,7 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 		try:  # Are there one or two random samples given?
 			random_shape = self.randoms_data["RA_shape_sample"]
 			one_random_sample = False
-		except:
+		except (KeyError, TypeError):  # TypeError: randoms_data is None
 			one_random_sample = True
 			self.randoms_data["RA_shape_sample"] = self.randoms_data["RA"]
 			self.randoms_data["DEC_shape_sample"] = self.randoms_data["DEC"]

@@ -5,13 +5,16 @@ P1 = features, P2 = input validation, P3 = test suite, P4 = cleanup & docs.
 
 ## P0 — Confirmed bugs (fix before release)
 
-- [ ] **NEW (found during P0 work): lightcone backend weight-mask fallback misalignment.**
-  The lightcone backends (`measure_w_lightcone.py:99-106` pattern, repeated across all
-  lightcone backend files) default `masks["weight"]` to a *full-length* all-True mask when a
-  position mask is given without a weight mask — the full weight array is then indexed by
-  masked-galaxy indices, the same misalignment family as the Box bug. Interacts with
-  `_merged_masks`; investigate how masks reach the backends before fixing. Also: ~50 remaining
-  bare `except:` blocks in the lightcone backends, `read_data.py`, `write_data.py` to narrow.
+- [x] **NEW (found during P0 work): lightcone backend weight-mask fallback misalignment.**
+  *Investigated and resolved. Verdict: NOT reachable through the public API — `_merged_masks`
+  always injects `weight`/`weight_shape_sample` keys defaulting to the slot's coordinate mask,
+  so the backend fallback was dead code on that path. The fallbacks were still misaligned
+  landmines for direct backend calls; all 22 blocks now default to `masks["RA"]` /
+  `masks["RA_shape_sample"]` (aligned) with explicit `not in` checks. Also removed every
+  remaining bare `except:` in the package: debug try/except around `np.add.at` (which
+  swallowed real errors and printed garbage) deleted, `write_data.py`/`read_data.py`
+  delete-if-exists idioms rewritten as `in` checks, one-vs-two-randoms detection narrowed to
+  `(KeyError, TypeError)`. `grep 'except:'` over src/ is now clean.*
 - [x] **Weight-mask misalignment in Box backends.** When a `Position` (or `Position_shape_sample`)
   mask is given without a `weight` mask, the fallback keeps the *first* `sum(mask)` weights
   (`masks["weight"][sum(pos_mask):] = 0`) instead of selecting `weight[pos_mask]`, so weights only

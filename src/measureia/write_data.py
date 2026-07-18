@@ -11,12 +11,9 @@ def write_dataset_hdf5(group, name, data):
 		the data
 
 	"""
-	try:
-		dataset = group[name]
+	if name in group:
 		del group[name]
-		group.create_dataset(name, data=data)
-	except:
-		group.create_dataset(name, data=data)
+	group.create_dataset(name, data=data)
 	return
 
 
@@ -36,10 +33,7 @@ def create_group_hdf5(file, name):
 		link to the last group in the path
 
 	"""
-	try:
-		group_file = file[name]
-		groups = name
-	except:
+	if name not in file:
 		list_groups = name.split('/')
 		groups = ''
 		for group in list_groups:
@@ -49,9 +43,7 @@ def create_group_hdf5(file, name):
 				else:
 					groups += '/'
 					groups += group
-				try:
-					group_file = file[groups]
-				except:
+				if groups not in file:
 					file.create_group(groups)
 	return file[name]
 

@@ -101,14 +101,10 @@ class MeasureMultipolesLightconeJackknife(MeasureIABase):
 			DEC_shape_sample = self.data["DEC_shape_sample"][masks["DEC_shape_sample"]]
 			e1 = self.data["e1"][masks["e1"]]
 			e2 = self.data["e2"][masks["e2"]]
-			try:
-				weight_mask = masks["weight"]
-			except:
-				masks["weight"] = np.ones(self.Num_position, dtype=bool)
-			try:
-				weight_mask = masks["weight_shape_sample"]
-			except:
-				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
+			if "weight" not in masks:
+				masks["weight"] = masks["RA"]
+			if "weight_shape_sample" not in masks:
+				masks["weight_shape_sample"] = masks["RA_shape_sample"]
 			weight = self.data["weight"][masks["weight"]]
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		Num_position = len(RA)
@@ -213,11 +209,7 @@ class MeasureMultipolesLightconeJackknife(MeasureIABase):
 				ind_r[np.where(ind_r == np.shape(Splus_D)[0])] = np.shape(Splus_D)[0] - 1
 			if np.any(ind_mu_r == np.shape(Splus_D)[1]):
 				ind_mu_r[np.where(ind_mu_r == np.shape(Splus_D)[1])] = np.shape(Splus_D)[1] - 1
-			try:
-				np.add.at(Splus_D, (ind_r, ind_mu_r), (weight[n] * weight_shape[mask] * e_plus[mask]))
-			except:
-				print(ind_r, np.shape(Splus_D)[0], ind_r == 10, np.sum(ind_r == int(np.shape(Splus_D)[0])) > 0,
-					  ind_r == int(np.shape(Splus_D)[0]))
+			np.add.at(Splus_D, (ind_r, ind_mu_r), (weight[n] * weight_shape[mask] * e_plus[mask]))
 			np.add.at(Scross_D, (ind_r, ind_mu_r), (weight[n] * weight_shape[mask] * e_cross[mask]))
 			np.add.at(DD, (ind_r, ind_mu_r), weight[n] * weight_shape[mask])
 
@@ -327,14 +319,10 @@ class MeasureMultipolesLightconeJackknife(MeasureIABase):
 			DEC_shape_sample = self.data["DEC_shape_sample"][masks["DEC_shape_sample"]]
 			e1 = self.data["e1"][masks["e1"]]
 			e2 = self.data["e2"][masks["e2"]]
-			try:
-				weight_mask = masks["weight"]
-			except:
-				masks["weight"] = np.ones(self.Num_position, dtype=bool)
-			try:
-				weight_mask = masks["weight_shape_sample"]
-			except:
-				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
+			if "weight" not in masks:
+				masks["weight"] = masks["RA"]
+			if "weight_shape_sample" not in masks:
+				masks["weight_shape_sample"] = masks["RA_shape_sample"]
 			weight = self.data["weight"][masks["weight"]]
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		Num_position = len(RA)
@@ -455,12 +443,8 @@ class MeasureMultipolesLightconeJackknife(MeasureIABase):
 						ind_r[np.where(ind_r == np.shape(Splus_D)[0])] = np.shape(Splus_D)[0] - 1
 					if np.any(ind_mu_r == np.shape(Splus_D)[1]):
 						ind_mu_r[np.where(ind_mu_r == np.shape(Splus_D)[1])] = np.shape(Splus_D)[1] - 1
-					try:
-						np.add.at(Splus_D, (ind_r, ind_mu_r),
-								  (weight_i[n] * weight_shape[ind_rbin_i[n]][mask] * e_plus[mask]))
-					except:
-						print(ind_r, np.shape(Splus_D)[0], ind_r == 10, np.sum(ind_r == int(np.shape(Splus_D)[0])) > 0,
-							  ind_r == int(np.shape(Splus_D)[0]))
+					np.add.at(Splus_D, (ind_r, ind_mu_r),
+							  (weight_i[n] * weight_shape[ind_rbin_i[n]][mask] * e_plus[mask]))
 					np.add.at(Scross_D, (ind_r, ind_mu_r),
 							  (weight_i[n] * weight_shape[ind_rbin_i[n]][mask] * e_cross[mask]))
 					np.add.at(DD, (ind_r, ind_mu_r), weight_i[n] * weight_shape[ind_rbin_i[n]][mask])
@@ -571,14 +555,10 @@ class MeasureMultipolesLightconeJackknife(MeasureIABase):
 			RA_shape_sample = self.data["RA_shape_sample"][masks["RA_shape_sample"]]
 			DEC = self.data["DEC"][masks["DEC"]]
 			DEC_shape_sample = self.data["DEC_shape_sample"][masks["DEC_shape_sample"]]
-			try:
-				weight_mask = masks["weight"]
-			except:
-				masks["weight"] = np.ones(self.Num_position, dtype=bool)
-			try:
-				weight_mask = masks["weight_shape_sample"]
-			except:
-				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
+			if "weight" not in masks:
+				masks["weight"] = masks["RA"]
+			if "weight_shape_sample" not in masks:
+				masks["weight_shape_sample"] = masks["RA_shape_sample"]
 			weight = self.data["weight"][masks["weight"]]
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		Num_position = len(RA)
@@ -725,14 +705,10 @@ class MeasureMultipolesLightconeJackknife(MeasureIABase):
 			RA_shape_sample = self.data["RA_shape_sample"][masks["RA_shape_sample"]]
 			DEC = self.data["DEC"][masks["DEC"]]
 			DEC_shape_sample = self.data["DEC_shape_sample"][masks["DEC_shape_sample"]]
-			try:
-				weight_mask = masks["weight"]
-			except:
-				masks["weight"] = np.ones(self.Num_position, dtype=bool)
-			try:
-				weight_mask = masks["weight_shape_sample"]
-			except:
-				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
+			if "weight" not in masks:
+				masks["weight"] = masks["RA"]
+			if "weight_shape_sample" not in masks:
+				masks["weight_shape_sample"] = masks["RA_shape_sample"]
 			weight = self.data["weight"][masks["weight"]]
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		Num_position = len(RA)
@@ -1030,9 +1006,9 @@ class MeasureMultipolesLightconeJackknife(MeasureIABase):
 			e1 = self.data["e1"][masks["e1"]]
 			e2 = self.data["e2"][masks["e2"]]
 			if "weight" not in masks:
-				masks["weight"] = np.ones(self.Num_position, dtype=bool)
+				masks["weight"] = masks["RA"]
 			if "weight_shape_sample" not in masks:
-				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
+				masks["weight_shape_sample"] = masks["RA_shape_sample"]
 			weight = self.data["weight"][masks["weight"]]
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		self.Num_position_masked = len(RA)
@@ -1355,9 +1331,9 @@ class MeasureMultipolesLightconeJackknife(MeasureIABase):
 			DEC = self.data["DEC"][masks["DEC"]]
 			DEC_shape_sample = self.data["DEC_shape_sample"][masks["DEC_shape_sample"]]
 			if "weight" not in masks:
-				masks["weight"] = np.ones(self.Num_position, dtype=bool)
+				masks["weight"] = masks["RA"]
 			if "weight_shape_sample" not in masks:
-				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
+				masks["weight_shape_sample"] = masks["RA_shape_sample"]
 			weight = self.data["weight"][masks["weight"]]
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		self.Num_position_masked = len(RA)
