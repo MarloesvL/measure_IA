@@ -96,6 +96,15 @@ P1 = features, P2 = input validation, P3 = test suite, P4 = cleanup & docs.
     (`measure_w_box.py:149-151`), analytic `RR_gg` from `get_random_pairs(_r_mur)` unchanged.
   - Test: `gg` result from the count_pairs path bit-compatible with the current full-loop result.
 
+- [x] **Lightcone multiprocessing shared-memory name collision.**
+  *Fixed: lightcone mp methods now use the Box `ID_shm` random-suffix pattern (jk-index keys
+  shortened to `jk_region_indices_*` — macOS caps POSIX shm names at 31 chars). Also fixed the
+  data-restore-on-failure gap in the same batch: the temp-file reload of `self.data` now lives
+  in the `finally` block of all 12 mp methods (guarded by `os.path.exists`), so a mid-run
+  worker failure no longer leaves `self.data` empty. The last xfail test was rewritten to
+  monkeypatch `Pool` to fail after offloading and now passes as a regular test — the suite has
+  zero xfails.*
+
 ## P2 — Input validation & error messages
 
 - [ ] **Symmetrize validation: add Lightcone type/shape checks.** The Box got

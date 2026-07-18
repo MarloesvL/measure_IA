@@ -537,18 +537,18 @@ class MeasureWLightconeJackknife(MeasureIABase):
 			shm = shared_memory.SharedMemory(name=name)
 			shared_data[name] = np.ndarray(shape, dtype=dtype, buffer=shm.buf)
 			shms.append(shm)
-		jackknife_region_indices_shape = shared_data["jackknife_region_indices_shape"]
-		n_shape = shared_data["n_shape"]
-		s_shape = shared_data["s_shape"]
-		e = shared_data["e"]
+		jackknife_region_indices_shape = shared_data[f"jk_region_indices_shape_{self.ID_shm}"]
+		n_shape = shared_data[f"n_shape_{self.ID_shm}"]
+		s_shape = shared_data[f"s_shape_{self.ID_shm}"]
+		e = shared_data[f"e_{self.ID_shm}"]
 		for j in np.arange(i, i2, 100):
 			j2 = min(j + 100, i2)
-			s_pos_i = shared_data["s_pos"][j:j2]
-			n_pos_i = shared_data["n_pos"][j:j2]
-			weight_i = shared_data["weight"][j:j2]
-			east_i = shared_data["east"][j:j2]
-			north_i = shared_data["north"][j:j2]
-			jackknife_region_indices_pos_i = shared_data["jackknife_region_indices_pos"][j:j2]
+			s_pos_i = shared_data[f"s_pos_{self.ID_shm}"][j:j2]
+			n_pos_i = shared_data[f"n_pos_{self.ID_shm}"][j:j2]
+			weight_i = shared_data[f"weight_{self.ID_shm}"][j:j2]
+			east_i = shared_data[f"east_{self.ID_shm}"][j:j2]
+			north_i = shared_data[f"north_{self.ID_shm}"][j:j2]
+			jackknife_region_indices_pos_i = shared_data[f"jk_region_indices_pos_{self.ID_shm}"][j:j2]
 			pos_tree = KDTree(s_pos_i)
 			ind_min_i = pos_tree.query_ball_tree(self.shape_tree, r_min)
 			ind_max_i = pos_tree.query_ball_tree(self.shape_tree, r_max)
@@ -596,7 +596,7 @@ class MeasureWLightconeJackknife(MeasureIABase):
 						ind_r[np.where(ind_r == np.shape(Splus_D)[0])] = np.shape(Splus_D)[0] - 1
 					if np.any(ind_pi == np.shape(Splus_D)[1]):
 						ind_pi[np.where(ind_pi == np.shape(Splus_D)[1])] = np.shape(Splus_D)[1] - 1
-					weight_shape_i_n = shared_data["weight_shape"][ind_rbin_i[n]]
+					weight_shape_i_n = shared_data[f"weight_shape_{self.ID_shm}"][ind_rbin_i[n]]
 					np.add.at(Splus_D, (ind_r, ind_pi),
 							  (weight_i[n] * weight_shape_i_n[mask] * e_plus[mask]))
 					np.add.at(Scross_D, (ind_r, ind_pi),
@@ -769,19 +769,20 @@ class MeasureWLightconeJackknife(MeasureIABase):
 		write_dataset_hdf5(file_temp, "jackknife_region_indices_shape", jackknife_region_indices_shape)
 		write_dataset_hdf5(file_temp, "jackknife_region_indices_pos", jackknife_region_indices_pos)
 		file_temp.close()
+		self.ID_shm = np.random.randint(100000)
 		try:
 			shared_data = {
-				"s_pos": s_pos,
-				"n_pos": n_pos,
-				"s_shape": s_shape,
-				"n_shape": n_shape,
-				"e": e,
-				"east": east,
-				"north": north,
-				"weight": weight,
-				"weight_shape": weight_shape,
-				"jackknife_region_indices_pos": jackknife_region_indices_pos,
-				"jackknife_region_indices_shape": jackknife_region_indices_shape,
+				f"s_pos_{self.ID_shm}": s_pos,
+				f"n_pos_{self.ID_shm}": n_pos,
+				f"s_shape_{self.ID_shm}": s_shape,
+				f"n_shape_{self.ID_shm}": n_shape,
+				f"e_{self.ID_shm}": e,
+				f"east_{self.ID_shm}": east,
+				f"north_{self.ID_shm}": north,
+				f"weight_{self.ID_shm}": weight,
+				f"weight_shape_{self.ID_shm}": weight_shape,
+				f"jk_region_indices_pos_{self.ID_shm}": jackknife_region_indices_pos,
+				f"jk_region_indices_shape_{self.ID_shm}": jackknife_region_indices_shape,
 			}
 			for k in shared_data.keys():
 				try:
@@ -809,15 +810,16 @@ class MeasureWLightconeJackknife(MeasureIABase):
 			for shm in shm_blocks:
 				shm.close()
 				shm.unlink()
-
-		temp_data_obj_m = ReadData(self.simname, f"w_temp_data_{figname_dataset_name}", None,
-								   data_path=temp_file_path)
-		for k in keys:
-			self.data[k] = temp_data_obj_m.read_cat(k)
-			if masks is not None:
-				masks[k] = temp_data_obj_m.read_cat(f"mask_{k}")
-		os.remove(
-			f"{temp_file_path}/w_temp_data_{figname_dataset_name}.hdf5")
+			# restore self.data from the temp file even if a worker failed
+			if os.path.exists(f"{temp_file_path}/w_temp_data_{figname_dataset_name}.hdf5"):
+				temp_data_obj_m = ReadData(self.simname, f"w_temp_data_{figname_dataset_name}", None,
+										   data_path=temp_file_path)
+				for k in keys:
+					self.data[k] = temp_data_obj_m.read_cat(k)
+					if masks is not None:
+						masks[k] = temp_data_obj_m.read_cat(f"mask_{k}")
+				os.remove(
+					f"{temp_file_path}/w_temp_data_{figname_dataset_name}.hdf5")
 
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
@@ -1213,15 +1215,15 @@ class MeasureWLightconeJackknife(MeasureIABase):
 			shm = shared_memory.SharedMemory(name=name)
 			shared_data[name] = np.ndarray(shape, dtype=dtype, buffer=shm.buf)
 			shms.append(shm)
-		jackknife_region_indices_shape = shared_data["jackknife_region_indices_shape"]
-		n_shape = shared_data["n_shape"]
-		s_shape = shared_data["s_shape"]
+		jackknife_region_indices_shape = shared_data[f"jk_region_indices_shape_{self.ID_shm}"]
+		n_shape = shared_data[f"n_shape_{self.ID_shm}"]
+		s_shape = shared_data[f"s_shape_{self.ID_shm}"]
 		for j in np.arange(i, i2, 100):
 			j2 = min(j + 100, i2)
-			s_pos_i = shared_data["s_pos"][j:j2]
-			n_pos_i = shared_data["n_pos"][j:j2]
-			weight_i = shared_data["weight"][j:j2]
-			jackknife_region_indices_pos_i = shared_data["jackknife_region_indices_pos"][j:j2]
+			s_pos_i = shared_data[f"s_pos_{self.ID_shm}"][j:j2]
+			n_pos_i = shared_data[f"n_pos_{self.ID_shm}"][j:j2]
+			weight_i = shared_data[f"weight_{self.ID_shm}"][j:j2]
+			jackknife_region_indices_pos_i = shared_data[f"jk_region_indices_pos_{self.ID_shm}"][j:j2]
 			pos_tree = KDTree(s_pos_i)
 			ind_min_i = pos_tree.query_ball_tree(self.shape_tree, r_min)
 			ind_max_i = pos_tree.query_ball_tree(self.shape_tree, r_max)
@@ -1253,7 +1255,7 @@ class MeasureWLightconeJackknife(MeasureIABase):
 						ind_r[np.where(ind_r == np.shape(Splus_D)[0])] = np.shape(Splus_D)[0] - 1
 					if np.any(ind_pi == np.shape(Splus_D)[1]):
 						ind_pi[np.where(ind_pi == np.shape(Splus_D)[1])] = np.shape(Splus_D)[1] - 1
-					weight_shape_i_n = shared_data["weight_shape"][ind_rbin_i[n]]
+					weight_shape_i_n = shared_data[f"weight_shape_{self.ID_shm}"][ind_rbin_i[n]]
 					np.add.at(DD, (ind_r, ind_pi), weight_i[n] * weight_shape_i_n[mask])
 
 					shape_mask = \
@@ -1399,18 +1401,19 @@ class MeasureWLightconeJackknife(MeasureIABase):
 		write_dataset_hdf5(file_temp, "jackknife_region_indices_shape", jackknife_region_indices_shape)
 		write_dataset_hdf5(file_temp, "jackknife_region_indices_pos", jackknife_region_indices_pos)
 		file_temp.close()
+		self.ID_shm = np.random.randint(100000)
 		try:
 			shared_data = {
-				"s_pos": s_pos,
-				"n_pos": n_pos,
-				"s_shape": s_shape,
-				"n_shape": n_shape,
-				"east": east,
-				"north": north,
-				"weight": weight,
-				"weight_shape": weight_shape,
-				"jackknife_region_indices_pos": jackknife_region_indices_pos,
-				"jackknife_region_indices_shape": jackknife_region_indices_shape,
+				f"s_pos_{self.ID_shm}": s_pos,
+				f"n_pos_{self.ID_shm}": n_pos,
+				f"s_shape_{self.ID_shm}": s_shape,
+				f"n_shape_{self.ID_shm}": n_shape,
+				f"east_{self.ID_shm}": east,
+				f"north_{self.ID_shm}": north,
+				f"weight_{self.ID_shm}": weight,
+				f"weight_shape_{self.ID_shm}": weight_shape,
+				f"jk_region_indices_pos_{self.ID_shm}": jackknife_region_indices_pos,
+				f"jk_region_indices_shape_{self.ID_shm}": jackknife_region_indices_shape,
 			}
 			for k in shared_data.keys():
 				try:
@@ -1438,15 +1441,16 @@ class MeasureWLightconeJackknife(MeasureIABase):
 			for shm in shm_blocks:
 				shm.close()
 				shm.unlink()
-
-		temp_data_obj_m = ReadData(self.simname, f"w_temp_data_{figname_dataset_name}", None,
-								   data_path=temp_file_path)
-		for k in keys:
-			self.data[k] = temp_data_obj_m.read_cat(k)
-			if masks is not None:
-				masks[k] = temp_data_obj_m.read_cat(f"mask_{k}")
-		os.remove(
-			f"{temp_file_path}/w_temp_data_{figname_dataset_name}.hdf5")
+			# restore self.data from the temp file even if a worker failed
+			if os.path.exists(f"{temp_file_path}/w_temp_data_{figname_dataset_name}.hdf5"):
+				temp_data_obj_m = ReadData(self.simname, f"w_temp_data_{figname_dataset_name}", None,
+										   data_path=temp_file_path)
+				for k in keys:
+					self.data[k] = temp_data_obj_m.read_cat(k)
+					if masks is not None:
+						masks[k] = temp_data_obj_m.read_cat(f"mask_{k}")
+				os.remove(
+					f"{temp_file_path}/w_temp_data_{figname_dataset_name}.hdf5")
 
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		DD_jk = np.zeros((self.num_jk, self.num_bins_r, self.num_bins_pi))

@@ -641,16 +641,17 @@ class MeasureWBox(MeasureIABase, ReadData):
 			for shm in shm_blocks:
 				shm.close()
 				shm.unlink()
-
-		temp_data_obj_m = ReadData(self.simname, f"w_{self.simname}_temp_data_{figname_dataset_name}", None,
-								   data_path=temp_file_path)
-		for k in keys:
-			self.data[k] = temp_data_obj_m.read_cat(k)
-			if masks is not None:
-				masks[k] = temp_data_obj_m.read_cat(f"mask_{k}")
-		self.data["LOS"] = self.LOS_ind
-		os.remove(
-			f"{temp_file_path}/w_{self.simname}_temp_data_{figname_dataset_name}.hdf5")
+			# restore self.data from the temp file even if a worker failed
+			if os.path.exists(f"{temp_file_path}/w_{self.simname}_temp_data_{figname_dataset_name}.hdf5"):
+				temp_data_obj_m = ReadData(self.simname, f"w_{self.simname}_temp_data_{figname_dataset_name}", None,
+										   data_path=temp_file_path)
+				for k in keys:
+					self.data[k] = temp_data_obj_m.read_cat(k)
+					if masks is not None:
+						masks[k] = temp_data_obj_m.read_cat(f"mask_{k}")
+				self.data["LOS"] = self.LOS_ind
+				os.remove(
+					f"{temp_file_path}/w_{self.simname}_temp_data_{figname_dataset_name}.hdf5")
 
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
@@ -1117,16 +1118,17 @@ class MeasureWBox(MeasureIABase, ReadData):
 			for shm in shm_blocks:
 				shm.close()
 				shm.unlink()
-
-		temp_data_obj_m = ReadData(self.simname, f"w_gg_{self.simname}_temp_data_{figname_dataset_name}", None,
-								   data_path=temp_file_path)
-		for k in keys:
-			self.data[k] = temp_data_obj_m.read_cat(k)
-			if masks is not None:
-				masks[k] = temp_data_obj_m.read_cat(f"mask_{k}")
-		self.data["LOS"] = self.LOS_ind
-		os.remove(
-			f"{temp_file_path}/w_gg_{self.simname}_temp_data_{figname_dataset_name}.hdf5")
+			# restore self.data from the temp file even if a worker failed
+			if os.path.exists(f"{temp_file_path}/w_gg_{self.simname}_temp_data_{figname_dataset_name}.hdf5"):
+				temp_data_obj_m = ReadData(self.simname, f"w_gg_{self.simname}_temp_data_{figname_dataset_name}", None,
+										   data_path=temp_file_path)
+				for k in keys:
+					self.data[k] = temp_data_obj_m.read_cat(k)
+					if masks is not None:
+						masks[k] = temp_data_obj_m.read_cat(f"mask_{k}")
+				self.data["LOS"] = self.LOS_ind
+				os.remove(
+					f"{temp_file_path}/w_gg_{self.simname}_temp_data_{figname_dataset_name}.hdf5")
 
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		RR_gg = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)

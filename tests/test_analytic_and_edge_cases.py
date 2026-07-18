@@ -930,13 +930,10 @@ class TestEdgeCasesUnhandled:
         w = _read(obj, "w/xi_g_plus", "n1")
         assert np.all(np.isfinite(w))
 
-    @pytest.mark.xfail(
-        reason="If backend raises mid-run, self.data is left in modified "
-               "(masked) state because the restore line is never reached. "
-               "Fix: wrap backend call in try/finally. "
-               "See fixes_measure_IA_base.py FIX_4.")
-    def test_data_restored_after_failed_run(self, tmp_path):
-        """self.data must be restored even if the backend raises."""
+    def test_data_restored_after_failed_run(self, tmp_path, monkeypatch):
+        """self.data must be restored even if the multiprocessing backend
+        fails after self.data was offloaded to the temp file (the reload now
+        lives in the finally block of the mp methods)."""
         rng = np.random.default_rng(_SEED)
         N   = 40
         COM = rng.uniform(0, 205.0, (N, 3))
@@ -946,11 +943,18 @@ class TestEdgeCasesUnhandled:
         obj = MeasureIABox(data, str(tmp_path / "restore_fail.hdf5"),
                             simulation="TNG300", snapshot=99,
                             separation_limits=_SEP, num_bins_r=4,
-                            num_bins_pi=4)
-        # Pass a bad temp_file_path that will cause the tree backend to fail
-        with pytest.raises(Exception):
-            obj.measure_xi_w("fail", "gg", 0,
-                              temp_file_path="/nonexistent/path/")
-        # self.data must still be the full N-row array
+                            num_bins_pi=4, num_nodes=2)
+
+        def _boom(*args, **kwargs):
+            raise RuntimeError("simulated pool failure")
+
+        # Pool is created after self.data has been emptied and written to the
+        # temp file — exactly the state that used to be left behind on error.
+        monkeypatch.setattr("measureia.measure_w_box.Pool", _boom)
+        with pytest.raises(RuntimeError):
+            obj.measure_xi_w("fail", "g+", 0,
+                             temp_file_path=str(tmp_path) + "/")
+        # self.data must be restored to the full N-row arrays
         assert len(obj.data["Position"]) == N, \
             "self.data was not restored after a failed backend call"
+        assert len(obj.data["q"]) == N
