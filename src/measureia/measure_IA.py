@@ -162,7 +162,24 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			raise TypeError("Given data is lightcone data (contains 'RA'). Use MeasureIALightcone instead.")
 
 		if num_jk > 0:  # include covariance
-			if self.num_nodes > 1 and temp_storage:
+			if corr_type == "gg":  # DD-only pair counting, skips shape/ellipticity computation
+				if self.num_nodes > 1 and temp_storage:
+					self._count_pairs_xi_rp_pi_box_jk_multiprocessing(masks=masks, L_subboxes=L,
+																	  dataset_name=dataset_name,
+																	  return_output=False,
+																	  num_nodes=self.num_nodes,
+																	  jk_group_name=f"{dataset_name}_jk{num_jk}",
+																	  chunk_size=chunk_size,
+																	  temp_file_path=temp_file_path)
+				elif temp_storage:
+					self._count_pairs_xi_rp_pi_box_jk_tree(masks=masks, L_subboxes=L, dataset_name=dataset_name,
+														   return_output=False,
+														   jk_group_name=f"{dataset_name}_jk{num_jk}")
+				else:
+					self._count_pairs_xi_rp_pi_box_jk_brute(masks=masks, L_subboxes=L, dataset_name=dataset_name,
+															return_output=False,
+															jk_group_name=f"{dataset_name}_jk{num_jk}")
+			elif self.num_nodes > 1 and temp_storage:
 				self._measure_xi_rp_pi_box_jk_multiprocessing(masks=masks, L_subboxes=L, dataset_name=dataset_name,
 															  return_output=False,
 															  num_nodes=self.num_nodes,
@@ -268,7 +285,24 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			raise TypeError("Given data is lightcone data (contains 'RA'). Use MeasureIALightcone instead.")
 
 		if num_jk > 0:  # include covariance
-			if self.num_nodes > 1 and temp_storage:
+			if corr_type == "gg":  # DD-only pair counting, skips shape/ellipticity computation
+				if self.num_nodes > 1 and temp_storage:
+					self._count_pairs_xi_r_mur_box_jk_multiprocessing(masks=masks, L_subboxes=L,
+																	  dataset_name=dataset_name,
+																	  return_output=False, rp_cut=rp_cut,
+																	  num_nodes=self.num_nodes,
+																	  jk_group_name=f"{dataset_name}_jk{num_jk}",
+																	  chunk_size=chunk_size,
+																	  temp_file_path=temp_file_path)
+				elif temp_storage:
+					self._count_pairs_xi_r_mur_box_jk_tree(masks=masks, L_subboxes=L, dataset_name=dataset_name,
+														   return_output=False, rp_cut=rp_cut,
+														   jk_group_name=f"{dataset_name}_jk{num_jk}")
+				else:
+					self._count_pairs_xi_r_mur_box_jk_brute(masks=masks, L_subboxes=L, dataset_name=dataset_name,
+															return_output=False, rp_cut=rp_cut,
+															jk_group_name=f"{dataset_name}_jk{num_jk}")
+			elif self.num_nodes > 1 and temp_storage:
 				self._measure_xi_r_mur_box_jk_multiprocessing(masks=masks, L_subboxes=L, dataset_name=dataset_name,
 															  return_output=False, rp_cut=rp_cut,
 															  num_nodes=self.num_nodes,

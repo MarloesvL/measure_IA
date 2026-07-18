@@ -101,6 +101,39 @@ class TestCorrTypeM:
         np.testing.assert_allclose(
             _read(obj8, "multipoles_gg", "mcp_mp"), ref_m, rtol=1e-10)
 
+    def test_gg_count_pairs_jk_matches_full(self, IA_mock_TNG300_n1,
+                                            IA_mock_TNG300_n8, tmp_path):
+        """corr_type='gg' with num_jk>0 dispatches to the DD-only jk count
+        backends — final multipoles, realisations and covariance must match
+        the full-loop ('both') jk path for brute, tree and multiprocessing."""
+        tp = str(tmp_path) + "/"
+        obj = IA_mock_TNG300_n1
+        obj.measure_xi_multipoles("mjkcp_full", "both", NUM_JK,
+                                  temp_file_path=tp)
+        obj.measure_xi_multipoles("mjkcp_tree", "gg", NUM_JK,
+                                  temp_file_path=tp)
+        obj.measure_xi_multipoles("mjkcp_brute", "gg", NUM_JK,
+                                  temp_file_path=False)
+        ref_m = _read(obj, "multipoles_gg", "mjkcp_full")
+        ref_cov = _read(obj, "multipoles_gg",
+                        f"mjkcp_full_jackknife_cov_{NUM_JK}")
+        for name, rt in (("mjkcp_tree", 1e-12), ("mjkcp_brute", 1e-10)):
+            np.testing.assert_allclose(_read(obj, "multipoles_gg", name),
+                                       ref_m, rtol=rt, atol=1e-13,
+                                       err_msg=f"{name} multipoles mismatch")
+            np.testing.assert_allclose(
+                _read(obj, "multipoles_gg", f"{name}_jackknife_cov_{NUM_JK}"),
+                ref_cov, rtol=1e-8, atol=1e-15,
+                err_msg=f"{name} covariance mismatch")
+        obj8 = IA_mock_TNG300_n8
+        obj8.measure_xi_multipoles("mjkcp_mp", "gg", NUM_JK,
+                                   temp_file_path=tp, chunk_size=50)
+        np.testing.assert_allclose(_read(obj8, "multipoles_gg", "mjkcp_mp"),
+                                   ref_m, rtol=1e-10, atol=1e-13)
+        np.testing.assert_allclose(
+            _read(obj8, "multipoles_gg", f"mjkcp_mp_jackknife_cov_{NUM_JK}"),
+            ref_cov, rtol=1e-8, atol=1e-15)
+
     def test_rp_cut_is_forwarded_and_reduces_pairs(self, IA_mock_TNG300_n1):
         """Regression: rp_cut was accepted by measure_xi_multipoles but never
         forwarded to the backends (silently ignored)."""

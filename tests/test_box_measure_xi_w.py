@@ -115,6 +115,35 @@ class TestCorrTypeW:
         np.testing.assert_allclose(_read(obj8, "w_gg", "cp_mp"), ref_w,
                                    rtol=1e-10)
 
+    def test_gg_count_pairs_jk_matches_full(self, IA_mock_TNG300_n1,
+                                            IA_mock_TNG300_n8, tmp_path):
+        """corr_type='gg' with num_jk>0 dispatches to the DD-only jk count
+        backends — final w_gg, realisations and covariance must match the
+        full-loop ('both') jk path for brute, tree and multiprocessing."""
+        tp = str(tmp_path) + "/"
+        obj = IA_mock_TNG300_n1
+        obj.measure_xi_w("jkcp_full", "both", NUM_JK, temp_file_path=tp)
+        obj.measure_xi_w("jkcp_tree", "gg", NUM_JK, temp_file_path=tp)
+        obj.measure_xi_w("jkcp_brute", "gg", NUM_JK, temp_file_path=False)
+        ref_w = _read(obj, "w_gg", "jkcp_full")
+        ref_cov = _read(obj, "w_gg", f"jkcp_full_jackknife_cov_{NUM_JK}")
+        for name, rt in (("jkcp_tree", 1e-12), ("jkcp_brute", 1e-10)):
+            np.testing.assert_allclose(_read(obj, "w_gg", name), ref_w,
+                                       rtol=rt, atol=1e-13,
+                                       err_msg=f"{name} w_gg mismatch")
+            np.testing.assert_allclose(
+                _read(obj, "w_gg", f"{name}_jackknife_cov_{NUM_JK}"), ref_cov,
+                rtol=1e-8, atol=1e-15,
+                err_msg=f"{name} covariance mismatch")
+        obj8 = IA_mock_TNG300_n8
+        obj8.measure_xi_w("jkcp_mp", "gg", NUM_JK, temp_file_path=tp,
+                          chunk_size=50)
+        np.testing.assert_allclose(_read(obj8, "w_gg", "jkcp_mp"), ref_w,
+                                   rtol=1e-10, atol=1e-13)
+        np.testing.assert_allclose(
+            _read(obj8, "w_gg", f"jkcp_mp_jackknife_cov_{NUM_JK}"), ref_cov,
+            rtol=1e-8, atol=1e-15)
+
 
 # ---------------------------------------------------------------------------
 # 2. Ellipticity definition
