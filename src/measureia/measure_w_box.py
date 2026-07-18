@@ -183,12 +183,7 @@ class MeasureWBox(MeasureIABase, ReadData):
 			del e_plus, e_cross
 			np.add.at(DD, (ind_r, ind_pi), weight[n] * weight_shape[mask])
 
-		# if Num_position == Num_shape:
-		# 	corrtype = "auto"
-		# 	DD = DD / 2.0  # auto correlation, all pairs are double
-		# else:
-
-		corrtype = "cross"
+		corrtype = "cross"  # auto-correlations are not supported; DD is always treated as a cross-count
 
 		for i in np.arange(0, self.num_bins_r):
 			for p in np.arange(0, self.num_bins_pi):
@@ -369,11 +364,7 @@ class MeasureWBox(MeasureIABase, ReadData):
 					del e_plus, e_cross, separation_len
 					np.add.at(DD, (ind_r, ind_pi), weight[ind_rbin_i[n]][mask] * weight_shape_i[n])
 
-		# if Num_position == Num_shape:
-		# 	corrtype = "auto"
-		# 	DD = DD / 2.0  # auto correlation, all pairs are double
-		# else:
-		corrtype = "cross"
+		corrtype = "cross"  # auto-correlations are not supported; DD is always treated as a cross-count
 		for i in np.arange(0, self.num_bins_r):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_g_plus[i, p] = self.get_random_pairs(

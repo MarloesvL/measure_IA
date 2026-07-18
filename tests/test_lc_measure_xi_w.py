@@ -252,6 +252,17 @@ class TestCovarianceW:
             _read(obj, "w_g_plus", "lc_ext_jk2"),
             rtol=1e-5)
 
+    def test_one_based_jk_patches_raise(self, IA_mock_lc_n1, lc_jk_patches,
+                                        tmp_path):
+        """Patch indices must start at 0 — 1-based external patches raise a
+        clear error instead of silently corrupting the covariance."""
+        shifted = {k: np.asarray(v) + 1 for k, v in lc_jk_patches.items()}
+        with pytest.raises(ValueError, match="must start at 0"):
+            IA_mock_lc_n1.measure_xi_w(
+                "galaxies", "lc_jk_1based", "both",
+                measure_cov=True, jk_patches=shifted,
+                tree=True, temp_file_path=str(tmp_path) + "/")
+
     def test_multiproc_vs_tree_jk(self, IA_mock_lc_n1, IA_mock_lc_n8,
                                   lc_jk_patches, tmp_path):
         """The multiprocessing jk backend (num_nodes>1) must reproduce the

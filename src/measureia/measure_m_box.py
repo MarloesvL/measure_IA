@@ -194,11 +194,7 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 				np.add.at(DD, ([r_bin] * sum(mask2), ind_mu_r[mask2]), weight[n] * weight_shape[mask][mask2])
 			del e_plus, e_cross, LOS
 
-		# if Num_position == Num_shape:
-		# 	corrtype = "auto"
-		# 	DD = DD / 2.0  # auto correlation, all pairs are double
-		# else:
-		corrtype = "cross"
+		corrtype = "cross"  # auto-correlations are not supported; DD is always treated as a cross-count
 
 		# analytical calc is much more difficult for (r,mu_r) bins
 		for i in np.arange(0, self.num_bins_r):
@@ -383,11 +379,7 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 			del e_plus, e_cross, mu_r
 			np.add.at(DD, (ind_r, ind_mu_r), weight[n] * weight_shape[mask])
 
-		# if Num_position == Num_shape:
-		# 	corrtype = "auto"
-		# 	DD = DD / 2.0  # auto correlation, all pairs are double
-		# else:
-		corrtype = "cross"
+		corrtype = "cross"  # auto-correlations are not supported; DD is always treated as a cross-count
 
 		# analytical calc is much more difficult for (r,mu_r) bins
 		for i in np.arange(0, self.num_bins_r):
@@ -584,11 +576,7 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 					np.add.at(DD, (ind_r, ind_mu_r), weight[ind_rbin_i[n]][mask] * weight_shape_i[n])
 					del e_plus, e_cross, mask, separation_len
 
-		# if Num_position == Num_shape:
-		# 	corrtype = "auto"
-		# 	DD = DD / 2.0  # auto correlation, all pairs are double
-		# else:
-		corrtype = "cross"
+		corrtype = "cross"  # auto-correlations are not supported; DD is always treated as a cross-count
 
 		# analytical calc is much more difficult for (r,mu_r) bins
 		for i in np.arange(0, self.num_bins_r):

@@ -176,9 +176,12 @@ P1 = features, P2 = input validation, P3 = test suite, P4 = cleanup & docs.
   (`measure_IA.py:235`); sync the `SimInfo` simulation lists (class docstring vs `get_specs`
   vs `get_file_info` disagree on COLIBRE/FLAMINGO variants); add a docstring to
   `read_modelling_outputs`.
-- [ ] **Outstanding TODOs in code** — decide implement or won't-fix for each:
-  `min_patch=1` handling in `_combine_jackknife_information`
-  (`measure_IA_lightcone.py:596/800`); "deal with masks" (`:546/759`); `++` correlation
-  option (`measure_IA_base.py:471`).
+- [x] **Outstanding TODOs in code** — triaged (user-approved 2026-07-18):
+  *`min_patch=1`: won't-fix — 1-based patch indices now raise a clear `ValueError` telling the
+  user to renumber (test added); `auto` corrtype: dead commented-out branches deleted from the
+  Box backends, DD documented as cross-count-only (`get_random_pairs`' tested `auto` utility
+  branch kept); `++` correlation: deferred post-JOSS, comment updated to say so.* Still open
+  from this list: "deal with masks" in the lightcone dispatchers (`measure_IA_lightcone.py`,
+  the `# ToDo: deal with masks` sites) — belongs with the P2 lightcone-masks work.
 - [ ] **`check_paths`**: also verify writability and input-file existence; give a clear error
   for a missing HDF5 file in `ReadData` (currently a raw `OSError`).

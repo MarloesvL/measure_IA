@@ -465,7 +465,7 @@ class MeasureIABase(SimInfo):
 			[r, multipoles_gg] or [r, multipoles_g+] if return_output is True
 		"""
 		correlation_data_file = h5py.File(self.output_file_name, "a")
-		if corr_type == "g+":  # todo: expand to include ++ option
+		if corr_type == "g+":  # '++' (shape-shape) correlations are a planned post-release feature
 			group = correlation_data_file[f"{self.snap_group}multipoles/xi_g_plus/{jk_group_name}"]
 			correlation_data_list = [group[dataset_name][:]]  # xi_g+ in grid of r,mur
 			r_list = [group[dataset_name + "_r"][:]]

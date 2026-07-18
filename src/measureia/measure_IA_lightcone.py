@@ -501,6 +501,10 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			min_patch = min(jk_patches["shape"])
 			max_patch = max(jk_patches["shape"])
 			num_jk = max_patch - min_patch + 1
+			if min_patch != 0:
+				raise ValueError(
+					f"Jackknife patch indices must start at 0 (minimum patch index found: {min_patch}). "
+					"Renumber jk_patches, e.g. patches -= patches.min().")
 
 		self.data_dir = data
 		if "weight" not in self.data_dir:
@@ -585,7 +589,6 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 				corr_group = ["w_gg"]
 			else:
 				raise KeyError("Unknown value for corr_type. Choose from [g+, gg, both]")
-			# ToDo: change _combine_jackknife_information to deal with min_patch=1
 			self._combine_jackknife_information(dataset_name=dataset_name, jk_group_name=f"{dataset_name}_jk{num_jk}",
 												corr_group=corr_group, num_box=num_jk)
 		else:
@@ -706,6 +709,10 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			min_patch = min(jk_patches["shape"])
 			max_patch = max(jk_patches["shape"])
 			num_jk = max_patch - min_patch + 1
+			if min_patch != 0:
+				raise ValueError(
+					f"Jackknife patch indices must start at 0 (minimum patch index found: {min_patch}). "
+					"Renumber jk_patches, e.g. patches -= patches.min().")
 
 		self.data_dir = data
 		if "weight" not in self.data_dir:
@@ -789,7 +796,6 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 				corr_group = ["multipoles_gg"]
 			else:
 				raise KeyError("Unknown value for corr_type. Choose from [g+, gg, both]")
-			# ToDo: change _combine_jackknife_information to deal with min_patch=1
 			self._combine_jackknife_information(dataset_name=dataset_name, jk_group_name=f"{dataset_name}_jk{num_jk}",
 												corr_group=corr_group, num_box=num_jk)
 		else:
