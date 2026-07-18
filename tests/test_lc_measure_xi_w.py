@@ -252,6 +252,33 @@ class TestCovarianceW:
             _read(obj, "w_g_plus", "lc_ext_jk2"),
             rtol=1e-5)
 
+    def test_multiproc_vs_tree_jk(self, IA_mock_lc_n1, IA_mock_lc_n8,
+                                  lc_jk_patches, tmp_path):
+        """The multiprocessing jk backend (num_nodes>1) must reproduce the
+        tree jk backend: final vectors and covariances. Regression for the
+        batch clamp that truncated position samples larger than the shape
+        sample (S+R term)."""
+        IA_mock_lc_n1.measure_xi_w(
+            "galaxies", "lc_w_jk_n1", "both",
+            measure_cov=True, jk_patches=lc_jk_patches,
+            tree=True, temp_file_path=str(tmp_path) + "/")
+        IA_mock_lc_n8.measure_xi_w(
+            "galaxies", "lc_w_jk_n8", "both",
+            measure_cov=True, jk_patches=lc_jk_patches,
+            tree=True, temp_file_path=str(tmp_path) + "/",
+            chunk_size=50)
+        for grp in ("w_g_plus", "w_gg"):
+            np.testing.assert_allclose(
+                _read(IA_mock_lc_n1, grp, "lc_w_jk_n1"),
+                _read(IA_mock_lc_n8, grp, "lc_w_jk_n8"),
+                rtol=1e-8, atol=1e-12,
+                err_msg=f"{grp} n1 vs n8 mismatch")
+            np.testing.assert_allclose(
+                _read(IA_mock_lc_n1, grp, f"lc_w_jk_n1_jackknife_cov_{NUM_JK}"),
+                _read(IA_mock_lc_n8, grp, f"lc_w_jk_n8_jackknife_cov_{NUM_JK}"),
+                rtol=1e-6, atol=1e-14,
+                err_msg=f"{grp} covariance n1 vs n8 mismatch")
+
     def test_brute_vs_tree_jk_realisations_splusd(self, IA_mock_lc_n1, lc_jk_patches, tmp_path):
         obj = IA_mock_lc_n1
         obj.measure_xi_w(

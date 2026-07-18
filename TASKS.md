@@ -44,7 +44,15 @@ P1 = features, P2 = input validation, P3 = test suite, P4 = cleanup & docs.
 
 ## P1 — Features
 
-- [ ] **Lightcone multipoles multiprocessing (mirror `w` exactly).** No multiprocessing exists for
+- [x] **Lightcone multipoles multiprocessing (mirror `w` exactly).**
+  *Done. Also found and fixed while cloning: the `w` mp batch worker
+  (`_measure_xi_rp_pi_lightcone_jk_batch`) clamped its index range with `Num_shape_masked`
+  while iterating the position sample — for position samples larger than the shape sample
+  (the S+R term: positions are the randoms) trailing chunks were silently dropped. The
+  count-pairs twin had already been corrected. All previous lc "multiprocessing" tests ran
+  `measure_cov=False`, which has no mp path, so they compared tree-vs-tree and never caught
+  it. New `test_multiproc_vs_tree_jk` tests (w + multipoles, `measure_cov=True`) verified to
+  fail with the bug present and lock both mp paths now.* No multiprocessing exists for
   lightcone multipoles today: `num_nodes`/`chunk_size`/`temp_file_path` are threaded through the
   signatures but ignored, and the dispatcher (`measure_IA_lightcone.py:761-775`) lacks the
   `num_nodes` branch that `measure_xi_w` has (`:549-570`).

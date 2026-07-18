@@ -743,17 +743,25 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 		# ToDo: deal with masks
 
 		if measure_cov:
-			if tree:
-				self.measure_xi_jk_helper(self._count_pairs_xi_r_mur_lightcone_jk_tree,
-										  self._measure_xi_r_mur_lightcone_jk_tree, IA_estimator, dataset_name,
-										  corr_type, jk_patches=jk_patches, masks=masks,
-										  masks_randoms=masks_randoms, cosmology=cosmology, over_h=over_h,
-										  chunk_size=chunk_size, num_nodes=self.num_nodes,
-										  temp_file_path=temp_file_path)
+			if self.num_nodes == 1:
+				if tree:
+					self.measure_xi_jk_helper(self._count_pairs_xi_r_mur_lightcone_jk_tree,
+											  self._measure_xi_r_mur_lightcone_jk_tree, IA_estimator, dataset_name,
+											  corr_type, jk_patches=jk_patches, masks=masks,
+											  masks_randoms=masks_randoms, cosmology=cosmology, over_h=over_h,
+											  chunk_size=chunk_size, num_nodes=self.num_nodes,
+											  temp_file_path=temp_file_path)
+				else:
+					self.measure_xi_jk_helper(self._count_pairs_xi_r_mur_lightcone_jk_brute,
+											  self._measure_xi_r_mur_lightcone_jk_brute, IA_estimator, dataset_name,
+											  corr_type, jk_patches=jk_patches, masks=masks,
+											  masks_randoms=masks_randoms, cosmology=cosmology, over_h=over_h,
+											  chunk_size=chunk_size, num_nodes=self.num_nodes,
+											  temp_file_path=temp_file_path)
 			else:
-				self.measure_xi_jk_helper(self._count_pairs_xi_r_mur_lightcone_jk_brute,
-										  self._measure_xi_r_mur_lightcone_jk_brute, IA_estimator, dataset_name,
-										  corr_type, jk_patches=jk_patches, masks=masks,
+				self.measure_xi_jk_helper(self._count_pairs_xi_r_mur_lightcone_jk_multiprocessing,
+										  self._measure_xi_r_mur_lightcone_jk_multiprocessing, IA_estimator,
+										  dataset_name, corr_type, jk_patches=jk_patches, masks=masks,
 										  masks_randoms=masks_randoms, cosmology=cosmology, over_h=over_h,
 										  chunk_size=chunk_size, num_nodes=self.num_nodes,
 										  temp_file_path=temp_file_path)
