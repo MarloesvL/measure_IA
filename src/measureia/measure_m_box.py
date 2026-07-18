@@ -945,6 +945,504 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 		else:
 			return correlation, xi_gg, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus
 
+	def _count_pairs_xi_r_mur_box_brute(self, dataset_name, masks=None, rp_cut=None, return_output=False,
+										jk_group_name=""):
+		r"""Measures the clustering, $\xi_{gg}$, in (r, mu_r) bins for an object created with MeasureIABox.
+		DD-only twin of _measure_xi_r_mur_box_brute for corr_type='gg': skips all shape/ellipticity computation.
+		Uses 1 CPU.
+
+		Parameters
+		----------
+		dataset_name : str
+			Name of the dataset in the output file.
+		masks : dict or NoneType, optional
+			Dictionary with masks for the data to select only part of the data. Uses same keywords as data dictionary.
+			Default value = None.
+		rp_cut : float, optional
+			Value of projected separation below which pairs are excluded. Default is None (no cut).
+		return_output : bool, optional
+			If True, the output will be returned instead of written to a file. Default value is False.
+		jk_group_name : str, optional
+			Group in output file (hdf5) where jackknife realisations are stored. Default value is "".
+
+		Returns
+		-------
+		ndarrays
+			$\xi_{gg}$, r bins, mu_r bins, DD, RR_gg (if no output file is specified)
+		"""
+		if masks == None:
+			positions = self.data["Position"]
+			positions_shape_sample = self.data["Position_shape_sample"]
+			weight = self.data["weight"]
+			weight_shape = self.data["weight_shape_sample"]
+		else:
+			pos_mask   = masks.get("Position",              np.ones(self.Num_position, dtype=bool))
+			shape_mask = masks.get("Position_shape_sample", np.ones(self.Num_shape,    dtype=bool))
+			positions = self.data["Position"][pos_mask]
+			positions_shape_sample = self.data["Position_shape_sample"][shape_mask]
+			if "weight" not in masks:
+				masks["weight"] = pos_mask
+			if "weight_shape_sample" not in masks:
+				masks["weight_shape_sample"] = shape_mask
+			weight = self.data["weight"][masks["weight"]]
+			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
+		Num_position = len(positions)
+		Num_shape = len(positions_shape_sample)
+		print(
+			f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
+
+		if rp_cut == None:
+			rp_cut = 0.0
+		LOS_ind = self.data["LOS"]  # eg 2 for z axis
+		not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], LOS_ind, invert=True)]  # eg 0,1 for x&y
+		L3 = self.boxsize ** 3  # box volume
+		sub_box_len_logr = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
+		sub_box_len_mu_r = 2.0 / self.num_bins_pi  # mu_r ranges from -1 to 1. Same number of bins as pi
+		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		RR_gg = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+
+		for n in np.arange(0, len(positions)):
+			separation = positions_shape_sample - positions[n]
+			if self.periodicity:
+				separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
+				separation[separation < -self.L_0p5] += self.boxsize
+			projected_sep = separation[:, not_LOS]
+			LOS = separation[:, LOS_ind]
+			projected_separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
+			separation_len = np.sqrt(np.sum(separation ** 2, axis=1))
+			with np.errstate(invalid='ignore'):
+				mu_r = LOS / separation_len
+				del LOS, projected_sep, separation
+
+			# get the indices for the binning
+			mask = (
+					(projected_separation_len > rp_cut)
+					* (separation_len >= self.r_bins[0])
+					* (separation_len < self.r_bins[-1])
+			)
+			ind_r = np.floor(
+				np.log10(separation_len[mask]) / sub_box_len_logr - np.log10(self.r_bins[0]) / sub_box_len_logr
+			)
+			del separation_len, projected_separation_len
+			ind_r = np.array(ind_r, dtype=int)
+			ind_mu_r = np.floor(
+				mu_r[mask] / sub_box_len_mu_r - self.mu_r_bins[0] / sub_box_len_mu_r
+			)  # need length of LOS, so only positive values
+			ind_mu_r = np.array(ind_mu_r, dtype=int)
+			if np.any(ind_mu_r == self.num_bins_pi):
+				ind_mu_r[ind_mu_r >= self.num_bins_pi] -= 1
+			if np.any(ind_r == self.num_bins_r):
+				ind_r[ind_r >= self.num_bins_r] -= 1
+			np.add.at(DD, (ind_r, ind_mu_r), weight[n] * weight_shape[mask])
+			del mu_r
+
+		corrtype = "cross"
+
+		# analytical calc is much more difficult for (r,mu_r) bins
+		for i in np.arange(0, self.num_bins_r):
+			for p in np.arange(0, self.num_bins_pi):
+				RR_gg[i, p] = self.get_random_pairs_r_mur(
+					self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, corrtype,
+					Num_position, Num_shape)
+
+		RR_gg_denom = RR_gg.copy()  # guard against empty samples/bins in the division; raw RR grid is written to file
+		RR_gg_denom[RR_gg_denom == 0] = 1
+		xi_gg = (DD / RR_gg_denom) - 1
+		xi_gg[RR_gg == 0] = 0
+		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
+		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
+		dmur = (self.mu_r_bins[1:] - self.mu_r_bins[:-1]) / 2.0
+		mu_r_bins = self.mu_r_bins[:-1] + abs(dmur)  # middle of bins
+
+		if (self.output_file_name != None) & return_output == False:
+			output_file = h5py.File(self.output_file_name, "a")
+			group = create_group_hdf5(output_file, f"{self.snap_group}/multipoles/xi_gg/{jk_group_name}")
+			write_dataset_hdf5(group, dataset_name, data=xi_gg)
+			write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
+			write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
+			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
+			write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
+			output_file.close()
+			return
+		else:
+			return xi_gg, separation_bins, mu_r_bins, DD, RR_gg
+
+	def _count_pairs_xi_r_mur_box_tree(self, dataset_name, masks=None, rp_cut=None, return_output=False,
+									   jk_group_name=""):
+		r"""Measures the clustering, $\xi_{gg}$, in (r, mu_r) bins for an object created with MeasureIABox.
+		DD-only twin of _measure_xi_r_mur_box_tree for corr_type='gg': skips all shape/ellipticity computation.
+		Uses 1 CPU. Uses KDTree for speedup.
+
+		Parameters
+		----------
+		dataset_name : str
+			Name of the dataset in the output file.
+		masks : dict or NoneType, optional
+			Dictionary with masks for the data to select only part of the data. Uses same keywords as data dictionary.
+			Default value = None.
+		rp_cut : float, optional
+			Value of projected separation below which pairs are excluded. Default is None (no cut).
+		return_output : bool, optional
+			If True, the output will be returned instead of written to a file. Default value is False.
+		jk_group_name : str, optional
+			Group in output file (hdf5) where jackknife realisations are stored. Default value is "".
+
+		Returns
+		-------
+		ndarrays
+			$\xi_{gg}$, r bins, mu_r bins, DD, RR_gg (if no output file is specified)
+		"""
+		if masks == None:
+			positions = self.data["Position"]
+			positions_shape_sample = self.data["Position_shape_sample"]
+			weight = self.data["weight"]
+			weight_shape = self.data["weight_shape_sample"]
+		else:
+			pos_mask   = masks.get("Position",              np.ones(self.Num_position, dtype=bool))
+			shape_mask = masks.get("Position_shape_sample", np.ones(self.Num_shape,    dtype=bool))
+			positions = self.data["Position"][pos_mask]
+			positions_shape_sample = self.data["Position_shape_sample"][shape_mask]
+			if "weight" not in masks:
+				masks["weight"] = pos_mask
+			if "weight_shape_sample" not in masks:
+				masks["weight_shape_sample"] = shape_mask
+			weight = self.data["weight"][masks["weight"]]
+			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
+		# masking changes the number of galaxies
+		Num_position = len(positions)  # number of halos in position sample
+		Num_shape = len(positions_shape_sample)  # number of halos in shape sample
+
+		if rp_cut == None:
+			rp_cut = 0.0
+		LOS_ind = self.data["LOS"]  # eg 2 for z axis
+		not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], LOS_ind, invert=True)]  # eg 0,1 for x&y
+		L3 = self.boxsize ** 3  # box volume
+		sub_box_len_logr = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
+		sub_box_len_mu_r = 2.0 / self.num_bins_pi  # mu_r ranges from -1 to 1. Same number of bins as pi
+		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		RR_gg = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+
+		print(
+			f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
+
+		pos_tree = KDTree(positions, boxsize=self.boxsize)
+		for i in np.arange(0, len(positions_shape_sample), 100):
+			i2 = min(len(positions_shape_sample), i + 100)
+			positions_shape_sample_i = positions_shape_sample[i:i2]
+			weight_shape_i = weight_shape[i:i2]
+			shape_tree = KDTree(positions_shape_sample_i, boxsize=self.boxsize)
+			ind_min_i = shape_tree.query_ball_tree(pos_tree, self.r_min)
+			ind_max_i = shape_tree.query_ball_tree(pos_tree, self.r_max)
+			ind_rbin_i = self.setdiff2D(ind_max_i, ind_min_i)
+			for n in np.arange(0, len(positions_shape_sample_i)):
+				if len(ind_rbin_i[n]) > 0:
+					separation = positions_shape_sample_i[n] - positions[ind_rbin_i[n]]
+					if self.periodicity:
+						separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
+						separation[separation < -self.L_0p5] += self.boxsize
+					projected_sep = separation[:, not_LOS]
+					LOS = separation[:, LOS_ind]
+					projected_separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
+					separation_len = np.sqrt(np.sum(separation ** 2, axis=1))
+					del separation, projected_sep
+					with np.errstate(invalid='ignore'):
+						mu_r = LOS / separation_len
+					del LOS
+
+					# get the indices for the binning
+					mask = (
+							(projected_separation_len > rp_cut)
+							* (separation_len >= self.r_bins[0])
+							* (separation_len < self.r_bins[-1])
+					)
+					ind_r = np.floor(
+						np.log10(separation_len[mask]) / sub_box_len_logr - np.log10(
+							self.r_bins[0]) / sub_box_len_logr
+					)
+					ind_r = np.array(ind_r, dtype=int)
+					ind_mu_r = np.floor(
+						mu_r[mask] / sub_box_len_mu_r - self.mu_r_bins[0] / sub_box_len_mu_r
+					)  # need length of LOS, so only positive values
+					ind_mu_r = np.array(ind_mu_r, dtype=int)
+					if np.any(ind_mu_r == self.num_bins_pi):
+						ind_mu_r[ind_mu_r >= self.num_bins_pi] -= 1
+					if np.any(ind_r == self.num_bins_r):
+						ind_r[ind_r >= self.num_bins_r] -= 1
+					np.add.at(DD, (ind_r, ind_mu_r), weight[ind_rbin_i[n]][mask] * weight_shape_i[n])
+					del mask, separation_len, mu_r
+
+		corrtype = "cross"
+
+		# analytical calc is much more difficult for (r,mu_r) bins
+		for i in np.arange(0, self.num_bins_r):
+			for p in np.arange(0, self.num_bins_pi):
+				RR_gg[i, p] = self.get_random_pairs_r_mur(
+					self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, corrtype,
+					Num_position, Num_shape)
+
+		RR_gg_denom = RR_gg.copy()  # guard against empty samples/bins in the division; raw RR grid is written to file
+		RR_gg_denom[RR_gg_denom == 0] = 1
+		xi_gg = (DD / RR_gg_denom) - 1
+		xi_gg[RR_gg == 0] = 0
+		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
+		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
+		dmur = (self.mu_r_bins[1:] - self.mu_r_bins[:-1]) / 2.0
+		mu_r_bins = self.mu_r_bins[:-1] + abs(dmur)  # middle of bins
+
+		if (self.output_file_name != None) & return_output == False:
+			output_file = h5py.File(self.output_file_name, "a")
+			group = create_group_hdf5(output_file, f"{self.snap_group}/multipoles/xi_gg/{jk_group_name}")
+			write_dataset_hdf5(group, dataset_name, data=xi_gg)
+			write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
+			write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
+			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
+			write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
+			output_file.close()
+			return
+		else:
+			return xi_gg, separation_bins, mu_r_bins, DD, RR_gg
+
+	def _count_pairs_xi_r_mur_box_batch(self, i):
+		r"""Measures the weighted pair counts DD in (r, mu_r) bins for a batch of indices from i to i+chunk_size.
+		Support function for _count_pairs_xi_r_mur_box_multiprocessing().
+
+		Parameters
+		----------
+		i: int
+			Start index of the batch.
+
+		Returns
+		-------
+		ndarray
+			DD
+		"""
+		if i + self.chunk_size > self.Num_shape_masked:
+			i2 = self.Num_shape_masked
+		else:
+			i2 = i + self.chunk_size
+
+		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+
+		shms = []
+		shared_data = {}
+		for name, shape, dtype in self.shm_infos:
+			shm = shared_memory.SharedMemory(name=name)
+			shared_data[name] = np.ndarray(shape, dtype=dtype, buffer=shm.buf)
+			shms.append(shm)
+		positions = shared_data[f"positions_{self.ID_shm}"]
+		for j in np.arange(i, i2, 100):
+			j2 = min(j + 100, i2)
+			positions_shape_sample_i = shared_data[f"positions_shape_sample_{self.ID_shm}"][j:j2]
+			weight_shape_i = shared_data[f"weight_shape_{self.ID_shm}"][j:j2]
+			shape_tree = KDTree(positions_shape_sample_i, boxsize=self.boxsize)
+			ind_min_i = shape_tree.query_ball_tree(self.pos_tree, self.r_min)
+			ind_max_i = shape_tree.query_ball_tree(self.pos_tree, self.r_max)
+			ind_rbin_i = self.setdiff2D(ind_max_i, ind_min_i)
+			for n in np.arange(0, len(positions_shape_sample_i)):
+				if len(ind_rbin_i[n]) > 0:
+					separation = positions_shape_sample_i[n] - positions[ind_rbin_i[n]]
+					if self.periodicity:
+						separation[separation > self.L_0p5] -= self.boxsize  # account for periodicity of box
+						separation[separation < -self.L_0p5] += self.boxsize
+					projected_sep = separation[:, self.not_LOS]
+					LOS = separation[:, self.LOS_ind]
+					projected_separation_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
+					separation_len = np.sqrt(np.sum(separation ** 2, axis=1))
+					del separation, projected_sep
+					with np.errstate(invalid='ignore'):
+						mu_r = LOS / separation_len
+					del LOS
+
+					# get the indices for the binning
+					mask = (
+							(projected_separation_len > self.rp_cut)
+							* (separation_len >= self.r_bins[0])
+							* (separation_len < self.r_bins[-1])
+					)
+					ind_r = np.floor(
+						np.log10(separation_len[mask]) / self.sub_box_len_logr - np.log10(
+							self.r_bins[0]) / self.sub_box_len_logr
+					)
+					ind_r = np.array(ind_r, dtype=int)
+					ind_mu_r = np.floor(
+						mu_r[mask] / self.sub_box_len_mu_r - self.mu_r_bins[0] / self.sub_box_len_mu_r
+					)  # need length of LOS, so only positive values
+					ind_mu_r = np.array(ind_mu_r, dtype=int)
+					if np.any(ind_mu_r == self.num_bins_pi):
+						ind_mu_r[ind_mu_r >= self.num_bins_pi] -= 1
+					if np.any(ind_r == self.num_bins_r):
+						ind_r[ind_r >= self.num_bins_r] -= 1
+					weight_i_n = shared_data[f"weight_{self.ID_shm}"][ind_rbin_i[n]]
+					np.add.at(DD, (ind_r, ind_mu_r), weight_i_n[mask] * weight_shape_i[n])
+					del mask, separation_len, mu_r
+		for shm in shms:
+			shm.close()
+		return DD
+
+	def _count_pairs_xi_r_mur_box_multiprocessing(self, dataset_name, temp_file_path, masks=None, rp_cut=None,
+												  return_output=False, jk_group_name="", num_nodes=1,
+												  chunk_size=1000):
+		r"""Measures the clustering, $\xi_{gg}$, in (r, mu_r) bins for an object created with MeasureIABox.
+		DD-only twin of _measure_xi_r_mur_box_multiprocessing for corr_type='gg': skips all shape/ellipticity
+		computation. Uses >1 CPU. Uses KDTree for speedup.
+
+		Parameters
+		----------
+		dataset_name : str
+			Name of the dataset in the output file.
+		temp_file_path : str or NoneType, optional
+			Path to where the data is temporarily stored [file name generated automatically].
+		masks : dict or NoneType, optional
+			Dictionary with masks for the data to select only part of the data. Uses same keywords as data dictionary.
+			Default value = None.
+		rp_cut : float, optional
+			Value of projected separation below which pairs are excluded. Default is None (no cut).
+		return_output : bool, optional
+			If True, the output will be returned instead of written to a file. Default value is False.
+		jk_group_name : str, optional
+			Group in output file (hdf5) where jackknife realisations are stored. Default value is "".
+		num_nodes : int, optional
+			Number of CPUs used in the multiprocessing. Default is 1.
+		chunk_size: int, optional
+			Size of the chunks of data sent to each multiprocessing node. Default is 1000.
+
+		Returns
+		-------
+		ndarrays
+			$\xi_{gg}$, r bins, mu_r bins, DD, RR_gg (if no output file is specified)
+		"""
+		if masks == None:
+			positions = self.data["Position"]
+			positions_shape_sample = self.data["Position_shape_sample"]
+			weight = self.data["weight"]
+			weight_shape = self.data["weight_shape_sample"]
+		else:
+			pos_mask   = masks.get("Position",              np.ones(self.Num_position, dtype=bool))
+			shape_mask = masks.get("Position_shape_sample", np.ones(self.Num_shape,    dtype=bool))
+			positions = self.data["Position"][pos_mask]
+			positions_shape_sample = self.data["Position_shape_sample"][shape_mask]
+			if "weight" not in masks:
+				masks["weight"] = pos_mask
+			if "weight_shape_sample" not in masks:
+				masks["weight_shape_sample"] = shape_mask
+			weight = self.data["weight"][masks["weight"]]
+			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
+		# masking changes the number of galaxies
+		self.Num_position_masked = len(positions)
+		self.Num_shape_masked = len(positions_shape_sample)
+		print(
+			f"There are {self.Num_shape_masked} galaxies in the shape sample and {self.Num_position_masked} galaxies in the position sample.")
+		if rp_cut == None:
+			self.rp_cut = 0.0
+		else:
+			self.rp_cut = rp_cut
+		self.LOS_ind = self.data["LOS"]  # eg 2 for z axis
+		self.not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], self.LOS_ind, invert=True)]  # eg 0,1 for x&y
+		L3 = self.boxsize ** 3  # box volume
+		self.sub_box_len_logr = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
+		self.sub_box_len_mu_r = 2.0 / self.num_bins_pi  # mu_r ranges from -1 to 1. Same number of bins as pi
+
+		self.pos_tree = KDTree(positions, boxsize=self.boxsize)
+		indices = np.arange(0, len(positions_shape_sample), chunk_size)
+		self.chunk_size = chunk_size
+
+		# create temp hdf5 from which data can be read. del self.data, but save it in this method to reduce RAM
+		figname_dataset_name = dataset_name
+		if "/" in dataset_name:
+			figname_dataset_name = figname_dataset_name.replace("/", "_")
+		if "." in dataset_name:
+			figname_dataset_name = figname_dataset_name.replace(".", "p")
+		file_temp = h5py.File(f"{temp_file_path}/multipoles_gg_{self.simname}_temp_data_{figname_dataset_name}.hdf5",
+							  "w")
+		keys = []
+		for k in self.data.keys():
+			if k != "LOS":
+				write_dataset_hdf5(file_temp, k, self.data[k])
+				if masks is not None:
+					write_dataset_hdf5(file_temp, f"mask_{k}", masks[k])
+				keys.append(k)
+		file_temp.close()
+		self.ID_shm = np.random.randint(100000)
+		try:
+			shared_data = {
+				f"positions_{self.ID_shm}": positions,
+				f"positions_shape_sample_{self.ID_shm}": positions_shape_sample,
+				f"weight_{self.ID_shm}": weight,
+				f"weight_shape_{self.ID_shm}": weight_shape,
+			}
+			for k in shared_data.keys():
+				try:
+					old = shared_memory.SharedMemory(name=k)
+					old.unlink()
+				except FileNotFoundError:
+					pass
+			shm_blocks, self.shm_infos = [], []
+			for k in shared_data.keys():
+				shm = shared_memory.SharedMemory(name=k, create=True, size=shared_data[k].nbytes)
+				shared_arr = np.ndarray(shared_data[k].shape, dtype=shared_data[k].dtype, buffer=shm.buf)
+				np.copyto(shared_arr, shared_data[k])
+				shm_blocks.append(shm)
+				self.shm_infos.append([k, shared_data[k].shape, shared_data[k].dtype])
+			self.data = {}
+			if masks is not None:
+				masks = {}
+			del shared_data, shared_arr
+			del positions, positions_shape_sample, weight, weight_shape
+			mp.set_start_method("spawn", force=True)
+			with Pool(num_nodes) as p:
+				result = p.map(self._count_pairs_xi_r_mur_box_batch, indices)
+
+		finally:
+			for shm in shm_blocks:
+				shm.close()
+				shm.unlink()
+
+		temp_data_obj_m = ReadData(self.simname, f"multipoles_gg_{self.simname}_temp_data_{figname_dataset_name}",
+								   None, data_path=temp_file_path)
+		for k in keys:
+			self.data[k] = temp_data_obj_m.read_cat(k)
+			if masks is not None:
+				masks[k] = temp_data_obj_m.read_cat(f"mask_{k}")
+		self.data["LOS"] = self.LOS_ind
+		os.remove(
+			f"{temp_file_path}/multipoles_gg_{self.simname}_temp_data_{figname_dataset_name}.hdf5")
+
+		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		RR_gg = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		for i in np.arange(len(result)):
+			DD += result[i]
+
+		corrtype = "cross"
+
+		# analytical calc is much more difficult for (r,mu_r) bins
+		for i in np.arange(0, self.num_bins_r):
+			for p in np.arange(0, self.num_bins_pi):
+				RR_gg[i, p] = self.get_random_pairs_r_mur(
+					self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, corrtype,
+					self.Num_position_masked, self.Num_shape_masked)
+
+		RR_gg_denom = RR_gg.copy()  # guard against empty samples/bins in the division; raw RR grid is written to file
+		RR_gg_denom[RR_gg_denom == 0] = 1
+		xi_gg = (DD / RR_gg_denom) - 1
+		xi_gg[RR_gg == 0] = 0
+		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
+		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
+		dmur = (self.mu_r_bins[1:] - self.mu_r_bins[:-1]) / 2.0
+		mu_r_bins = self.mu_r_bins[:-1] + abs(dmur)  # middle of bins
+
+		if (self.output_file_name != None) & return_output == False:
+			output_file = h5py.File(self.output_file_name, "a")
+			group = create_group_hdf5(output_file, f"{self.snap_group}/multipoles/xi_gg/{jk_group_name}")
+			write_dataset_hdf5(group, dataset_name, data=xi_gg)
+			write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
+			write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
+			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
+			write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
+			output_file.close()
+			return
+		else:
+			return xi_gg, separation_bins, mu_r_bins, DD, RR_gg
+
 
 if __name__ == "__main__":
 	pass

@@ -192,7 +192,17 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			self._combine_jackknife_information(dataset_name=dataset_name, jk_group_name=f"{dataset_name}_jk{num_jk}",
 												corr_group=corr_group, num_box=num_jk)
 		else:  # no covariance
-			if self.num_nodes > 1 and temp_storage:
+			if corr_type == "gg":  # DD-only pair counting, skips shape/ellipticity computation
+				if self.num_nodes > 1 and temp_storage:
+					self._count_pairs_xi_rp_pi_box_multiprocessing(dataset_name=dataset_name,
+																   temp_file_path=temp_file_path,
+																   masks=masks, return_output=False,
+																   num_nodes=self.num_nodes, chunk_size=chunk_size)
+				elif temp_storage:
+					self._count_pairs_xi_rp_pi_box_tree(masks=masks, dataset_name=dataset_name, return_output=False)
+				else:
+					self._count_pairs_xi_rp_pi_box_brute(masks=masks, dataset_name=dataset_name, return_output=False)
+			elif self.num_nodes > 1 and temp_storage:
 				self._measure_xi_rp_pi_box_multiprocessing(dataset_name=dataset_name, temp_file_path=temp_file_path,
 														   masks=masks, return_output=False, num_nodes=self.num_nodes,
 														   chunk_size=chunk_size, ellipticity=ellipticity)
@@ -260,18 +270,18 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 		if num_jk > 0:  # include covariance
 			if self.num_nodes > 1 and temp_storage:
 				self._measure_xi_r_mur_box_jk_multiprocessing(masks=masks, L_subboxes=L, dataset_name=dataset_name,
-															  return_output=False,
+															  return_output=False, rp_cut=rp_cut,
 															  num_nodes=self.num_nodes,
 															  jk_group_name=f"{dataset_name}_jk{num_jk}",
 															  chunk_size=chunk_size, ellipticity=ellipticity,
 															  temp_file_path=temp_file_path)
 			elif temp_storage:
 				self._measure_xi_r_mur_box_jk_tree(masks=masks, L_subboxes=L, dataset_name=dataset_name,
-												   return_output=False, ellipticity=ellipticity,
+												   return_output=False, rp_cut=rp_cut, ellipticity=ellipticity,
 												   jk_group_name=f"{dataset_name}_jk{num_jk}")
 			else:
 				self._measure_xi_r_mur_box_jk_brute(masks=masks, L_subboxes=L, dataset_name=dataset_name,
-													return_output=False, ellipticity=ellipticity,
+													return_output=False, rp_cut=rp_cut, ellipticity=ellipticity,
 													jk_group_name=f"{dataset_name}_jk{num_jk}")
 			self._measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
 			for i in np.arange(num_jk):
@@ -288,17 +298,30 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			self._combine_jackknife_information(dataset_name=dataset_name, jk_group_name=f"{dataset_name}_jk{num_jk}",
 												corr_group=corr_group, num_box=num_jk)
 		else:  # no covariance
-			if self.num_nodes > 1 and temp_storage:
+			if corr_type == "gg":  # DD-only pair counting, skips shape/ellipticity computation
+				if self.num_nodes > 1 and temp_storage:
+					self._count_pairs_xi_r_mur_box_multiprocessing(dataset_name=dataset_name,
+																   temp_file_path=temp_file_path,
+																   masks=masks, return_output=False, rp_cut=rp_cut,
+																   num_nodes=self.num_nodes, chunk_size=chunk_size)
+				elif temp_storage:
+					self._count_pairs_xi_r_mur_box_tree(masks=masks, dataset_name=dataset_name,
+														return_output=False, rp_cut=rp_cut)
+				else:
+					self._count_pairs_xi_r_mur_box_brute(masks=masks, dataset_name=dataset_name,
+														 return_output=False, rp_cut=rp_cut)
+			elif self.num_nodes > 1 and temp_storage:
 				self._measure_xi_r_mur_box_multiprocessing(dataset_name=dataset_name, temp_file_path=temp_file_path,
-														   masks=masks, return_output=False, num_nodes=self.num_nodes,
+														   masks=masks, return_output=False, rp_cut=rp_cut,
+														   num_nodes=self.num_nodes,
 														   chunk_size=chunk_size, ellipticity=ellipticity)
 			elif temp_storage:
 				self._measure_xi_r_mur_box_tree(masks=masks, dataset_name=dataset_name,
-												return_output=False,
+												return_output=False, rp_cut=rp_cut,
 												ellipticity=ellipticity)
 			else:
 				self._measure_xi_r_mur_box_brute(masks=masks, dataset_name=dataset_name,
-												 return_output=False, ellipticity=ellipticity)
+												 return_output=False, rp_cut=rp_cut, ellipticity=ellipticity)
 			self._measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
 
 		return

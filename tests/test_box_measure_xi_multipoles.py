@@ -76,6 +76,42 @@ class TestCorrTypeM:
             IA_mock_TNG300_n1.measure_xi_multipoles(
                 "bad", "gg+", 0, temp_file_path=False)
 
+    def test_gg_count_pairs_matches_full_all_backends(self, IA_mock_TNG300_n1,
+                                                      IA_mock_TNG300_n8, tmp_path):
+        """corr_type='gg' dispatches to the DD-only count_pairs backends —
+        DD grid and multipoles must match the full-loop ('both') result for
+        brute, tree and multiprocessing."""
+        tp = str(tmp_path) + "/"
+        obj = IA_mock_TNG300_n1
+        obj.measure_xi_multipoles("mcp_full", "both", 0, temp_file_path=False)
+        obj.measure_xi_multipoles("mcp_brute", "gg", 0, temp_file_path=False)
+        obj.measure_xi_multipoles("mcp_tree", "gg", 0, temp_file_path=tp)
+        ref_dd = _read(obj, "multipoles/xi_gg", "mcp_full_DD")
+        ref_m = _read(obj, "multipoles_gg", "mcp_full")
+        for name in ("mcp_brute", "mcp_tree"):
+            np.testing.assert_array_equal(
+                _read(obj, "multipoles/xi_gg", f"{name}_DD"), ref_dd)
+            np.testing.assert_array_equal(
+                _read(obj, "multipoles_gg", name), ref_m)
+        obj8 = IA_mock_TNG300_n8
+        obj8.measure_xi_multipoles("mcp_mp", "gg", 0, temp_file_path=tp,
+                                   chunk_size=50)
+        np.testing.assert_allclose(
+            _read(obj8, "multipoles/xi_gg", "mcp_mp_DD"), ref_dd, rtol=1e-10)
+        np.testing.assert_allclose(
+            _read(obj8, "multipoles_gg", "mcp_mp"), ref_m, rtol=1e-10)
+
+    def test_rp_cut_is_forwarded_and_reduces_pairs(self, IA_mock_TNG300_n1):
+        """Regression: rp_cut was accepted by measure_xi_multipoles but never
+        forwarded to the backends (silently ignored)."""
+        obj = IA_mock_TNG300_n1
+        obj.measure_xi_multipoles("rpcut_no", "gg", 0, temp_file_path=False)
+        obj.measure_xi_multipoles("rpcut_yes", "gg", 0, temp_file_path=False,
+                                  rp_cut=1.0)
+        dd_no = _read(obj, "multipoles/xi_gg", "rpcut_no_DD")
+        dd_yes = _read(obj, "multipoles/xi_gg", "rpcut_yes_DD")
+        assert np.sum(dd_yes) < np.sum(dd_no)
+
 
 # ---------------------------------------------------------------------------
 # 2. Ellipticity definition

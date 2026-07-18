@@ -69,7 +69,16 @@ P1 = features, P2 = input validation, P3 = test suite, P4 = cleanup & docs.
     through the existing binning-agnostic `measure_xi_jk_helper`. No base-class changes needed.
   - Test: extend the n1-vs-n8 equality tests (pattern in `test_lc_measure_xi_w.py`) to
     lightcone multipoles.
-- [ ] **Box `count_pairs` methods for `corr_type='gg'`.** The Box currently always computes
+- [x] **Box `count_pairs` methods for `corr_type='gg'` (non-jackknife paths).**
+  *Done for `num_jk=0`: `_count_pairs_xi_rp_pi_box_brute/tree/batch/multiprocessing` in
+  `measure_w_box.py` and `_count_pairs_xi_r_mur_box_*` in `measure_m_box.py`, dispatched from
+  `measure_IA.py` when `corr_type='gg'`. DD grids bit-identical to the full loop (locked by
+  tests, mp to 1e-10). Also found and fixed: `rp_cut` was accepted by `measure_xi_multipoles`
+  but never forwarded to any backend — silently ignored; now forwarded in both branches, with
+  a regression test. Remaining follow-up (open item below): jackknife count_pairs twins.*
+- [ ] **Box `count_pairs` jk twins (gg with covariance).** The `num_jk>0` path still runs the
+  full shape-computing jk backends for `corr_type='gg'`; add `_count_pairs_*_jk_*` twins
+  (DD, DD_jk, RR grids and xi_gg realisation writes only) and dispatch when `corr_type='gg'`. The Box currently always computes
   `arccos` + `get_ellipticity` and accumulates `Splus_D`/`Scross_D` even when only `gg` is
   requested (`measure_w_box.py:159-186`); `corr_type` is only consulted at the reduction stage.
   - Add DD-only `_count_pairs_*` variants (brute/tree/batch + multiprocessing, and jk twins) to

@@ -93,6 +93,28 @@ class TestCorrTypeW:
             IA_mock_TNG300_n1.measure_xi_w("bad", "gg+", 0,
                                            temp_file_path=False)
 
+    def test_gg_count_pairs_matches_full_all_backends(self, IA_mock_TNG300_n1,
+                                                      IA_mock_TNG300_n8, tmp_path):
+        """corr_type='gg' dispatches to the DD-only count_pairs backends —
+        DD grid and w_gg must match the full-loop ('both') result for brute,
+        tree and multiprocessing."""
+        tp = str(tmp_path) + "/"
+        obj = IA_mock_TNG300_n1
+        obj.measure_xi_w("cp_full", "both", 0, temp_file_path=False)
+        obj.measure_xi_w("cp_brute", "gg", 0, temp_file_path=False)
+        obj.measure_xi_w("cp_tree", "gg", 0, temp_file_path=tp)
+        ref_dd = _read(obj, "w/xi_gg", "cp_full_DD")
+        ref_w = _read(obj, "w_gg", "cp_full")
+        for name in ("cp_brute", "cp_tree"):
+            np.testing.assert_array_equal(_read(obj, "w/xi_gg", f"{name}_DD"), ref_dd)
+            np.testing.assert_array_equal(_read(obj, "w_gg", name), ref_w)
+        obj8 = IA_mock_TNG300_n8
+        obj8.measure_xi_w("cp_mp", "gg", 0, temp_file_path=tp, chunk_size=50)
+        np.testing.assert_allclose(_read(obj8, "w/xi_gg", "cp_mp_DD"), ref_dd,
+                                   rtol=1e-10)
+        np.testing.assert_allclose(_read(obj8, "w_gg", "cp_mp"), ref_w,
+                                   rtol=1e-10)
+
 
 # ---------------------------------------------------------------------------
 # 2. Ellipticity definition
