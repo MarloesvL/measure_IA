@@ -1,0 +1,143 @@
+# Pre-release task list
+
+Prioritized task list from the full package review (2026-07-17). P0 = confirmed bugs,
+P1 = features, P2 = input validation, P3 = test suite, P4 = cleanup & docs.
+
+## P0 — Confirmed bugs (fix before release)
+
+- [ ] **NEW (found during P0 work): lightcone backend weight-mask fallback misalignment.**
+  The lightcone backends (`measure_w_lightcone.py:99-106` pattern, repeated across all
+  lightcone backend files) default `masks["weight"]` to a *full-length* all-True mask when a
+  position mask is given without a weight mask — the full weight array is then indexed by
+  masked-galaxy indices, the same misalignment family as the Box bug. Interacts with
+  `_merged_masks`; investigate how masks reach the backends before fixing. Also: ~50 remaining
+  bare `except:` blocks in the lightcone backends, `read_data.py`, `write_data.py` to narrow.
+- [x] **Weight-mask misalignment in Box backends.** When a `Position` (or `Position_shape_sample`)
+  mask is given without a `weight` mask, the fallback keeps the *first* `sum(mask)` weights
+  (`masks["weight"][sum(pos_mask):] = 0`) instead of selecting `weight[pos_mask]`, so weights only
+  align with positions if the mask selects a contiguous prefix — silently wrong weighted results.
+  Fix: default `masks["weight"] = pos_mask` and `masks["weight_shape_sample"] = shape_mask`.
+  Locations: `src/measureia/measure_w_box.py:112-117`, `:281-286`, `:555-560` and the
+  equivalents in `measure_m_box.py`, `measure_w_box_jk.py`, `measure_m_box_jk.py`.
+- [x] **Unguarded divisions in Box produce silent NaN/inf.** Analytic `RR` is 0 when a sample is
+  empty or fully masked; `Splus_D / RR_g_plus` and `(DD / RR_gg) - 1` then emit NaN/inf without
+  warning (`measure_w_box.py:203, 225, 383, 405, 669, 691` + multipoles-box equivalents). The
+  lightcone already guards this (`measure_w_lightcone.py:218-219`); port the guard to all Box
+  divisions and to the non-DD denominators in `_obs_estimator` (`measure_IA_base.py:571-592`).
+  *Done: guarded all full-sample and jk-realisation RR divisions in the four Box backend files
+  (`xi_gg` set to 0 where analytic RR is 0), guarded the responsivity `R`/`R_jk` against zero
+  total weight (falls back to 0.5), and guarded the scalar sample-count denominators in
+  `_obs_estimator`. Deliberately NOT guarded: the empirical `RR`/`SR` array bins in
+  `_obs_estimator` — a zero empirical-RR bin means the lightcone estimator is undefined there,
+  and NaN is the honest output (committed validation references rely on this). The two
+  matching xfail edge-case tests (all-zero weights, empty mask) now pass and were unmarked.*
+- [x] **Bare `except:` silently zeroes samples.** A typo'd data key or malformed weight array is
+  swallowed and the run proceeds with `Num_position = 0` or unit weights
+  (`measure_IA_base.py:134-153`; lightcone weight-defaulting at
+  `measure_IA_lightcone.py:483-517`, `:696-730`). Narrow to `except KeyError`.
+- [x] **`exit()` in library code.** The "lightcone data passed to Box" guard prints and calls
+  `exit()` inside a `try/except` that swallows the resulting `SystemExit`, so the guard is
+  dead (`measure_IA.py:162-167`, `:263-268`). Replace with `raise TypeError(...)`.
+- [x] **`ReadData` undefined-variable fallthrough.** On `KeyError` the readers print
+  "Variable not found" and then use the undefined `data` variable, raising `UnboundLocalError`
+  (`read_data.py:140-143`, `:195-198`, `:262-266`). Raise a clear error instead.
+
+## P1 — Features
+
+- [ ] **Lightcone multipoles multiprocessing (mirror `w` exactly).** No multiprocessing exists for
+  lightcone multipoles today: `num_nodes`/`chunk_size`/`temp_file_path` are threaded through the
+  signatures but ignored, and the dispatcher (`measure_IA_lightcone.py:761-775`) lacks the
+  `num_nodes` branch that `measure_xi_w` has (`:549-570`).
+  - Add to `measure_m_lightcone_jk.py` (jackknife path only, exactly like `w`):
+    `_measure_xi_r_mur_lightcone_jk_multiprocessing` + `_measure_xi_r_mur_lightcone_jk_batch`
+    (clones of `measure_w_lightcone_jk.py:650` / `:523` with `(r, mu_r)` binning as in
+    `_measure_xi_r_mur_lightcone_jk_tree`), and
+    `_count_pairs_xi_r_mur_lightcone_jk_multiprocessing` +
+    `_count_pairs_xi_r_mur_lightcone_jk_batch` (clones of `:1306` / `:1215`).
+  - Same pattern: SharedMemory blocks + temp-HDF5 offload + `Pool(num_nodes).map` + per-batch
+    grid summation; add the missing imports (`os`, `multiprocessing`/`Pool`/`shared_memory`,
+    `ReadData`).
+  - Add the `if self.num_nodes == 1: ... else:` split in `measure_xi_multipoles()`, routing
+    through the existing binning-agnostic `measure_xi_jk_helper`. No base-class changes needed.
+  - Test: extend the n1-vs-n8 equality tests (pattern in `test_lc_measure_xi_w.py`) to
+    lightcone multipoles.
+- [ ] **Box `count_pairs` methods for `corr_type='gg'`.** The Box currently always computes
+  `arccos` + `get_ellipticity` and accumulates `Splus_D`/`Scross_D` even when only `gg` is
+  requested (`measure_w_box.py:159-186`); `corr_type` is only consulted at the reduction stage.
+  - Add DD-only `_count_pairs_*` variants (brute/tree/batch + multiprocessing, and jk twins) to
+    `measure_w_box.py`, `measure_m_box.py`, `measure_w_box_jk.py`, `measure_m_box_jk.py`,
+    mirroring the lightcone pattern (`measure_w_lightcone.py:652`, `:919`); dispatch from
+    `measure_IA.py` when `corr_type == 'gg'`.
+  - Preserve: periodic KDTree (`boxsize=`), minimum-image wrapping
+    (`measure_w_box.py:149-151`), analytic `RR_gg` from `get_random_pairs(_r_mur)` unchanged.
+  - Test: `gg` result from the count_pairs path bit-compatible with the current full-loop result.
+
+## P2 — Input validation & error messages
+
+- [ ] **Symmetrize validation: add Lightcone type/shape checks.** The Box got
+  `check_type_input_data`/`check_units_coordinates` in PR #61; the Lightcone only got
+  key-existence + path checks (`measure_IA_lightcone.py:117-127`). Add a lightcone variant:
+  RA/DEC/redshift/e1/e2 are ndarrays, consistent lengths (e1/e2 vs shape sample),
+  RA ∈ [0, 360], DEC ∈ [-90, 90], finite values.
+- [ ] **Harden `check_type_input_data`** (`check_input.py:78-104`): replace bare `assert`s
+  (stripped under `python -O`, no message) with `TypeError`/`ValueError` + messages; accept
+  `np.integer` for `LOS` (currently `np.int64(2)` fails); add length-consistency checks
+  (`q`, `Axis_Direction`, `weight*` vs their samples) and NaN/inf checks.
+- [ ] **Validate option strings at method entry.** Box `corr_type` currently fails only *after*
+  the full pair count (`measure_IA_base.py:418/499`; jk path `measure_IA.py:196/297`);
+  `ellipticity` only inside the backends. Check both at the top of
+  `measure_xi_w`/`measure_xi_multipoles`, mirroring the lightcone's up-front `IA_estimator`
+  check (`measure_IA_lightcone.py:450-466`). Unify the exception type for unknown options
+  (currently a mix of `KeyError`/`ValueError`).
+- [ ] **Validate numeric constructor params** (`measure_IA_base.py:154-166`):
+  `num_bins_r`/`num_bins_pi` >= 1; `separation_limits` has 2 elements with
+  `0 < r_min < r_max`; `boxsize > 0`; `num_nodes >= 1`; lightcone `num_jk` bounds vs sample
+  size before `kmeans_sample` (`measure_jackknife.py:94`); Box negative `num_jk` is currently
+  silently treated as 0.
+- [ ] **`check_units_coordinates`** (`check_input.py:60-76`): handle 1-D coordinate arrays
+  gracefully instead of a confusing indexing error.
+
+## P3 — Test suite
+
+- [ ] **Test infra**: add `[tool.pytest.ini_options]` to `pyproject.toml` (`testpaths`,
+  `xfail_strict = true`, `filterwarnings`); add a CI workflow
+  (`.github/workflows/tests.yml`, Python version matrix; optionally `pytest-cov`).
+- [ ] **Resolve parked xfails.** `TestEdgeCasesUnhandled` cites a non-existent
+  `fixes_measure_IA_base.py`; the three known bugs behind the xfails (all-zero weights → NaN,
+  empty mask → crash, data not restored after a failed backend) are largely fixed by the P0
+  items — flip the xfails to real assertions afterwards.
+- [ ] **Dead/stale test scaffolding**: remove the unused `_out`/`_ref`/`PROC_PATH` constants in
+  `test_lc_measure_xi_w.py` and `test_lc_measure_xi_multipoles.py`; rename `TestRegressionW/M`
+  (they test determinism, not saved references) or commit real reference outputs; fix stale
+  `conftest_lc.py` docstring references; decide the fate of the unused
+  `tests/data/**/*.hdf5` files.
+- [ ] **New coverage** (mirror existing box tests to the lightcone and fill gaps):
+  - lightcone invalid `num_jk` / invalid `ellipticity` tests;
+  - lightcone empty-catalogue / empty-mask / all-zero-weights / single-object tests;
+  - lightcone `measure_covariance_multiple_datasets` / `create_full_cov_matrix_projections`
+    tests (currently box-only);
+  - unit tests for `assign_jackknife_patches` (output structure, seed determinism, coverage);
+  - small-sample jackknife: `num_jk > N`, empty patch → finite covariance or a clear error;
+  - exercise `rp_cut` (multipoles) and non-default `cosmology` arguments;
+  - a multiprocessing test whose catalogue size does not divide evenly by chunk size;
+  - synthetic-HDF5 tests for `read_subhalo`, `read_snapshot`, `read_snapshot_multiple`,
+    `read_modelling_outputs` (zero coverage today);
+  - tighten the `rel=0.5` tolerance in `test_rr_gg_consistent_with_formula`.
+
+## P4 — Cleanup & docs
+
+- [ ] **Dead code**: remove `_measure_xi_rp_pi_lightcone_brute_old` and
+  `_count_pairs_xi_rp_pi_lightcone_brute_old` (`measure_w_lightcone.py:247`, `:788`); remove or
+  implement the commented `auto`-correlation branches (Box hardcodes `corrtype="cross"`);
+  remove the commented variance lines in `_measure_w_g_i`.
+- [ ] **Docstring fixes**: phantom `randoms_data` parameter in the lightcone measure methods;
+  undocumented `responsivity`/`tree`/`temp_file_path` parameters; "chunck_size" typo
+  (`measure_IA.py:235`); sync the `SimInfo` simulation lists (class docstring vs `get_specs`
+  vs `get_file_info` disagree on COLIBRE/FLAMINGO variants); add a docstring to
+  `read_modelling_outputs`.
+- [ ] **Outstanding TODOs in code** — decide implement or won't-fix for each:
+  `min_patch=1` handling in `_combine_jackknife_information`
+  (`measure_IA_lightcone.py:596/800`); "deal with masks" (`:546/759`); `++` correlation
+  option (`measure_IA_base.py:471`).
+- [ ] **`check_paths`**: also verify writability and input-file existence; give a clear error
+  for a missing HDF5 file in `ReadData` (currently a raw `OSError`).
