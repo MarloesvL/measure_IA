@@ -480,13 +480,9 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			self.randoms_data["RA_shape_sample"] = self.randoms_data["RA"]
 			self.randoms_data["DEC_shape_sample"] = self.randoms_data["DEC"]
 			self.randoms_data["Redshift_shape_sample"] = self.randoms_data["Redshift"]
-		try:
-			weight = self.randoms_data["weight"]
-		except:
+		if "weight" not in self.randoms_data:
 			self.randoms_data["weight"] = np.ones(len(self.randoms_data["RA"]))
-		try:
-			weight = self.randoms_data["weight_shape_sample"]
-		except:
+		if "weight_shape_sample" not in self.randoms_data:
 			if one_random_sample:
 				self.randoms_data["weight_shape_sample"] = self.randoms_data["weight"]  # in case weights are given
 			else:
@@ -507,13 +503,9 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			num_jk = max_patch - min_patch + 1
 
 		self.data_dir = data
-		try:
-			weight = self.data_dir["weight"]
-		except:
+		if "weight" not in self.data_dir:
 			self.data_dir["weight"] = np.ones(len(self.data_dir["RA"]))
-		try:
-			weight = self.data_dir["weight_shape_sample"]
-		except:
+		if "weight_shape_sample" not in self.data_dir:
 			self.data_dir["weight_shape_sample"] = np.ones(len(self.data_dir["RA_shape_sample"]))
 
 		num_samples = {}  # Needed to correct for different number of randoms and galaxies/clusters in data
@@ -693,13 +685,9 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			self.randoms_data["RA_shape_sample"] = self.randoms_data["RA"]
 			self.randoms_data["DEC_shape_sample"] = self.randoms_data["DEC"]
 			self.randoms_data["Redshift_shape_sample"] = self.randoms_data["Redshift"]
-		try:
-			weight = self.randoms_data["weight"]
-		except:
+		if "weight" not in self.randoms_data:
 			self.randoms_data["weight"] = np.ones(len(self.randoms_data["RA"]))
-		try:
-			weight = self.randoms_data["weight_shape_sample"]
-		except:
+		if "weight_shape_sample" not in self.randoms_data:
 			if one_random_sample:
 				self.randoms_data["weight_shape_sample"] = self.randoms_data["weight"]  # in case weights are given
 			else:
@@ -720,13 +708,9 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			num_jk = max_patch - min_patch + 1
 
 		self.data_dir = data
-		try:
-			weight = self.data_dir["weight"]
-		except:
+		if "weight" not in self.data_dir:
 			self.data_dir["weight"] = np.ones(len(self.data_dir["RA"]))
-		try:
-			weight = self.data_dir["weight_shape_sample"]
-		except:
+		if "weight_shape_sample" not in self.data_dir:
 			self.data_dir["weight_shape_sample"] = np.ones(len(self.data_dir["RA_shape_sample"]))
 
 		num_samples = {}  # Needed to correct for different number of randoms and galaxies/clusters in data

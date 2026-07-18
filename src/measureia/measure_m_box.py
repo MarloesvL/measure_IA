@@ -110,11 +110,9 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][q_mask]
 			if "weight" not in masks:
-				masks["weight"] = np.ones(self.Num_position, dtype=bool)
-				masks["weight"][sum(pos_mask):self.Num_position] = 0
+				masks["weight"] = pos_mask
 			if "weight_shape_sample" not in masks:
-				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
-				masks["weight_shape_sample"][sum(shape_mask):self.Num_shape] = 0
+				masks["weight_shape_sample"] = shape_mask
 			weight = self.data["weight"][masks["weight"]]
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		Num_position = len(positions)
@@ -134,7 +132,7 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 			raise ValueError("Invalid value for ellipticity. Choose 'distortion' or 'ellipticity'.")
 		del q
 		R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape) \
-			if getattr(self, "responsivity_correction", True) else 0.5
+			if getattr(self, "responsivity_correction", True) and sum(weight_shape) > 0 else 0.5
 		# R = 1 - np.mean(e ** 2) / 2.0  # responsivity factor
 		L3 = self.boxsize ** 3  # box volume
 		sub_box_len_logr = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
@@ -212,8 +210,14 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 					self.r_bins[i + 1], self.r_bins[i], pi_bins[i, p + 1], pi_bins[i, p], L3, corrtype,
 					Num_position, Num_shape)
 
-		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
-		xi_g_cross = Scross_D / RR_g_plus  # (Scross_D - Scross_R) / RR_g_plus
+		RR_g_plus_denom = RR_g_plus.copy()  # guard against empty samples/bins in the divisions; raw RR grids are written to file
+		RR_g_plus_denom[RR_g_plus_denom == 0] = 1
+		RR_gg_denom = RR_gg.copy()
+		RR_gg_denom[RR_gg_denom == 0] = 1
+		correlation = Splus_D / RR_g_plus_denom  # (Splus_D - Splus_R) / RR_g_plus
+		xi_g_cross = Scross_D / RR_g_plus_denom  # (Scross_D - Scross_R) / RR_g_plus
+		xi_gg = (DD / RR_gg_denom) - 1
+		xi_gg[RR_gg == 0] = 0
 		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
 		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
 		# mu_r_bins=[]
@@ -240,7 +244,7 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 			write_dataset_hdf5(group, dataset_name + "_pi", data=mu_r_bins)
 			group = create_group_hdf5(output_file,
 									  f"{self.snap_group}/multipoles/xi_gg/{jk_group_name}")
-			write_dataset_hdf5(group, dataset_name, data=(DD / RR_gg) - 1)
+			write_dataset_hdf5(group, dataset_name, data=xi_gg)
 			write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
 			write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
 			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
@@ -248,7 +252,7 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 			output_file.close()
 			return
 		else:
-			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus
+			return correlation, xi_gg, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus
 
 	def _measure_xi_r_mur_box_brute(self, dataset_name, masks=None, rp_cut=None, return_output=False, jk_group_name="",
 									ellipticity='distortion'):
@@ -299,11 +303,9 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][q_mask]
 			if "weight" not in masks:
-				masks["weight"] = np.ones(self.Num_position, dtype=bool)
-				masks["weight"][sum(pos_mask):self.Num_position] = 0
+				masks["weight"] = pos_mask
 			if "weight_shape_sample" not in masks:
-				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
-				masks["weight_shape_sample"][sum(shape_mask):self.Num_shape] = 0
+				masks["weight_shape_sample"] = shape_mask
 			weight = self.data["weight"][masks["weight"]]
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		Num_position = len(positions)
@@ -323,7 +325,7 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 			raise ValueError("Invalid value for ellipticity. Choose 'distortion' or 'ellipticity'.")
 		del q
 		R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape) \
-			if getattr(self, "responsivity_correction", True) else 0.5
+			if getattr(self, "responsivity_correction", True) and sum(weight_shape) > 0 else 0.5
 		# R = 1 - np.mean(e ** 2) / 2.0  # responsivity factor
 		L3 = self.boxsize ** 3  # box volume
 		sub_box_len_logr = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
@@ -397,8 +399,14 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 					self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, corrtype,
 					Num_position, Num_shape)
 
-		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
-		xi_g_cross = Scross_D / RR_g_plus  # (Scross_D - Scross_R) / RR_g_plus
+		RR_g_plus_denom = RR_g_plus.copy()  # guard against empty samples/bins in the divisions; raw RR grids are written to file
+		RR_g_plus_denom[RR_g_plus_denom == 0] = 1
+		RR_gg_denom = RR_gg.copy()
+		RR_gg_denom[RR_gg_denom == 0] = 1
+		correlation = Splus_D / RR_g_plus_denom  # (Splus_D - Splus_R) / RR_g_plus
+		xi_g_cross = Scross_D / RR_g_plus_denom  # (Scross_D - Scross_R) / RR_g_plus
+		xi_gg = (DD / RR_gg_denom) - 1
+		xi_gg[RR_gg == 0] = 0
 		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
 		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
 		dmur = (self.mu_r_bins[1:] - self.mu_r_bins[:-1]) / 2.0
@@ -419,7 +427,7 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/multipoles/xi_gg/{jk_group_name}")
-			write_dataset_hdf5(group, dataset_name, data=(DD / RR_gg) - 1)
+			write_dataset_hdf5(group, dataset_name, data=xi_gg)
 			write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
 			write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
 			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
@@ -427,7 +435,7 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 			output_file.close()
 			return
 		else:
-			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus
+			return correlation, xi_gg, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus
 
 	def _measure_xi_r_mur_box_tree(self, dataset_name, masks=None, rp_cut=None, return_output=False, jk_group_name="",
 								   ellipticity='distortion'):
@@ -478,11 +486,9 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][q_mask]
 			if "weight" not in masks:
-				masks["weight"] = np.ones(self.Num_position, dtype=bool)
-				masks["weight"][sum(pos_mask):self.Num_position] = 0
+				masks["weight"] = pos_mask
 			if "weight_shape_sample" not in masks:
-				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
-				masks["weight_shape_sample"][sum(shape_mask):self.Num_shape] = 0
+				masks["weight_shape_sample"] = shape_mask
 			weight = self.data["weight"][masks["weight"]]
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		# masking changes the number of galaxies
@@ -500,7 +506,7 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 		else:
 			raise ValueError("Invalid value for ellipticity. Choose 'distortion' or 'ellipticity'.")
 		R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape) \
-			if getattr(self, "responsivity_correction", True) else 0.5
+			if getattr(self, "responsivity_correction", True) and sum(weight_shape) > 0 else 0.5
 		# R = 1 - np.mean(e ** 2) / 2.0  # responsivity factor
 		L3 = self.boxsize ** 3  # box volume
 		sub_box_len_logr = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
@@ -594,8 +600,14 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 					self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, corrtype,
 					Num_position, Num_shape)
 
-		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
-		xi_g_cross = Scross_D / RR_g_plus  # (Scross_D - Scross_R) / RR_g_plus
+		RR_g_plus_denom = RR_g_plus.copy()  # guard against empty samples/bins in the divisions; raw RR grids are written to file
+		RR_g_plus_denom[RR_g_plus_denom == 0] = 1
+		RR_gg_denom = RR_gg.copy()
+		RR_gg_denom[RR_gg_denom == 0] = 1
+		correlation = Splus_D / RR_g_plus_denom  # (Splus_D - Splus_R) / RR_g_plus
+		xi_g_cross = Scross_D / RR_g_plus_denom  # (Scross_D - Scross_R) / RR_g_plus
+		xi_gg = (DD / RR_gg_denom) - 1
+		xi_gg[RR_gg == 0] = 0
 		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
 		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
 		dmur = (self.mu_r_bins[1:] - self.mu_r_bins[:-1]) / 2.0
@@ -616,7 +628,7 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/multipoles/xi_gg/{jk_group_name}")
-			write_dataset_hdf5(group, dataset_name, data=(DD / RR_gg) - 1)
+			write_dataset_hdf5(group, dataset_name, data=xi_gg)
 			write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
 			write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
 			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
@@ -624,7 +636,7 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 			output_file.close()
 			return
 		else:
-			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus
+			return correlation, xi_gg, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus
 
 	def _measure_xi_r_mur_box_batch(self, i):
 		r"""Measures components of $\xi_{gg}$ and $\xi_{g+}$ in (r, mu_r) bins including jackknife realisations for a
@@ -777,11 +789,9 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][q_mask]
 			if "weight" not in masks:
-				masks["weight"] = np.ones(self.Num_position, dtype=bool)
-				masks["weight"][sum(pos_mask):self.Num_position] = 0
+				masks["weight"] = pos_mask
 			if "weight_shape_sample" not in masks:
-				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
-				masks["weight_shape_sample"][sum(shape_mask):self.Num_shape] = 0
+				masks["weight_shape_sample"] = shape_mask
 			weight = self.data["weight"][masks["weight"]]
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		# masking changes the number of galaxies
@@ -803,7 +813,7 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 		else:
 			raise ValueError("Invalid value for ellipticity. Choose 'distortion' or 'ellipticity'.")
 		self.R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape) \
-			if getattr(self, "responsivity_correction", True) else 0.5
+			if getattr(self, "responsivity_correction", True) and sum(weight_shape) > 0 else 0.5
 		# self.R = 1 - np.mean(self.e ** 2) / 2.0  # responsivity factor
 		L3 = self.boxsize ** 3  # box volume
 		self.sub_box_len_logr = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
@@ -897,8 +907,14 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 					self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, corrtype,
 					self.Num_position_masked, self.Num_shape_masked)
 
-		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
-		xi_g_cross = Scross_D / RR_g_plus  # (Scross_D - Scross_R) / RR_g_plus
+		RR_g_plus_denom = RR_g_plus.copy()  # guard against empty samples/bins in the divisions; raw RR grids are written to file
+		RR_g_plus_denom[RR_g_plus_denom == 0] = 1
+		RR_gg_denom = RR_gg.copy()
+		RR_gg_denom[RR_gg_denom == 0] = 1
+		correlation = Splus_D / RR_g_plus_denom  # (Splus_D - Splus_R) / RR_g_plus
+		xi_g_cross = Scross_D / RR_g_plus_denom  # (Scross_D - Scross_R) / RR_g_plus
+		xi_gg = (DD / RR_gg_denom) - 1
+		xi_gg[RR_gg == 0] = 0
 		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
 		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
 		dmur = (self.mu_r_bins[1:] - self.mu_r_bins[:-1]) / 2.0
@@ -919,7 +935,7 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/multipoles/xi_gg/{jk_group_name}")
-			write_dataset_hdf5(group, dataset_name, data=(DD / RR_gg) - 1)
+			write_dataset_hdf5(group, dataset_name, data=xi_gg)
 			write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
 			write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
 			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
@@ -927,7 +943,7 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 			output_file.close()
 			return
 		else:
-			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus
+			return correlation, xi_gg, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus
 
 
 if __name__ == "__main__":

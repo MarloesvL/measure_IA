@@ -111,16 +111,10 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][masks["q"]]
-			try:
-				weight_mask = masks["weight"]
-			except:
-				masks["weight"] = np.ones(self.Num_position, dtype=bool)
-				masks["weight"][sum(masks["Position"]):self.Num_position] = 0
-			try:
-				weight_mask = masks["weight_shape_sample"]
-			except:
-				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
-				masks["weight_shape_sample"][sum(masks["Position_shape_sample"]):self.Num_shape] = 0
+			if "weight" not in masks:
+				masks["weight"] = masks["Position"]
+			if "weight_shape_sample" not in masks:
+				masks["weight_shape_sample"] = masks["Position_shape_sample"]
 			weight = self.data["weight"][masks["weight"]]
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		Num_position = len(positions)
@@ -138,7 +132,7 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			raise ValueError("Invalid value for ellipticity. Choose 'distortion' or 'ellipticity'.")
 		del q
 		R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape) \
-			if getattr(self, "responsivity_correction", True) else 0.5
+			if getattr(self, "responsivity_correction", True) and sum(weight_shape) > 0 else 0.5
 		# R = 1 - np.mean(e ** 2) / 2.0  # responsitivity factor
 		L3 = self.boxsize ** 3  # box volume
 		if rp_cut == None:
@@ -223,7 +217,7 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 		for i in np.arange(num_box):
 			jk_mask = np.where(jackknife_region_indices_shape != i)
 			R_jk[i] = sum(weight_shape[jk_mask] * (1 - e[jk_mask] ** 2 / 2.0)) / sum(weight_shape[jk_mask]) \
-				if getattr(self, "responsivity_correction", True) else 0.5
+				if getattr(self, "responsivity_correction", True) and sum(weight_shape[jk_mask]) > 0 else 0.5
 
 		corrtype = "cross"
 
@@ -248,9 +242,15 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 						"cross",
 						Num_position_jk, Num_shape_jk)
 
-		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
-		xi_g_cross = Scross_D / RR_g_plus  # (Scross_D - Scross_R) / RR_g_plus
-		sigsq = variance / RR_g_plus ** 2
+		RR_g_plus_denom = RR_g_plus.copy()  # guard against empty samples/bins in the divisions; raw RR grids are written to file
+		RR_g_plus_denom[RR_g_plus_denom == 0] = 1
+		RR_gg_denom = RR_gg.copy()
+		RR_gg_denom[RR_gg_denom == 0] = 1
+		correlation = Splus_D / RR_g_plus_denom  # (Splus_D - Splus_R) / RR_g_plus
+		xi_g_cross = Scross_D / RR_g_plus_denom  # (Scross_D - Scross_R) / RR_g_plus
+		sigsq = variance / RR_g_plus_denom ** 2
+		xi_gg = (DD / RR_gg_denom) - 1
+		xi_gg[RR_gg == 0] = 0
 		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
 		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
 		dmur = (self.mu_r_bins[1:] - self.mu_r_bins[:-1]) / 2.0
@@ -267,8 +267,10 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/multipoles/xi_g_plus/{jk_group_name}")
 			for i in np.arange(0, num_box):
+				RR_jk_denom = RR_jk[i].copy()  # guard against empty realisations/bins
+				RR_jk_denom[RR_jk_denom == 0] = 1
 				corr = (Splus_D * (2 * R) - Splus_D_jk[i]) / (
-						RR_jk[i] * 2 * R_jk[i])  # Responsivity will be different for each realisation
+						RR_jk_denom * 2 * R_jk[i])  # Responsivity will be different for each realisation
 				write_dataset_hdf5(group, dataset_name + f"_{i}", data=corr)
 				write_dataset_hdf5(group, dataset_name + f"_{i}_SplusD", data=(Splus_D * (2 * R) - Splus_D_jk[i]) / (
 						2 * R_jk[i]))  # Splus_D_jk[i]/(2*R_jk[i]))
@@ -283,7 +285,7 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/multipoles/xi_gg/")
-			write_dataset_hdf5(group, dataset_name, data=(DD / RR_gg) - 1)
+			write_dataset_hdf5(group, dataset_name, data=xi_gg)
 			write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
 			write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
 			write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
@@ -291,7 +293,9 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/multipoles/xi_gg/{jk_group_name}")
 			for i in np.arange(0, num_box):
-				write_dataset_hdf5(group, dataset_name + f"_{i}", data=((DD - DD_jk[i]) / RR_jk[i]) - 1)
+				RR_jk_denom = RR_jk[i].copy()  # guard against empty realisations/bins
+				RR_jk_denom[RR_jk_denom == 0] = 1
+				write_dataset_hdf5(group, dataset_name + f"_{i}", data=((DD - DD_jk[i]) / RR_jk_denom) - 1)
 				write_dataset_hdf5(group, dataset_name + f"_{i}_DD", data=(DD - DD_jk[i]))
 				write_dataset_hdf5(group, dataset_name + f"_{i}_RR", data=RR_jk[i])
 				write_dataset_hdf5(group, dataset_name + f"_{i}_r", data=separation_bins)
@@ -299,7 +303,7 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			output_file.close()
 			return
 		else:
-			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus
+			return correlation, xi_gg, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus
 
 	def _measure_xi_r_mur_box_jk_tree(self, dataset_name, L_subboxes, masks=None, rp_cut=None, return_output=False,
 									  jk_group_name="", ellipticity='distortion'):
@@ -348,16 +352,10 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			q = self.data["q"][masks["q"]]
-			try:
-				weight_mask = masks["weight"]
-			except:
-				masks["weight"] = np.ones(self.Num_position, dtype=bool)
-				masks["weight"][sum(masks["Position"]):self.Num_position] = 0
-			try:
-				weight_mask = masks["weight_shape_sample"]
-			except:
-				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
-				masks["weight_shape_sample"][sum(masks["Position_shape_sample"]):self.Num_shape] = 0
+			if "weight" not in masks:
+				masks["weight"] = masks["Position"]
+			if "weight_shape_sample" not in masks:
+				masks["weight_shape_sample"] = masks["Position_shape_sample"]
 			weight = self.data["weight"][masks["weight"]]
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		Num_position = len(positions)
@@ -375,7 +373,7 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			raise ValueError("Invalid value for ellipticity. Choose 'distortion' or 'ellipticity'.")
 		del q
 		R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape) \
-			if getattr(self, "responsivity_correction", True) else 0.5
+			if getattr(self, "responsivity_correction", True) and sum(weight_shape) > 0 else 0.5
 		# R = 1 - np.mean(e ** 2) / 2.0  # responsitivity factor
 		L3 = self.boxsize ** 3  # box volume
 		if rp_cut == None:
@@ -489,7 +487,7 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 		for i in np.arange(num_box):
 			jk_mask = np.where(jackknife_region_indices_shape != i)
 			R_jk[i] = sum(weight_shape[jk_mask] * (1 - e[jk_mask] ** 2 / 2.0)) / sum(weight_shape[jk_mask]) \
-				if getattr(self, "responsivity_correction", True) else 0.5
+				if getattr(self, "responsivity_correction", True) and sum(weight_shape[jk_mask]) > 0 else 0.5
 
 		corrtype = "cross"
 
@@ -514,9 +512,15 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 						"cross",
 						Num_position_jk, Num_shape_jk)
 
-		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
-		xi_g_cross = Scross_D / RR_g_plus  # (Scross_D - Scross_R) / RR_g_plus
-		sigsq = variance / RR_g_plus ** 2
+		RR_g_plus_denom = RR_g_plus.copy()  # guard against empty samples/bins in the divisions; raw RR grids are written to file
+		RR_g_plus_denom[RR_g_plus_denom == 0] = 1
+		RR_gg_denom = RR_gg.copy()
+		RR_gg_denom[RR_gg_denom == 0] = 1
+		correlation = Splus_D / RR_g_plus_denom  # (Splus_D - Splus_R) / RR_g_plus
+		xi_g_cross = Scross_D / RR_g_plus_denom  # (Scross_D - Scross_R) / RR_g_plus
+		sigsq = variance / RR_g_plus_denom ** 2
+		xi_gg = (DD / RR_gg_denom) - 1
+		xi_gg[RR_gg == 0] = 0
 		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
 		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
 		dmur = (self.mu_r_bins[1:] - self.mu_r_bins[:-1]) / 2.0
@@ -533,8 +537,10 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/multipoles/xi_g_plus/{jk_group_name}")
 			for i in np.arange(0, num_box):
+				RR_jk_denom = RR_jk[i].copy()  # guard against empty realisations/bins
+				RR_jk_denom[RR_jk_denom == 0] = 1
 				corr = (Splus_D * (2 * R) - Splus_D_jk[i]) / (
-						RR_jk[i] * 2 * R_jk[i])  # Responsivity will be different for each realisation
+						RR_jk_denom * 2 * R_jk[i])  # Responsivity will be different for each realisation
 				write_dataset_hdf5(group, dataset_name + f"_{i}", data=corr)
 				write_dataset_hdf5(group, dataset_name + f"_{i}_SplusD", data=(Splus_D * (2 * R) - Splus_D_jk[i]) / (
 						2 * R_jk[i]))  # Splus_D_jk[i]/(2*R_jk[i]))
@@ -549,7 +555,7 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/multipoles/xi_gg/")
-			write_dataset_hdf5(group, dataset_name, data=(DD / RR_gg) - 1)
+			write_dataset_hdf5(group, dataset_name, data=xi_gg)
 			write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
 			write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
 			write_dataset_hdf5(group, dataset_name + "_sigmasq", data=sigsq)
@@ -557,7 +563,9 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/multipoles/xi_gg/{jk_group_name}")
 			for i in np.arange(0, num_box):
-				write_dataset_hdf5(group, dataset_name + f"_{i}", data=((DD - DD_jk[i]) / RR_jk[i]) - 1)
+				RR_jk_denom = RR_jk[i].copy()  # guard against empty realisations/bins
+				RR_jk_denom[RR_jk_denom == 0] = 1
+				write_dataset_hdf5(group, dataset_name + f"_{i}", data=((DD - DD_jk[i]) / RR_jk_denom) - 1)
 				write_dataset_hdf5(group, dataset_name + f"_{i}_DD", data=(DD - DD_jk[i]))
 				write_dataset_hdf5(group, dataset_name + f"_{i}_RR", data=RR_jk[i])
 				write_dataset_hdf5(group, dataset_name + f"_{i}_r", data=separation_bins)
@@ -565,7 +573,7 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			output_file.close()
 			return
 		else:
-			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus
+			return correlation, xi_gg, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus
 
 	def _measure_xi_r_mur_box_jk_batch(self, i):
 		r"""Measures components of $\xi_{gg}$ and $\xi_{g+}$ in (r, mu_r) bins including jackknife realisations for a
@@ -747,16 +755,10 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
 			del axis_direction_v, axis_direction_len
 			q = self.data["q"][masks["q"]]
-			try:
-				weight_mask = masks["weight"]
-			except:
-				masks["weight"] = np.ones(self.Num_position, dtype=bool)
-				masks["weight"][sum(masks["Position"]):self.Num_position] = 0
-			try:
-				weight_mask = masks["weight_shape_sample"]
-			except:
-				masks["weight_shape_sample"] = np.ones(self.Num_shape, dtype=bool)
-				masks["weight_shape_sample"][sum(masks["Position_shape_sample"]):self.Num_shape] = 0
+			if "weight" not in masks:
+				masks["weight"] = masks["Position"]
+			if "weight_shape_sample" not in masks:
+				masks["weight_shape_sample"] = masks["Position_shape_sample"]
 			weight = self.data["weight"][masks["weight"]]
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
 		self.Num_position_masked = len(positions)
@@ -774,7 +776,7 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			raise ValueError("Invalid value for ellipticity. Choose 'distortion' or 'ellipticity'.")
 		del q
 		self.R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape) \
-			if getattr(self, "responsivity_correction", True) else 0.5
+			if getattr(self, "responsivity_correction", True) and sum(weight_shape) > 0 else 0.5
 		# R = 1 - np.mean(e ** 2) / 2.0  # responsitivity factor
 		L3 = self.boxsize ** 3  # box volume
 		if rp_cut == None:
@@ -883,7 +885,7 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 		for i in np.arange(self.num_box):
 			jk_mask = np.where(jackknife_region_indices_shape != i)
 			R_jk[i] = sum(weight_shape[jk_mask] * (1 - e[jk_mask] ** 2 / 2.0)) / sum(weight_shape[jk_mask]) \
-				if getattr(self, "responsivity_correction", True) else 0.5
+				if getattr(self, "responsivity_correction", True) and sum(weight_shape[jk_mask]) > 0 else 0.5
 
 		corrtype = "cross"
 
@@ -908,8 +910,14 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 						"cross",
 						Num_position_jk, Num_shape_jk)
 
-		correlation = Splus_D / RR_g_plus  # (Splus_D - Splus_R) / RR_g_plus
-		xi_g_cross = Scross_D / RR_g_plus  # (Scross_D - Scross_R) / RR_g_plus
+		RR_g_plus_denom = RR_g_plus.copy()  # guard against empty samples/bins in the divisions; raw RR grids are written to file
+		RR_g_plus_denom[RR_g_plus_denom == 0] = 1
+		RR_gg_denom = RR_gg.copy()
+		RR_gg_denom[RR_gg_denom == 0] = 1
+		correlation = Splus_D / RR_g_plus_denom  # (Splus_D - Splus_R) / RR_g_plus
+		xi_g_cross = Scross_D / RR_g_plus_denom  # (Scross_D - Scross_R) / RR_g_plus
+		xi_gg = (DD / RR_gg_denom) - 1
+		xi_gg[RR_gg == 0] = 0
 		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
 		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
 		dmur = (self.mu_r_bins[1:] - self.mu_r_bins[:-1]) / 2.0
@@ -941,14 +949,16 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/multipoles/xi_gg/")
-			write_dataset_hdf5(group, dataset_name, data=(DD / RR_gg) - 1)
+			write_dataset_hdf5(group, dataset_name, data=xi_gg)
 			write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
 			write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
 			write_dataset_hdf5(group, dataset_name + "_r", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_mu_r", data=mu_r_bins)
 			group = create_group_hdf5(output_file, f"{self.snap_group}/multipoles/xi_gg/{jk_group_name}")
 			for i in np.arange(0, self.num_box):
-				write_dataset_hdf5(group, dataset_name + f"_{i}", data=((DD - DD_jk[i]) / RR_jk[i]) - 1)
+				RR_jk_denom = RR_jk[i].copy()  # guard against empty realisations/bins
+				RR_jk_denom[RR_jk_denom == 0] = 1
+				write_dataset_hdf5(group, dataset_name + f"_{i}", data=((DD - DD_jk[i]) / RR_jk_denom) - 1)
 				write_dataset_hdf5(group, dataset_name + f"_{i}_DD", data=(DD - DD_jk[i]))
 				write_dataset_hdf5(group, dataset_name + f"_{i}_RR", data=RR_jk[i])
 				write_dataset_hdf5(group, dataset_name + f"_{i}_r", data=separation_bins)
@@ -956,7 +966,7 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			output_file.close()
 			return
 		else:
-			return correlation, (DD / RR_gg) - 1, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus
+			return correlation, xi_gg, separation_bins, mu_r_bins, Splus_D, DD, RR_g_plus
 
 
 if __name__ == "__main__":

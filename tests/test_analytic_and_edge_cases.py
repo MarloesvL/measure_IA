@@ -869,10 +869,6 @@ class TestEdgeCasesUnhandled:
     fixes_measure_IA_base.py have been applied to the source.
     """
 
-    @pytest.mark.xfail(
-        reason="All-zero weights cause 0/0 in R computation → NaN propagates "
-               "silently to w_g+. Fix: guard sum(weight_shape)==0 in backends. "
-               "See fixes_measure_IA_base.py FIX_1_2.")
     def test_all_zero_weights_gives_zero_not_nan(self, tmp_path):
         rng = np.random.default_rng(_SEED)
         N   = 20
@@ -893,10 +889,6 @@ class TestEdgeCasesUnhandled:
         assert np.all(np.isfinite(w)), f"w_g+ contains NaN/Inf: {w}"
         assert np.all(w == 0)
 
-    @pytest.mark.xfail(
-        reason="Empty mask (all False) → empty arrays → NaN/crash in R "
-               "computation. Fix: guard len(weight)==0 early. "
-               "See fixes_measure_IA_base.py FIX_1_2.")
     def test_empty_mask_gives_zero_not_crash(self, tmp_path):
         rng = np.random.default_rng(_SEED)
         N   = 20

@@ -140,7 +140,8 @@ class ReadData(SimInfo):
 		try:
 			data = Subhalo[dataset_name][:]
 		except KeyError:
-			print("Variable not found in Subhalo files. Choose from ", Subhalo.keys())
+			raise KeyError(f"Variable '{dataset_name}' not found in Subhalo files. "
+						   f"Choose from {list(Subhalo.keys())}") from None
 		if len(np.shape(data)) > 1:
 			stack = True
 		else:
@@ -195,7 +196,8 @@ class ReadData(SimInfo):
 		try:
 			data = Snap_data[dataset_name][:]
 		except KeyError:
-			print(f"Variable not found in Snapshot files: {dataset_name}. Choose from ", Snap_data.keys())
+			raise KeyError(f"Variable '{dataset_name}' not found in Snapshot files. "
+						   f"Choose from {list(Snap_data.keys())}") from None
 		if len(np.shape(data)) > 1:
 			stack = True
 		else:
@@ -263,7 +265,8 @@ class ReadData(SimInfo):
 			try:
 				data = Snap_data[dataset_name[i]][:]
 			except KeyError:
-				print(f"Variable not found in Snapshot files {variable}. Choose from ", Snap_data.keys())
+				raise KeyError(f"Variable '{variable}' not found in Snapshot files. "
+							   f"Choose from {list(Snap_data.keys())}") from None
 			if len(np.shape(data)) > 1:
 				stack.append(True)
 			else:

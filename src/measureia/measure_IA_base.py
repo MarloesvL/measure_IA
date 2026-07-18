@@ -134,22 +134,18 @@ class MeasureIABase(SimInfo):
 		try:
 			self.Num_position = len(data["Position"])  # number of halos in position sample
 			self.Num_shape = len(data["Position_shape_sample"])  # number of halos in shape sample
-		except:
+		except (KeyError, TypeError):  # TypeError: data is None
 			try:
 				self.Num_position = len(data["RA"])
 				self.Num_shape = len(data["RA_shape_sample"])
-			except:
+			except (KeyError, TypeError):
 				self.Num_position = 0
 				self.Num_shape = 0
-				print("Warning: no Postion or Position_shape_sample given.")
+				print("Warning: no Position or Position_shape_sample given.")
 		if self.Num_position > 0:
-			try:
-				weight = self.data["weight"]
-			except:
+			if "weight" not in self.data:
 				self.data["weight"] = np.ones(self.Num_position)
-			try:
-				weight = self.data["weight_shape_sample"]
-			except:
+			if "weight_shape_sample" not in self.data:
 				self.data["weight_shape_sample"] = np.ones(self.Num_shape)
 		self.r_min = separation_limits[0]  # cMpc/h
 		self.r_max = separation_limits[1]  # cMpc/h
@@ -568,28 +564,28 @@ class MeasureIABase(SimInfo):
 			group_gp = output_file[
 				f"{self.snap_group}{corr_type[1]}/xi_g_plus/{jk_group_name}"]
 			SpD = group_gp[f"{dataset_name}_SplusD"][:]
-			SpD /= (num_samples["S"] * num_samples["D"] - num_samples["D_S"])
+			SpD /= max(num_samples["S"] * num_samples["D"] - num_samples["D_S"], 1)
 			SpR = group_gp[f"{dataset_name}_SplusR"][:]
-			SpR /= (num_samples["S"] * num_samples["R_D"])
+			SpR /= max(num_samples["S"] * num_samples["R_D"], 1)
 			if jk_group_name == "":  # cross (parity null test) only for the full sample
 				group_gc = output_file[f"{self.snap_group}{corr_type[1]}/xi_g_cross/"]
 				ScD = group_gc[f"{dataset_name}_ScrossD"][:]
-				ScD /= (num_samples["S"] * num_samples["D"] - num_samples["D_S"])
+				ScD /= max(num_samples["S"] * num_samples["D"] - num_samples["D_S"], 1)
 				ScR = group_gc[f"{dataset_name}_ScrossR"][:]
-				ScR /= (num_samples["S"] * num_samples["R_D"])
+				ScR /= max(num_samples["S"] * num_samples["R_D"], 1)
 		if corr_type[0] == "gg" or corr_type[0] == "both" or IA_estimator == "clusters":
 			SR = group_gg[f"{dataset_name}_SR"][:]
-			SR /= (num_samples["S"] * num_samples["R_D"])
+			SR /= max(num_samples["S"] * num_samples["R_D"], 1)
 		if corr_type[0] == "gg" or corr_type[0] == "both":
 			RD = group_gg[f"{dataset_name}_RD"][:]
-			RD /= (num_samples["D"] * num_samples["R_S"])
+			RD /= max(num_samples["D"] * num_samples["R_S"], 1)
 		if IA_estimator == 'clusters' or corr_type[0] == "gg" or corr_type[0] == "both":
 			DD = group_gg[f"{dataset_name}_DD"][:]
 			DD[DD == 0] = 1.
-			DD /= (num_samples["D"] * num_samples["S"] - num_samples["D_S"])
+			DD /= max(num_samples["D"] * num_samples["S"] - num_samples["D_S"], 1)
 		if IA_estimator == "galaxies" or corr_type[0] == "gg" or corr_type[0] == "both":
 			RR = group_gg[f"{dataset_name}_RR"][:]
-			RR /= (num_samples["R_D"] * num_samples["R_S"])
+			RR /= max(num_samples["R_D"] * num_samples["R_S"], 1)
 
 		if IA_estimator == "clusters":
 			if corr_type[0] == "g+" or corr_type[0] == "both":

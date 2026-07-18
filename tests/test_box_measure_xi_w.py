@@ -29,7 +29,7 @@ Covers
 import numpy as np
 import pytest
 import h5py
-from measureia import ReadData
+from measureia import MeasureIABox, ReadData
 
 
 NUM_JK = 8
@@ -391,6 +391,42 @@ class TestMasksW:
         obj.measure_xi_w("mask_ss_only", "g+", 0, temp_file_path=False,
                          masks={"Position_shape_sample":
                                 box_mass > np.median(box_mass)})
+
+    def test_default_weight_mask_follows_selection(self, IA_mock_TNG300_n1,
+                                                   box_mass, tmp_path):
+        """Regression: with non-uniform weights and a non-contiguous mask but no
+        'weight' entry in masks, the weights of the selected galaxies must be
+        used — masking must give the same result as pre-masking the data."""
+        obj = IA_mock_TNG300_n1
+        rng = np.random.default_rng(12)
+        weights = rng.uniform(0.5, 2.0, len(box_mass))
+        obj.data["weight"] = weights
+        obj.data["weight_shape_sample"] = weights
+        sel = box_mass > np.median(box_mass)
+        assert np.any(np.diff(np.flatnonzero(sel)) > 1)
+        obj.measure_xi_w("masked", "both", 0, temp_file_path=False,
+                         masks={"Position": sel, "Position_shape_sample": sel,
+                                "Axis_Direction": sel, "q": sel})
+
+        data_pre = {
+            "Position":              obj.data["Position"][sel],
+            "Position_shape_sample": obj.data["Position_shape_sample"][sel],
+            "Axis_Direction":        obj.data["Axis_Direction"][sel],
+            "q":                     obj.data["q"][sel],
+            "LOS":                   obj.data["LOS"],
+            "weight":                weights[sel],
+            "weight_shape_sample":   weights[sel],
+        }
+        pre = MeasureIABox(data_pre, str(tmp_path / "premasked.hdf5"),
+                           simulation="TNG300", snapshot=99,
+                           separation_limits=[obj.r_min, obj.r_max],
+                           num_bins_r=obj.num_bins_r,
+                           num_bins_pi=obj.num_bins_pi)
+        pre.measure_xi_w("premasked", "both", 0, temp_file_path=False)
+        for grp in ("w_g_plus", "w_gg"):
+            np.testing.assert_allclose(_read(obj, grp, "masked"),
+                                       _read(pre, grp, "premasked"),
+                                       rtol=1e-12, atol=0)
 
 
 # ---------------------------------------------------------------------------

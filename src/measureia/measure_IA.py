@@ -158,13 +158,8 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			raise ValueError(
 				"Input temp_file_path for faster computation. Do not want to save data temporarily? Input file_path_tree=False.")
 
-		# replace by better checks of input data
-		try:
-			RA = self.data["RA"]
-			print("Given data is lightcone, use measure_xi_w_lightcone method instead.")
-			exit()
-		except:
-			pass
+		if self.data is not None and "RA" in self.data:
+			raise TypeError("Given data is lightcone data (contains 'RA'). Use MeasureIALightcone instead.")
 
 		if num_jk > 0:  # include covariance
 			if self.num_nodes > 1 and temp_storage:
@@ -259,13 +254,8 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			raise ValueError(
 				"Input temp_file_path for faster computation. Do not want to save data temporarily? Input file_path_tree=False.")
 
-		# replace by better checks of input data
-		try:
-			RA = self.data["RA"]
-			print("Given data is lightcone, use measure_xi_w_lightcone method instead.")
-			exit()
-		except:
-			pass
+		if self.data is not None and "RA" in self.data:
+			raise TypeError("Given data is lightcone data (contains 'RA'). Use MeasureIALightcone instead.")
 
 		if num_jk > 0:  # include covariance
 			if self.num_nodes > 1 and temp_storage:
