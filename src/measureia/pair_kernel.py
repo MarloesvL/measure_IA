@@ -7,15 +7,18 @@ everything else raising ``NotImplementedError`` rather than guessing at
 behaviour that hasn't been ported (and equivalence-tested) yet.
 
 Status (see REFACTOR_PLAN.md section 6 for the step numbering):
-    Steps 1-4 DONE: box geometry, no jackknife, ``"tree"`` and ``"brute"`` backends,
-    the DD-only (``shapes=False``) count_pairs path, and two binnings — ``BoxRpPi``
-    (rp, pi) and ``BoxRMuR`` (r, mu_r, multipoles). Wired into the whole ``MeasureWBox``
-    (rp, pi) family and the ``MeasureMultipolesBox`` (r, mu_r) family
-    (``_measure_xi_r_mur_box_*`` / ``_count_pairs_xi_r_mur_box_*``). The mp
-    orchestration (SharedMemory, temp-file offload, ``Pool``) stays in the backend
-    wrapper; each worker calls ``accumulate`` single-process on its shape slice.
+    Steps 1-5 DONE: box geometry, ``"tree"`` and ``"brute"`` backends, the DD-only
+    (``shapes=False``) count_pairs path, jackknife (``jk=True``, union-deletion), and
+    two binnings — ``BoxRpPi`` (rp, pi) and ``BoxRMuR`` (r, mu_r, multipoles). Wired
+    into the ``MeasureWBox`` / ``MeasureMultipolesBox`` non-jk families and the
+    ``MeasureWBoxJackknife`` / ``MeasureMBoxJackknife`` families. The mp orchestration
+    (SharedMemory, temp-file offload, ``Pool``) stays in the backend wrapper; each
+    worker calls ``accumulate`` single-process on its shape slice, and the parent sums
+    the partial jk grids and computes ``R_jk`` via ``compute_R_jk``.
     (``_measure_xi_r_pi_box_brute`` is a dead, kernel-incompatible per-r-bin-signed-pi
-    oddity, deliberately left un-migrated — see REFACTOR_PLAN.md / TASKS.md.)
+    oddity, deliberately left un-migrated — see REFACTOR_PLAN.md / TASKS.md. The jk
+    ``_sigmasq`` output was dropped by user decision — only the brute backend ever
+    populated it, a pre-existing inconsistency.)
 
 Every public function here is pure with respect to its arguments except
 where noted (``prepare_box_samples`` mutates the ``masks`` dict it is given,
@@ -45,18 +48,29 @@ class SampleSet:
     e: Optional[np.ndarray] = None
     LOS_ind: Optional[int] = None
     not_LOS: Optional[np.ndarray] = None
+    # jackknife patch indices (int, per galaxy); jk_pos is position-aligned (full),
+    # jk_shape is shape-aligned (chunked like axis_direction/e). Only used when jk=True.
+    jk_pos: Optional[np.ndarray] = None
+    jk_shape: Optional[np.ndarray] = None
 
 
 @dataclass
 class Grids:
     """Accumulated pair-count grids. ``Splus_D``/``Scross_D`` are None when
-    the caller requested ``shapes=False`` (DD-only / count_pairs paths)."""
+    the caller requested ``shapes=False`` (DD-only / count_pairs paths). The
+    per-realisation jackknife grids ``DD_jk``/``Splus_D_jk`` are None unless
+    ``jk=True`` (and ``Splus_D_jk`` also requires ``shapes=True``). ``Splus_D_jk``
+    stores the *raw* (un-responsivity-divided) S+ contribution — responsivity is
+    applied later in the reduction, matching the legacy jk grids."""
     DD: np.ndarray
     Splus_D: Optional[np.ndarray] = None
     Scross_D: Optional[np.ndarray] = None
+    DD_jk: Optional[np.ndarray] = None
+    Splus_D_jk: Optional[np.ndarray] = None
 
 
-def prepare_box_samples(data, masks, Num_position, Num_shape, *, shapes, ellipticity, base):
+def prepare_box_samples(data, masks, Num_position, Num_shape, *, shapes, ellipticity, base,
+                        require_full_masks=False):
     """Apply masks and compute per-galaxy ellipticity size for a Box measurement.
 
     Reproduces, verbatim, the mask-application and ``e`` computation shared by
@@ -66,6 +80,14 @@ def prepare_box_samples(data, masks, Num_position, Num_shape, *, shapes, ellipti
     written back into ``masks`` in place, matching the legacy fallback-default
     behaviour other code paths rely on), then ``e = f(q)`` for the requested
     ellipticity definition.
+
+    ``require_full_masks`` selects the mask-indexing convention: the non-jk methods
+    default a missing ``Position``/``Position_shape_sample``/``Axis_Direction``/``q``
+    mask (``.get`` with "select all" / coordinate-mask fallbacks), whereas the box
+    jackknife methods index ``masks["Position"]`` etc. **directly** and raise KeyError
+    on a partial dict — pass ``require_full_masks=True`` to reproduce that (see
+    REFACTOR_PLAN.md section 3.1). ``weight``/``weight_shape_sample`` still default to
+    the coordinate mask in both modes.
 
     Parameters
     ----------
@@ -96,8 +118,12 @@ def prepare_box_samples(data, masks, Num_position, Num_shape, *, shapes, ellipti
         axis_direction_v = data["Axis_Direction"] if shapes else None
         q = data["q"] if shapes else None
     else:
-        pos_mask = masks.get("Position", np.ones(Num_position, dtype=bool))
-        shape_mask = masks.get("Position_shape_sample", np.ones(Num_shape, dtype=bool))
+        if require_full_masks:
+            pos_mask = masks["Position"]
+            shape_mask = masks["Position_shape_sample"]
+        else:
+            pos_mask = masks.get("Position", np.ones(Num_position, dtype=bool))
+            shape_mask = masks.get("Position_shape_sample", np.ones(Num_shape, dtype=bool))
         positions = data["Position"][pos_mask]
         positions_shape_sample = data["Position_shape_sample"][shape_mask]
         if "weight" not in masks:
@@ -107,8 +133,12 @@ def prepare_box_samples(data, masks, Num_position, Num_shape, *, shapes, ellipti
         weight = data["weight"][masks["weight"]]
         weight_shape = data["weight_shape_sample"][masks["weight_shape_sample"]]
         if shapes:
-            dir_mask = masks.get("Axis_Direction", shape_mask)
-            q_mask = masks.get("q", shape_mask)
+            if require_full_masks:
+                dir_mask = masks["Axis_Direction"]
+                q_mask = masks["q"]
+            else:
+                dir_mask = masks.get("Axis_Direction", shape_mask)
+                q_mask = masks.get("q", shape_mask)
             axis_direction_v = data["Axis_Direction"][dir_mask]
             q = data["q"][q_mask]
         else:
@@ -272,13 +302,22 @@ class BoxRMuR:
 
 
 def accumulate(sample_set, binning, *, base, R=None, shapes=True,
-               chunk_axis="shape", chunk_size_outer=100, jk=False, pool=None,
+               chunk_axis="shape", chunk_size_outer=100, jk=False, num_box=None,
                pos_tree=None, backend="tree"):
     """Run the pair-accumulation loop and return the resulting grids.
 
     Implemented so far: box geometry, ``BoxRpPi`` / ``BoxRMuR`` binnings,
-    ``chunk_axis="shape"``, no jackknife, backends ``"tree"`` and ``"brute"``. Later
-    migration steps (REFACTOR_PLAN.md section 6, steps 5-7) extend this same function.
+    ``chunk_axis="shape"``, backends ``"tree"`` and ``"brute"``, optional jackknife.
+    Later migration steps (REFACTOR_PLAN.md section 6, steps 6-7) extend this same
+    function to the lightcone geometry.
+
+    ``jk=True`` (with ``num_box`` = number of jackknife realisations) additionally
+    accumulates the union-deletion per-realisation grids ``DD_jk`` (and, when
+    ``shapes``, the raw ``Splus_D_jk``): every pair contributes to the shape's patch,
+    and to the position's patch only where the two patches differ. ``sample_set``
+    must then carry ``jk_pos`` (position-aligned) and ``jk_shape`` (shape-aligned)
+    patch indices. This is a per-batch quantity in the mp path — the parent sums the
+    partial jk grids and computes ``R_jk`` separately via ``compute_R_jk``.
 
     Iteration order (outer loop over shape-sample chunks of ``chunk_size_outer``,
     inner loop over the chunk, vectorized ``np.add.at`` per shape galaxy) is fixed
@@ -303,11 +342,6 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
     batch; when None the tree is built here. ``sample_set.pos`` must be the same
     full position array the tree was built from either way.
     """
-    if jk or pool is not None:
-        raise NotImplementedError(
-            "pair_kernel.accumulate: jackknife/multiprocessing accumulation is "
-            "not migrated yet (see docs/REFACTOR_PLAN.md steps 5-7)."
-        )
     if chunk_axis != "shape":
         raise NotImplementedError(
             "pair_kernel.accumulate: only chunk_axis='shape' (box tree/mp order) "
@@ -321,10 +355,19 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
         raise NotImplementedError(
             f"pair_kernel.accumulate: unknown backend {backend!r} (expected 'tree' or 'brute')."
         )
+    if backend == "brute" and pos_tree is not None:
+        raise ValueError(
+            "pair_kernel.accumulate: pos_tree is meaningless with backend='brute' "
+            "(no KDTree is built); pass pos_tree only with backend='tree'."
+        )
+    if jk and num_box is None:
+        raise ValueError("pair_kernel.accumulate: jk=True requires num_box.")
 
     DD = np.array([[0.0] * binning.num_bins_pi] * binning.num_bins_r)
     Splus_D = np.array([[0.0] * binning.num_bins_pi] * binning.num_bins_r) if shapes else None
     Scross_D = np.array([[0.0] * binning.num_bins_pi] * binning.num_bins_r) if shapes else None
+    DD_jk = np.zeros((num_box, binning.num_bins_r, binning.num_bins_pi)) if jk else None
+    Splus_D_jk = np.zeros((num_box, binning.num_bins_r, binning.num_bins_pi)) if (jk and shapes) else None
 
     positions = sample_set.pos
     positions_shape_sample = sample_set.pos_shape
@@ -332,6 +375,7 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
     weight_shape = sample_set.weight_shape
     not_LOS = sample_set.not_LOS
     LOS_ind = sample_set.LOS_ind
+    jk_pos = sample_set.jk_pos
 
     if backend == "brute":
         all_positions = np.arange(len(positions))
@@ -344,6 +388,8 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
         if shapes:
             axis_direction_i = sample_set.axis_direction[i:i2]
             e_i = sample_set.e[i:i2]
+        if jk:
+            jk_shape_i = sample_set.jk_shape[i:i2]
         if backend == "brute":
             # every position is a candidate for every shape in the chunk
             ind_rbin_i = [all_positions] * len(positions_shape_sample_i)
@@ -380,4 +426,41 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
                               (weight[ind_rbin_i[n]][mask] * weight_shape_i[n] * e_cross[mask]) / (2 * R))
                 np.add.at(DD, (ind_r, ind_pi), weight[ind_rbin_i[n]][mask] * weight_shape_i[n])
 
-    return Grids(DD=DD, Splus_D=Splus_D, Scross_D=Scross_D)
+                if jk:
+                    # union (two-sided) deletion: every pair contributes to the shape's
+                    # patch, and to the position's patch only where the two patches differ.
+                    # Splus_D_jk stores the raw (un-/2R) S+ contribution; responsivity is
+                    # applied later in the wrapper reduction. Order matches the legacy jk
+                    # loop (Splus_D_jk before DD_jk).
+                    shape_patch = jk_shape_i[n]
+                    pos_patches = jk_pos[ind_rbin_i[n]][mask]
+                    pos_diff = np.where(pos_patches != shape_patch)[0]
+                    w_pairs = weight[ind_rbin_i[n]][mask] * weight_shape_i[n]
+                    if shapes:
+                        np.add.at(Splus_D_jk, (shape_patch, ind_r, ind_pi), w_pairs * e_plus[mask])
+                        np.add.at(Splus_D_jk,
+                                  (pos_patches[pos_diff], ind_r[pos_diff], ind_pi[pos_diff]),
+                                  (w_pairs * e_plus[mask])[pos_diff])
+                    np.add.at(DD_jk, (shape_patch, ind_r, ind_pi), w_pairs)
+                    np.add.at(DD_jk,
+                              (pos_patches[pos_diff], ind_r[pos_diff], ind_pi[pos_diff]),
+                              w_pairs[pos_diff])
+
+    return Grids(DD=DD, Splus_D=Splus_D, Scross_D=Scross_D, DD_jk=DD_jk, Splus_D_jk=Splus_D_jk)
+
+
+def compute_R_jk(e, weight_shape, jk_shape, num_box, responsivity_correction):
+    """Per-realisation (delete-one) responsivity: ``R_jk[i]`` is the responsivity over
+    the shapes **not** in patch ``i``.
+
+    This is a standalone reduction over the shape sample (not part of the pair loop),
+    so the multiprocessing path calls it once in the parent from the *full* shape
+    sample rather than per batch. Reproduces the legacy inline computation verbatim
+    (including the ``responsivity_correction``/empty-patch fallback to ``0.5``).
+    """
+    R_jk = np.zeros(num_box)
+    for i in np.arange(num_box):
+        jk_mask = np.where(jk_shape != i)
+        R_jk[i] = sum(weight_shape[jk_mask] * (1 - e[jk_mask] ** 2 / 2.0)) / sum(weight_shape[jk_mask]) \
+            if responsivity_correction and sum(weight_shape[jk_mask]) > 0 else 0.5
+    return R_jk

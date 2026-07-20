@@ -743,38 +743,6 @@ class TestIntermediateOutputsW:
             _read(obj, "w/xi_gg",     "int_nojk_pi"),
             _read(obj, "w/xi_g_plus", "int_nojk_pi"))
 
-    # ------------------------------------------------------------------ sigmasq (JK path only)
-
-    def test_sigmasq_gp_shape_and_non_negative(self, IA_mock_TNG300_n1, tmp_path):
-        obj = IA_mock_TNG300_n1
-        self._run_jk(obj, tmp_path)
-        sig = _read(obj, "w/xi_g_plus", "int_jk_sigmasq")
-        assert sig.shape == (obj.num_bins_r, obj.num_bins_pi)
-        assert np.all(sig >= 0)
-
-    def test_sigmasq_gg_shape_and_non_negative(self, IA_mock_TNG300_n1, tmp_path):
-        obj = IA_mock_TNG300_n1
-        self._run_jk(obj, tmp_path)
-        sig = _read(obj, "w/xi_gg", "int_jk_sigmasq")
-        assert sig.shape == (obj.num_bins_r, obj.num_bins_pi)
-        assert np.all(sig >= 0)
-
-    def test_sigmasq_scales_with_weights(self, IA_mock_TNG300_n1, tmp_path):
-        """sigmasq ∝ w^2, so halving weights → quarter sigmasq."""
-        obj = IA_mock_TNG300_n1
-        N   = len(obj.data["Position"])
-        obj.data["weight"]              = np.ones(N)
-        obj.data["weight_shape_sample"] = np.ones(N)
-        obj.measure_xi_w("sig_ones", "g+", NUM_JK,
-                         temp_file_path=str(tmp_path) + "/")
-        obj.data["weight"]              = np.full(N, 0.5)
-        obj.data["weight_shape_sample"] = np.full(N, 0.5)
-        obj.measure_xi_w("sig_half", "g+", NUM_JK,
-                         temp_file_path=str(tmp_path) + "/")
-        np.testing.assert_allclose(
-            _read(obj, "w/xi_g_plus", "sig_ones_sigmasq"),
-            4 * _read(obj, "w/xi_g_plus", "sig_half_sigmasq"))
-
     # ------------------------------------------------------------------ per-realisation rp / pi grids
 
     def test_per_jk_rp_matches_fullsample_rp(self, IA_mock_TNG300_n1, tmp_path):
