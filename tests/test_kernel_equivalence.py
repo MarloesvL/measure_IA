@@ -7,7 +7,10 @@ under two different ``dataset_name`` values into the same HDF5 file, then compar
 dataset in the affected groups key-by-key.
 
 Tree/mp paths are required to be bit-identical (the committed validation references were
-generated from them), so comparisons use ``assert_array_equal``.
+generated from them), so those comparisons use ``assert_array_equal``. The brute path runs
+on the shape-chunk order rather than the legacy position-outer order (a deliberate
+consolidation choice, REFACTOR_PLAN.md section 4), so it is compared with
+``assert_allclose(rtol=1e-10, atol=1e-13)``.
 
 When a migrated path has been green in the full suite, its legacy copy and the corresponding
 test entry here are deleted in the commit that migrates the next path.
@@ -49,7 +52,14 @@ def _index_by_prefix(datasets, name):
     return out
 
 
-def _assert_groups_bit_identical(output_file_name, name_legacy, name_kernel):
+def _assert_groups_equivalent(output_file_name, name_legacy, name_kernel, *, mode):
+    """Compare every dataset written under two dataset_names across the affected groups.
+
+    mode='exact' uses assert_array_equal (tree/mp paths are bit-identical); mode='allclose'
+    uses assert_allclose(rtol=1e-10, atol=1e-13) for the brute path, which runs on the
+    shape-chunk order rather than the legacy brute's position-outer order and so matches only
+    to floating-point tolerance (REFACTOR_PLAN.md section 4).
+    """
     datasets = _collect_datasets(output_file_name)
     legacy = _index_by_prefix(datasets, name_legacy)
     kernel = _index_by_prefix(datasets, name_kernel)
@@ -59,10 +69,20 @@ def _assert_groups_bit_identical(output_file_name, name_legacy, name_kernel):
         f" only kernel: {set(kernel) - set(legacy)}"
     )
     for key in legacy:
-        np.testing.assert_array_equal(
-            legacy[key], kernel[key],
-            err_msg=f"mismatch in group '{key[0]}', suffix '{key[1]}'",
-        )
+        msg = f"mismatch in group '{key[0]}', suffix '{key[1]}'"
+        if mode == "exact":
+            np.testing.assert_array_equal(legacy[key], kernel[key], err_msg=msg)
+        else:
+            np.testing.assert_allclose(legacy[key], kernel[key], rtol=1e-10, atol=1e-13,
+                                       err_msg=msg)
+
+
+def _assert_groups_bit_identical(output_file_name, name_legacy, name_kernel):
+    _assert_groups_equivalent(output_file_name, name_legacy, name_kernel, mode="exact")
+
+
+def _assert_groups_allclose(output_file_name, name_legacy, name_kernel):
+    _assert_groups_equivalent(output_file_name, name_legacy, name_kernel, mode="allclose")
 
 
 def _non_contiguous_masks(n_pos, n_shape):
@@ -91,44 +111,97 @@ def _full_mask_dict(obj):
     }
 
 
+NAME_LEGACY = "legacyrun"
+NAME_KERNEL = "kernelrun"
+
+
 # ---------------------------------------------------------------------------
-# Step 2: _measure_xi_rp_pi_box_batch / _measure_xi_rp_pi_box_multiprocessing
-#         (box, (rp, pi), multiprocessing over shape chunks)
+# Step 3: finish the box w (rp, pi) family
+#   - _measure_xi_rp_pi_box_brute        (backend='brute', allclose vs legacy brute)
+#   - _count_pairs_xi_rp_pi_box_brute    (DD-only, backend='brute', allclose)
+#   - _count_pairs_xi_rp_pi_box_tree     (DD-only, backend='tree', bit-identical)
+#   - _count_pairs_xi_rp_pi_box_batch/_multiprocessing (DD-only mp, bit-identical)
 #
-# The mp path also re-validates the shared kernel core (accumulate): the legacy mp
-# runs the fully independent verbatim counting loop, the kernel mp runs accumulate.
+# The brute path runs the shape-chunk order rather than the legacy position-outer
+# order (a deliberate consolidation choice), so it matches the legacy brute only to
+# floating-point tolerance. The count mp path re-validates the shared DD-only kernel
+# core (legacy = verbatim loop, kernel = accumulate(shapes=False)).
 # ---------------------------------------------------------------------------
 
-class TestKernelEquivalenceBoxRpPiMultiprocessing:
-    NAME_LEGACY = "legacyrun"
-    NAME_KERNEL = "kernelrun"
-    # chunk_size 150 with 200 shapes gives two batches, and the first batch spans
-    # two inner 100-chunks — exercising both the batch loop and the inner chunk loop.
-    NUM_NODES = 2
-    CHUNK_SIZE = 150
+class TestKernelEquivalenceBoxRpPiBrute:
+    def test_no_mask(self, IA_mock_TNG300_n1):
+        obj = IA_mock_TNG300_n1
+        obj._legacy_measure_xi_rp_pi_box_brute(dataset_name=NAME_LEGACY, masks=None)
+        obj._measure_xi_rp_pi_box_brute(dataset_name=NAME_KERNEL, masks=None)
+        _assert_groups_allclose(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
 
-    def _run_pair(self, obj, masks_legacy, masks_kernel, **kw):
-        tmp = os.path.dirname(obj.output_file_name)
-        obj._legacy_measure_xi_rp_pi_box_multiprocessing(
-            dataset_name=self.NAME_LEGACY, temp_file_path=tmp, masks=masks_legacy,
-            num_nodes=self.NUM_NODES, chunk_size=self.CHUNK_SIZE, **kw)
-        obj._measure_xi_rp_pi_box_multiprocessing(
-            dataset_name=self.NAME_KERNEL, temp_file_path=tmp, masks=masks_kernel,
-            num_nodes=self.NUM_NODES, chunk_size=self.CHUNK_SIZE, **kw)
-        _assert_groups_bit_identical(obj.output_file_name, self.NAME_LEGACY, self.NAME_KERNEL)
+    def test_ellipticity_definition(self, IA_mock_TNG300_n1):
+        obj = IA_mock_TNG300_n1
+        obj._legacy_measure_xi_rp_pi_box_brute(dataset_name=NAME_LEGACY, masks=None,
+                                               ellipticity='ellipticity')
+        obj._measure_xi_rp_pi_box_brute(dataset_name=NAME_KERNEL, masks=None,
+                                        ellipticity='ellipticity')
+        _assert_groups_allclose(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
 
-    def test_no_mask(self, IA_mock_TNG300_n8):
-        self._run_pair(IA_mock_TNG300_n8, None, None)
-
-    def test_ellipticity_definition(self, IA_mock_TNG300_n8):
-        self._run_pair(IA_mock_TNG300_n8, None, None, ellipticity='ellipticity')
-
-    def test_responsivity_off(self, IA_mock_TNG300_n8):
-        obj = IA_mock_TNG300_n8
+    def test_responsivity_off(self, IA_mock_TNG300_n1):
+        obj = IA_mock_TNG300_n1
         obj.responsivity_correction = False
-        self._run_pair(obj, None, None)
+        obj._legacy_measure_xi_rp_pi_box_brute(dataset_name=NAME_LEGACY, masks=None)
+        obj._measure_xi_rp_pi_box_brute(dataset_name=NAME_KERNEL, masks=None)
+        _assert_groups_allclose(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
 
-    def test_full_non_contiguous_mask(self, IA_mock_TNG300_n8):
+    def test_non_contiguous_mask(self, IA_mock_TNG300_n1):
+        obj = IA_mock_TNG300_n1
+        pos_mask, shape_mask = _non_contiguous_masks(obj.Num_position, obj.Num_shape)
+        ml = {"Position": pos_mask.copy(), "Position_shape_sample": shape_mask.copy()}
+        mk = {"Position": pos_mask.copy(), "Position_shape_sample": shape_mask.copy()}
+        obj._legacy_measure_xi_rp_pi_box_brute(dataset_name=NAME_LEGACY, masks=ml)
+        obj._measure_xi_rp_pi_box_brute(dataset_name=NAME_KERNEL, masks=mk)
+        _assert_groups_allclose(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
+
+
+class TestKernelEquivalenceBoxRpPiCountPairs:
+    """DD-only count_pairs twins (corr_type='gg')."""
+
+    def test_brute(self, IA_mock_TNG300_n1):
+        obj = IA_mock_TNG300_n1
+        obj._legacy_count_pairs_xi_rp_pi_box_brute(dataset_name=NAME_LEGACY, masks=None)
+        obj._count_pairs_xi_rp_pi_box_brute(dataset_name=NAME_KERNEL, masks=None)
+        _assert_groups_allclose(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
+
+    def test_tree(self, IA_mock_TNG300_n1):
+        obj = IA_mock_TNG300_n1
+        obj._legacy_count_pairs_xi_rp_pi_box_tree(dataset_name=NAME_LEGACY, masks=None)
+        obj._count_pairs_xi_rp_pi_box_tree(dataset_name=NAME_KERNEL, masks=None)
+        _assert_groups_bit_identical(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
+
+    def test_tree_non_contiguous_mask(self, IA_mock_TNG300_n1):
+        obj = IA_mock_TNG300_n1
+        pos_mask, shape_mask = _non_contiguous_masks(obj.Num_position, obj.Num_shape)
+        ml = {"Position": pos_mask.copy(), "Position_shape_sample": shape_mask.copy()}
+        mk = {"Position": pos_mask.copy(), "Position_shape_sample": shape_mask.copy()}
+        obj._legacy_count_pairs_xi_rp_pi_box_tree(dataset_name=NAME_LEGACY, masks=ml)
+        obj._count_pairs_xi_rp_pi_box_tree(dataset_name=NAME_KERNEL, masks=mk)
+        _assert_groups_bit_identical(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
+
+    # chunk_size 150 with 200 shapes gives two batches, the first spanning two inner
+    # 100-chunks — exercising both the batch loop and the inner chunk loop.
+    def test_multiprocessing(self, IA_mock_TNG300_n8):
         obj = IA_mock_TNG300_n8
-        # fresh dicts per call: each mp run mutates its masks dict in place
-        self._run_pair(obj, _full_mask_dict(obj), _full_mask_dict(obj))
+        tmp = os.path.dirname(obj.output_file_name)
+        obj._legacy_count_pairs_xi_rp_pi_box_multiprocessing(
+            dataset_name=NAME_LEGACY, temp_file_path=tmp, masks=None, num_nodes=2, chunk_size=150)
+        obj._count_pairs_xi_rp_pi_box_multiprocessing(
+            dataset_name=NAME_KERNEL, temp_file_path=tmp, masks=None, num_nodes=2, chunk_size=150)
+        _assert_groups_bit_identical(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
+
+    def test_multiprocessing_full_mask(self, IA_mock_TNG300_n8):
+        obj = IA_mock_TNG300_n8
+        tmp = os.path.dirname(obj.output_file_name)
+        obj._legacy_count_pairs_xi_rp_pi_box_multiprocessing(
+            dataset_name=NAME_LEGACY, temp_file_path=tmp, masks=_full_mask_dict(obj),
+            num_nodes=2, chunk_size=150)
+        obj._count_pairs_xi_rp_pi_box_multiprocessing(
+            dataset_name=NAME_KERNEL, temp_file_path=tmp, masks=_full_mask_dict(obj),
+            num_nodes=2, chunk_size=150)
+        _assert_groups_bit_identical(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)

@@ -7,12 +7,13 @@ everything else raising ``NotImplementedError`` rather than guessing at
 behaviour that hasn't been ported (and equivalence-tested) yet.
 
 Status (see REFACTOR_PLAN.md section 6 for the step numbering):
-    Steps 1-2 DONE: box geometry, (rp, pi) binning (``BoxRpPi``), tree backend,
-    no jackknife. Wired into ``MeasureWBox._measure_xi_rp_pi_box_tree`` and the
-    multiprocessing path (``_measure_xi_rp_pi_box_batch`` /
-    ``_measure_xi_rp_pi_box_multiprocessing``). The mp orchestration
-    (SharedMemory, temp-file offload, ``Pool``) stays in the backend wrapper;
-    each worker calls ``accumulate`` single-process on its shape slice.
+    Steps 1-3 DONE: box geometry, (rp, pi) binning (``BoxRpPi``), no jackknife,
+    ``"tree"`` and ``"brute"`` backends, plus the DD-only (``shapes=False``)
+    count_pairs path. Wired into the whole ``MeasureWBox`` (rp, pi) family:
+    ``_measure_xi_rp_pi_box_{brute,tree,batch,multiprocessing}`` and
+    ``_count_pairs_xi_rp_pi_box_{brute,tree,batch,multiprocessing}``. The mp
+    orchestration (SharedMemory, temp-file offload, ``Pool``) stays in the backend
+    wrapper; each worker calls ``accumulate`` single-process on its shape slice.
 
 Every public function here is pure with respect to its arguments except
 where noted (``prepare_box_samples`` mutates the ``masks`` dict it is given,
@@ -200,31 +201,40 @@ class BoxRpPi:
 
 def accumulate(sample_set, binning, *, base, R=None, shapes=True,
                chunk_axis="shape", chunk_size_outer=100, jk=False, pool=None,
-               pos_tree=None):
+               pos_tree=None, backend="tree"):
     """Run the pair-accumulation loop and return the resulting grids.
 
-    Only the combination exercised by ``_measure_xi_rp_pi_box_tree`` and the
-    multiprocessing batch worker is implemented so far: box geometry,
-    ``BoxRpPi`` binning, tree backend (``chunk_axis="shape"``), no jackknife.
-    Later migration steps (REFACTOR_PLAN.md section 6, steps 3-7) extend this
-    same function rather than replacing it.
+    Implemented so far: box geometry, ``BoxRpPi`` binning, ``chunk_axis="shape"``,
+    no jackknife, backends ``"tree"`` and ``"brute"``. Later migration steps
+    (REFACTOR_PLAN.md section 6, steps 4-7) extend this same function.
 
     Iteration order (outer loop over shape-sample chunks of ``chunk_size_outer``,
-    KDTree of the chunk queried against the full position tree, inner loop over
-    the chunk, vectorized ``np.add.at`` per shape galaxy) is fixed by the
-    float-summation-order rule in REFACTOR_PLAN.md section 4 and must not change
-    without re-deriving bit-identity against the legacy tree/mp paths.
+    inner loop over the chunk, vectorized ``np.add.at`` per shape galaxy) is fixed
+    by the float-summation-order rule in REFACTOR_PLAN.md section 4 and must not
+    change without re-deriving bit-identity against the legacy tree/mp paths.
 
-    ``pos_tree`` may be a prebuilt ``KDTree`` over ``sample_set.pos[:, not_LOS]``.
-    The multiprocessing path passes the tree it built once in the parent process
-    (shared to every worker) rather than rebuilding it per batch; when None the
-    tree is built here (the single-process tree path). ``sample_set.pos`` must be
-    the same full position array the tree was built from either way.
+    ``backend`` selects how each shape galaxy's candidate positions are chosen:
+      - ``"tree"``: KDTree annulus query ``[r_min, r_max]`` against the position
+        tree (the legacy tree/mp order — bit-identical).
+      - ``"brute"``: every position is a candidate (full cross-join per chunk);
+        the ``[r_min, r_max)`` window is applied by the binning mask. This runs on
+        the *same* shape-chunk order as the tree backend rather than the legacy
+        brute's position-outer order, so it matches the legacy brute only to
+        floating-point tolerance (``allclose``), not bit-identically — a
+        deliberate consolidation choice (REFACTOR_PLAN.md section 4). It counts
+        exactly the same pairs the legacy brute did (same window mask), so integer
+        (unit-weight) DD grids still match exactly.
+
+    ``pos_tree`` may be a prebuilt ``KDTree`` over ``sample_set.pos[:, not_LOS]``
+    (tree backend only). The multiprocessing path passes the tree it built once in
+    the parent process (shared to every worker) rather than rebuilding it per
+    batch; when None the tree is built here. ``sample_set.pos`` must be the same
+    full position array the tree was built from either way.
     """
     if jk or pool is not None:
         raise NotImplementedError(
             "pair_kernel.accumulate: jackknife/multiprocessing accumulation is "
-            "not migrated yet (see docs/REFACTOR_PLAN.md steps 2, 5-7)."
+            "not migrated yet (see docs/REFACTOR_PLAN.md steps 5-7)."
         )
     if chunk_axis != "shape":
         raise NotImplementedError(
@@ -234,6 +244,10 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
     if not isinstance(binning, BoxRpPi):
         raise NotImplementedError(
             "pair_kernel.accumulate: only BoxRpPi binning is implemented so far."
+        )
+    if backend not in ("tree", "brute"):
+        raise NotImplementedError(
+            f"pair_kernel.accumulate: unknown backend {backend!r} (expected 'tree' or 'brute')."
         )
 
     DD = np.array([[0.0] * binning.num_bins_pi] * binning.num_bins_r)
@@ -247,7 +261,9 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
     not_LOS = sample_set.not_LOS
     LOS_ind = sample_set.LOS_ind
 
-    if pos_tree is None:
+    if backend == "brute":
+        all_positions = np.arange(len(positions))
+    elif pos_tree is None:
         pos_tree = KDTree(positions[:, not_LOS], boxsize=base.boxsize)
     for i in np.arange(0, len(positions_shape_sample), chunk_size_outer):
         i2 = min(len(positions_shape_sample), i + chunk_size_outer)
@@ -256,10 +272,14 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
         if shapes:
             axis_direction_i = sample_set.axis_direction[i:i2]
             e_i = sample_set.e[i:i2]
-        shape_tree = KDTree(positions_shape_sample_i[:, not_LOS], boxsize=base.boxsize)
-        ind_min_i = shape_tree.query_ball_tree(pos_tree, binning.r_min)
-        ind_max_i = shape_tree.query_ball_tree(pos_tree, binning.r_max)
-        ind_rbin_i = base.setdiff2D(ind_max_i, ind_min_i)
+        if backend == "brute":
+            # every position is a candidate for every shape in the chunk
+            ind_rbin_i = [all_positions] * len(positions_shape_sample_i)
+        else:
+            shape_tree = KDTree(positions_shape_sample_i[:, not_LOS], boxsize=base.boxsize)
+            ind_min_i = shape_tree.query_ball_tree(pos_tree, binning.r_min)
+            ind_max_i = shape_tree.query_ball_tree(pos_tree, binning.r_max)
+            ind_rbin_i = base.setdiff2D(ind_max_i, ind_min_i)
 
         for n in np.arange(0, len(positions_shape_sample_i)):
             if len(ind_rbin_i[n]) > 0:
