@@ -124,74 +124,84 @@ NAME_KERNEL = "kernelrun"
 
 
 
-# ---------------------------------------------------------------------------
-# Step 5: box jackknife families (measure_w_box_jk.py) via accumulate(jk=True)
-#   - _measure_xi_rp_pi_box_jk_{brute,tree,batch,multiprocessing}
-#   - _count_pairs_xi_rp_pi_box_jk_{brute,tree,batch,multiprocessing}
-#
-# Union-deletion per-realisation grids (DD_jk, raw Splus_D_jk) accumulated in the
-# kernel; R_jk via compute_R_jk in the wrapper/parent. brute = allclose (shape-chunk
-# order), tree/mp bit-identical. _sigmasq is intentionally dropped (see the harness
-# filter above) so it is not compared. L_subboxes=2 -> 8 jackknife realisations.
-# ---------------------------------------------------------------------------
 
 L_SUB = 2
 
 
-class TestKernelEquivalenceBoxRpPiJkMeasure:
+# ---------------------------------------------------------------------------
+# Step 5b: box multipoles jackknife families (measure_m_box_jk.py) via accumulate(jk=True)
+#   - _measure_xi_r_mur_box_jk_{brute,tree,batch,multiprocessing}
+#   - _count_pairs_xi_r_mur_box_jk_{brute,tree,batch,multiprocessing}
+#
+# (r, mu_r) BoxRMuR binning with an rp_cut window (exercised in test_tree_rp_cut; left at
+# its 0.0 default elsewhere). Union-deletion per-realisation grids (DD_jk, raw Splus_D_jk)
+# accumulated in the kernel; R_jk via compute_R_jk in the wrapper/parent. brute = allclose
+# (shape-chunk order), tree/mp bit-identical. _sigmasq is intentionally dropped (see the
+# harness filter above) so it is not compared. This family now also covers the shared
+# accumulate(jk=True) kernel core. L_subboxes=2 -> 8 jackknife realisations.
+# ---------------------------------------------------------------------------
+
+
+class TestKernelEquivalenceBoxRMuRJkMeasure:
     def test_tree(self, IA_mock_TNG300_n1):
         obj = IA_mock_TNG300_n1
-        obj._legacy_measure_xi_rp_pi_box_jk_tree(dataset_name=NAME_LEGACY, L_subboxes=L_SUB)
-        obj._measure_xi_rp_pi_box_jk_tree(dataset_name=NAME_KERNEL, L_subboxes=L_SUB)
+        obj._legacy_measure_xi_r_mur_box_jk_tree(dataset_name=NAME_LEGACY, L_subboxes=L_SUB)
+        obj._measure_xi_r_mur_box_jk_tree(dataset_name=NAME_KERNEL, L_subboxes=L_SUB)
         _assert_groups_bit_identical(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
 
     def test_tree_ellipticity(self, IA_mock_TNG300_n1):
         obj = IA_mock_TNG300_n1
-        obj._legacy_measure_xi_rp_pi_box_jk_tree(dataset_name=NAME_LEGACY, L_subboxes=L_SUB, ellipticity='ellipticity')
-        obj._measure_xi_rp_pi_box_jk_tree(dataset_name=NAME_KERNEL, L_subboxes=L_SUB, ellipticity='ellipticity')
+        obj._legacy_measure_xi_r_mur_box_jk_tree(dataset_name=NAME_LEGACY, L_subboxes=L_SUB, ellipticity='ellipticity')
+        obj._measure_xi_r_mur_box_jk_tree(dataset_name=NAME_KERNEL, L_subboxes=L_SUB, ellipticity='ellipticity')
         _assert_groups_bit_identical(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
 
     def test_tree_responsivity_off(self, IA_mock_TNG300_n1):
         obj = IA_mock_TNG300_n1
         obj.responsivity_correction = False
-        obj._legacy_measure_xi_rp_pi_box_jk_tree(dataset_name=NAME_LEGACY, L_subboxes=L_SUB)
-        obj._measure_xi_rp_pi_box_jk_tree(dataset_name=NAME_KERNEL, L_subboxes=L_SUB)
+        obj._legacy_measure_xi_r_mur_box_jk_tree(dataset_name=NAME_LEGACY, L_subboxes=L_SUB)
+        obj._measure_xi_r_mur_box_jk_tree(dataset_name=NAME_KERNEL, L_subboxes=L_SUB)
+        _assert_groups_bit_identical(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
+
+    def test_tree_rp_cut(self, IA_mock_TNG300_n1):
+        obj = IA_mock_TNG300_n1
+        obj._legacy_measure_xi_r_mur_box_jk_tree(dataset_name=NAME_LEGACY, L_subboxes=L_SUB, rp_cut=2.0)
+        obj._measure_xi_r_mur_box_jk_tree(dataset_name=NAME_KERNEL, L_subboxes=L_SUB, rp_cut=2.0)
         _assert_groups_bit_identical(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
 
     def test_brute(self, IA_mock_TNG300_n1):
         obj = IA_mock_TNG300_n1
-        obj._legacy_measure_xi_rp_pi_box_jk_brute(dataset_name=NAME_LEGACY, L_subboxes=L_SUB)
-        obj._measure_xi_rp_pi_box_jk_brute(dataset_name=NAME_KERNEL, L_subboxes=L_SUB)
+        obj._legacy_measure_xi_r_mur_box_jk_brute(dataset_name=NAME_LEGACY, L_subboxes=L_SUB)
+        obj._measure_xi_r_mur_box_jk_brute(dataset_name=NAME_KERNEL, L_subboxes=L_SUB)
         _assert_groups_allclose(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
 
     def test_multiprocessing(self, IA_mock_TNG300_n8):
         obj = IA_mock_TNG300_n8
         tmp = os.path.dirname(obj.output_file_name)
-        obj._legacy_measure_xi_rp_pi_box_jk_multiprocessing(
+        obj._legacy_measure_xi_r_mur_box_jk_multiprocessing(
             dataset_name=NAME_LEGACY, L_subboxes=L_SUB, temp_file_path=tmp, num_nodes=2, chunk_size=150)
-        obj._measure_xi_rp_pi_box_jk_multiprocessing(
+        obj._measure_xi_r_mur_box_jk_multiprocessing(
             dataset_name=NAME_KERNEL, L_subboxes=L_SUB, temp_file_path=tmp, num_nodes=2, chunk_size=150)
         _assert_groups_bit_identical(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
 
 
-class TestKernelEquivalenceBoxRpPiJkCountPairs:
+class TestKernelEquivalenceBoxRMuRJkCountPairs:
     def test_tree(self, IA_mock_TNG300_n1):
         obj = IA_mock_TNG300_n1
-        obj._legacy_count_pairs_xi_rp_pi_box_jk_tree(dataset_name=NAME_LEGACY, L_subboxes=L_SUB)
-        obj._count_pairs_xi_rp_pi_box_jk_tree(dataset_name=NAME_KERNEL, L_subboxes=L_SUB)
+        obj._legacy_count_pairs_xi_r_mur_box_jk_tree(dataset_name=NAME_LEGACY, L_subboxes=L_SUB)
+        obj._count_pairs_xi_r_mur_box_jk_tree(dataset_name=NAME_KERNEL, L_subboxes=L_SUB)
         _assert_groups_bit_identical(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
 
     def test_brute(self, IA_mock_TNG300_n1):
         obj = IA_mock_TNG300_n1
-        obj._legacy_count_pairs_xi_rp_pi_box_jk_brute(dataset_name=NAME_LEGACY, L_subboxes=L_SUB)
-        obj._count_pairs_xi_rp_pi_box_jk_brute(dataset_name=NAME_KERNEL, L_subboxes=L_SUB)
+        obj._legacy_count_pairs_xi_r_mur_box_jk_brute(dataset_name=NAME_LEGACY, L_subboxes=L_SUB)
+        obj._count_pairs_xi_r_mur_box_jk_brute(dataset_name=NAME_KERNEL, L_subboxes=L_SUB)
         _assert_groups_allclose(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
 
     def test_multiprocessing(self, IA_mock_TNG300_n8):
         obj = IA_mock_TNG300_n8
         tmp = os.path.dirname(obj.output_file_name)
-        obj._legacy_count_pairs_xi_rp_pi_box_jk_multiprocessing(
+        obj._legacy_count_pairs_xi_r_mur_box_jk_multiprocessing(
             dataset_name=NAME_LEGACY, L_subboxes=L_SUB, temp_file_path=tmp, num_nodes=2, chunk_size=150)
-        obj._count_pairs_xi_rp_pi_box_jk_multiprocessing(
+        obj._count_pairs_xi_r_mur_box_jk_multiprocessing(
             dataset_name=NAME_KERNEL, L_subboxes=L_SUB, temp_file_path=tmp, num_nodes=2, chunk_size=150)
         _assert_groups_bit_identical(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)

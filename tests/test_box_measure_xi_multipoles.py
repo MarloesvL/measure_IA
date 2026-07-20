@@ -22,9 +22,9 @@ Covers
   10. Jackknife region assignment
   11. _combine_jackknife_information reproduces stored covariance
   12. Intermediate xi outputs: SplusD, RR, r/mu_r grids, ScrossD,
-      xi_g_cross group, sigmasq, per-realisation bin grids
+      xi_g_cross group, per-realisation bin grids
   13. Intermediate pair-count equality: brute == tree, tree == multiproc: SplusD, RR, r/mu_r grids, ScrossD,
-      xi_g_cross group, sigmasq, per-realisation bin grids
+      xi_g_cross group, per-realisation bin grids
 """
 
 import numpy as np
@@ -580,8 +580,6 @@ class TestIntermediateOutputsM:
         xi_g_plus/  : SplusD, RR_g_plus, r, mu_r, ScrossD
         xi_g_cross/ : xi, RR_g_cross, r, mu_r   (entire group)
         xi_gg/      : RR_gg, r, mu_r
-      JK path:
-        _sigmasq    written alongside full-sample xi (g_plus and gg)
       Per-realisation JK:
         _{i}_r and _{i}_mu_r match full-sample r/mu_r for every realisation
     """
@@ -703,37 +701,9 @@ class TestIntermediateOutputsM:
             _read(obj, "multipoles/xi_gg",     "int_nojk_mu_r"),
             _read(obj, "multipoles/xi_g_plus", "int_nojk_mu_r"))
 
-    # ------------------------------------------------------------------ sigmasq (JK path only)
-
-    def test_sigmasq_gp_shape_and_non_negative(self, IA_mock_TNG300_n1, tmp_path):
-        obj = IA_mock_TNG300_n1
-        self._run_jk(obj, tmp_path)
-        sig = _read(obj, "multipoles/xi_g_plus", "int_jk_sigmasq")
-        assert sig.shape == (obj.num_bins_r, obj.num_bins_pi)
-        assert np.all(sig >= 0)
-
-    def test_sigmasq_gg_shape_and_non_negative(self, IA_mock_TNG300_n1, tmp_path):
-        obj = IA_mock_TNG300_n1
-        self._run_jk(obj, tmp_path)
-        sig = _read(obj, "multipoles/xi_gg", "int_jk_sigmasq")
-        assert sig.shape == (obj.num_bins_r, obj.num_bins_pi)
-        assert np.all(sig >= 0)
-
-    def test_sigmasq_scales_with_weights(self, IA_mock_TNG300_n1, tmp_path):
-        """sigmasq ∝ w^2, so halving weights → quarter sigmasq."""
-        obj = IA_mock_TNG300_n1
-        N   = len(obj.data["Position"])
-        obj.data["weight"]              = np.ones(N)
-        obj.data["weight_shape_sample"] = np.ones(N)
-        obj.measure_xi_multipoles("msig_ones", "g+", NUM_JK,
-                                   temp_file_path=str(tmp_path) + "/")
-        obj.data["weight"]              = np.full(N, 0.5)
-        obj.data["weight_shape_sample"] = np.full(N, 0.5)
-        obj.measure_xi_multipoles("msig_half", "g+", NUM_JK,
-                                   temp_file_path=str(tmp_path) + "/")
-        np.testing.assert_allclose(
-            _read(obj, "multipoles/xi_g_plus", "msig_ones_sigmasq"),
-            4 * _read(obj, "multipoles/xi_g_plus", "msig_half_sigmasq"))
+    # sigmasq was dropped from the multipoles jackknife path (kernel consolidation step 5b):
+    # only the brute backend ever populated it, so the estimator is not trustworthy and is no
+    # longer written. The former test_sigmasq_* checks were removed with it.
 
     # ------------------------------------------------------------------ per-realisation r / mu_r grids
 
