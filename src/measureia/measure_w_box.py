@@ -7,6 +7,7 @@ from scipy.spatial import KDTree
 from .write_data import write_dataset_hdf5, create_group_hdf5
 from .measure_IA_base import MeasureIABase
 from .read_data import ReadData
+from . import pair_kernel
 from astropy.cosmology import LambdaCDM
 
 cosmo = LambdaCDM(H0=69.6, Om0=0.286, Ode0=0.714)
@@ -236,6 +237,11 @@ class MeasureWBox(MeasureIABase, ReadData):
 		r"""Measures the projected correlation functions, $\xi_{gg}$ and $\xi_{g+}$, in (rp, pi) bins for an object
 		created with MeasureIABox. Uses 1 CPU. Uses KDTree for speedup.
 
+		The pair-counting loop is delegated to ``pair_kernel.accumulate`` (box geometry,
+		``BoxRpPi`` binning, shape-chunked tree order); the analytic-RR reduction and HDF5
+		writing below are unchanged from the pre-kernel implementation. See
+		``docs/REFACTOR_PLAN.md`` for the consolidation design.
+
 		Parameters
 		----------
 		dataset_name : str
@@ -255,6 +261,83 @@ class MeasureWBox(MeasureIABase, ReadData):
 		-------
 		ndarrays
 			$\xi_{gg}$ and $\xi_{g+}$, r_p bins, pi bins, S+D, DD, RR (if no output file is specified)
+		"""
+
+		sample_set = pair_kernel.prepare_box_samples(
+			self.data, masks, self.Num_position, self.Num_shape,
+			shapes=True, ellipticity=ellipticity, base=self,
+		)
+		Num_position = len(sample_set.pos)
+		Num_shape = len(sample_set.pos_shape)
+		weight_shape = sample_set.weight_shape
+		e = sample_set.e
+		R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape) \
+			if getattr(self, "responsivity_correction", True) and sum(weight_shape) > 0 else 0.5
+		L3 = self.boxsize ** 3  # box volume
+		RR_g_plus = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		RR_gg = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+
+		print(
+			f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
+		binning = pair_kernel.BoxRpPi(self)
+		grids = pair_kernel.accumulate(sample_set, binning, base=self, R=R, shapes=True,
+									   chunk_axis="shape", chunk_size_outer=100)
+		DD = grids.DD
+		Splus_D = grids.Splus_D
+		Scross_D = grids.Scross_D
+
+		corrtype = "cross"  # auto-correlations are not supported; DD is always treated as a cross-count
+		for i in np.arange(0, self.num_bins_r):
+			for p in np.arange(0, self.num_bins_pi):
+				RR_g_plus[i, p] = self.get_random_pairs(
+					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "cross",
+					Num_position, Num_shape)
+				RR_gg[i, p] = self.get_random_pairs(
+					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, corrtype,
+					Num_position, Num_shape)
+		RR_g_plus_denom = RR_g_plus.copy()  # guard against empty samples/bins in the divisions; raw RR grids are written to file
+		RR_g_plus_denom[RR_g_plus_denom == 0] = 1
+		RR_gg_denom = RR_gg.copy()
+		RR_gg_denom[RR_gg_denom == 0] = 1
+		correlation = Splus_D / RR_g_plus_denom  # (Splus_D - Splus_R) / RR_g_plus
+		xi_g_cross = Scross_D / RR_g_plus_denom  # (Scross_D - Scross_R) / RR_g_plus
+		xi_gg = (DD / RR_gg_denom) - 1
+		xi_gg[RR_gg == 0] = 0
+		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
+		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
+		dpi = (self.pi_bins[1:] - self.pi_bins[:-1]) / 2.0
+		pi_bins = self.pi_bins[:-1] + abs(dpi)  # middle of bins
+
+		if (self.output_file_name != None) & return_output == False:
+			output_file = h5py.File(self.output_file_name, "a")
+			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_g_plus/{jk_group_name}")
+			write_dataset_hdf5(group, dataset_name, data=correlation)
+			write_dataset_hdf5(group, dataset_name + "_SplusD", data=Splus_D)
+			write_dataset_hdf5(group, dataset_name + "_RR_g_plus", data=RR_g_plus)
+			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
+			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
+			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_g_cross/{jk_group_name}")
+			write_dataset_hdf5(group, dataset_name + "_ScrossD", data=Scross_D)
+			write_dataset_hdf5(group, dataset_name, data=xi_g_cross)
+			write_dataset_hdf5(group, dataset_name + "_RR_g_cross", data=RR_g_plus)
+			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
+			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
+			group = create_group_hdf5(output_file, f"{self.snap_group}/w/xi_gg/{jk_group_name}")
+			write_dataset_hdf5(group, dataset_name, data=xi_gg)
+			write_dataset_hdf5(group, dataset_name + "_DD", data=DD)
+			write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
+			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
+			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
+			output_file.close()
+			return
+		else:
+			return correlation, xi_gg, separation_bins, pi_bins, Splus_D, DD, RR_g_plus
+
+	def _legacy_measure_xi_rp_pi_box_tree(self, dataset_name, masks=None,
+								   return_output=False, jk_group_name="", ellipticity='distortion'):
+		r"""Pre-kernel reference copy of ``_measure_xi_rp_pi_box_tree``, kept only for the
+		A/B equivalence harness (``tests/test_kernel_equivalence.py``). Delete together with
+		the harness entry once the kernel path is locked in CI (REFACTOR_PLAN.md section 5).
 		"""
 
 		if masks == None:
