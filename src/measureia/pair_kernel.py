@@ -7,9 +7,12 @@ everything else raising ``NotImplementedError`` rather than guessing at
 behaviour that hasn't been ported (and equivalence-tested) yet.
 
 Status (see REFACTOR_PLAN.md section 6 for the step numbering):
-    Step 1 DONE: box geometry, (rp, pi) binning (``BoxRpPi``), tree backend,
-    no jackknife, no multiprocessing. Wired into
-    ``MeasureWBox._measure_xi_rp_pi_box_tree``.
+    Steps 1-2 DONE: box geometry, (rp, pi) binning (``BoxRpPi``), tree backend,
+    no jackknife. Wired into ``MeasureWBox._measure_xi_rp_pi_box_tree`` and the
+    multiprocessing path (``_measure_xi_rp_pi_box_batch`` /
+    ``_measure_xi_rp_pi_box_multiprocessing``). The mp orchestration
+    (SharedMemory, temp-file offload, ``Pool``) stays in the backend wrapper;
+    each worker calls ``accumulate`` single-process on its shape slice.
 
 Every public function here is pure with respect to its arguments except
 where noted (``prepare_box_samples`` mutates the ``masks`` dict it is given,
@@ -196,20 +199,27 @@ class BoxRpPi:
 
 
 def accumulate(sample_set, binning, *, base, R=None, shapes=True,
-               chunk_axis="shape", chunk_size_outer=100, jk=False, pool=None):
+               chunk_axis="shape", chunk_size_outer=100, jk=False, pool=None,
+               pos_tree=None):
     """Run the pair-accumulation loop and return the resulting grids.
 
-    Only the combination exercised by ``_measure_xi_rp_pi_box_tree`` is
-    implemented so far: box geometry, ``BoxRpPi`` binning, tree backend
-    (``chunk_axis="shape"``), no jackknife, no multiprocessing pool. Later
-    migration steps (REFACTOR_PLAN.md section 6, steps 2-7) extend this same
-    function rather than replacing it.
+    Only the combination exercised by ``_measure_xi_rp_pi_box_tree`` and the
+    multiprocessing batch worker is implemented so far: box geometry,
+    ``BoxRpPi`` binning, tree backend (``chunk_axis="shape"``), no jackknife.
+    Later migration steps (REFACTOR_PLAN.md section 6, steps 3-7) extend this
+    same function rather than replacing it.
 
     Iteration order (outer loop over shape-sample chunks of ``chunk_size_outer``,
     KDTree of the chunk queried against the full position tree, inner loop over
     the chunk, vectorized ``np.add.at`` per shape galaxy) is fixed by the
     float-summation-order rule in REFACTOR_PLAN.md section 4 and must not change
     without re-deriving bit-identity against the legacy tree/mp paths.
+
+    ``pos_tree`` may be a prebuilt ``KDTree`` over ``sample_set.pos[:, not_LOS]``.
+    The multiprocessing path passes the tree it built once in the parent process
+    (shared to every worker) rather than rebuilding it per batch; when None the
+    tree is built here (the single-process tree path). ``sample_set.pos`` must be
+    the same full position array the tree was built from either way.
     """
     if jk or pool is not None:
         raise NotImplementedError(
@@ -237,7 +247,8 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
     not_LOS = sample_set.not_LOS
     LOS_ind = sample_set.LOS_ind
 
-    pos_tree = KDTree(positions[:, not_LOS], boxsize=base.boxsize)
+    if pos_tree is None:
+        pos_tree = KDTree(positions[:, not_LOS], boxsize=base.boxsize)
     for i in np.arange(0, len(positions_shape_sample), chunk_size_outer):
         i2 = min(len(positions_shape_sample), i + chunk_size_outer)
         positions_shape_sample_i = positions_shape_sample[i:i2]

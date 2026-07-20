@@ -13,6 +13,8 @@ When a migrated path has been green in the full suite, its legacy copy and the c
 test entry here are deleted in the commit that migrates the next path.
 """
 
+import os
+
 import numpy as np
 import h5py
 import pytest
@@ -73,41 +75,60 @@ def _non_contiguous_masks(n_pos, n_shape):
     return pos_mask, shape_mask
 
 
+def _full_mask_dict(obj):
+    """A full non-contiguous mask dict covering every data key the mp temp-write loop
+    stores (all keys except LOS). Position/weight are position-aligned; the shape-sample,
+    axis-direction, q and (unused-but-stored) Mass masks are shape-aligned."""
+    pos_mask, shape_mask = _non_contiguous_masks(obj.Num_position, obj.Num_shape)
+    return {
+        "Position":              pos_mask,
+        "weight":                pos_mask,
+        "Position_shape_sample": shape_mask,
+        "weight_shape_sample":   shape_mask,
+        "Axis_Direction":        shape_mask,
+        "q":                     shape_mask,
+        "Mass":                  shape_mask,
+    }
+
+
 # ---------------------------------------------------------------------------
-# Step 1: _measure_xi_rp_pi_box_tree  (box, (rp, pi), tree, no jk, no mp)
+# Step 2: _measure_xi_rp_pi_box_batch / _measure_xi_rp_pi_box_multiprocessing
+#         (box, (rp, pi), multiprocessing over shape chunks)
+#
+# The mp path also re-validates the shared kernel core (accumulate): the legacy mp
+# runs the fully independent verbatim counting loop, the kernel mp runs accumulate.
 # ---------------------------------------------------------------------------
 
-class TestKernelEquivalenceBoxRpPiTree:
+class TestKernelEquivalenceBoxRpPiMultiprocessing:
     NAME_LEGACY = "legacyrun"
     NAME_KERNEL = "kernelrun"
+    # chunk_size 150 with 200 shapes gives two batches, and the first batch spans
+    # two inner 100-chunks — exercising both the batch loop and the inner chunk loop.
+    NUM_NODES = 2
+    CHUNK_SIZE = 150
 
-    def test_no_mask(self, IA_mock_TNG300_n1):
-        obj = IA_mock_TNG300_n1
-        obj._legacy_measure_xi_rp_pi_box_tree(dataset_name=self.NAME_LEGACY, masks=None)
-        obj._measure_xi_rp_pi_box_tree(dataset_name=self.NAME_KERNEL, masks=None)
+    def _run_pair(self, obj, masks_legacy, masks_kernel, **kw):
+        tmp = os.path.dirname(obj.output_file_name)
+        obj._legacy_measure_xi_rp_pi_box_multiprocessing(
+            dataset_name=self.NAME_LEGACY, temp_file_path=tmp, masks=masks_legacy,
+            num_nodes=self.NUM_NODES, chunk_size=self.CHUNK_SIZE, **kw)
+        obj._measure_xi_rp_pi_box_multiprocessing(
+            dataset_name=self.NAME_KERNEL, temp_file_path=tmp, masks=masks_kernel,
+            num_nodes=self.NUM_NODES, chunk_size=self.CHUNK_SIZE, **kw)
         _assert_groups_bit_identical(obj.output_file_name, self.NAME_LEGACY, self.NAME_KERNEL)
 
-    def test_ellipticity_definition(self, IA_mock_TNG300_n1):
-        obj = IA_mock_TNG300_n1
-        obj._legacy_measure_xi_rp_pi_box_tree(dataset_name=self.NAME_LEGACY, masks=None,
-                                              ellipticity='ellipticity')
-        obj._measure_xi_rp_pi_box_tree(dataset_name=self.NAME_KERNEL, masks=None,
-                                       ellipticity='ellipticity')
-        _assert_groups_bit_identical(obj.output_file_name, self.NAME_LEGACY, self.NAME_KERNEL)
+    def test_no_mask(self, IA_mock_TNG300_n8):
+        self._run_pair(IA_mock_TNG300_n8, None, None)
 
-    def test_non_contiguous_mask(self, IA_mock_TNG300_n1):
-        obj = IA_mock_TNG300_n1
-        pos_mask, shape_mask = _non_contiguous_masks(obj.Num_position, obj.Num_shape)
-        # fresh dict per call: both methods inject default weight masks in place
-        masks_legacy = {"Position": pos_mask.copy(), "Position_shape_sample": shape_mask.copy()}
-        masks_kernel = {"Position": pos_mask.copy(), "Position_shape_sample": shape_mask.copy()}
-        obj._legacy_measure_xi_rp_pi_box_tree(dataset_name=self.NAME_LEGACY, masks=masks_legacy)
-        obj._measure_xi_rp_pi_box_tree(dataset_name=self.NAME_KERNEL, masks=masks_kernel)
-        _assert_groups_bit_identical(obj.output_file_name, self.NAME_LEGACY, self.NAME_KERNEL)
+    def test_ellipticity_definition(self, IA_mock_TNG300_n8):
+        self._run_pair(IA_mock_TNG300_n8, None, None, ellipticity='ellipticity')
 
-    def test_responsivity_off(self, IA_mock_TNG300_n1):
-        obj = IA_mock_TNG300_n1
+    def test_responsivity_off(self, IA_mock_TNG300_n8):
+        obj = IA_mock_TNG300_n8
         obj.responsivity_correction = False
-        obj._legacy_measure_xi_rp_pi_box_tree(dataset_name=self.NAME_LEGACY, masks=None)
-        obj._measure_xi_rp_pi_box_tree(dataset_name=self.NAME_KERNEL, masks=None)
-        _assert_groups_bit_identical(obj.output_file_name, self.NAME_LEGACY, self.NAME_KERNEL)
+        self._run_pair(obj, None, None)
+
+    def test_full_non_contiguous_mask(self, IA_mock_TNG300_n8):
+        obj = IA_mock_TNG300_n8
+        # fresh dicts per call: each mp run mutates its masks dict in place
+        self._run_pair(obj, _full_mask_dict(obj), _full_mask_dict(obj))
