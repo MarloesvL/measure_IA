@@ -7,13 +7,15 @@ everything else raising ``NotImplementedError`` rather than guessing at
 behaviour that hasn't been ported (and equivalence-tested) yet.
 
 Status (see REFACTOR_PLAN.md section 6 for the step numbering):
-    Steps 1-3 DONE: box geometry, (rp, pi) binning (``BoxRpPi``), no jackknife,
-    ``"tree"`` and ``"brute"`` backends, plus the DD-only (``shapes=False``)
-    count_pairs path. Wired into the whole ``MeasureWBox`` (rp, pi) family:
-    ``_measure_xi_rp_pi_box_{brute,tree,batch,multiprocessing}`` and
-    ``_count_pairs_xi_rp_pi_box_{brute,tree,batch,multiprocessing}``. The mp
+    Steps 1-4 DONE: box geometry, no jackknife, ``"tree"`` and ``"brute"`` backends,
+    the DD-only (``shapes=False``) count_pairs path, and two binnings — ``BoxRpPi``
+    (rp, pi) and ``BoxRMuR`` (r, mu_r, multipoles). Wired into the whole ``MeasureWBox``
+    (rp, pi) family and the ``MeasureMultipolesBox`` (r, mu_r) family
+    (``_measure_xi_r_mur_box_*`` / ``_count_pairs_xi_r_mur_box_*``). The mp
     orchestration (SharedMemory, temp-file offload, ``Pool``) stays in the backend
     wrapper; each worker calls ``accumulate`` single-process on its shape slice.
+    (``_measure_xi_r_pi_box_brute`` is a dead, kernel-incompatible per-r-bin-signed-pi
+    oddity, deliberately left un-migrated — see REFACTOR_PLAN.md / TASKS.md.)
 
 Every public function here is pure with respect to its arguments except
 where noted (``prepare_box_samples`` mutates the ``masks`` dict it is given,
@@ -154,6 +156,11 @@ class BoxRpPi:
         self.sub_box_len_logrp = (np.log10(base.r_max) - np.log10(base.r_min)) / base.num_bins_r
         self.sub_box_len_pi = (base.pi_bins[-1] - base.pi_bins[0]) / base.num_bins_pi
 
+    def tree_coords(self, coords, not_LOS):
+        """Coordinates the KDTree is built/queried on: the 2D projection, since the
+        (rp, pi) r-window is the projected separation."""
+        return coords[:, not_LOS]
+
     def bin_pairs(self, separation, not_LOS, LOS_ind):
         """Bin one shape galaxy's separations to its candidate position neighbours.
 
@@ -199,14 +206,79 @@ class BoxRpPi:
         return mask, ind_r, ind_pi, projected_sep, separation_len
 
 
+class BoxRMuR:
+    """(r, mu_r) grid binning for a periodic Cartesian box (multipoles).
+
+    Unlike ``BoxRpPi``, the separation bin ``r`` is the *full 3D* separation length
+    and ``mu_r = LOS / r``; the KDTree therefore operates on the full 3D coordinates
+    (``tree_coords`` returns ``coords`` unchanged). An ``rp_cut`` on the projected
+    (2D) separation length is applied inside the window mask. The ``mu_r`` sub-bin
+    length is ``2.0 / num_bins_pi`` (mu_r runs over [-1, 1] with ``num_bins_pi`` bins).
+    Same clamp convention as ``BoxRpPi`` (an index landing on ``num_bins`` folds into
+    the last bin).
+    """
+
+    def __init__(self, base, rp_cut=0.0):
+        self.r_min = base.r_min
+        self.r_max = base.r_max
+        self.r_bins = base.r_bins
+        self.mu_r_bins = base.mu_r_bins
+        self.num_bins_r = base.num_bins_r
+        self.num_bins_pi = base.num_bins_pi
+        self.rp_cut = rp_cut
+        self.sub_box_len_logr = (np.log10(base.r_max) - np.log10(base.r_min)) / base.num_bins_r
+        self.sub_box_len_mu_r = 2.0 / base.num_bins_pi
+
+    def tree_coords(self, coords, not_LOS):
+        """Coordinates the KDTree is built/queried on: the full 3D positions, since the
+        (r, mu_r) r-window is the 3D separation."""
+        return coords
+
+    def bin_pairs(self, separation, not_LOS, LOS_ind):
+        """Bin one shape galaxy's separations to its candidate position neighbours.
+
+        Returns ``(mask, ind_r, ind_mu_r, projected_sep, projected_len)`` where
+        ``projected_sep``/``projected_len`` are the 2D projection and its length, used
+        by ``accumulate`` for the ellipticity-angle calc (identical to the (rp, pi)
+        family). ``ind_r`` is binned on the 3D separation length; ``ind_mu_r`` on
+        ``mu_r = LOS / r_3d``. The window keeps pairs with projected length > rp_cut and
+        3D length in ``[r_bins[0], r_bins[-1])``.
+        """
+        projected_sep = separation[:, not_LOS]
+        LOS = separation[:, LOS_ind]
+        projected_len = np.sqrt(np.sum(projected_sep ** 2, axis=1))
+        separation_len = np.sqrt(np.sum(separation ** 2, axis=1))
+        with np.errstate(invalid='ignore'):
+            mu_r = LOS / separation_len
+        mask = (
+            (projected_len > self.rp_cut)
+            * (separation_len >= self.r_bins[0])
+            * (separation_len < self.r_bins[-1])
+        )
+        ind_r = np.floor(
+            np.log10(separation_len[mask]) / self.sub_box_len_logr
+            - np.log10(self.r_bins[0]) / self.sub_box_len_logr
+        )
+        ind_r = np.array(ind_r, dtype=int)
+        ind_mu_r = np.floor(
+            mu_r[mask] / self.sub_box_len_mu_r - self.mu_r_bins[0] / self.sub_box_len_mu_r
+        )
+        ind_mu_r = np.array(ind_mu_r, dtype=int)
+        if np.any(ind_mu_r == self.num_bins_pi):
+            ind_mu_r[ind_mu_r >= self.num_bins_pi] -= 1
+        if np.any(ind_r == self.num_bins_r):
+            ind_r[ind_r >= self.num_bins_r] -= 1
+        return mask, ind_r, ind_mu_r, projected_sep, projected_len
+
+
 def accumulate(sample_set, binning, *, base, R=None, shapes=True,
                chunk_axis="shape", chunk_size_outer=100, jk=False, pool=None,
                pos_tree=None, backend="tree"):
     """Run the pair-accumulation loop and return the resulting grids.
 
-    Implemented so far: box geometry, ``BoxRpPi`` binning, ``chunk_axis="shape"``,
-    no jackknife, backends ``"tree"`` and ``"brute"``. Later migration steps
-    (REFACTOR_PLAN.md section 6, steps 4-7) extend this same function.
+    Implemented so far: box geometry, ``BoxRpPi`` / ``BoxRMuR`` binnings,
+    ``chunk_axis="shape"``, no jackknife, backends ``"tree"`` and ``"brute"``. Later
+    migration steps (REFACTOR_PLAN.md section 6, steps 5-7) extend this same function.
 
     Iteration order (outer loop over shape-sample chunks of ``chunk_size_outer``,
     inner loop over the chunk, vectorized ``np.add.at`` per shape galaxy) is fixed
@@ -241,9 +313,9 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
             "pair_kernel.accumulate: only chunk_axis='shape' (box tree/mp order) "
             "is implemented so far."
         )
-    if not isinstance(binning, BoxRpPi):
+    if not isinstance(binning, (BoxRpPi, BoxRMuR)):
         raise NotImplementedError(
-            "pair_kernel.accumulate: only BoxRpPi binning is implemented so far."
+            "pair_kernel.accumulate: only BoxRpPi / BoxRMuR binnings are implemented so far."
         )
     if backend not in ("tree", "brute"):
         raise NotImplementedError(
@@ -264,7 +336,7 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
     if backend == "brute":
         all_positions = np.arange(len(positions))
     elif pos_tree is None:
-        pos_tree = KDTree(positions[:, not_LOS], boxsize=base.boxsize)
+        pos_tree = KDTree(binning.tree_coords(positions, not_LOS), boxsize=base.boxsize)
     for i in np.arange(0, len(positions_shape_sample), chunk_size_outer):
         i2 = min(len(positions_shape_sample), i + chunk_size_outer)
         positions_shape_sample_i = positions_shape_sample[i:i2]
@@ -276,7 +348,7 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
             # every position is a candidate for every shape in the chunk
             ind_rbin_i = [all_positions] * len(positions_shape_sample_i)
         else:
-            shape_tree = KDTree(positions_shape_sample_i[:, not_LOS], boxsize=base.boxsize)
+            shape_tree = KDTree(binning.tree_coords(positions_shape_sample_i, not_LOS), boxsize=base.boxsize)
             ind_min_i = shape_tree.query_ball_tree(pos_tree, binning.r_min)
             ind_max_i = shape_tree.query_ball_tree(pos_tree, binning.r_max)
             ind_rbin_i = base.setdiff2D(ind_max_i, ind_min_i)
@@ -288,13 +360,13 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
                     separation[separation > base.L_0p5] -= base.boxsize
                     separation[separation < -base.L_0p5] += base.boxsize
 
-                mask, ind_r, ind_pi, projected_sep, separation_len = binning.bin_pairs(
+                mask, ind_r, ind_pi, projected_sep, proj_len = binning.bin_pairs(
                     separation, not_LOS, LOS_ind
                 )
 
                 if shapes:
                     with np.errstate(invalid='ignore'):
-                        separation_dir = (projected_sep.transpose() / separation_len).transpose()
+                        separation_dir = (projected_sep.transpose() / proj_len).transpose()
                         phi = np.arccos(
                             separation_dir[:, 0] * axis_direction_i[n, 0]
                             + separation_dir[:, 1] * axis_direction_i[n, 1]
