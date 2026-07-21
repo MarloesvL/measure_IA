@@ -15,9 +15,9 @@ Comprehensive tests for MeasureIALightcone.measure_xi_w(), covering:
   - over_h conversion flag
   - Invalid inputs (bad IA_estimator, missing randoms, missing JK args)
   - Output shapes, rp-bin consistency, covariance matrix properties
-  - Regression against saved reference output
+  - Determinism of repeated runs
 
-All tests use fixtures from tests/conftest_lc.py (see conftest_lc.py).
+All tests use fixtures from tests/conftest.py.
 
 Run from the project root:
     pytest tests/test_lc_measure_xi_w.py -v
@@ -531,12 +531,12 @@ class TestOutputShapeW:
 
 
 # ---------------------------------------------------------------------------
-# 10. Regression against saved reference output
+# 10. Determinism: repeated runs of the same configuration agree
 # ---------------------------------------------------------------------------
 
-class TestRegressionW:
+class TestDeterminismW:
 
-    def test_wgp_matches_reference(self, IA_mock_lc_n1, tmp_path):
+    def test_wgp_is_deterministic(self, IA_mock_lc_n1, tmp_path):
         """Run twice with the same config; results must be identical (determinism)."""
         obj = IA_mock_lc_n1
         obj.measure_xi_w("galaxies", "lc_reg_a", "both",
@@ -549,7 +549,7 @@ class TestRegressionW:
             _read(obj, "w/xi_g_plus", "lc_reg_a"),
             _read(obj, "w/xi_g_plus", "lc_reg_b"), rtol=1e-10)
 
-    def test_wgg_matches_reference(self, IA_mock_lc_n1, tmp_path):
+    def test_wgg_is_deterministic(self, IA_mock_lc_n1, tmp_path):
         obj = IA_mock_lc_n1
         obj.measure_xi_w("galaxies", "lc_reg_gg_a", "gg",
                           measure_cov=False, tree=True,
@@ -561,7 +561,7 @@ class TestRegressionW:
             _read(obj, "w/xi_gg", "lc_reg_gg_a"),
             _read(obj, "w/xi_gg", "lc_reg_gg_b"), rtol=1e-10)
 
-    def test_cov_wgp_matches_reference(self, IA_mock_lc_n1, tmp_path):
+    def test_cov_wgp_is_deterministic(self, IA_mock_lc_n1, tmp_path):
         obj = IA_mock_lc_n1
         obj.measure_xi_w("galaxies", "lc_cov_reg_a", "g+",
                           measure_cov=True, num_jk=NUM_JK, seed=42,
@@ -574,7 +574,7 @@ class TestRegressionW:
             _read(obj, "w_g_plus", f"lc_cov_reg_b_jackknife_cov_{NUM_JK}"),
             rtol=1e-10)
 
-    def test_cov_wgg_matches_reference(self, IA_mock_lc_n1, tmp_path):
+    def test_cov_wgg_is_deterministic(self, IA_mock_lc_n1, tmp_path):
         obj = IA_mock_lc_n1
         obj.measure_xi_w("galaxies", "lc_cov_gg_a", "gg",
                           measure_cov=True, num_jk=NUM_JK, seed=42,

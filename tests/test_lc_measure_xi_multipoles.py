@@ -15,9 +15,9 @@ Comprehensive tests for MeasureIALightcone.measure_xi_multipoles(), covering:
   - Invalid inputs
   - Output shapes (r-bins), covariance matrix properties
   - Realisation-level checks (SplusD, RR, xi per JK drop)
-  - Regression against saved reference output
+  - Determinism of repeated runs
 
-All tests use fixtures from tests/conftest_lc.py.
+All tests use fixtures from tests/conftest.py.
 
 Run from the project root:
     pytest tests/test_lc_measure_xi_multipoles.py -v
@@ -534,12 +534,12 @@ class TestOutputShapeM:
 
 
 # ---------------------------------------------------------------------------
-# 10. Regression against saved reference output
+# 10. Determinism: repeated runs of the same configuration agree
 # ---------------------------------------------------------------------------
 
-class TestRegressionM:
+class TestDeterminismM:
 
-    def test_gp_multipoles_matches_reference(self, IA_mock_lc_n1, tmp_path):
+    def test_gp_multipoles_is_deterministic(self, IA_mock_lc_n1, tmp_path):
         """Run twice; identical config must give identical result."""
         obj = IA_mock_lc_n1
         obj.measure_xi_multipoles("galaxies", "lc_m_reg_a", "both",
@@ -552,7 +552,7 @@ class TestRegressionM:
             _read(obj, "multipoles_g_plus", "lc_m_reg_a"),
             _read(obj, "multipoles_g_plus", "lc_m_reg_b"), rtol=1e-10)
 
-    def test_gg_multipoles_matches_reference(self, IA_mock_lc_n1, tmp_path):
+    def test_gg_multipoles_is_deterministic(self, IA_mock_lc_n1, tmp_path):
         obj = IA_mock_lc_n1
         obj.measure_xi_multipoles("galaxies", "lc_m_reg_gg_a", "gg",
                                    measure_cov=False, tree=True,
@@ -564,7 +564,7 @@ class TestRegressionM:
             _read(obj, "multipoles_gg", "lc_m_reg_gg_a"),
             _read(obj, "multipoles_gg", "lc_m_reg_gg_b"), rtol=1e-10)
 
-    def test_cov_gp_matches_reference(self, IA_mock_lc_n1, tmp_path):
+    def test_cov_gp_is_deterministic(self, IA_mock_lc_n1, tmp_path):
         obj = IA_mock_lc_n1
         obj.measure_xi_multipoles("galaxies", "lc_m_cov_reg_a", "g+",
                                    measure_cov=True, num_jk=NUM_JK, seed=42,
@@ -579,7 +579,7 @@ class TestRegressionM:
                   f"lc_m_cov_reg_b_jackknife_cov_{NUM_JK}"),
             rtol=1e-10)
 
-    def test_cov_gg_matches_reference(self, IA_mock_lc_n1, tmp_path):
+    def test_cov_gg_is_deterministic(self, IA_mock_lc_n1, tmp_path):
         obj = IA_mock_lc_n1
         obj.measure_xi_multipoles("galaxies", "lc_m_cov_gg_a", "gg",
                                    measure_cov=True, num_jk=NUM_JK, seed=42,
