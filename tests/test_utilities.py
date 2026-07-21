@@ -11,6 +11,9 @@ Covers
   2.  ReadData: read_cat (full / cut / indices / bad-catalogue paths)
                read_MeasureIA_output (attribute population, num_jk=None,
                stale-value reset)
+  2b. ReadData multi-file readers against synthetic TNG-layout file sets:
+               read_subhalo / read_snapshot / read_snapshot_multiple /
+               read_modelling_outputs
   3.  MeasureJackknife.measure_covariance_multiple_datasets
         - auto-covariance (1 dataset): shape, symmetry, non-negative diagonal,
           std == sqrt(diag(cov))
@@ -21,6 +24,10 @@ Covers
         - runs without error, returns 4 matrices of correct shape
         - pairwise sub-blocks match direct measure_covariance_multiple_datasets
         - invalid corr_type raises ValueError
+  5.  MeasureJackknife.assign_jackknife_patches
+        - output structure, label range, every patch populated
+        - seed determinism and global random-state restoration
+        - invalid num_jk raises ValueError
 """
 
 import numpy as np
@@ -635,3 +642,129 @@ class TestCreateFullCovMatrixProjections:
                 dataset_names=["LOS_x", "LOS_y", "LOS_z"],
                 num_box=NUM_JK,
             )
+
+
+# ===========================================================================
+# 5. MeasureJackknife.assign_jackknife_patches
+# ===========================================================================
+
+class TestAssignJackknifePatches:
+    """Unit tests for the kmeans_radec-based patch assignment: output
+    structure, label ranges, seed determinism, and the geometric sanity of the
+    assignment (nearby objects land in the same patch)."""
+
+    NUM_JK = 6
+
+    def _catalogs(self, N=200, NR=400, seed=7):
+        rng = np.random.default_rng(seed)
+        data = {
+            "RA":  rng.uniform(150, 160, N),
+            "DEC": rng.uniform(0, 8, N),
+            "RA_shape_sample":  rng.uniform(150, 160, N),
+            "DEC_shape_sample": rng.uniform(0, 8, N),
+        }
+        randoms = {
+            "RA":  rng.uniform(150, 160, NR),
+            "DEC": rng.uniform(0, 8, NR),
+            "RA_shape_sample":  rng.uniform(150, 160, NR),
+            "DEC_shape_sample": rng.uniform(0, 8, NR),
+        }
+        return data, randoms
+
+    def _obj(self, tmp_path):
+        from measureia import MeasureIALightcone
+        data, randoms = self._catalogs()
+        full = dict(data)
+        full.update({
+            "Redshift": np.full(len(data["RA"]), 0.2),
+            "Redshift_shape_sample": np.full(len(data["RA"]), 0.2),
+            "e1": np.zeros(len(data["RA"])),
+            "e2": np.zeros(len(data["RA"])),
+        })
+        full_rand = dict(randoms)
+        full_rand.update({
+            "Redshift": np.full(len(randoms["RA"]), 0.2),
+            "Redshift_shape_sample": np.full(len(randoms["RA"]), 0.2),
+        })
+        return MeasureIALightcone(full, full_rand,
+                                  str(tmp_path / "jkp.hdf5"), pi_max=60.0)
+
+    def test_returns_all_four_samples_with_matching_lengths(self, tmp_path):
+        obj = self._obj(tmp_path)
+        data, randoms = self._catalogs()
+        p = obj.assign_jackknife_patches(data, randoms, self.NUM_JK, seed=1)
+
+        assert set(p) == {"position", "shape",
+                          "randoms_position", "randoms_shape"}
+        assert len(p["position"])         == len(data["RA"])
+        assert len(p["shape"])            == len(data["RA_shape_sample"])
+        assert len(p["randoms_position"]) == len(randoms["RA"])
+        assert len(p["randoms_shape"])    == len(randoms["RA_shape_sample"])
+
+    def test_labels_are_zero_based_and_within_range(self, tmp_path):
+        obj = self._obj(tmp_path)
+        data, randoms = self._catalogs()
+        p = obj.assign_jackknife_patches(data, randoms, self.NUM_JK, seed=1)
+        for labels in p.values():
+            assert labels.min() >= 0
+            assert labels.max() < self.NUM_JK
+
+    def test_every_patch_is_populated(self, tmp_path):
+        """kmeans on a well-sampled random catalogue must fill all patches —
+        an empty patch would produce a degenerate delete-one realisation."""
+        obj = self._obj(tmp_path)
+        data, randoms = self._catalogs()
+        p = obj.assign_jackknife_patches(data, randoms, self.NUM_JK, seed=1)
+        assert len(np.unique(p["randoms_position"])) == self.NUM_JK
+
+    def test_seed_makes_assignment_reproducible(self, tmp_path):
+        obj = self._obj(tmp_path)
+        data, randoms = self._catalogs()
+        a = obj.assign_jackknife_patches(data, randoms, self.NUM_JK, seed=123)
+        b = obj.assign_jackknife_patches(data, randoms, self.NUM_JK, seed=123)
+        for key in a:
+            np.testing.assert_array_equal(a[key], b[key])
+
+    def test_different_seeds_give_different_assignment(self, tmp_path):
+        obj = self._obj(tmp_path)
+        data, randoms = self._catalogs()
+        a = obj.assign_jackknife_patches(data, randoms, self.NUM_JK, seed=1)
+        b = obj.assign_jackknife_patches(data, randoms, self.NUM_JK, seed=999)
+        assert any(not np.array_equal(a[k], b[k]) for k in a)
+
+    def test_global_random_state_is_restored(self, tmp_path):
+        """The seeded branch seeds both numpy and the stdlib random module
+        (kmeans_radec uses the latter); neither may leak out."""
+        import random as _random
+        obj = self._obj(tmp_path)
+        data, randoms = self._catalogs()
+
+        np.random.seed(5)
+        _random.seed(5)
+        np_before, py_before = np.random.random(), _random.random()
+
+        np.random.seed(5)
+        _random.seed(5)
+        obj.assign_jackknife_patches(data, randoms, self.NUM_JK, seed=42)
+        assert np.random.random() == np_before
+        assert _random.random() == py_before
+
+    def test_identical_coordinates_share_a_patch(self, tmp_path):
+        """Data objects placed exactly on random positions inherit those
+        randoms' patch labels (find_nearest is a nearest-centre lookup)."""
+        obj = self._obj(tmp_path)
+        data, randoms = self._catalogs()
+        data = dict(data)
+        n = len(data["RA"])
+        data["RA"], data["DEC"] = randoms["RA"][:n], randoms["DEC"][:n]
+
+        p = obj.assign_jackknife_patches(data, randoms, self.NUM_JK, seed=1)
+        np.testing.assert_array_equal(p["position"],
+                                      p["randoms_position"][:n])
+
+    @pytest.mark.parametrize("bad", [0, -3, 2.5, True, None])
+    def test_invalid_num_jk_raises(self, tmp_path, bad):
+        obj = self._obj(tmp_path)
+        data, randoms = self._catalogs()
+        with pytest.raises(ValueError, match="num_jk must be an integer"):
+            obj.assign_jackknife_patches(data, randoms, bad)

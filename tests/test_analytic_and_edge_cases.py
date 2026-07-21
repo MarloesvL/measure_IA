@@ -14,6 +14,8 @@ Sections
   5. Edge cases that ARE handled correctly (smoke tests)
   6. Previously-unhandled edge cases, now fixed at source (all-zero weights, empty mask,
        single-object sample, data restored after a failed run) — regression-locked here
+  7. The same degenerate inputs on the lightcone, plus the non-default `cosmology`
+       argument
 """
 
 import math
@@ -1023,3 +1025,163 @@ class TestEdgeCasesNowHandled:
         assert len(obj.data["Position"]) == N, \
             "self.data was not restored after a failed backend call"
         assert len(obj.data["q"]) == N
+
+
+# ===========================================================================
+# 7. Degenerate lightcone inputs (mirrors of the box edge cases above)
+# ===========================================================================
+
+class TestEdgeCasesLightcone:
+    """
+    The lightcone counterparts of section 6. The Landy-Szalay estimator is
+    genuinely undefined where the empirical RR is empty, so — unlike the box,
+    whose analytic RR is guarded to zero — the assertions here are that the run
+    completes, produces the right shape, and yields no *signal* (all-finite
+    entries are exactly zero) rather than all-finite output.
+    """
+
+    def _cat(self, N, NR, rng, e1=None, e2=None):
+        data = {
+            "RA":                    rng.uniform(150, 155, N),
+            "DEC":                   rng.uniform(2, 6, N),
+            "Redshift":              rng.uniform(0.1, 0.3, N),
+            "RA_shape_sample":       rng.uniform(150, 155, N),
+            "DEC_shape_sample":      rng.uniform(2, 6, N),
+            "Redshift_shape_sample": rng.uniform(0.1, 0.3, N),
+            "e1": rng.uniform(-0.2, 0.2, N) if e1 is None else e1,
+            "e2": rng.uniform(-0.2, 0.2, N) if e2 is None else e2,
+            "weight":              np.ones(N),
+            "weight_shape_sample": np.ones(N),
+        }
+        randoms = {
+            "RA":                    rng.uniform(150, 155, NR),
+            "DEC":                   rng.uniform(2, 6, NR),
+            "Redshift":              rng.uniform(0.1, 0.3, NR),
+            "RA_shape_sample":       rng.uniform(150, 155, NR),
+            "DEC_shape_sample":      rng.uniform(2, 6, NR),
+            "Redshift_shape_sample": rng.uniform(0.1, 0.3, NR),
+            "weight":              np.ones(NR),
+            "weight_shape_sample": np.ones(NR),
+        }
+        return data, randoms
+
+    def test_all_zero_weights_gives_no_signal(self, tmp_path):
+        """Zero weights kill every weighted count; w_g+ must not blow up into
+        a spurious signal (finite bins are exactly zero)."""
+        rng = np.random.default_rng(_SEED)
+        N   = 40
+        data, rand = self._cat(N, 3 * N, rng)
+        data["weight"] = np.zeros(N)
+        data["weight_shape_sample"] = np.zeros(N)
+        obj = _lc(data, rand, tmp_path)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            obj.measure_xi_w("galaxies", "lc_zw", "g+", measure_cov=False,
+                             tree=False, temp_file_path=None)
+        w = _read(obj, "w/xi_g_plus", "lc_zw")
+        assert w.shape == (_NR, _NPI)
+        finite = np.isfinite(w)
+        np.testing.assert_allclose(w[finite], 0.0, atol=1e-12)
+
+    def test_empty_mask_gives_no_signal(self, tmp_path):
+        """An all-False mask empties both samples; the run must complete."""
+        rng = np.random.default_rng(_SEED)
+        N   = 40
+        data, rand = self._cat(N, 3 * N, rng)
+        obj = _lc(data, rand, tmp_path)
+        # The lightcone dispatcher indexes every key of the mask dict directly
+        # (it does not fall back to the coordinate mask the way the backends
+        # do), so a user-supplied mask must cover all fields.
+        empty = {k: np.zeros(N, dtype=bool) for k in data}
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            obj.measure_xi_w("galaxies", "lc_em", "g+", measure_cov=False,
+                             tree=False, masks=empty, temp_file_path=None)
+        w = _read(obj, "w/xi_g_plus", "lc_em")
+        assert w.shape == (_NR, _NPI)
+        finite = np.isfinite(w)
+        np.testing.assert_allclose(w[finite], 0.0, atol=1e-12)
+
+    def test_single_object_position_sample_does_not_crash(self, tmp_path):
+        """A one-object position sample (the N=1 divide-by-zero case on the
+        box) must run through the lightcone estimator too."""
+        rng = np.random.default_rng(_SEED)
+        N   = 40
+        data, rand = self._cat(N, 3 * N, rng)
+        for key in ("RA", "DEC", "Redshift", "weight"):
+            data[key] = data[key][:1]
+        obj = _lc(data, rand, tmp_path)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            obj.measure_xi_w("galaxies", "lc_n1", "g+", measure_cov=False,
+                             tree=False, temp_file_path=None)
+        w = _read(obj, "w/xi_g_plus", "lc_n1")
+        assert w.shape == (_NR, _NPI)
+
+    def test_data_restored_after_failed_run(self, tmp_path, monkeypatch):
+        """Lightcone twin of the box restore test: a Pool failure after the
+        temp-file offload must still leave self.data intact. The lightcone
+        multiprocessing path lives on the jackknife backend, so this needs
+        measure_cov=True."""
+        rng = np.random.default_rng(_SEED)
+        N   = 40
+        data, rand = self._cat(N, 3 * N, rng)
+        out = str(tmp_path / "lc_restore_fail.hdf5")
+        obj = MeasureIALightcone(data=data, randoms_data=rand,
+                                 output_file_name=out,
+                                 separation_limits=_SEP, num_bins_r=_NR,
+                                 num_bins_pi=_NPI, pi_max=60.0, num_nodes=2)
+
+        def _boom(*args, **kwargs):
+            raise RuntimeError("simulated pool failure")
+
+        monkeypatch.setattr("measureia.measure_w_lightcone_jk.Pool", _boom)
+        with pytest.raises(RuntimeError):
+            obj.measure_xi_w("galaxies", "lc_fail", "g+", num_jk=4,
+                             measure_cov=True,
+                             temp_file_path=str(tmp_path) + "/")
+        assert len(obj.data["RA"]) == N, \
+            "self.data was not restored after a failed backend call"
+        assert len(obj.data["e1"]) == N
+
+    def test_non_default_cosmology_changes_distances(self, tmp_path):
+        """The `cosmology` argument is honoured: a different Omega_m maps the
+        same redshifts onto different comoving distances, so w_g+ shifts."""
+        ccl = pytest.importorskip("pyccl")
+        rng = np.random.default_rng(_SEED)
+        N   = 60
+        data, rand = self._cat(N, 3 * N, rng)
+
+        cosmo_a = ccl.Cosmology(Omega_c=0.25, Omega_b=0.05, h=0.7,
+                                n_s=0.96, sigma8=0.8)
+        cosmo_b = ccl.Cosmology(Omega_c=0.45, Omega_b=0.05, h=0.7,
+                                n_s=0.96, sigma8=0.8)
+
+        obj_a = MeasureIALightcone(
+            data={k: v.copy() for k, v in data.items()},
+            randoms_data={k: v.copy() for k, v in rand.items()},
+            output_file_name=str(tmp_path / "cosmo_a.hdf5"),
+            separation_limits=_SEP, num_bins_r=_NR, num_bins_pi=_NPI,
+            pi_max=60.0)
+        obj_b = MeasureIALightcone(
+            data={k: v.copy() for k, v in data.items()},
+            randoms_data={k: v.copy() for k, v in rand.items()},
+            output_file_name=str(tmp_path / "cosmo_b.hdf5"),
+            separation_limits=_SEP, num_bins_r=_NR, num_bins_pi=_NPI,
+            pi_max=60.0)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            obj_a.measure_xi_w("galaxies", "cos_a", "g+", measure_cov=False,
+                               tree=False, cosmology=cosmo_a,
+                               temp_file_path=None)
+            obj_b.measure_xi_w("galaxies", "cos_b", "g+", measure_cov=False,
+                               tree=False, cosmology=cosmo_b,
+                               temp_file_path=None)
+
+        w_a = _read(obj_a, "w/xi_g_plus", "cos_a")
+        w_b = _read(obj_b, "w/xi_g_plus", "cos_b")
+        both = np.isfinite(w_a) & np.isfinite(w_b)
+        assert both.any(), "no bin was finite in both cosmologies"
+        assert not np.allclose(w_a[both], w_b[both]), \
+            "the cosmology argument did not affect the measurement"
