@@ -119,14 +119,36 @@ class TestCheckInput:
     def test_check_type_input_data_rejects_bad_los(self):
         cat = _box_catalog(N=5)
         cat["LOS"] = 5
-        with pytest.raises(AssertionError):
+        with pytest.raises(ValueError, match="must be 0, 1 or 2"):
             CheckInput.check_type_input_data(
                 cat, ("Position", "Position_shape_sample", "Axis_Direction", "q", "LOS"))
+
+    def test_check_type_input_data_accepts_numpy_integer_los(self):
+        # np.integer LOS (e.g. np.int64(2)) used to fail the strict `type(...) == int` assert
+        cat = _box_catalog(N=5)
+        cat["LOS"] = np.int64(2)
+        CheckInput.check_type_input_data(
+            cat, ("Position", "Position_shape_sample", "Axis_Direction", "q", "LOS"))
 
     def test_check_type_input_data_rejects_bad_shape(self):
         cat = _box_catalog(N=5)
         cat["Position"] = cat["Position"][:, :2]
-        with pytest.raises(AssertionError):
+        with pytest.raises(ValueError, match="must have shape"):
+            CheckInput.check_type_input_data(
+                cat, ("Position", "Position_shape_sample", "Axis_Direction", "q", "LOS"))
+
+    def test_check_type_input_data_rejects_length_mismatch(self):
+        cat = _box_catalog(N=5)
+        cat["q"] = cat["q"][:-1]  # shape-sample-aligned array with wrong length
+        with pytest.raises(ValueError, match="must match"):
+            CheckInput.check_type_input_data(
+                cat, ("Position", "Position_shape_sample", "Axis_Direction", "q", "LOS"))
+
+    def test_check_type_input_data_rejects_non_finite(self):
+        cat = _box_catalog(N=5)
+        cat["Position"] = cat["Position"].copy()
+        cat["Position"][0, 0] = np.nan
+        with pytest.raises(ValueError, match="NaN or infinite"):
             CheckInput.check_type_input_data(
                 cat, ("Position", "Position_shape_sample", "Axis_Direction", "q", "LOS"))
 
@@ -238,6 +260,33 @@ class TestLightconeInputChecks:
         data, randoms = _lc_catalogs()
         del randoms["RA"]
         with pytest.raises(KeyError, match="does not contain RA"):
+            MeasureIALightcone(data, randoms, str(tmp_path / "o.hdf5"), pi_max=60)
+
+    def test_bad_dec_range_raises(self, tmp_path):
+        data, randoms = _lc_catalogs()
+        data["DEC"] = data["DEC"].copy()
+        data["DEC"][0] = 200.0
+        with pytest.raises(ValueError, match=r"must be in \[-90, 90\]"):
+            MeasureIALightcone(data, randoms, str(tmp_path / "o.hdf5"), pi_max=60)
+
+    def test_bad_ra_range_raises(self, tmp_path):
+        data, randoms = _lc_catalogs()
+        data["RA"] = data["RA"].copy()
+        data["RA"][0] = 400.0
+        with pytest.raises(ValueError, match=r"must be in \[0, 360\]"):
+            MeasureIALightcone(data, randoms, str(tmp_path / "o.hdf5"), pi_max=60)
+
+    def test_non_finite_raises(self, tmp_path):
+        data, randoms = _lc_catalogs()
+        data["e1"] = data["e1"].copy()
+        data["e1"][0] = np.inf
+        with pytest.raises(ValueError, match="NaN or infinite"):
+            MeasureIALightcone(data, randoms, str(tmp_path / "o.hdf5"), pi_max=60)
+
+    def test_shape_sample_length_mismatch_raises(self, tmp_path):
+        data, randoms = _lc_catalogs()
+        data["e2"] = data["e2"][:-1]  # shape-sample-aligned array, wrong length
+        with pytest.raises(ValueError, match="must match"):
             MeasureIALightcone(data, randoms, str(tmp_path / "o.hdf5"), pi_max=60)
 
     def test_custom_name_missing_under_default_raises(self, tmp_path):

@@ -120,6 +120,10 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			self.check_dict(data, [RA_density_sample_name, RA_shape_sample_name, DEC_density_sample_name,
 								   DEC_shape_sample_name, redshift_density_sample_name, redshift_shape_sample_name,
 								   e1_name, e2_name])
+			self.check_type_input_data_lightcone(data, (RA_density_sample_name, RA_shape_sample_name,
+														DEC_density_sample_name, DEC_shape_sample_name,
+														redshift_density_sample_name, redshift_shape_sample_name,
+														e1_name, e2_name))
 			data = self.rename_input_keys(data, self._input_name_map)
 		if randoms_data is not None:
 			self.check_dict(randoms_data,
