@@ -26,8 +26,19 @@ Status (see REFACTOR_PLAN.md section 6 for the step numbering):
     ``SkyRpPi`` / ``SkyRMuR`` binnings (midpoint LOS ``n_LOS = (s1+s2)/|s1+s2|``,
     east/north ellipticity-angle projection). Wired into the non-jk
     ``_{measure,count_pairs}_xi_{rp_pi,r_mur}_lightcone_{brute,tree}`` families. Unlike
-    the box S+ grids, the lightcone S+ is not divided by ``2R`` (baked into ``e``). Step 7
-    (lightcone jk, incl. mp) is not migrated yet.
+    the box S+ grids, the lightcone S+ is not divided by ``2R`` (baked into ``e``).
+
+    Step 7 DONE (lightcone jk): ``_accumulate_lightcone`` gained the ``jk=True``
+    union-deletion path — **mirrored** vs the box (the chunked axis is the position, so a
+    pair adds to its position patch always and its shape patch where they differ) — plus a
+    prebuilt-``shape_tree`` argument so the mp workers reuse the parent's tree. The
+    lightcone reduction is a pure delete-one (``Splus_D - Splus_D_jk[i]``); responsivity is
+    baked into ``e`` globally, so there is no per-realisation ``R_jk`` (contrast
+    ``compute_R_jk`` for the box). Wired into all 16
+    ``_{measure,count_pairs}_xi_{rp_pi,r_mur}_lightcone_jk_{brute,tree,batch,multiprocessing}``
+    methods; mp orchestration stays in the wrapper and each worker calls ``accumulate`` on
+    its position slice. All counting loops now live in this module (step 8 = cleanup only:
+    delete the dead ``*_old`` methods and the remaining ``_legacy_``/harness scaffolding).
 
 Every public function here is pure with respect to its arguments except
 where noted (``prepare_box_samples`` mutates the ``masks`` dict it is given,
@@ -545,7 +556,8 @@ class SkyRMuR:
         return mask, ind_r, ind_mu_r, s_perp
 
 
-def _accumulate_lightcone(sample_set, binning, *, base, shapes, chunk_size_outer, backend):
+def _accumulate_lightcone(sample_set, binning, *, base, shapes, chunk_size_outer, backend,
+                          jk=False, num_jk=None, shape_tree=None):
     """Lightcone (chunk_axis="position") pair-accumulation loop.
 
     Mirrors the legacy lightcone tree/brute counting order exactly (REFACTOR_PLAN.md
@@ -555,21 +567,38 @@ def _accumulate_lightcone(sample_set, binning, *, base, shapes, chunk_size_outer
     candidate (brute backend); inner loop over the chunk, vectorised ``np.add.at`` per
     position. Ellipticity is per *shape* candidate here (``e`` is (M,2) = e1,e2 already
     scaled by 1/(2R)), and S+ grids are **not** divided by ``2R`` (baked into ``e``).
+
+    ``jk=True`` (with ``num_jk`` = number of jackknife realisations) additionally accumulates
+    the union-deletion per-realisation grids ``DD_jk`` (and, when ``shapes``, ``Splus_D_jk``).
+    Note the axis-roles are **mirrored** versus the box path: the chunked (outer) axis is the
+    *position*, so every pair contributes to the position's patch always and to the shape's
+    patch only where the two differ. ``sample_set.jk_pos`` is position-aligned (chunked like
+    ``s_pos``) and ``sample_set.jk_shape`` is shape-aligned (indexed by candidates), both
+    already normalised to 0-based patch ids by the wrapper. Unlike the box jk, the lightcone
+    reduction is a pure delete-one (``Splus_D - Splus_D_jk[i]``): responsivity is baked into
+    ``e`` globally, so there is no per-realisation ``R_jk`` here.
+
+    ``shape_tree`` may be a prebuilt ``KDTree(s_shape)`` (tree backend only) — the mp path
+    builds it once in the parent process and shares it with every worker rather than
+    rebuilding per batch; when None the tree is built here.
     """
     DD = np.array([[0.0] * binning.num_bins_pi] * binning.num_bins_r)
     Splus_D = np.array([[0.0] * binning.num_bins_pi] * binning.num_bins_r) if shapes else None
     Scross_D = np.array([[0.0] * binning.num_bins_pi] * binning.num_bins_r) if shapes else None
+    DD_jk = np.zeros((num_jk, binning.num_bins_r, binning.num_bins_pi)) if jk else None
+    Splus_D_jk = np.zeros((num_jk, binning.num_bins_r, binning.num_bins_pi)) if (jk and shapes) else None
 
     s_pos = sample_set.pos
     s_shape = sample_set.pos_shape
     weight = sample_set.weight
     weight_shape = sample_set.weight_shape
+    jk_shape = sample_set.jk_shape
     Num_position = len(s_pos)
     Num_shape = len(s_shape)
 
     if backend == "brute":
         all_shapes = np.arange(Num_shape)
-    else:
+    elif shape_tree is None:
         shape_tree = KDTree(s_shape)
 
     for i in np.arange(0, Num_position, chunk_size_outer):
@@ -579,6 +608,8 @@ def _accumulate_lightcone(sample_set, binning, *, base, shapes, chunk_size_outer
         if shapes:
             east_i = sample_set.east[i:i2]
             north_i = sample_set.north[i:i2]
+        if jk:
+            jk_pos_i = sample_set.jk_pos[i:i2]
         if backend == "brute":
             ind_rbin_i = [all_shapes] * len(s_pos_i)
         else:
@@ -608,12 +639,31 @@ def _accumulate_lightcone(sample_set, binning, *, base, shapes, chunk_size_outer
                               weight_i[n] * weight_shape[cand][mask] * e_cross[mask])
                 np.add.at(DD, (ind_r, ind_2nd), weight_i[n] * weight_shape[cand][mask])
 
-    return Grids(DD=DD, Splus_D=Splus_D, Scross_D=Scross_D)
+                if jk:
+                    # union (two-sided) deletion, mirrored vs the box path: the chunked
+                    # (outer) axis is the position, so every pair contributes to the
+                    # position's patch always and to the shape's patch only where they differ.
+                    # Order matches the legacy jk loop (Splus_D_jk before DD_jk).
+                    chunked_patch = jk_pos_i[n]
+                    other_patches = jk_shape[cand][mask]
+                    other_diff = np.where(other_patches != chunked_patch)[0]
+                    w_pairs = weight_i[n] * weight_shape[cand][mask]
+                    if shapes:
+                        np.add.at(Splus_D_jk, (chunked_patch, ind_r, ind_2nd), w_pairs * e_plus[mask])
+                        np.add.at(Splus_D_jk,
+                                  (other_patches[other_diff], ind_r[other_diff], ind_2nd[other_diff]),
+                                  (w_pairs * e_plus[mask])[other_diff])
+                    np.add.at(DD_jk, (chunked_patch, ind_r, ind_2nd), w_pairs)
+                    np.add.at(DD_jk,
+                              (other_patches[other_diff], ind_r[other_diff], ind_2nd[other_diff]),
+                              w_pairs[other_diff])
+
+    return Grids(DD=DD, Splus_D=Splus_D, Scross_D=Scross_D, DD_jk=DD_jk, Splus_D_jk=Splus_D_jk)
 
 
 def accumulate(sample_set, binning, *, base, R=None, shapes=True,
                chunk_axis="shape", chunk_size_outer=100, jk=False, num_box=None,
-               pos_tree=None, backend="tree"):
+               pos_tree=None, shape_tree=None, backend="tree"):
     """Run the pair-accumulation loop and return the resulting grids.
 
     Implemented so far: box geometry, ``BoxRpPi`` / ``BoxRMuR`` binnings,
@@ -662,13 +712,16 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
                 "pair_kernel.accumulate: chunk_axis='position' (lightcone) requires a "
                 "SkyRpPi / SkyRMuR binning."
             )
-        if jk:
-            raise NotImplementedError(
-                "pair_kernel.accumulate: lightcone jk (jk=True) is a later migration step."
+        if jk and num_box is None:
+            raise ValueError("pair_kernel.accumulate: jk=True requires num_box (num_jk).")
+        if backend == "brute" and shape_tree is not None:
+            raise ValueError(
+                "pair_kernel.accumulate: shape_tree is meaningless with backend='brute'."
             )
         return _accumulate_lightcone(
             sample_set, binning, base=base, shapes=shapes,
             chunk_size_outer=chunk_size_outer, backend=backend,
+            jk=jk, num_jk=num_box, shape_tree=shape_tree,
         )
     if chunk_axis != "shape":
         raise NotImplementedError(

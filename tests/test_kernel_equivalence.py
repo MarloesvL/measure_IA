@@ -140,96 +140,148 @@ def _lc_mask_dict(obj):
     }
 
 
+def _lc_jk_indices(obj, num_jk=4):
+    """Fresh 0-based jackknife patch-id arrays aligned to the (unmasked) position and shape
+    samples. The assignment need only be a valid partition for the A/B comparison, not
+    physical; a fresh copy is returned per call because the jk methods mutate them in place
+    (``-= min``)."""
+    n_pos = len(obj.data["RA"])
+    n_shape = len(obj.data["RA_shape_sample"])
+    jk_pos = (np.arange(n_pos) % num_jk).astype(int)
+    jk_shape = (np.arange(n_shape) % num_jk).astype(int)
+    return jk_pos, jk_shape
+
+
 # ---------------------------------------------------------------------------
-# Step 6: lightcone non-jk families (measure_w_lightcone.py / measure_m_lightcone.py) via
-# accumulate(chunk_axis="position").
-#   - _{measure,count_pairs}_xi_rp_pi_lightcone_{brute,tree}   (SkyRpPi)
-#   - _{measure,count_pairs}_xi_r_mur_lightcone_{brute,tree}   (SkyRMuR)
+# Step 7: lightcone jackknife families (measure_w_lightcone_jk.py / measure_m_lightcone_jk.py)
+# via accumulate(chunk_axis="position", jk=True).
+#   - _{measure,count_pairs}_xi_{rp_pi,r_mur}_lightcone_jk_{brute,tree,batch,multiprocessing}
 #
-# Sky geometry: RA/DEC/z -> 3D comoving via pyccl; midpoint LOS n_LOS=(s1+s2)/|s1+s2|; e=(e1,e2)
-# pre-scaled by 1/(2R) so S+ grids are NOT divided by 2R. Position-outer chunked order (§4):
-# tree bit-identical, brute allclose (same pairs, all-shapes cross-join in position order).
-# print_num=False silences the per-call galaxy-count print in the harness.
+# Union-deletion mirrored vs the box path (chunked axis = position): each pair contributes to
+# its position patch always and its shape patch where they differ. Pure delete-one reduction
+# (Splus_D - Splus_D_jk[i]); responsivity is baked into e so there is NO per-realisation R_jk.
+# tree/mp bit-identical, brute allclose. Fresh jk arrays per call (methods mutate in place).
 # ---------------------------------------------------------------------------
 
 
-class TestKernelEquivalenceSkyRpPiMeasure:
+class TestKernelEquivalenceSkyRpPiJkMeasure:
     def test_tree(self, IA_mock_lc_n1):
         obj = IA_mock_lc_n1
-        obj._legacy_measure_xi_rp_pi_lightcone_tree(dataset_name=NAME_LEGACY, print_num=False)
-        obj._measure_xi_rp_pi_lightcone_tree(dataset_name=NAME_KERNEL, print_num=False)
+        jp, js = _lc_jk_indices(obj)
+        obj._legacy_measure_xi_rp_pi_lightcone_jk_tree(NAME_LEGACY, jp.copy(), js.copy(), print_num=False)
+        obj._measure_xi_rp_pi_lightcone_jk_tree(NAME_KERNEL, jp.copy(), js.copy(), print_num=False)
         _assert_groups_bit_identical(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
 
     def test_tree_masked(self, IA_mock_lc_n1):
         obj = IA_mock_lc_n1
-        obj._legacy_measure_xi_rp_pi_lightcone_tree(dataset_name=NAME_LEGACY, masks=_lc_mask_dict(obj), print_num=False)
-        obj._measure_xi_rp_pi_lightcone_tree(dataset_name=NAME_KERNEL, masks=_lc_mask_dict(obj), print_num=False)
+        m = _lc_mask_dict(obj)
+        n_pos = int(np.count_nonzero(m["RA"]))
+        n_shape = int(np.count_nonzero(m["RA_shape_sample"]))
+        jp = (np.arange(n_pos) % 4).astype(int)
+        js = (np.arange(n_shape) % 4).astype(int)
+        obj._legacy_measure_xi_rp_pi_lightcone_jk_tree(NAME_LEGACY, jp.copy(), js.copy(), masks=_lc_mask_dict(obj), print_num=False)
+        obj._measure_xi_rp_pi_lightcone_jk_tree(NAME_KERNEL, jp.copy(), js.copy(), masks=_lc_mask_dict(obj), print_num=False)
         _assert_groups_bit_identical(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
 
     def test_tree_responsivity_on(self, IA_mock_lc_n1):
         obj = IA_mock_lc_n1
         obj.responsivity_correction = True
-        obj._legacy_measure_xi_rp_pi_lightcone_tree(dataset_name=NAME_LEGACY, print_num=False)
-        obj._measure_xi_rp_pi_lightcone_tree(dataset_name=NAME_KERNEL, print_num=False)
+        jp, js = _lc_jk_indices(obj)
+        obj._legacy_measure_xi_rp_pi_lightcone_jk_tree(NAME_LEGACY, jp.copy(), js.copy(), print_num=False)
+        obj._measure_xi_rp_pi_lightcone_jk_tree(NAME_KERNEL, jp.copy(), js.copy(), print_num=False)
         _assert_groups_bit_identical(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
 
     def test_brute(self, IA_mock_lc_n1):
         obj = IA_mock_lc_n1
-        obj._legacy_measure_xi_rp_pi_lightcone_brute(dataset_name=NAME_LEGACY, print_num=False)
-        obj._measure_xi_rp_pi_lightcone_brute(dataset_name=NAME_KERNEL, print_num=False)
+        jp, js = _lc_jk_indices(obj)
+        obj._legacy_measure_xi_rp_pi_lightcone_jk_brute(NAME_LEGACY, jp.copy(), js.copy(), print_num=False)
+        obj._measure_xi_rp_pi_lightcone_jk_brute(NAME_KERNEL, jp.copy(), js.copy(), print_num=False)
         _assert_groups_allclose(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
 
+    def test_multiprocessing(self, IA_mock_lc_n8):
+        obj = IA_mock_lc_n8
+        tmp = os.path.dirname(obj.output_file_name)
+        jp, js = _lc_jk_indices(obj)
+        obj._legacy_measure_xi_rp_pi_lightcone_jk_multiprocessing(NAME_LEGACY, jp.copy(), js.copy(), tmp, num_nodes=2, chunk_size=150)
+        obj._measure_xi_rp_pi_lightcone_jk_multiprocessing(NAME_KERNEL, jp.copy(), js.copy(), tmp, num_nodes=2, chunk_size=150)
+        _assert_groups_bit_identical(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
 
-class TestKernelEquivalenceSkyRpPiCountPairs:
+
+class TestKernelEquivalenceSkyRpPiJkCountPairs:
     def test_tree(self, IA_mock_lc_n1):
         obj = IA_mock_lc_n1
-        obj._legacy_count_pairs_xi_rp_pi_lightcone_tree(dataset_name=NAME_LEGACY, print_num=False)
-        obj._count_pairs_xi_rp_pi_lightcone_tree(dataset_name=NAME_KERNEL, print_num=False)
+        jp, js = _lc_jk_indices(obj)
+        obj._legacy_count_pairs_xi_rp_pi_lightcone_jk_tree(NAME_LEGACY, jp.copy(), js.copy(), print_num=False)
+        obj._count_pairs_xi_rp_pi_lightcone_jk_tree(NAME_KERNEL, jp.copy(), js.copy(), print_num=False)
         _assert_groups_bit_identical(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
 
     def test_brute(self, IA_mock_lc_n1):
         obj = IA_mock_lc_n1
-        obj._legacy_count_pairs_xi_rp_pi_lightcone_brute(dataset_name=NAME_LEGACY, print_num=False)
-        obj._count_pairs_xi_rp_pi_lightcone_brute(dataset_name=NAME_KERNEL, print_num=False)
+        jp, js = _lc_jk_indices(obj)
+        obj._legacy_count_pairs_xi_rp_pi_lightcone_jk_brute(NAME_LEGACY, jp.copy(), js.copy(), print_num=False)
+        obj._count_pairs_xi_rp_pi_lightcone_jk_brute(NAME_KERNEL, jp.copy(), js.copy(), print_num=False)
         _assert_groups_allclose(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
 
-
-class TestKernelEquivalenceSkyRMuRMeasure:
-    def test_tree(self, IA_mock_lc_n1):
-        obj = IA_mock_lc_n1
-        obj._legacy_measure_xi_r_mur_lightcone_tree(dataset_name=NAME_LEGACY, print_num=False)
-        obj._measure_xi_r_mur_lightcone_tree(dataset_name=NAME_KERNEL, print_num=False)
+    def test_multiprocessing(self, IA_mock_lc_n8):
+        obj = IA_mock_lc_n8
+        tmp = os.path.dirname(obj.output_file_name)
+        jp, js = _lc_jk_indices(obj)
+        obj._legacy_count_pairs_xi_rp_pi_lightcone_jk_multiprocessing(NAME_LEGACY, jp.copy(), js.copy(), tmp, num_nodes=2, chunk_size=150)
+        obj._count_pairs_xi_rp_pi_lightcone_jk_multiprocessing(NAME_KERNEL, jp.copy(), js.copy(), tmp, num_nodes=2, chunk_size=150)
         _assert_groups_bit_identical(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
 
-    def test_tree_masked(self, IA_mock_lc_n1):
+
+class TestKernelEquivalenceSkyRMuRJkMeasure:
+    def test_tree(self, IA_mock_lc_n1):
         obj = IA_mock_lc_n1
-        obj._legacy_measure_xi_r_mur_lightcone_tree(dataset_name=NAME_LEGACY, masks=_lc_mask_dict(obj), print_num=False)
-        obj._measure_xi_r_mur_lightcone_tree(dataset_name=NAME_KERNEL, masks=_lc_mask_dict(obj), print_num=False)
+        jp, js = _lc_jk_indices(obj)
+        obj._legacy_measure_xi_r_mur_lightcone_jk_tree(NAME_LEGACY, jp.copy(), js.copy(), print_num=False)
+        obj._measure_xi_r_mur_lightcone_jk_tree(NAME_KERNEL, jp.copy(), js.copy(), print_num=False)
         _assert_groups_bit_identical(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
 
     def test_tree_responsivity_on(self, IA_mock_lc_n1):
         obj = IA_mock_lc_n1
         obj.responsivity_correction = True
-        obj._legacy_measure_xi_r_mur_lightcone_tree(dataset_name=NAME_LEGACY, print_num=False)
-        obj._measure_xi_r_mur_lightcone_tree(dataset_name=NAME_KERNEL, print_num=False)
+        jp, js = _lc_jk_indices(obj)
+        obj._legacy_measure_xi_r_mur_lightcone_jk_tree(NAME_LEGACY, jp.copy(), js.copy(), print_num=False)
+        obj._measure_xi_r_mur_lightcone_jk_tree(NAME_KERNEL, jp.copy(), js.copy(), print_num=False)
         _assert_groups_bit_identical(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
 
     def test_brute(self, IA_mock_lc_n1):
         obj = IA_mock_lc_n1
-        obj._legacy_measure_xi_r_mur_lightcone_brute(dataset_name=NAME_LEGACY, print_num=False)
-        obj._measure_xi_r_mur_lightcone_brute(dataset_name=NAME_KERNEL, print_num=False)
+        jp, js = _lc_jk_indices(obj)
+        obj._legacy_measure_xi_r_mur_lightcone_jk_brute(NAME_LEGACY, jp.copy(), js.copy(), print_num=False)
+        obj._measure_xi_r_mur_lightcone_jk_brute(NAME_KERNEL, jp.copy(), js.copy(), print_num=False)
         _assert_groups_allclose(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
 
+    def test_multiprocessing(self, IA_mock_lc_n8):
+        obj = IA_mock_lc_n8
+        tmp = os.path.dirname(obj.output_file_name)
+        jp, js = _lc_jk_indices(obj)
+        obj._legacy_measure_xi_r_mur_lightcone_jk_multiprocessing(NAME_LEGACY, jp.copy(), js.copy(), tmp, num_nodes=2, chunk_size=150)
+        obj._measure_xi_r_mur_lightcone_jk_multiprocessing(NAME_KERNEL, jp.copy(), js.copy(), tmp, num_nodes=2, chunk_size=150)
+        _assert_groups_bit_identical(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
 
-class TestKernelEquivalenceSkyRMuRCountPairs:
+
+class TestKernelEquivalenceSkyRMuRJkCountPairs:
     def test_tree(self, IA_mock_lc_n1):
         obj = IA_mock_lc_n1
-        obj._legacy_count_pairs_xi_r_mur_lightcone_tree(dataset_name=NAME_LEGACY, print_num=False)
-        obj._count_pairs_xi_r_mur_lightcone_tree(dataset_name=NAME_KERNEL, print_num=False)
+        jp, js = _lc_jk_indices(obj)
+        obj._legacy_count_pairs_xi_r_mur_lightcone_jk_tree(NAME_LEGACY, jp.copy(), js.copy(), print_num=False)
+        obj._count_pairs_xi_r_mur_lightcone_jk_tree(NAME_KERNEL, jp.copy(), js.copy(), print_num=False)
         _assert_groups_bit_identical(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
 
     def test_brute(self, IA_mock_lc_n1):
         obj = IA_mock_lc_n1
-        obj._legacy_count_pairs_xi_r_mur_lightcone_brute(dataset_name=NAME_LEGACY, print_num=False)
-        obj._count_pairs_xi_r_mur_lightcone_brute(dataset_name=NAME_KERNEL, print_num=False)
+        jp, js = _lc_jk_indices(obj)
+        obj._legacy_count_pairs_xi_r_mur_lightcone_jk_brute(NAME_LEGACY, jp.copy(), js.copy(), print_num=False)
+        obj._count_pairs_xi_r_mur_lightcone_jk_brute(NAME_KERNEL, jp.copy(), js.copy(), print_num=False)
         _assert_groups_allclose(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
+
+    def test_multiprocessing(self, IA_mock_lc_n8):
+        obj = IA_mock_lc_n8
+        tmp = os.path.dirname(obj.output_file_name)
+        jp, js = _lc_jk_indices(obj)
+        obj._legacy_count_pairs_xi_r_mur_lightcone_jk_multiprocessing(NAME_LEGACY, jp.copy(), js.copy(), tmp, num_nodes=2, chunk_size=150)
+        obj._count_pairs_xi_r_mur_lightcone_jk_multiprocessing(NAME_KERNEL, jp.copy(), js.copy(), tmp, num_nodes=2, chunk_size=150)
+        _assert_groups_bit_identical(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
