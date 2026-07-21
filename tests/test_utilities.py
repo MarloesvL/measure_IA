@@ -205,6 +205,244 @@ class TestReadData:
 
 
 # ===========================================================================
+# 2b. ReadData: multi-file simulation readers
+# ===========================================================================
+
+class TestReadDataSimulationFiles:
+    """read_subhalo / read_snapshot / read_snapshot_multiple against synthetic
+    multi-file HDF5 sets laid out like the TNG group-catalogue and snapshot
+    files (``<folder>.<n>.hdf5``, one group per particle/subhalo type).
+
+    The real ``N_files`` for TNG300 is 600; the fixtures write three files and
+    override ``N_files`` so the readers walk exactly the files that exist.
+    """
+
+    SNAP = 99
+    NFILES = 3
+
+    def _write_file_set(self, tmp_path, folder, group, datasets, nfiles=NFILES,
+                        skip_in=()):
+        """Write ``nfiles`` HDF5 files, splitting each dataset row-wise.
+
+        Parameters
+        ----------
+        datasets : dict
+            name -> full array, split into ``nfiles`` equal chunks.
+        skip_in : iterable of (file index, dataset name)
+            Datasets deliberately omitted from a file, to exercise the
+            "problem at file n" skip branch.
+
+        Returns the dict of full arrays for comparison.
+        """
+        import os
+        base = str(tmp_path) + "/" + folder            # folder starts with "/"
+        os.makedirs(os.path.dirname(base), exist_ok=True)
+        for n in range(nfiles):
+            with h5py.File(f"{base}.{n}.hdf5", "w") as f:
+                grp = f.create_group(group)
+                for name, full in datasets.items():
+                    if (n, name) in skip_in:
+                        continue
+                    chunk = np.array_split(full, nfiles)[n]
+                    grp.create_dataset(name, data=chunk)
+        return datasets
+
+    def _reader(self, tmp_path, catalogue, output_file_name=None):
+        r = ReadData(
+            simulation="TNG300",
+            catalogue=catalogue,
+            snapshot=self.SNAP,
+            output_file_name=output_file_name,
+            data_path=str(tmp_path),
+        )
+        r.N_files = self.NFILES
+        return r
+
+    # -----------------------------------------------------------------------
+    # read_subhalo
+    # -----------------------------------------------------------------------
+
+    def test_read_subhalo_concatenates_1d(self, tmp_path):
+        reader = self._reader(tmp_path, "Subhalo")
+        full = np.arange(30, dtype=float)
+        self._write_file_set(tmp_path, reader.fof_folder, "Subhalo",
+                             {"Mass": full})
+        np.testing.assert_array_equal(reader.read_subhalo("Mass"), full)
+
+    def test_read_subhalo_stacks_2d(self, tmp_path):
+        reader = self._reader(tmp_path, "Subhalo")
+        full = np.arange(30, dtype=float).reshape(10, 3)
+        self._write_file_set(tmp_path, reader.fof_folder, "Subhalo",
+                             {"Pos": full})
+        np.testing.assert_array_equal(reader.read_subhalo("Pos"), full)
+
+    def test_read_subhalo_nfiles_argument_limits_files(self, tmp_path):
+        """Nfiles=2 reads only the first two of the three written files."""
+        reader = self._reader(tmp_path, "Subhalo")
+        full = np.arange(30, dtype=float)
+        self._write_file_set(tmp_path, reader.fof_folder, "Subhalo",
+                             {"Mass": full})
+        expected = np.concatenate(np.array_split(full, self.NFILES)[:2])
+        np.testing.assert_array_equal(reader.read_subhalo("Mass", Nfiles=2),
+                                      expected)
+
+    def test_read_subhalo_unknown_dataset_raises_with_options(self, tmp_path):
+        reader = self._reader(tmp_path, "Subhalo")
+        self._write_file_set(tmp_path, reader.fof_folder, "Subhalo",
+                             {"Mass": np.arange(30, dtype=float)})
+        with pytest.raises(KeyError, match="Mass"):     # lists what is available
+            reader.read_subhalo("NotThere")
+
+    def test_read_subhalo_missing_file_raises_oserror(self, tmp_path):
+        """Only file 0 exists but N_files says 3 -> clear OSError, not a raw
+        h5py error."""
+        reader = self._reader(tmp_path, "Subhalo")
+        self._write_file_set(tmp_path, reader.fof_folder, "Subhalo",
+                             {"Mass": np.arange(30, dtype=float)}, nfiles=1)
+        with pytest.raises(OSError, match="Could not open file 1"):
+            reader.read_subhalo("Mass")
+
+    def test_read_subhalo_skips_file_missing_the_dataset(self, tmp_path):
+        """A file lacking the dataset is skipped, the rest still concatenate."""
+        reader = self._reader(tmp_path, "Subhalo")
+        full = np.arange(30, dtype=float)
+        self._write_file_set(tmp_path, reader.fof_folder, "Subhalo",
+                             {"Mass": full}, skip_in=[(1, "Mass")])
+        chunks = np.array_split(full, self.NFILES)
+        expected = np.concatenate([chunks[0], chunks[2]])
+        np.testing.assert_array_equal(reader.read_subhalo("Mass"), expected)
+
+    # -----------------------------------------------------------------------
+    # read_snapshot
+    # -----------------------------------------------------------------------
+
+    def test_read_snapshot_concatenates_1d(self, tmp_path):
+        reader = self._reader(tmp_path, "PartType4")
+        full = np.arange(30, dtype=float)
+        self._write_file_set(tmp_path, reader.snap_folder, "PartType4",
+                             {"Mass": full})
+        np.testing.assert_array_equal(reader.read_snapshot("Mass"), full)
+
+    def test_read_snapshot_stacks_2d(self, tmp_path):
+        reader = self._reader(tmp_path, "PartType4")
+        full = np.arange(30, dtype=float).reshape(10, 3)
+        self._write_file_set(tmp_path, reader.snap_folder, "PartType4",
+                             {"Coordinates": full})
+        np.testing.assert_array_equal(reader.read_snapshot("Coordinates"), full)
+
+    def test_read_snapshot_writes_to_output_file(self, tmp_path):
+        """With output_file_name set the data is streamed to the output file
+        (resizable dataset) and nothing is returned."""
+        out = str(tmp_path / "snap_out.hdf5")
+        reader = self._reader(tmp_path, "PartType4", output_file_name=out)
+        full = np.arange(30, dtype=float).reshape(10, 3)
+        self._write_file_set(tmp_path, reader.snap_folder, "PartType4",
+                             {"Coordinates": full})
+
+        assert reader.read_snapshot("Coordinates") is None
+        with h5py.File(out, "r") as f:
+            np.testing.assert_array_equal(
+                f[f"Snapshot_{self.SNAP}/Coordinates"][:], full)
+
+    def test_read_snapshot_output_file_overwrites_existing_dataset(self, tmp_path):
+        """Re-reading into the same output file replaces, not appends."""
+        out = str(tmp_path / "snap_out_twice.hdf5")
+        reader = self._reader(tmp_path, "PartType4", output_file_name=out)
+        full = np.arange(30, dtype=float)
+        self._write_file_set(tmp_path, reader.snap_folder, "PartType4",
+                             {"Mass": full})
+
+        reader.read_snapshot("Mass")
+        reader.read_snapshot("Mass")
+        with h5py.File(out, "r") as f:
+            np.testing.assert_array_equal(
+                f[f"Snapshot_{self.SNAP}/Mass"][:], full)
+
+    def test_read_snapshot_unknown_dataset_raises_with_options(self, tmp_path):
+        reader = self._reader(tmp_path, "PartType4")
+        self._write_file_set(tmp_path, reader.snap_folder, "PartType4",
+                             {"Mass": np.arange(30, dtype=float)})
+        with pytest.raises(KeyError, match="Mass"):
+            reader.read_snapshot("NotThere")
+
+    # -----------------------------------------------------------------------
+    # read_snapshot_multiple
+    # -----------------------------------------------------------------------
+
+    def test_read_snapshot_multiple_writes_all_datasets(self, tmp_path):
+        out = str(tmp_path / "snap_multi.hdf5")
+        reader = self._reader(tmp_path, "PartType4", output_file_name=out)
+        mass = np.arange(30, dtype=float)
+        pos = np.arange(90, dtype=float).reshape(30, 3)
+        self._write_file_set(tmp_path, reader.snap_folder, "PartType4",
+                             {"Mass": mass, "Coordinates": pos})
+
+        assert reader.read_snapshot_multiple(["Mass", "Coordinates"]) is None
+        with h5py.File(out, "r") as f:
+            grp = f[f"Snapshot_{self.SNAP}"]
+            np.testing.assert_array_equal(grp["Mass"][:], mass)
+            np.testing.assert_array_equal(grp["Coordinates"][:], pos)
+
+    def test_read_snapshot_multiple_unknown_dataset_raises_with_options(
+            self, tmp_path):
+        reader = self._reader(tmp_path, "PartType4")
+        self._write_file_set(tmp_path, reader.snap_folder, "PartType4",
+                             {"Mass": np.arange(30, dtype=float)})
+        with pytest.raises(KeyError, match="NotThere"):
+            reader.read_snapshot_multiple(["Mass", "NotThere"])
+
+    # -----------------------------------------------------------------------
+    # read_modelling_outputs
+    # -----------------------------------------------------------------------
+
+    def _write_modelling_file(self, tmp_path, name, groups, snap_group=None,
+                              z=None):
+        p = str(tmp_path / f"{name}.hdf5")
+        with h5py.File(p, "w") as f:
+            parent = f
+            if snap_group is not None:
+                parent = f.create_group(snap_group)
+                parent.attrs["z"] = z
+            for gname, attrs in groups.items():
+                grp = parent.create_group(gname)
+                for k, v in attrs.items():
+                    grp.attrs[k] = v
+        return p
+
+    _FIT = {"A_IA": 1.5, "A_IA_err": 0.2, "b_g": 2.0, "b_g_err": 0.1}
+
+    def test_read_modelling_outputs_populates_both_groups(self, tmp_path):
+        reader = ReadData("TNG300", "unused", None, data_path=str(tmp_path))
+        self._write_modelling_file(tmp_path, "fits",
+                                   {"w": self._FIT, "multipoles": self._FIT})
+        reader.read_modelling_outputs("fits")
+
+        assert reader.w_A_IA == pytest.approx(1.5)
+        assert reader.w_A_IA_err == pytest.approx(0.2)
+        assert reader.w_b_g == pytest.approx(2.0)
+        assert reader.w_b_g_err == pytest.approx(0.1)
+        assert reader.multipoles_A_IA == pytest.approx(1.5)
+        assert reader.multipoles_b_g_err == pytest.approx(0.1)
+
+    def test_read_modelling_outputs_missing_group_is_skipped(self, tmp_path):
+        reader = ReadData("TNG300", "unused", None, data_path=str(tmp_path))
+        self._write_modelling_file(tmp_path, "fits_w_only", {"w": self._FIT})
+        reader.read_modelling_outputs("fits_w_only")
+
+        assert reader.w_A_IA == pytest.approx(1.5)
+        assert not hasattr(reader, "multipoles_A_IA")
+
+    def test_read_modelling_outputs_snapshot_group_reads_redshift(self, tmp_path):
+        reader = ReadData("TNG300", "unused", 99, data_path=str(tmp_path))
+        self._write_modelling_file(tmp_path, "fits_snap", {"w": self._FIT},
+                                   snap_group="Snapshot_99", z=0.3)
+        reader.read_modelling_outputs("fits_snap")
+
+        assert reader.z == pytest.approx(0.3)
+        assert reader.w_A_IA == pytest.approx(1.5)
+
+
+# ===========================================================================
 # 3. MeasureJackknife.measure_covariance_multiple_datasets
 # ===========================================================================
 
