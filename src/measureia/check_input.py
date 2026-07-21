@@ -57,6 +57,8 @@ class CheckInput:
 			folder_path = os.path.dirname(path) or "."
 			if not os.path.exists(folder_path):
 				raise FileNotFoundError(f"{path} does not exist.")
+			if not os.access(folder_path, os.W_OK):
+				raise PermissionError(f"The output folder for {path} is not writable: {folder_path}")
 		return
 
 	@staticmethod

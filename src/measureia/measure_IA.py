@@ -271,7 +271,7 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			the data to apply selections. Default is None.
 		rp_cut : float or NoneType, optional
 			Applies a minimum r_p value condition for pairs to be included. Default is None.
-		chunck_size: int, optional
+		chunk_size: int, optional
 			Size of the chunks of data sent to each multiprocessing node. If larger, more RAM is needed per node.
 		ellipticity : str, optional
 			Definition of ellipticity. Choose from 'distortion', defined as (1-q^2)/(1+q^2), or 'ellipticity', defined

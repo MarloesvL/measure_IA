@@ -394,3 +394,14 @@ class TestNumericParamValidation:
         obj = self._box(tmp_path)
         with pytest.raises(ValueError, match="num_jk"):
             obj.measure_xi_w("d", "both", -1, temp_file_path=False)
+
+
+# ---------------------------------------------------------------------------
+# 5. ReadData missing-file error
+# ---------------------------------------------------------------------------
+
+def test_read_data_missing_file_raises(tmp_path):
+    from measureia import ReadData
+    rd = ReadData(False, "does_not_exist", None, data_path=str(tmp_path))
+    with pytest.raises(FileNotFoundError, match="Data file not found"):
+        rd.read_cat("anything")

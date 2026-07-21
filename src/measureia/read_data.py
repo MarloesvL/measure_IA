@@ -1,3 +1,4 @@
+import os
 import h5py
 import numpy as np
 from .Sim_info import SimInfo
@@ -109,7 +110,10 @@ class ReadData(SimInfo):
 		elif self.catalogue == "Snapshot":
 			raise KeyError("Use read_snapshot method")
 
-		file = h5py.File(f"{self.data_path}{self.catalogue}.hdf5", "r")
+		catalogue_path = f"{self.data_path}{self.catalogue}.hdf5"
+		if not os.path.exists(catalogue_path):
+			raise FileNotFoundError(f"Data file not found: {catalogue_path}")
+		file = h5py.File(catalogue_path, "r")
 		if cut is None and indices is None:
 			data = file[self.snap_group + self.sub_group + dataset_name][:]
 		elif cut is not None:
@@ -376,6 +380,20 @@ class ReadData(SimInfo):
 		return
 
 	def read_modelling_outputs(self, catalogue):
+		"""Reads fitted IA/bias modelling parameters from a results HDF5 file and stores them on
+		the object.
+
+		Reads the ``A_IA``/``b_g`` amplitudes and their errors, written as HDF5 attributes on the
+		``w`` and/or ``multipoles`` groups (of ``self.snap_group`` when set), into
+		``self.{w,multipoles}_{A_IA,A_IA_err,b_g,b_g_err}``. A group that is absent is skipped.
+		``self.z`` is read from the snapshot-group attributes when a snapshot group is used.
+
+		Parameters
+		----------
+		catalogue : str
+			Base name (without extension) of the ``.hdf5`` results file under ``self.data_path``.
+
+		"""
 		file = h5py.File(f"{self.data_path}{catalogue}.hdf5", "r")
 		if self.snap_group != "":
 			data_group = file[self.snap_group]
