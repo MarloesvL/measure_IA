@@ -135,20 +135,22 @@ P1 = features, P2 = input validation, P3 = test suite, P4 = cleanup & docs.
 
 ## P3 — Test suite
 
-- [ ] **Test infra**: `[tool.pytest.ini_options]` added to `pyproject.toml` (`testpaths`,
-  `xfail_strict = true`). Still open — both are policy choices: a `filterwarnings` setting
-  and a CI workflow (`.github/workflows/tests.yml`, Python version matrix; optionally
-  `pytest-cov`).
+- [x] **Test infra**: *Done: `[tool.pytest.ini_options]` in `pyproject.toml` (`testpaths`,
+  `xfail_strict = true`) and `.github/workflows/tests.yml` — uv-based, push to main/dev +
+  PRs + manual, Python 3.10/3.11/3.12 (3.13 excluded: numpy 1.26.4 has no cp313 wheels;
+  reason recorded in the workflow). Suite verified locally on 3.10 and 3.12 too. Not added:
+  `filterwarnings` (the suite raises ~1000 deliberate RuntimeWarnings about empty RR bins —
+  worth a policy pass of its own) and `pytest-cov`.*
 - [x] **Resolve parked xfails.** *Done: the P0 fixes resolved all of them; the class was
   renamed `TestEdgeCasesNowHandled`, the markers removed, and the docstring references to the
   non-existent `fixes_measure_IA_base.py` dropped. The suite has zero xfails.*
 - [x] **Dead/stale test scaffolding**: *Done: the unused `_out`/`_ref`/`PROC_PATH` constants
   and duplicate `NUM_JK` removed from the two lightcone test modules; `TestRegressionW/M`
   renamed to `TestDeterminismW/M` (they compare two runs of the same configuration, not a
-  committed reference); stale `conftest_lc.py` docstring references fixed.* Still open: the
-  fate of the unused `tests/data/**/*.hdf5` files (6 tracked files, 9.5 MB, referenced by no
-  test since the suite moved to synthetic fixtures) — deletion is a user decision.
-- [ ] **New coverage** (mirror existing box tests to the lightcone and fill gaps):
+  committed reference); stale `conftest_lc.py` docstring references fixed; the 6 unused
+  `tests/data/**/*.hdf5` files (9.5 MB, referenced by no test since the suite moved to
+  synthetic fixtures) removed.*
+- [x] **New coverage** (mirror existing box tests to the lightcone and fill gaps):
   - [x] lightcone invalid `num_jk` / invalid `ellipticity`: covered by the existing
     invalid-estimator / invalid-corr_type / one-based-patch tests plus the new
     `assign_jackknife_patches` num_jk validation;
@@ -158,12 +160,12 @@ P1 = features, P2 = input validation, P3 = test suite, P4 = cleanup & docs.
     `create_full_cov_matrix_projections` (`TestCovarianceUtilitiesLightcone`);
   - [x] unit tests for `assign_jackknife_patches` (structure, label range, patch coverage,
     seed determinism, global random-state restoration, invalid num_jk);
-  - [ ] small-sample jackknife: `num_jk > N`, empty patch → finite covariance or a clear
-    error. **Blocked on a source decision**: `assign_jackknife_patches` guards
-    `num_jk <= len(randoms)`, but `kmeans_radec.kmeans_sample` draws `max(2*sqrt(N),
-    10*num_jk)` points *without replacement*, so anything below ~10 randoms per patch dies
-    with a bare `ValueError: Sample larger than population` from the stdlib. The guard
-    should probably require `10 * num_jk <= len(randoms)`.
+  - [x] small-sample jackknife. *The `assign_jackknife_patches` guard was too loose:
+    `kmeans_radec.kmeans_sample` draws `max(2*sqrt(N), 10*num_jk)` points **without
+    replacement**, so anything below ~10 randoms per patch died with a bare
+    `ValueError: Sample larger than population` from the stdlib. The guard now requires
+    `10 * num_jk <= len(randoms)` and says so. Tests: below the limit raises, exactly ten
+    per patch works, `num_jk` may still exceed the number of data objects.*
   - [x] non-default `cosmology` argument (lightcone); `rp_cut` (box multipoles) already has
     a regression test from the P1 work;
   - [x] a multiprocessing test whose catalogue size does not divide evenly by chunk size
