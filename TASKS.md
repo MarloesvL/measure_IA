@@ -115,28 +115,23 @@ P1 = features, P2 = input validation, P3 = test suite, P4 = cleanup & docs.
 
 ## P2 — Input validation & error messages
 
-- [ ] **Symmetrize validation: add Lightcone type/shape checks.** The Box got
-  `check_type_input_data`/`check_units_coordinates` in PR #61; the Lightcone only got
-  key-existence + path checks (`measure_IA_lightcone.py:117-127`). Add a lightcone variant:
-  RA/DEC/redshift/e1/e2 are ndarrays, consistent lengths (e1/e2 vs shape sample),
-  RA ∈ [0, 360], DEC ∈ [-90, 90], finite values.
-- [ ] **Harden `check_type_input_data`** (`check_input.py:78-104`): replace bare `assert`s
-  (stripped under `python -O`, no message) with `TypeError`/`ValueError` + messages; accept
-  `np.integer` for `LOS` (currently `np.int64(2)` fails); add length-consistency checks
-  (`q`, `Axis_Direction`, `weight*` vs their samples) and NaN/inf checks.
-- [ ] **Validate option strings at method entry.** Box `corr_type` currently fails only *after*
-  the full pair count (`measure_IA_base.py:418/499`; jk path `measure_IA.py:196/297`);
-  `ellipticity` only inside the backends. Check both at the top of
-  `measure_xi_w`/`measure_xi_multipoles`, mirroring the lightcone's up-front `IA_estimator`
-  check (`measure_IA_lightcone.py:450-466`). Unify the exception type for unknown options
-  (currently a mix of `KeyError`/`ValueError`).
-- [ ] **Validate numeric constructor params** (`measure_IA_base.py:154-166`):
-  `num_bins_r`/`num_bins_pi` >= 1; `separation_limits` has 2 elements with
-  `0 < r_min < r_max`; `boxsize > 0`; `num_nodes >= 1`; lightcone `num_jk` bounds vs sample
-  size before `kmeans_sample` (`measure_jackknife.py:94`); Box negative `num_jk` is currently
-  silently treated as 0.
-- [ ] **`check_units_coordinates`** (`check_input.py:60-76`): handle 1-D coordinate arrays
-  gracefully instead of a confusing indexing error.
+- [x] **Symmetrize validation: add Lightcone type/shape checks.** *Done: new
+  `check_type_input_data_lightcone` (finite 1-D ndarrays; density- and shape-sample
+  coordinate lengths internally consistent; RA ∈ [0,360], DEC ∈ [-90,90]), wired into the
+  MeasureIALightcone constructor. Tests added.*
+- [x] **Harden `check_type_input_data`** *Done: bare asserts → TypeError/ValueError with
+  messages; `np.integer` LOS accepted; length-consistency (Axis_Direction/q vs shape sample)
+  and NaN/inf checks added. Tests updated + added.*
+- [x] **Validate option strings at method entry.** *Done: `MeasureIABox._validate_measure_options`
+  called at the top of `measure_xi_w`/`measure_xi_multipoles` — corr_type and ellipticity
+  checked up front with a uniform ValueError; negative num_jk now raises. Box invalid-corr_type
+  tests updated to ValueError.*
+- [x] **Validate numeric constructor params.** *Done: num_bins_r/num_bins_pi ≥ 1,
+  separation_limits length-2 with 0 < r_min < r_max, boxsize > 0 (when set), pi_max > 0 (when
+  set) in MeasureIABase; num_nodes ≥ 1 in both subclasses; lightcone num_jk bounded by the
+  number of randoms in assign_jackknife_patches; negative Box num_jk raises. Tests added.*
+- [x] **`check_units_coordinates`** *Done: rejects non-(N,3) input with a clear message
+  instead of a confusing indexing error on 1-D arrays.*
 
 ## P3 — Test suite
 
@@ -167,15 +162,15 @@ P1 = features, P2 = input validation, P3 = test suite, P4 = cleanup & docs.
 
 ## P4 — Cleanup & docs
 
-- [ ] **Dead code**: remove `_measure_xi_rp_pi_lightcone_brute_old` and
-  `_count_pairs_xi_rp_pi_lightcone_brute_old` (`measure_w_lightcone.py:247`, `:788`); remove or
-  implement the commented `auto`-correlation branches (Box hardcodes `corrtype="cross"`);
-  remove the commented variance lines in `_measure_w_g_i`.
-- [ ] **Docstring fixes**: phantom `randoms_data` parameter in the lightcone measure methods;
-  undocumented `responsivity`/`tree`/`temp_file_path` parameters; "chunck_size" typo
-  (`measure_IA.py:235`); sync the `SimInfo` simulation lists (class docstring vs `get_specs`
-  vs `get_file_info` disagree on COLIBRE/FLAMINGO variants); add a docstring to
-  `read_modelling_outputs`.
+- [x] **Dead code**: *Done. The `*_old` lightcone methods and the commented auto-correlation
+  branches were removed during the kernel-consolidation refactor (`*_old`) and P0 triage (`auto`);
+  the commented variance lines in `_measure_w_g_i` are now removed too.*
+- [x] **Docstring fixes**: *Done: "chunck_size" typo fixed; SimInfo simulation lists synced across
+  the class/__init__/get_specs docstrings and the get_file_info error (COLIBRE + TNG100_2 added,
+  misleading FLAMINGO mass variants and the ",," typo removed); docstring added to
+  read_modelling_outputs. The phantom `randoms_data` param was already removed from the lightcone
+  backend methods by the refactor. (Remaining: audit undocumented responsivity/tree/temp_file_path
+  params across the public methods.)*
 - [x] **Outstanding TODOs in code** — triaged (user-approved 2026-07-18):
   *`min_patch=1`: won't-fix — 1-based patch indices now raise a clear `ValueError` telling the
   user to renumber (test added); `auto` corrtype: dead commented-out branches deleted from the
@@ -183,5 +178,6 @@ P1 = features, P2 = input validation, P3 = test suite, P4 = cleanup & docs.
   branch kept); `++` correlation: deferred post-JOSS, comment updated to say so.* Still open
   from this list: "deal with masks" in the lightcone dispatchers (`measure_IA_lightcone.py`,
   the `# ToDo: deal with masks` sites) — belongs with the P2 lightcone-masks work.
-- [ ] **`check_paths`**: also verify writability and input-file existence; give a clear error
-  for a missing HDF5 file in `ReadData` (currently a raw `OSError`).
+- [x] **`check_paths`**: *Done: check_paths rejects a non-writable output folder
+  (PermissionError); ReadData.read_cat raises a clear FileNotFoundError for a missing data file
+  instead of a raw h5py OSError. Test added.*
