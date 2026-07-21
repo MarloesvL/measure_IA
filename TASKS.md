@@ -192,7 +192,32 @@ P1 = features, P2 = input validation, P3 = test suite, P4 = cleanup & docs.
   Box backends, DD documented as cross-count-only (`get_random_pairs`' tested `auto` utility
   branch kept); `++` correlation: deferred post-JOSS, comment updated to say so.* Still open
   from this list: "deal with masks" in the lightcone dispatchers (`measure_IA_lightcone.py`,
-  the `# ToDo: deal with masks` sites) — belongs with the P2 lightcone-masks work.
+  the `# ToDo: deal with masks` sites) — *now closed: both dispatcher mask blocks were
+  replaced by `_sample_coordinates()` / `_field_mask()` during the P3 pass.*
 - [x] **`check_paths`**: *Done: check_paths rejects a non-writable output folder
   (PermissionError); ReadData.read_cat raises a clear FileNotFoundError for a missing data file
   instead of a raw h5py OSError. Test added.*
+
+## P5 — Next session (queued 2026-07-21)
+
+- [ ] **Warnings policy.** Make a plan before touching `filterwarnings`. The suite emits
+  ~1000 warnings per run, nearly all the deliberate `RuntimeWarning` from
+  `measure_IA_base.py` about bins with zero empirical random-random pairs (plus
+  `invalid value encountered in divide/sqrt` from the same NaN bins). Decide: which of
+  these are genuine user-facing signals worth keeping, which should be raised once per run
+  rather than per call, whether the numpy divide warnings should be suppressed at the
+  division sites (`np.errstate`) now that the NaN is intentional and documented, and only
+  then what `filterwarnings` belongs in `[tool.pytest.ini_options]` (e.g. `error` with
+  targeted ignores, so new warnings cannot appear unnoticed).
+- [ ] **Support newer numpy and Python.** `pyproject.toml` pins `numpy~=1.26.2`, which has
+  wheels for cp310-cp312 only — that is why `.github/workflows/tests.yml` stops at 3.12
+  while `requires-python` advertises `>=3.10`. Move to `numpy>=2.1` (check `astropy`,
+  `scipy`, `pyccl`, `h5py`, `matplotlib`, `sympy` pins at the same time; several are `~=`
+  pins that will need widening), fix any numpy-2 API breakage, re-run the validation
+  reference tests to confirm the committed tolerances still hold, then add 3.13 (and 3.14?)
+  to the CI matrix and state the supported range honestly in `requires-python` and the docs.
+- [ ] **Documentation review.** Take a proper look at the current docs (mkdocs site + the
+  docstrings) before the JOSS submission: what is missing, what is stale after the kernel
+  refactor and the P0-P3 changes, and whether the public API is documented end to end
+  (incl. the `responsivity`, `tree`, `temp_file_path` params flagged in the P4 docstring
+  item above).
