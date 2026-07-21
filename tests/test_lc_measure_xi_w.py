@@ -458,6 +458,28 @@ class TestMasksW:
         # After masking there should still be some non-zero bins
         assert np.any(_read(IA_mock_lc_n1, "w/xi_g_plus", "lc_mask_gp") != 0)
 
+    def test_partial_mask_dict_matches_full_dict(self, IA_mock_lc_n1,
+                                                 IA_mock_lc_n8, lc_masks,
+                                                 tmp_path):
+        """A mask dict giving only the coordinate keys must behave exactly
+        like one listing every field: missing keys fall back to their sample's
+        coordinate mask, the same rule the backends use."""
+        partial = {"RA": lc_masks["RA"],
+                   "RA_shape_sample": lc_masks["RA_shape_sample"]}
+        IA_mock_lc_n1.measure_xi_w(
+            "galaxies", "lc_mask_full", "both",
+            measure_cov=False, tree=True, masks=lc_masks,
+            temp_file_path=str(tmp_path) + "/")
+        IA_mock_lc_n1.measure_xi_w(
+            "galaxies", "lc_mask_partial", "both",
+            measure_cov=False, tree=True, masks=partial,
+            temp_file_path=str(tmp_path) + "/")
+        for grp in ("w_g_plus", "w_gg"):
+            np.testing.assert_array_equal(
+                _read(IA_mock_lc_n1, grp, "lc_mask_full"),
+                _read(IA_mock_lc_n1, grp, "lc_mask_partial"),
+                err_msg=f"{grp} differs between full and partial mask dict")
+
 
 # ---------------------------------------------------------------------------
 # 9. Output shape / consistency

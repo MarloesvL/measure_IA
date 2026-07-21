@@ -69,7 +69,8 @@ class MeasureJackknife(MeasureIABase):
 			Dictionary containing position and shape sample data of randoms. Keywords: "RA", "DEC", "RA_shape_sample",
 			"DEC_shape_sample"
 		num_jk : int
-			Number of jackknife patches
+			Number of jackknife patches. At least 10 randoms per patch are required (the k-means
+			initialisation samples that many points without replacement).
 		seed : int or NoneType, optional
 			Seed for the k-means initialisation, making the patch assignment reproducible. If None (default),
 			the patches differ between runs. The global numpy random state is restored afterwards.
@@ -92,10 +93,14 @@ class MeasureJackknife(MeasureIABase):
 		X = np.column_stack((RA, DEC))
 		if not (isinstance(num_jk, (int, np.integer)) and not isinstance(num_jk, bool) and num_jk >= 1):
 			raise ValueError(f"num_jk must be an integer >= 1, got {num_jk!r}.")
-		if num_jk > len(X):
+		# kmeans_sample draws its first-pass sample of max(2*sqrt(N), 10*num_jk) points without
+		# replacement, so it needs at least 10 randoms per patch; below that it fails inside the
+		# stdlib random module with an opaque "Sample larger than population".
+		if 10 * num_jk > len(X):
 			raise ValueError(
-				f"num_jk ({num_jk}) cannot exceed the number of randoms ({len(X)}) used to build "
-				f"the jackknife patches. Lower num_jk or provide more randoms.")
+				f"num_jk ({num_jk}) needs at least 10 randoms per jackknife patch "
+				f"({10 * num_jk} in total) to build the patch centres, but only {len(X)} randoms "
+				f"were given. Lower num_jk or provide more randoms.")
 		if seed is None:
 			km = kmeans_sample(X, num_jk, maxiter=100, tol=1.0e-5)
 		else:

@@ -178,6 +178,71 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			merged[key] = masks_shape.get(key, shape_mask)
 		return merged
 
+	@staticmethod
+	def _field_mask(masks, key, coordinate_key, length):
+		"""Selects the mask for one field, following the same defaulting rule as '_merged_masks': a missing
+		mask dictionary means no selection, and a key that is absent from the dictionary falls back to its
+		sample's coordinate mask so all fields of one sample stay aligned.
+
+		Parameters
+		----------
+		masks : dict or NoneType
+			Mask dictionary supplied by the user, or None for no selection.
+		key : str
+			Field whose mask is requested.
+		coordinate_key : str
+			Coordinate field of the sample that 'key' belongs to ('RA' or 'RA_shape_sample').
+		length : int
+			Length of the sample, used to build the all-True default.
+
+		Returns
+		-------
+		ndarray
+			Boolean mask for the requested field.
+
+		"""
+		if masks is None:
+			return np.ones(length, dtype=bool)
+		if key in masks:
+			return masks[key]
+		if coordinate_key in masks:
+			return masks[coordinate_key]
+		return np.ones(length, dtype=bool)
+
+	def _sample_coordinates(self, masks, masks_randoms):
+		"""Builds the masked (RA, DEC) coordinate pairs of the position and shape samples and the masked
+		random sample sizes, used to work out the sample-size normalisation of the estimator.
+
+		Parameters
+		----------
+		masks : dict or NoneType
+			Mask dictionary for the data sample.
+		masks_randoms : dict or NoneType
+			Mask dictionary for the randoms.
+
+		Returns
+		-------
+		ndarray, ndarray, int, int
+			Position-sample coordinates, shape-sample coordinates, number of randoms in the position slot,
+			number of randoms in the shape slot.
+
+		"""
+		n_D = len(self.data_dir["RA"])
+		n_S = len(self.data_dir["RA_shape_sample"])
+		coords_D = np.column_stack((self.data_dir["RA"][self._field_mask(masks, "RA", "RA", n_D)],
+									self.data_dir["DEC"][self._field_mask(masks, "DEC", "RA", n_D)]))
+		coords_S = np.column_stack((
+			self.data_dir["RA_shape_sample"][
+				self._field_mask(masks, "RA_shape_sample", "RA_shape_sample", n_S)],
+			self.data_dir["DEC_shape_sample"][
+				self._field_mask(masks, "DEC_shape_sample", "RA_shape_sample", n_S)]))
+		n_RD = len(self.randoms_data["RA"])
+		n_RS = len(self.randoms_data["RA_shape_sample"])
+		num_R_D = len(self.randoms_data["RA"][self._field_mask(masks_randoms, "RA", "RA", n_RD)])
+		num_R_S = len(self.randoms_data["RA_shape_sample"][
+						  self._field_mask(masks_randoms, "RA_shape_sample", "RA_shape_sample", n_RS)])
+		return coords_D, coords_S, num_R_D, num_R_S
+
 	def measure_xi_helper(self, method_count_pairs, method_shape_correlation, IA_estimator, dataset_name, corr_type,
 						  masks=None, masks_randoms=None, cosmology=None, over_h=False, chunk_size=1000, num_nodes=1,
 						  temp_file_path=None):
@@ -518,17 +583,10 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 		if "weight_shape_sample" not in self.data_dir:
 			self.data_dir["weight_shape_sample"] = np.ones(len(self.data_dir["RA_shape_sample"]))
 
-		num_samples = {}  # Needed to correct for different number of randoms and galaxies/clusters in data
-		if masks == None:
-			# Stack RA and DEC into coordinate pairs
-			coords_D = np.column_stack((self.data_dir["RA"], self.data_dir["DEC"]))
-			coords_S = np.column_stack((self.data_dir["RA_shape_sample"], self.data_dir["DEC_shape_sample"]))
-
-
-		else:
-			coords_D = np.column_stack((self.data_dir["RA"][masks["RA"]], self.data_dir["DEC"][masks["DEC"]]))
-			coords_S = np.column_stack((self.data_dir["RA_shape_sample"][masks["RA_shape_sample"]],
-										self.data_dir["DEC_shape_sample"][masks["DEC_shape_sample"]]))
+		# Sample sizes are needed to correct for a different number of randoms and galaxies/clusters in the
+		# data. Masks are resolved per field, defaulting to the sample's coordinate mask (see _field_mask).
+		num_samples = {}
+		coords_D, coords_S, num_R_D, num_R_S = self._sample_coordinates(masks, masks_randoms)
 		# Use a structured view so np.intersect1d compares full pairs
 		D_view = coords_D.view([('', coords_D.dtype)] * 2)
 		S_view = coords_S.view([('', coords_S.dtype)] * 2)
@@ -538,14 +596,8 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 		num_samples["D"] = len(coords_D)
 		num_samples["S"] = len(coords_S)
 		num_samples["D_S"] = len(overlap)
-		if masks_randoms == None:
-			num_samples["R_D"] = len(self.randoms_data["RA"])
-			num_samples["R_S"] = len(self.randoms_data["RA_shape_sample"])
-		else:
-			num_samples["R_D"] = len(self.randoms_data["RA"][masks_randoms["RA"]])
-			num_samples["R_S"] = len(self.randoms_data["RA_shape_sample"][masks_randoms["RA_shape_sample"]])
-
-		# ToDo: deal with masks
+		num_samples["R_D"] = num_R_D
+		num_samples["R_S"] = num_R_S
 
 		if measure_cov:
 			if self.num_nodes == 1:
@@ -726,17 +778,10 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 		if "weight_shape_sample" not in self.data_dir:
 			self.data_dir["weight_shape_sample"] = np.ones(len(self.data_dir["RA_shape_sample"]))
 
-		num_samples = {}  # Needed to correct for different number of randoms and galaxies/clusters in data
-		if masks == None:
-			# Stack RA and DEC into coordinate pairs
-			coords_D = np.column_stack((self.data_dir["RA"], self.data_dir["DEC"]))
-			coords_S = np.column_stack((self.data_dir["RA_shape_sample"], self.data_dir["DEC_shape_sample"]))
-
-
-		else:
-			coords_D = np.column_stack((self.data_dir["RA"][masks["RA"]], self.data_dir["DEC"][masks["DEC"]]))
-			coords_S = np.column_stack((self.data_dir["RA_shape_sample"][masks["RA_shape_sample"]],
-										self.data_dir["DEC_shape_sample"][masks["DEC_shape_sample"]]))
+		# Sample sizes are needed to correct for a different number of randoms and galaxies/clusters in the
+		# data. Masks are resolved per field, defaulting to the sample's coordinate mask (see _field_mask).
+		num_samples = {}
+		coords_D, coords_S, num_R_D, num_R_S = self._sample_coordinates(masks, masks_randoms)
 		# Use a structured view so np.intersect1d compares full pairs
 		D_view = coords_D.view([('', coords_D.dtype)] * 2)
 		S_view = coords_S.view([('', coords_S.dtype)] * 2)
@@ -746,14 +791,8 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 		num_samples["D"] = len(coords_D)
 		num_samples["S"] = len(coords_S)
 		num_samples["D_S"] = len(overlap)
-		if masks_randoms == None:
-			num_samples["R_D"] = len(self.randoms_data["RA"])
-			num_samples["R_S"] = len(self.randoms_data["RA_shape_sample"])
-		else:
-			num_samples["R_D"] = len(self.randoms_data["RA"][masks_randoms["RA"]])
-			num_samples["R_S"] = len(self.randoms_data["RA_shape_sample"][masks_randoms["RA_shape_sample"]])
-
-		# ToDo: deal with masks
+		num_samples["R_D"] = num_R_D
+		num_samples["R_S"] = num_R_S
 
 		if measure_cov:
 			if self.num_nodes == 1:

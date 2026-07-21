@@ -769,6 +769,35 @@ class TestAssignJackknifePatches:
         with pytest.raises(ValueError, match="num_jk must be an integer"):
             obj.assign_jackknife_patches(data, randoms, bad)
 
+    def test_too_few_randoms_per_patch_raises(self, tmp_path):
+        """kmeans_radec samples 10 points per patch without replacement, so
+        fewer than 10 randoms per patch must be rejected up front rather than
+        failing inside the stdlib random module."""
+        obj = self._obj(tmp_path)
+        data, randoms = self._catalogs(N=20, NR=50)
+        with pytest.raises(ValueError,
+                           match="at least 10 randoms per jackknife patch"):
+            obj.assign_jackknife_patches(data, randoms, 6, seed=1)
+
+    def test_exactly_ten_randoms_per_patch_is_allowed(self, tmp_path):
+        """The boundary of the 10-randoms-per-patch requirement works."""
+        obj = self._obj(tmp_path)
+        data, randoms = self._catalogs(N=20, NR=40)
+        p = obj.assign_jackknife_patches(data, randoms, 4, seed=1)
+        assert len(p["randoms_position"]) == 40
+        assert p["randoms_position"].max() < 4
+
+    def test_more_patches_than_data_objects_still_assigns(self, tmp_path):
+        """num_jk may exceed the number of *data* objects — the patches are
+        built from the randoms, and each datum simply falls in the nearest
+        patch. Some patches then hold no data, which is a valid (if noisy)
+        delete-one setup."""
+        obj = self._obj(tmp_path)
+        data, randoms = self._catalogs(N=5, NR=200)
+        p = obj.assign_jackknife_patches(data, randoms, 10, seed=1)
+        assert len(p["position"]) == 5
+        assert len(np.unique(p["randoms_position"])) == 10
+
 
 # ===========================================================================
 # 6. Covariance-combining utilities on the lightcone

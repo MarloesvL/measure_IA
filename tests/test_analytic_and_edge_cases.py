@@ -1089,10 +1089,10 @@ class TestEdgeCasesLightcone:
         N   = 40
         data, rand = self._cat(N, 3 * N, rng)
         obj = _lc(data, rand, tmp_path)
-        # The lightcone dispatcher indexes every key of the mask dict directly
-        # (it does not fall back to the coordinate mask the way the backends
-        # do), so a user-supplied mask must cover all fields.
-        empty = {k: np.zeros(N, dtype=bool) for k in data}
+        # A partial mask dict is enough: missing fields fall back to their
+        # sample's coordinate mask.
+        empty = {"RA": np.zeros(N, dtype=bool),
+                 "RA_shape_sample": np.zeros(N, dtype=bool)}
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)
             obj.measure_xi_w("galaxies", "lc_em", "g+", measure_cov=False,
