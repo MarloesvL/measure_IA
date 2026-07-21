@@ -135,30 +135,43 @@ P1 = features, P2 = input validation, P3 = test suite, P4 = cleanup & docs.
 
 ## P3 — Test suite
 
-- [ ] **Test infra**: add `[tool.pytest.ini_options]` to `pyproject.toml` (`testpaths`,
-  `xfail_strict = true`, `filterwarnings`); add a CI workflow
-  (`.github/workflows/tests.yml`, Python version matrix; optionally `pytest-cov`).
-- [ ] **Resolve parked xfails.** `TestEdgeCasesUnhandled` cites a non-existent
-  `fixes_measure_IA_base.py`; the three known bugs behind the xfails (all-zero weights → NaN,
-  empty mask → crash, data not restored after a failed backend) are largely fixed by the P0
-  items — flip the xfails to real assertions afterwards.
-- [ ] **Dead/stale test scaffolding**: remove the unused `_out`/`_ref`/`PROC_PATH` constants in
-  `test_lc_measure_xi_w.py` and `test_lc_measure_xi_multipoles.py`; rename `TestRegressionW/M`
-  (they test determinism, not saved references) or commit real reference outputs; fix stale
-  `conftest_lc.py` docstring references; decide the fate of the unused
-  `tests/data/**/*.hdf5` files.
+- [ ] **Test infra**: `[tool.pytest.ini_options]` added to `pyproject.toml` (`testpaths`,
+  `xfail_strict = true`). Still open — both are policy choices: a `filterwarnings` setting
+  and a CI workflow (`.github/workflows/tests.yml`, Python version matrix; optionally
+  `pytest-cov`).
+- [x] **Resolve parked xfails.** *Done: the P0 fixes resolved all of them; the class was
+  renamed `TestEdgeCasesNowHandled`, the markers removed, and the docstring references to the
+  non-existent `fixes_measure_IA_base.py` dropped. The suite has zero xfails.*
+- [x] **Dead/stale test scaffolding**: *Done: the unused `_out`/`_ref`/`PROC_PATH` constants
+  and duplicate `NUM_JK` removed from the two lightcone test modules; `TestRegressionW/M`
+  renamed to `TestDeterminismW/M` (they compare two runs of the same configuration, not a
+  committed reference); stale `conftest_lc.py` docstring references fixed.* Still open: the
+  fate of the unused `tests/data/**/*.hdf5` files (6 tracked files, 9.5 MB, referenced by no
+  test since the suite moved to synthetic fixtures) — deletion is a user decision.
 - [ ] **New coverage** (mirror existing box tests to the lightcone and fill gaps):
-  - lightcone invalid `num_jk` / invalid `ellipticity` tests;
-  - lightcone empty-catalogue / empty-mask / all-zero-weights / single-object tests;
-  - lightcone `measure_covariance_multiple_datasets` / `create_full_cov_matrix_projections`
-    tests (currently box-only);
-  - unit tests for `assign_jackknife_patches` (output structure, seed determinism, coverage);
-  - small-sample jackknife: `num_jk > N`, empty patch → finite covariance or a clear error;
-  - exercise `rp_cut` (multipoles) and non-default `cosmology` arguments;
-  - a multiprocessing test whose catalogue size does not divide evenly by chunk size;
-  - synthetic-HDF5 tests for `read_subhalo`, `read_snapshot`, `read_snapshot_multiple`,
-    `read_modelling_outputs` (zero coverage today);
-  - tighten the `rel=0.5` tolerance in `test_rr_gg_consistent_with_formula`.
+  - [x] lightcone invalid `num_jk` / invalid `ellipticity`: covered by the existing
+    invalid-estimator / invalid-corr_type / one-based-patch tests plus the new
+    `assign_jackknife_patches` num_jk validation;
+  - [x] lightcone empty-mask / all-zero-weights / single-object tests
+    (`TestEdgeCasesLightcone`);
+  - [x] lightcone `measure_covariance_multiple_datasets` /
+    `create_full_cov_matrix_projections` (`TestCovarianceUtilitiesLightcone`);
+  - [x] unit tests for `assign_jackknife_patches` (structure, label range, patch coverage,
+    seed determinism, global random-state restoration, invalid num_jk);
+  - [ ] small-sample jackknife: `num_jk > N`, empty patch → finite covariance or a clear
+    error. **Blocked on a source decision**: `assign_jackknife_patches` guards
+    `num_jk <= len(randoms)`, but `kmeans_radec.kmeans_sample` draws `max(2*sqrt(N),
+    10*num_jk)` points *without replacement*, so anything below ~10 randoms per patch dies
+    with a bare `ValueError: Sample larger than population` from the stdlib. The guard
+    should probably require `10 * num_jk <= len(randoms)`.
+  - [x] non-default `cosmology` argument (lightcone); `rp_cut` (box multipoles) already has
+    a regression test from the P1 work;
+  - [x] a multiprocessing test whose catalogue size does not divide evenly by chunk size
+    (box and lightcone, `chunk_size=37`);
+  - [x] synthetic-HDF5 tests for `read_subhalo`, `read_snapshot`, `read_snapshot_multiple`,
+    `read_modelling_outputs` (`TestReadDataSimulationFiles`);
+  - [x] tightened the `rel=0.5` tolerance in `test_rr_gg_consistent_with_formula` to
+    `rel=1e-10` (the per-bin analytic values telescope exactly).
 
 ## P4 — Cleanup & docs
 
