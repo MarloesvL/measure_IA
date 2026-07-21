@@ -768,3 +768,92 @@ class TestAssignJackknifePatches:
         data, randoms = self._catalogs()
         with pytest.raises(ValueError, match="num_jk must be an integer"):
             obj.assign_jackknife_patches(data, randoms, bad)
+
+
+# ===========================================================================
+# 6. Covariance-combining utilities on the lightcone
+# ===========================================================================
+
+class TestCovarianceUtilitiesLightcone:
+    """measure_covariance_multiple_datasets and create_full_cov_matrix_projections
+    are inherited from MeasureJackknife and were only covered for the box. The
+    lightcone writes its jackknife realisations into the same group layout, so
+    both must work there too."""
+
+    LC_NUM_JK = 4
+
+    def _run_two(self, obj, tmp_path):
+        """Two genuinely different datasets: the same catalogue measured with
+        the two IA estimators, which use different random terms."""
+        tp = str(tmp_path) + "/"
+        obj.measure_xi_w("galaxies", "lc_A", "g+", num_jk=self.LC_NUM_JK,
+                         measure_cov=True, temp_file_path=tp)
+        obj.measure_xi_w("clusters", "lc_B", "g+", num_jk=self.LC_NUM_JK,
+                         measure_cov=True, temp_file_path=tp)
+
+    def test_auto_covariance_shape_and_symmetry(self, IA_mock_lc_n1, tmp_path):
+        obj = IA_mock_lc_n1
+        self._run_two(obj, tmp_path)
+        cov, std = obj.measure_covariance_multiple_datasets(
+            ["w_g_plus"], ["lc_A"], self.LC_NUM_JK, return_output=True)
+
+        n = obj.num_bins_r
+        assert cov.shape == (n, n)
+        assert std.shape == (n,)
+        np.testing.assert_allclose(cov, cov.T, atol=1e-12)
+        np.testing.assert_allclose(std, np.sqrt(np.diag(cov)), rtol=1e-12)
+
+    def test_cross_covariance_differs_from_auto(self, IA_mock_lc_n1, tmp_path):
+        obj = IA_mock_lc_n1
+        self._run_two(obj, tmp_path)
+        auto, _ = obj.measure_covariance_multiple_datasets(
+            ["w_g_plus"], ["lc_A"], self.LC_NUM_JK, return_output=True)
+        cross, _ = obj.measure_covariance_multiple_datasets(
+            ["w_g_plus", "w_g_plus"], ["lc_A", "lc_B"], self.LC_NUM_JK,
+            return_output=True)
+
+        assert cross.shape == auto.shape
+        assert not np.allclose(cross, auto, equal_nan=True)
+
+    def test_invalid_corr_type_raises(self, IA_mock_lc_n1, tmp_path):
+        obj = IA_mock_lc_n1
+        with pytest.raises(ValueError, match="corr_type"):
+            obj.measure_covariance_multiple_datasets(
+                ["not_a_corr_type"], ["lc_A"], self.LC_NUM_JK)
+
+    def test_full_cov_matrix_projections_blocks(self, IA_mock_lc_n1, tmp_path):
+        """create_full_cov_matrix_projections always combines three datasets
+        (it was written for the box LOS-x/y/z projections). The machinery is
+        projection-agnostic, so on the lightcone it is exercised here with
+        three distinct measurements; each returned block must be symmetric and
+        the pairwise off-diagonal block must reproduce the direct two-dataset
+        covariance."""
+        obj = IA_mock_lc_n1
+        self._run_two(obj, tmp_path)
+        # third dataset: half the sample, so it differs from both of the above
+        N = len(obj.data["RA"])
+        half = np.arange(N) % 2 == 0
+        obj.measure_xi_w("galaxies", "lc_C", "g+", num_jk=self.LC_NUM_JK,
+                         measure_cov=True, masks={k: half for k in obj.data},
+                         temp_file_path=str(tmp_path) + "/")
+
+        ref, _ = obj.measure_covariance_multiple_datasets(
+            ["w_g_plus", "w_g_plus"], ["lc_A", "lc_B"], self.LC_NUM_JK,
+            return_output=True)
+        result = obj.create_full_cov_matrix_projections(
+            corr_type=["w_g_plus", "w_g_plus", "w_g_plus"],
+            dataset_names=["lc_A", "lc_B", "lc_C"],
+            num_box=self.LC_NUM_JK,
+            return_output=True)
+
+        n = obj.num_bins_r
+        cov_ABC, cov_AB, cov_AC, cov_BC = result
+        assert cov_ABC.shape == (3 * n, 3 * n)
+        for cov in (cov_AB, cov_AC, cov_BC):
+            assert cov.shape == (2 * n, 2 * n)
+            np.testing.assert_allclose(cov, cov.T, atol=1e-12,
+                                       equal_nan=True)
+        # cov_AB stacks [[auto_A, cross_AB], [cross_AB.T, auto_B]]
+        assert np.isfinite(ref).any(), "reference covariance is entirely NaN"
+        np.testing.assert_allclose(cov_AB[:n, n:], ref, rtol=1e-10,
+                                   equal_nan=True)

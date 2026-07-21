@@ -680,7 +680,9 @@ class TestIntermediateOutputsM:
 
     def test_rr_gg_consistent_with_formula(self, IA_mock_TNG300_n1):
         """Sum of RR_gg over all bins should be close to the analytical
-        prediction from get_random_pairs_r_mur over the full (r, mu_r) range."""
+        prediction from get_random_pairs_r_mur over the full (r, mu_r) range.
+        The per-bin analytic values telescope exactly to this total, so the
+        agreement is at machine precision."""
         obj = IA_mock_TNG300_n1
         self._run_no_jk(obj)
         rr  = _read(obj, "multipoles/xi_gg", "int_nojk_RR_gg")
@@ -690,7 +692,7 @@ class TestIntermediateOutputsM:
             obj.r_bins[-1], obj.r_bins[0],
             obj.mu_r_bins[-1], obj.mu_r_bins[0],
             L3, "cross", N, N)
-        assert np.sum(rr) == pytest.approx(total_rr_analytical, rel=0.5)
+        assert np.sum(rr) == pytest.approx(total_rr_analytical, rel=1e-10)
 
     def test_xi_gg_r_mu_r_grids_match_xi_g_plus(self, IA_mock_TNG300_n1):
         obj = IA_mock_TNG300_n1

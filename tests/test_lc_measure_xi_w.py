@@ -269,6 +269,28 @@ class TestCovarianceW:
                 rtol=1e-6, atol=1e-14,
                 err_msg=f"{grp} covariance n1 vs n8 mismatch")
 
+    def test_multiproc_chunk_size_not_dividing_catalogue(
+            self, IA_mock_lc_n1, IA_mock_lc_n8, lc_jk_patches, tmp_path):
+        """The lightcone catalogue has 150 data and 450 randoms; the other
+        multiprocessing tests use chunk_size=50, which divides both evenly.
+        A chunk size leaving a short trailing batch on both samples must give
+        the same answer."""
+        IA_mock_lc_n1.measure_xi_w(
+            "galaxies", "lc_uneven_n1", "both",
+            measure_cov=True, jk_patches=lc_jk_patches,
+            tree=True, temp_file_path=str(tmp_path) + "/")
+        IA_mock_lc_n8.measure_xi_w(
+            "galaxies", "lc_uneven_n8", "both",
+            measure_cov=True, jk_patches=lc_jk_patches,
+            tree=True, temp_file_path=str(tmp_path) + "/",
+            chunk_size=37)
+        for grp in ("w_g_plus", "w_gg"):
+            np.testing.assert_allclose(
+                _read(IA_mock_lc_n1, grp, "lc_uneven_n1"),
+                _read(IA_mock_lc_n8, grp, "lc_uneven_n8"),
+                rtol=1e-8, atol=1e-12, equal_nan=True,
+                err_msg=f"{grp} n1 vs n8 mismatch")
+
     def test_brute_vs_tree_jk_realisations_splusd(self, IA_mock_lc_n1, lc_jk_patches, tmp_path):
         obj = IA_mock_lc_n1
         obj.measure_xi_w(

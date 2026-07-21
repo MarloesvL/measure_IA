@@ -240,6 +240,24 @@ class TestBackendsNoJKW:
             _read(IA_mock_TNG300_n1, "w_g_plus", "mp_tree_rp"),
             _read(IA_mock_TNG300_n8, "w_g_plus", "mp_multi_rp"))
 
+    def test_multiproc_chunk_size_not_dividing_catalogue(
+            self, IA_mock_TNG300_n1, IA_mock_TNG300_n8, tmp_path):
+        """The catalogue has 200 objects; every other multiprocessing test
+        uses chunk_size=50, which divides it evenly. A chunk size that leaves
+        a short trailing batch must give the same answer (regression for
+        off-by-one clamping of the final chunk)."""
+        tp = str(tmp_path) + "/"
+        IA_mock_TNG300_n1.measure_xi_w("uneven_tree", "both", 0,
+                                       temp_file_path=tp)
+        IA_mock_TNG300_n8.measure_xi_w("uneven_mp", "both", 0,
+                                       temp_file_path=tp, chunk_size=37)
+
+        for grp in ("w_g_plus", "w_gg"):
+            np.testing.assert_allclose(
+                _read(IA_mock_TNG300_n1, grp, "uneven_tree"),
+                _read(IA_mock_TNG300_n8, grp, "uneven_mp"),
+                rtol=1e-10, atol=1e-14, err_msg=f"{grp} mismatch")
+
 
 # ---------------------------------------------------------------------------
 # 5. Backends — with JK
