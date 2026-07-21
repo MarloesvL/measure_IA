@@ -90,6 +90,12 @@ class MeasureJackknife(MeasureIABase):
 
 		# Define a number of jaccknife regions and find their centres using kmans
 		X = np.column_stack((RA, DEC))
+		if not (isinstance(num_jk, (int, np.integer)) and not isinstance(num_jk, bool) and num_jk >= 1):
+			raise ValueError(f"num_jk must be an integer >= 1, got {num_jk!r}.")
+		if num_jk > len(X):
+			raise ValueError(
+				f"num_jk ({num_jk}) cannot exceed the number of randoms ({len(X)}) used to build "
+				f"the jackknife patches. Lower num_jk or provide more randoms.")
 		if seed is None:
 			km = kmeans_sample(X, num_jk, maxiter=100, tol=1.0e-5)
 		else:
