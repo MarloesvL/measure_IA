@@ -12,8 +12,8 @@ Sections
   3. _obs_estimator formula (Landy-Szalay, hand-computed pair counts)
   4. Cosmology coordinate conversion (pyccl reference)
   5. Edge cases that ARE handled correctly (smoke tests)
-  6. Edge cases NOT yet handled — xfail until source fixes applied
-       (see fixes_measure_IA_base.py for the corresponding source patches)
+  6. Previously-unhandled edge cases, now fixed at source (all-zero weights, empty mask,
+       single-object sample, data restored after a failed run) — regression-locked here
 """
 
 import math
@@ -923,14 +923,15 @@ class TestEdgeCasesHandled:
 
 
 # ===========================================================================
-# 6. Edge cases NOT yet handled — xfail (see fixes_measure_IA_base.py)
+# 6. Previously-unhandled edge cases, now fixed at source — regression-locked
 # ===========================================================================
 
-class TestEdgeCasesUnhandled:
+class TestEdgeCasesNowHandled:
     """
-    These tests document known failure modes.  They are marked xfail and
-    should be converted to normal passing tests once the fixes in
-    fixes_measure_IA_base.py have been applied to the source.
+    Previously-unhandled failure modes (all-zero weights, empty mask, single-object
+    sample, data restored after a failed backend run) that were fixed at source during
+    the P0 robustness pass. These were parked as xfails; they now pass and are kept as
+    regression locks.
     """
 
     def test_all_zero_weights_gives_zero_not_nan(self, tmp_path):

@@ -28,6 +28,12 @@ dev = ["pytest~=8.3.1"]
 [tool.uv.sources]
 kmeans-radec = { git = "https://github.com/esheldon/kmeans_radec" }
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# A test marked xfail that unexpectedly passes is now a failure (keeps parked-xfail
+# scaffolding honest; the suite currently has zero xfails).
+xfail_strict = true
+
 [build-system]
 requires = ["uv_build>=0.8.17,<0.9.0"]
 build-backend = "uv_build"

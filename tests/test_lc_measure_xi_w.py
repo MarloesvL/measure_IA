@@ -25,7 +25,6 @@ Run from the project root:
 
 import numpy as np
 import pytest
-from measureia import ReadData
 import h5py
 
 NUM_JK = 8
@@ -34,26 +33,6 @@ NUM_JK = 8
 def _read(obj, group, key):
     with h5py.File(obj.output_file_name, "r") as f:
         return f[obj.snap_group + group][key][:]
-
-
-# ---------------------------------------------------------------------------
-# Constants
-# ---------------------------------------------------------------------------
-
-SIM        = "TNG300"
-SNAP       = 99
-PROC_PATH  = "./data/processed/TNG300/"
-TEST_FILE  = "test_IA_mock_lc"
-REF_FILE   = "mock_IA_lc"
-NUM_JK     = 8
-
-
-def _out(group):
-    return ReadData(SIM, TEST_FILE, SNAP, group, data_path=PROC_PATH)
-
-
-def _ref(group):
-    return ReadData(SIM, REF_FILE, SNAP, group, data_path=PROC_PATH)
 
 
 # ---------------------------------------------------------------------------
