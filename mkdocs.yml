@@ -18,6 +18,7 @@ nav:
       - MeasureMultipolesBox: api/MeasureMBox.md
       - MeasureWBoxJackknife: api/MeasureWBoxJackknife.md
       - MeasureMBoxJackknife: api/MeasureMBoxJackknife.md
+      - pair_kernel: api/pair_kernel.md
       - SimInfo: api/SimInfo.md
       - ReadData: api/ReadData.md
 theme: readthedocs

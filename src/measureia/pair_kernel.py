@@ -1,48 +1,34 @@
 r"""Consolidated pair-accumulation kernel for the measure_IA counting loops.
 
-See ``docs/REFACTOR_PLAN.md`` for the full design and the migration order.
-This module is built incrementally, one migration step at a time; each step
-adds exactly the geometry/binning/backend combination it needs and leaves
-everything else raising ``NotImplementedError`` rather than guessing at
-behaviour that hasn't been ported (and equivalence-tested) yet.
+See ``docs/REFACTOR_PLAN.md`` for the design. Every pair-counting loop in the package now
+lives here; the eight backend classes (``MeasureWBox`` / ``MeasureMultipolesBox`` and their
+``…Jackknife`` twins, ``MeasureWLightcone`` / ``MeasureMultipolesLightcone`` and their
+``…Jackknife`` twins) are thin wrappers that prepare a sample, call one function here, and do
+their own reduction / RR / HDF5 writing.
 
-Status (see REFACTOR_PLAN.md section 6 for the step numbering):
-    Steps 1-5 DONE (box): box geometry, ``"tree"`` and ``"brute"`` backends, the DD-only
-    (``shapes=False``) count_pairs path, jackknife (``jk=True``, union-deletion), and
-    two binnings — ``BoxRpPi`` (rp, pi) and ``BoxRMuR`` (r, mu_r, multipoles). Wired
-    into the ``MeasureWBox`` / ``MeasureMultipolesBox`` non-jk families and the
-    ``MeasureWBoxJackknife`` / ``MeasureMBoxJackknife`` families. The mp orchestration
-    (SharedMemory, temp-file offload, ``Pool``) stays in the backend wrapper; each
-    worker calls ``accumulate`` single-process on its shape slice, and the parent sums
-    the partial jk grids and computes ``R_jk`` via ``compute_R_jk``.
-    (``_measure_xi_r_pi_box_brute`` is a dead, kernel-incompatible per-r-bin-signed-pi
-    oddity, deliberately left un-migrated — see REFACTOR_PLAN.md / TASKS.md. The jk
-    ``_sigmasq`` output was dropped by user decision — only the brute backend ever
-    populated it, a pre-existing inconsistency.)
+Structure:
+    - ``prepare_box_samples`` / ``prepare_lightcone_samples`` — mask application and geometry
+      (box: ``axis_direction``/``e`` size; lightcone: RA/DEC/z → 3D comoving via ``pyccl``,
+      ``east``/``north`` sky basis, ``e = (e1, e2)`` pre-scaled by 1/(2R)) → a ``SampleSet``.
+    - binnings: ``BoxRpPi`` / ``BoxRMuR`` (periodic box) and ``SkyRpPi`` / ``SkyRMuR``
+      (lightcone, midpoint LOS ``n_LOS = (s1+s2)/|s1+s2|``), each exposing ``bin_pairs``.
+    - ``accumulate`` — the pair loop. ``chunk_axis="shape"`` runs the box order (outer loop
+      over shape chunks, positions queried per chunk); ``chunk_axis="position"`` runs the
+      lightcone order (outer loop over position chunks, shapes queried). Backends ``"tree"``
+      (KDTree annulus, bit-identical to the legacy) and ``"brute"`` (full cross-join, same
+      pairs → ``allclose``). ``shapes=False`` is the DD-only count_pairs path.
+    - jackknife (``jk=True``): union-deletion per-realisation grids ``DD_jk`` /
+      ``Splus_D_jk``. Box divides S+ by ``2R`` inline and applies per-realisation
+      responsivity via ``compute_R_jk``; the lightcone bakes 1/(2R) into ``e`` and reduces by
+      a plain delete-one, so it has no ``R_jk``. The chunked (outer) axis owns the "always"
+      side of the deletion — shape for the box, position for the lightcone.
+    - multiprocessing stays in the backend wrappers (SharedMemory, temp-file offload,
+      ``Pool``); each worker calls ``accumulate`` single-process on its slice, reusing a
+      parent-built tree (``pos_tree`` for the box, ``shape_tree`` for the lightcone).
 
-    Step 6 DONE (lightcone non-jk): sky geometry via ``prepare_lightcone_samples``
-    (RA/DEC/z → 3D comoving with ``pyccl``; ``e = (e1, e2)`` pre-scaled by 1/(2R)) and
-    the ``chunk_axis="position"`` accumulation path (``_accumulate_lightcone``) with the
-    ``SkyRpPi`` / ``SkyRMuR`` binnings (midpoint LOS ``n_LOS = (s1+s2)/|s1+s2|``,
-    east/north ellipticity-angle projection). Wired into the non-jk
-    ``_{measure,count_pairs}_xi_{rp_pi,r_mur}_lightcone_{brute,tree}`` families. Unlike
-    the box S+ grids, the lightcone S+ is not divided by ``2R`` (baked into ``e``).
-
-    Step 7 DONE (lightcone jk): ``_accumulate_lightcone`` gained the ``jk=True``
-    union-deletion path — **mirrored** vs the box (the chunked axis is the position, so a
-    pair adds to its position patch always and its shape patch where they differ) — plus a
-    prebuilt-``shape_tree`` argument so the mp workers reuse the parent's tree. The
-    lightcone reduction is a pure delete-one (``Splus_D - Splus_D_jk[i]``); responsivity is
-    baked into ``e`` globally, so there is no per-realisation ``R_jk`` (contrast
-    ``compute_R_jk`` for the box). Wired into all 16
-    ``_{measure,count_pairs}_xi_{rp_pi,r_mur}_lightcone_jk_{brute,tree,batch,multiprocessing}``
-    methods; mp orchestration stays in the wrapper and each worker calls ``accumulate`` on
-    its position slice. All counting loops now live in this module (step 8 = cleanup only:
-    delete the dead ``*_old`` methods and the remaining ``_legacy_``/harness scaffolding).
-
-Every public function here is pure with respect to its arguments except
-where noted (``prepare_box_samples`` mutates the ``masks`` dict it is given,
-matching the legacy in-place default-injection behaviour it replaces).
+Every public function here is pure with respect to its arguments except where noted
+(``prepare_box_samples`` / ``prepare_lightcone_samples`` mutate the ``masks`` dict they are
+given, matching the legacy in-place default-injection behaviour they replace).
 """
 
 from dataclasses import dataclass
