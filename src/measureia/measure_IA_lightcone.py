@@ -131,6 +131,8 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			randoms_data = self.rename_input_keys(randoms_data, self._input_name_map)
 		super().__init__(data, output_file_name, False, None, separation_limits, num_bins_r, num_bins_pi,
 						 pi_max, None, False)
+		if not (isinstance(num_nodes, (int, np.integer)) and not isinstance(num_nodes, bool) and num_nodes >= 1):
+			raise ValueError(f"num_nodes must be an integer >= 1, got {num_nodes!r}.")
 		self.num_nodes = num_nodes
 		self.randoms_data = randoms_data
 		self.data_dir = None

@@ -341,3 +341,50 @@ class TestLightconeInputChecks:
         obj.measure_xi_w("galaxies", "t", "gg", measure_cov=False)
         assert set(data.keys()) == data_keys  # weight defaults go to the remapped copies
         assert set(randoms.keys()) == randoms_keys
+
+
+# ---------------------------------------------------------------------------
+# 4. Numeric constructor parameters & up-front option-string validation
+# ---------------------------------------------------------------------------
+
+class TestNumericParamValidation:
+    def _box(self, tmp_path, **kw):
+        cat = _box_catalog(N=40)
+        kwargs = dict(boxsize=205.0, separation_limits=[0.1, 20.0],
+                      num_bins_r=8, num_bins_pi=20, num_nodes=1)
+        kwargs.update(kw)
+        return MeasureIABox(cat, str(tmp_path / "o.hdf5"), **kwargs)
+
+    def test_num_bins_r_below_one_raises(self, tmp_path):
+        with pytest.raises(ValueError, match="num_bins_r"):
+            self._box(tmp_path, num_bins_r=0)
+
+    def test_num_bins_pi_below_one_raises(self, tmp_path):
+        with pytest.raises(ValueError, match="num_bins_pi"):
+            self._box(tmp_path, num_bins_pi=0)
+
+    def test_separation_limits_order_raises(self, tmp_path):
+        with pytest.raises(ValueError, match="0 < r_min < r_max"):
+            self._box(tmp_path, separation_limits=[20.0, 0.1])
+
+    def test_separation_limits_length_raises(self, tmp_path):
+        with pytest.raises(ValueError, match="length-2"):
+            self._box(tmp_path, separation_limits=[1.0])
+
+    def test_boxsize_non_positive_raises(self, tmp_path):
+        with pytest.raises(ValueError, match="boxsize must be > 0"):
+            self._box(tmp_path, boxsize=-5.0)
+
+    def test_num_nodes_below_one_raises(self, tmp_path):
+        with pytest.raises(ValueError, match="num_nodes"):
+            self._box(tmp_path, num_nodes=0)
+
+    def test_invalid_ellipticity_raises(self, tmp_path):
+        obj = self._box(tmp_path)
+        with pytest.raises(ValueError, match="ellipticity"):
+            obj.measure_xi_w("d", "both", 0, temp_file_path=False, ellipticity="round")
+
+    def test_negative_num_jk_raises(self, tmp_path):
+        obj = self._box(tmp_path)
+        with pytest.raises(ValueError, match="num_jk"):
+            obj.measure_xi_w("d", "both", -1, temp_file_path=False)

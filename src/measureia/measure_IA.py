@@ -104,12 +104,28 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 						 pi_max, boxsize, periodicity)
 		if self.data is not None and self.boxsize is not None:
 			self.check_units_coordinates(self.data["Position"], self.boxsize)
+		if not (isinstance(num_nodes, (int, np.integer)) and not isinstance(num_nodes, bool) and num_nodes >= 1):
+			raise ValueError(f"num_nodes must be an integer >= 1, got {num_nodes!r}.")
 		self.num_nodes = num_nodes
 		self.randoms_data = None
 		self.data_dir = None
 		self.num_samples = None
 
 		return
+
+	@staticmethod
+	def _validate_measure_options(corr_type, ellipticity, num_jk):
+		"""Validate the user-facing option strings and ``num_jk`` up front, before any pair
+		counting. Previously ``corr_type`` was only checked at the reduction stage (after the
+		full count) with a ``KeyError``, ``ellipticity`` only inside the backends, and a
+		negative ``num_jk`` was silently treated as 0; all now raise a uniform ``ValueError``."""
+		if corr_type not in ("g+", "gg", "both"):
+			raise ValueError(f"Unknown corr_type {corr_type!r}. Choose from ['g+', 'gg', 'both'].")
+		if ellipticity not in ("distortion", "ellipticity"):
+			raise ValueError(
+				f"Unknown ellipticity {ellipticity!r}. Choose from ['distortion', 'ellipticity'].")
+		if not (isinstance(num_jk, (int, np.integer)) and not isinstance(num_jk, bool) and num_jk >= 0):
+			raise ValueError(f"num_jk must be an integer >= 0, got {num_jk!r}.")
 
 	def measure_xi_w(self, dataset_name, corr_type, num_jk=0, temp_file_path=None, masks=None,
 					 ellipticity='distortion', chunk_size=1000, responsivity=True):
@@ -138,6 +154,7 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			 as (1-q)/(1+q). Default is 'distortion'.
 
 		"""
+		self._validate_measure_options(corr_type, ellipticity, num_jk)
 		self.responsivity_correction = responsivity
 		masks = self.rename_input_keys(masks, self._input_name_map)
 		if num_jk > 0:
@@ -260,7 +277,7 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			Definition of ellipticity. Choose from 'distortion', defined as (1-q^2)/(1+q^2), or 'ellipticity', defined
 			 as (1-q)/(1+q). Default is 'distortion'.
 		"""
-
+		self._validate_measure_options(corr_type, ellipticity, num_jk)
 		self.responsivity_correction = responsivity
 		masks = self.rename_input_keys(masks, self._input_name_map)
 		if num_jk > 0:

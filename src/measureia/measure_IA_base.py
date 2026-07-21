@@ -125,6 +125,23 @@ class MeasureIABase(SimInfo):
 		
 		"""
 		SimInfo.__init__(self, simulation, snapshot, boxsize)
+		# --- validate numeric configuration parameters ---
+		if not (isinstance(num_bins_r, (int, np.integer)) and not isinstance(num_bins_r, bool) and num_bins_r >= 1):
+			raise ValueError(f"num_bins_r must be an integer >= 1, got {num_bins_r!r}.")
+		if not (isinstance(num_bins_pi, (int, np.integer)) and not isinstance(num_bins_pi, bool) and num_bins_pi >= 1):
+			raise ValueError(f"num_bins_pi must be an integer >= 1, got {num_bins_pi!r}.")
+		try:
+			r_min_check, r_max_check = separation_limits
+		except (TypeError, ValueError):
+			raise ValueError(
+				f"separation_limits must be a length-2 sequence [r_min, r_max], got {separation_limits!r}.")
+		if not (0 < r_min_check < r_max_check):
+			raise ValueError(
+				f"separation_limits must satisfy 0 < r_min < r_max, got {separation_limits}.")
+		if self.boxsize is not None and self.boxsize is not False and not (self.boxsize > 0):
+			raise ValueError(f"boxsize must be > 0, got {self.boxsize!r}.")
+		if pi_max is not None and not (pi_max > 0):
+			raise ValueError(f"pi_max must be > 0, got {pi_max!r}.")
 		self.data = data
 		self.output_file_name = output_file_name
 		self.periodicity = periodicity

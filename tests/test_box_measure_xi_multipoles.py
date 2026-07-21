@@ -72,7 +72,8 @@ class TestCorrTypeM:
             _read(obj, "multipoles_gg", "mct_gg"))
 
     def test_invalid_corr_type_raises(self, IA_mock_TNG300_n1):
-        with pytest.raises(KeyError):
+        # corr_type is now validated up front (uniform ValueError), before any pair counting
+        with pytest.raises(ValueError, match="corr_type"):
             IA_mock_TNG300_n1.measure_xi_multipoles(
                 "bad", "gg+", 0, temp_file_path=False)
 
