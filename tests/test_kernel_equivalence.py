@@ -122,86 +122,114 @@ NAME_LEGACY = "legacyrun"
 NAME_KERNEL = "kernelrun"
 
 
-
-
-
-L_SUB = 2
+def _lc_mask_dict(obj):
+    """Non-contiguous lightcone mask dict (direct masks["RA"]-style indexing). Position-aligned
+    (RA/DEC/Redshift) and shape-aligned (RA_shape_sample/.../e1/e2) selections differ so the
+    weight-defaults-to-coordinate-mask path is exercised. weight/weight_shape_sample are left
+    out on purpose — prepare_lightcone_samples injects them from the coordinate masks."""
+    n_pos = len(obj.data["RA"])
+    n_shape = len(obj.data["RA_shape_sample"])
+    pos_mask = np.zeros(n_pos, dtype=bool)
+    pos_mask[::2] = True
+    shape_mask = np.zeros(n_shape, dtype=bool)
+    shape_mask[1::3] = True
+    return {
+        "RA": pos_mask, "DEC": pos_mask, "Redshift": pos_mask,
+        "RA_shape_sample": shape_mask, "DEC_shape_sample": shape_mask,
+        "Redshift_shape_sample": shape_mask, "e1": shape_mask, "e2": shape_mask,
+    }
 
 
 # ---------------------------------------------------------------------------
-# Step 5b: box multipoles jackknife families (measure_m_box_jk.py) via accumulate(jk=True)
-#   - _measure_xi_r_mur_box_jk_{brute,tree,batch,multiprocessing}
-#   - _count_pairs_xi_r_mur_box_jk_{brute,tree,batch,multiprocessing}
+# Step 6: lightcone non-jk families (measure_w_lightcone.py / measure_m_lightcone.py) via
+# accumulate(chunk_axis="position").
+#   - _{measure,count_pairs}_xi_rp_pi_lightcone_{brute,tree}   (SkyRpPi)
+#   - _{measure,count_pairs}_xi_r_mur_lightcone_{brute,tree}   (SkyRMuR)
 #
-# (r, mu_r) BoxRMuR binning with an rp_cut window (exercised in test_tree_rp_cut; left at
-# its 0.0 default elsewhere). Union-deletion per-realisation grids (DD_jk, raw Splus_D_jk)
-# accumulated in the kernel; R_jk via compute_R_jk in the wrapper/parent. brute = allclose
-# (shape-chunk order), tree/mp bit-identical. _sigmasq is intentionally dropped (see the
-# harness filter above) so it is not compared. This family now also covers the shared
-# accumulate(jk=True) kernel core. L_subboxes=2 -> 8 jackknife realisations.
+# Sky geometry: RA/DEC/z -> 3D comoving via pyccl; midpoint LOS n_LOS=(s1+s2)/|s1+s2|; e=(e1,e2)
+# pre-scaled by 1/(2R) so S+ grids are NOT divided by 2R. Position-outer chunked order (§4):
+# tree bit-identical, brute allclose (same pairs, all-shapes cross-join in position order).
+# print_num=False silences the per-call galaxy-count print in the harness.
 # ---------------------------------------------------------------------------
 
 
-class TestKernelEquivalenceBoxRMuRJkMeasure:
-    def test_tree(self, IA_mock_TNG300_n1):
-        obj = IA_mock_TNG300_n1
-        obj._legacy_measure_xi_r_mur_box_jk_tree(dataset_name=NAME_LEGACY, L_subboxes=L_SUB)
-        obj._measure_xi_r_mur_box_jk_tree(dataset_name=NAME_KERNEL, L_subboxes=L_SUB)
+class TestKernelEquivalenceSkyRpPiMeasure:
+    def test_tree(self, IA_mock_lc_n1):
+        obj = IA_mock_lc_n1
+        obj._legacy_measure_xi_rp_pi_lightcone_tree(dataset_name=NAME_LEGACY, print_num=False)
+        obj._measure_xi_rp_pi_lightcone_tree(dataset_name=NAME_KERNEL, print_num=False)
         _assert_groups_bit_identical(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
 
-    def test_tree_ellipticity(self, IA_mock_TNG300_n1):
-        obj = IA_mock_TNG300_n1
-        obj._legacy_measure_xi_r_mur_box_jk_tree(dataset_name=NAME_LEGACY, L_subboxes=L_SUB, ellipticity='ellipticity')
-        obj._measure_xi_r_mur_box_jk_tree(dataset_name=NAME_KERNEL, L_subboxes=L_SUB, ellipticity='ellipticity')
+    def test_tree_masked(self, IA_mock_lc_n1):
+        obj = IA_mock_lc_n1
+        obj._legacy_measure_xi_rp_pi_lightcone_tree(dataset_name=NAME_LEGACY, masks=_lc_mask_dict(obj), print_num=False)
+        obj._measure_xi_rp_pi_lightcone_tree(dataset_name=NAME_KERNEL, masks=_lc_mask_dict(obj), print_num=False)
         _assert_groups_bit_identical(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
 
-    def test_tree_responsivity_off(self, IA_mock_TNG300_n1):
-        obj = IA_mock_TNG300_n1
-        obj.responsivity_correction = False
-        obj._legacy_measure_xi_r_mur_box_jk_tree(dataset_name=NAME_LEGACY, L_subboxes=L_SUB)
-        obj._measure_xi_r_mur_box_jk_tree(dataset_name=NAME_KERNEL, L_subboxes=L_SUB)
+    def test_tree_responsivity_on(self, IA_mock_lc_n1):
+        obj = IA_mock_lc_n1
+        obj.responsivity_correction = True
+        obj._legacy_measure_xi_rp_pi_lightcone_tree(dataset_name=NAME_LEGACY, print_num=False)
+        obj._measure_xi_rp_pi_lightcone_tree(dataset_name=NAME_KERNEL, print_num=False)
         _assert_groups_bit_identical(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
 
-    def test_tree_rp_cut(self, IA_mock_TNG300_n1):
-        obj = IA_mock_TNG300_n1
-        obj._legacy_measure_xi_r_mur_box_jk_tree(dataset_name=NAME_LEGACY, L_subboxes=L_SUB, rp_cut=2.0)
-        obj._measure_xi_r_mur_box_jk_tree(dataset_name=NAME_KERNEL, L_subboxes=L_SUB, rp_cut=2.0)
-        _assert_groups_bit_identical(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
-
-    def test_brute(self, IA_mock_TNG300_n1):
-        obj = IA_mock_TNG300_n1
-        obj._legacy_measure_xi_r_mur_box_jk_brute(dataset_name=NAME_LEGACY, L_subboxes=L_SUB)
-        obj._measure_xi_r_mur_box_jk_brute(dataset_name=NAME_KERNEL, L_subboxes=L_SUB)
+    def test_brute(self, IA_mock_lc_n1):
+        obj = IA_mock_lc_n1
+        obj._legacy_measure_xi_rp_pi_lightcone_brute(dataset_name=NAME_LEGACY, print_num=False)
+        obj._measure_xi_rp_pi_lightcone_brute(dataset_name=NAME_KERNEL, print_num=False)
         _assert_groups_allclose(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
 
-    def test_multiprocessing(self, IA_mock_TNG300_n8):
-        obj = IA_mock_TNG300_n8
-        tmp = os.path.dirname(obj.output_file_name)
-        obj._legacy_measure_xi_r_mur_box_jk_multiprocessing(
-            dataset_name=NAME_LEGACY, L_subboxes=L_SUB, temp_file_path=tmp, num_nodes=2, chunk_size=150)
-        obj._measure_xi_r_mur_box_jk_multiprocessing(
-            dataset_name=NAME_KERNEL, L_subboxes=L_SUB, temp_file_path=tmp, num_nodes=2, chunk_size=150)
+
+class TestKernelEquivalenceSkyRpPiCountPairs:
+    def test_tree(self, IA_mock_lc_n1):
+        obj = IA_mock_lc_n1
+        obj._legacy_count_pairs_xi_rp_pi_lightcone_tree(dataset_name=NAME_LEGACY, print_num=False)
+        obj._count_pairs_xi_rp_pi_lightcone_tree(dataset_name=NAME_KERNEL, print_num=False)
         _assert_groups_bit_identical(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
 
-
-class TestKernelEquivalenceBoxRMuRJkCountPairs:
-    def test_tree(self, IA_mock_TNG300_n1):
-        obj = IA_mock_TNG300_n1
-        obj._legacy_count_pairs_xi_r_mur_box_jk_tree(dataset_name=NAME_LEGACY, L_subboxes=L_SUB)
-        obj._count_pairs_xi_r_mur_box_jk_tree(dataset_name=NAME_KERNEL, L_subboxes=L_SUB)
-        _assert_groups_bit_identical(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
-
-    def test_brute(self, IA_mock_TNG300_n1):
-        obj = IA_mock_TNG300_n1
-        obj._legacy_count_pairs_xi_r_mur_box_jk_brute(dataset_name=NAME_LEGACY, L_subboxes=L_SUB)
-        obj._count_pairs_xi_r_mur_box_jk_brute(dataset_name=NAME_KERNEL, L_subboxes=L_SUB)
+    def test_brute(self, IA_mock_lc_n1):
+        obj = IA_mock_lc_n1
+        obj._legacy_count_pairs_xi_rp_pi_lightcone_brute(dataset_name=NAME_LEGACY, print_num=False)
+        obj._count_pairs_xi_rp_pi_lightcone_brute(dataset_name=NAME_KERNEL, print_num=False)
         _assert_groups_allclose(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
 
-    def test_multiprocessing(self, IA_mock_TNG300_n8):
-        obj = IA_mock_TNG300_n8
-        tmp = os.path.dirname(obj.output_file_name)
-        obj._legacy_count_pairs_xi_r_mur_box_jk_multiprocessing(
-            dataset_name=NAME_LEGACY, L_subboxes=L_SUB, temp_file_path=tmp, num_nodes=2, chunk_size=150)
-        obj._count_pairs_xi_r_mur_box_jk_multiprocessing(
-            dataset_name=NAME_KERNEL, L_subboxes=L_SUB, temp_file_path=tmp, num_nodes=2, chunk_size=150)
+
+class TestKernelEquivalenceSkyRMuRMeasure:
+    def test_tree(self, IA_mock_lc_n1):
+        obj = IA_mock_lc_n1
+        obj._legacy_measure_xi_r_mur_lightcone_tree(dataset_name=NAME_LEGACY, print_num=False)
+        obj._measure_xi_r_mur_lightcone_tree(dataset_name=NAME_KERNEL, print_num=False)
         _assert_groups_bit_identical(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
+
+    def test_tree_masked(self, IA_mock_lc_n1):
+        obj = IA_mock_lc_n1
+        obj._legacy_measure_xi_r_mur_lightcone_tree(dataset_name=NAME_LEGACY, masks=_lc_mask_dict(obj), print_num=False)
+        obj._measure_xi_r_mur_lightcone_tree(dataset_name=NAME_KERNEL, masks=_lc_mask_dict(obj), print_num=False)
+        _assert_groups_bit_identical(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
+
+    def test_tree_responsivity_on(self, IA_mock_lc_n1):
+        obj = IA_mock_lc_n1
+        obj.responsivity_correction = True
+        obj._legacy_measure_xi_r_mur_lightcone_tree(dataset_name=NAME_LEGACY, print_num=False)
+        obj._measure_xi_r_mur_lightcone_tree(dataset_name=NAME_KERNEL, print_num=False)
+        _assert_groups_bit_identical(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
+
+    def test_brute(self, IA_mock_lc_n1):
+        obj = IA_mock_lc_n1
+        obj._legacy_measure_xi_r_mur_lightcone_brute(dataset_name=NAME_LEGACY, print_num=False)
+        obj._measure_xi_r_mur_lightcone_brute(dataset_name=NAME_KERNEL, print_num=False)
+        _assert_groups_allclose(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
+
+
+class TestKernelEquivalenceSkyRMuRCountPairs:
+    def test_tree(self, IA_mock_lc_n1):
+        obj = IA_mock_lc_n1
+        obj._legacy_count_pairs_xi_r_mur_lightcone_tree(dataset_name=NAME_LEGACY, print_num=False)
+        obj._count_pairs_xi_r_mur_lightcone_tree(dataset_name=NAME_KERNEL, print_num=False)
+        _assert_groups_bit_identical(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)
+
+    def test_brute(self, IA_mock_lc_n1):
+        obj = IA_mock_lc_n1
+        obj._legacy_count_pairs_xi_r_mur_lightcone_brute(dataset_name=NAME_LEGACY, print_num=False)
+        obj._count_pairs_xi_r_mur_lightcone_brute(dataset_name=NAME_KERNEL, print_num=False)
+        _assert_groups_allclose(obj.output_file_name, NAME_LEGACY, NAME_KERNEL)

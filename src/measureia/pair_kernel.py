@@ -7,7 +7,7 @@ everything else raising ``NotImplementedError`` rather than guessing at
 behaviour that hasn't been ported (and equivalence-tested) yet.
 
 Status (see REFACTOR_PLAN.md section 6 for the step numbering):
-    Steps 1-5 DONE: box geometry, ``"tree"`` and ``"brute"`` backends, the DD-only
+    Steps 1-5 DONE (box): box geometry, ``"tree"`` and ``"brute"`` backends, the DD-only
     (``shapes=False``) count_pairs path, jackknife (``jk=True``, union-deletion), and
     two binnings — ``BoxRpPi`` (rp, pi) and ``BoxRMuR`` (r, mu_r, multipoles). Wired
     into the ``MeasureWBox`` / ``MeasureMultipolesBox`` non-jk families and the
@@ -20,6 +20,15 @@ Status (see REFACTOR_PLAN.md section 6 for the step numbering):
     ``_sigmasq`` output was dropped by user decision — only the brute backend ever
     populated it, a pre-existing inconsistency.)
 
+    Step 6 DONE (lightcone non-jk): sky geometry via ``prepare_lightcone_samples``
+    (RA/DEC/z → 3D comoving with ``pyccl``; ``e = (e1, e2)`` pre-scaled by 1/(2R)) and
+    the ``chunk_axis="position"`` accumulation path (``_accumulate_lightcone``) with the
+    ``SkyRpPi`` / ``SkyRMuR`` binnings (midpoint LOS ``n_LOS = (s1+s2)/|s1+s2|``,
+    east/north ellipticity-angle projection). Wired into the non-jk
+    ``_{measure,count_pairs}_xi_{rp_pi,r_mur}_lightcone_{brute,tree}`` families. Unlike
+    the box S+ grids, the lightcone S+ is not divided by ``2R`` (baked into ``e``). Step 7
+    (lightcone jk, incl. mp) is not migrated yet.
+
 Every public function here is pure with respect to its arguments except
 where noted (``prepare_box_samples`` mutates the ``masks`` dict it is given,
 matching the legacy in-place default-injection behaviour it replaces).
@@ -30,6 +39,7 @@ from typing import Optional
 
 import numpy as np
 from scipy.spatial import KDTree
+import pyccl as ccl
 
 
 @dataclass
@@ -52,6 +62,12 @@ class SampleSet:
     # jk_shape is shape-aligned (chunked like axis_direction/e). Only used when jk=True.
     jk_pos: Optional[np.ndarray] = None
     jk_shape: Optional[np.ndarray] = None
+    # Lightcone geometry only (chunk_axis="position"): local sky basis at each position
+    # (east/north, N,3) for the ellipticity-angle projection, and n_pos (N,3, radial unit
+    # vector). For the lightcone families ``e`` is (M,2) = (e1,e2) pre-scaled by 1/(2R).
+    east: Optional[np.ndarray] = None
+    north: Optional[np.ndarray] = None
+    n_pos: Optional[np.ndarray] = None
 
 
 @dataclass
@@ -165,6 +181,133 @@ def prepare_box_samples(data, masks, Num_position, Num_shape, *, shapes, ellipti
         weight=weight, weight_shape=weight_shape,
         axis_direction=axis_direction, e=e,
         LOS_ind=LOS_ind, not_LOS=not_LOS,
+    )
+
+
+def prepare_lightcone_samples(data, masks, *, shapes, cosmology, over_h,
+                              responsivity_correction, base, print_num=True):
+    """Apply masks and build the 3D comoving sky geometry for a Lightcone measurement.
+
+    Reproduces, verbatim, the shared head of every lightcone (rp, pi) / (r, mu_r) counting
+    method: RA/DEC/Redshift/e1/e2 mask-application (direct ``masks["RA"]``-style indexing —
+    a partial dict raises KeyError, as in the legacy; ``weight``/``weight_shape_sample``
+    default to the ``RA``/``RA_shape_sample`` coordinate masks and are written back into
+    ``masks`` in place), redshift → comoving distance via ``pyccl`` (default cosmology when
+    None; ``over_h`` scales by ``h``), the unit-sphere direction vectors, the position/shape
+    comoving vectors ``s_pos``/``s_shape``, and — for ``shapes=True`` — the per-shape
+    ellipticity ``e = (e1, e2)`` **pre-scaled by 1/(2R)** when ``responsivity_correction``
+    (responsivity is baked into ``e`` here, not divided in the pair loop, unlike the box
+    families — REFACTOR_PLAN.md section 3.2), plus the local ``east``/``north`` sky basis at
+    each position.
+
+    ``SampleSet`` layout for the lightcone geometry: ``pos = s_pos`` (N,3), ``pos_shape =
+    s_shape`` (M,3), ``weight``/``weight_shape``; and when ``shapes``: ``e`` (M,2), ``east``
+    (N,3), ``north`` (N,3), ``n_pos`` (N,3).
+
+    Parameters
+    ----------
+    data : dict
+        The object's ``self.data``.
+    masks : dict or None
+        Per-call mask dict; mutated in place to inject default ``weight``/
+        ``weight_shape_sample`` masks when absent (legacy behaviour).
+    shapes : bool
+        If False, skip ``e1``/``e2``/responsivity and the ``east``/``north`` basis
+        (DD-only / count_pairs paths).
+    cosmology : pyccl.Cosmology or None
+        Cosmology for redshift→comoving distance; a fixed default is built (and, when
+        ``print_num``, announced) if None, matching the legacy.
+    over_h : bool
+        If True, multiply comoving distances by ``h`` (positions in cMpc/h).
+    responsivity_correction : bool
+        If True (and ``shapes``), pre-scale ``e1, e2`` by ``1/(2R)`` with ``R`` the
+        weighted responsivity over the shape sample. Note the lightcone default is False
+        (unlike the box families) — pass ``getattr(self, "responsivity_correction", False)``.
+    base : object
+        The calling instance (accepted for interface symmetry; unused here).
+    print_num : bool
+        Gate on the "No cosmology given" informational print, matching the legacy.
+
+    Returns
+    -------
+    SampleSet
+    """
+    if masks is None:
+        redshift = data["Redshift"]
+        redshift_shape_sample = data["Redshift_shape_sample"]
+        RA = data["RA"]
+        RA_shape_sample = data["RA_shape_sample"]
+        DEC = data["DEC"]
+        DEC_shape_sample = data["DEC_shape_sample"]
+        weight = data["weight"]
+        weight_shape = data["weight_shape_sample"]
+        if shapes:
+            e1 = data["e1"]
+            e2 = data["e2"]
+    else:
+        redshift = data["Redshift"][masks["Redshift"]]
+        redshift_shape_sample = data["Redshift_shape_sample"][masks["Redshift_shape_sample"]]
+        RA = data["RA"][masks["RA"]]
+        RA_shape_sample = data["RA_shape_sample"][masks["RA_shape_sample"]]
+        DEC = data["DEC"][masks["DEC"]]
+        DEC_shape_sample = data["DEC_shape_sample"][masks["DEC_shape_sample"]]
+        if shapes:
+            e1 = data["e1"][masks["e1"]]
+            e2 = data["e2"][masks["e2"]]
+        if "weight" not in masks:
+            masks["weight"] = masks["RA"]
+        if "weight_shape_sample" not in masks:
+            masks["weight_shape_sample"] = masks["RA_shape_sample"]
+        weight = data["weight"][masks["weight"]]
+        weight_shape = data["weight_shape_sample"][masks["weight_shape_sample"]]
+
+    Num_position = len(RA)
+
+    if cosmology is None:
+        cosmology = ccl.Cosmology(Omega_c=0.225, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.0)
+        if print_num:
+            print("No cosmology given, using Omega_m=0.27, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.")
+    h = cosmology["h"]
+
+    LOS_all = ccl.comoving_radial_distance(cosmology, 1 / (1 + redshift))
+    LOS_all_shape_sample = ccl.comoving_radial_distance(cosmology, 1 / (1 + redshift_shape_sample))
+    if over_h:
+        LOS_all *= h
+        LOS_all_shape_sample *= h
+
+    e = None
+    east = None
+    north = None
+    if shapes:
+        if responsivity_correction:
+            R = sum(weight_shape * (1 - (e1 ** 2 + e2 ** 2) / 2.0)) / sum(weight_shape)
+            e1, e2 = e1 / (2 * R), e2 / (2 * R)
+        e = np.array([e1, e2]).transpose()
+
+    RA_rad = RA / 180 * np.pi
+    RA_shape_sample_rad = RA_shape_sample / 180 * np.pi
+    DEC_rad = DEC / 180 * np.pi
+    DEC_shape_sample_rad = DEC_shape_sample / 180 * np.pi
+    n_shape = np.array([np.cos(DEC_shape_sample_rad) * np.cos(RA_shape_sample_rad),
+                        np.cos(DEC_shape_sample_rad) * np.sin(RA_shape_sample_rad),
+                        np.sin(DEC_shape_sample_rad)]).transpose()
+    s_shape = n_shape * np.array([LOS_all_shape_sample]).transpose()
+    n_pos = np.array([np.cos(DEC_rad) * np.cos(RA_rad),
+                      np.cos(DEC_rad) * np.sin(RA_rad),
+                      np.sin(DEC_rad)]).transpose()
+    if shapes:
+        east = np.array([-np.sin(RA_rad), np.cos(RA_rad), np.zeros(Num_position)]).transpose()
+        north = np.array([
+            -np.sin(DEC_rad) * np.cos(RA_rad),
+            -np.sin(DEC_rad) * np.sin(RA_rad),
+            np.cos(DEC_rad)
+        ]).transpose()
+    s_pos = np.array([LOS_all]).transpose() * n_pos
+
+    return SampleSet(
+        pos=s_pos, pos_shape=s_shape,
+        weight=weight, weight_shape=weight_shape,
+        e=e, east=east, north=north, n_pos=n_pos,
     )
 
 
@@ -301,6 +444,173 @@ class BoxRMuR:
         return mask, ind_r, ind_mu_r, projected_sep, projected_len
 
 
+class SkyRpPi:
+    """(rp, pi) grid binning for a lightcone (RA, DEC, z → 3D comoving) sky.
+
+    The line-of-sight direction is the pair *midpoint* radial direction
+    ``n_LOS = (s_pos + s_shape) / |s_pos + s_shape|``; ``LOS = s . n_LOS`` is the signed
+    line-of-sight separation (``pi`` runs over ``[-pi_max, pi_max]``) and the projected
+    separation length is ``sqrt(|s|^2 - LOS^2)``. Query radius is
+    ``sqrt(r_max^2 + pi_bins[-1]^2)`` (the position tree is queried against the shape tree
+    over the annulus ``[r_min, query_r_max]``). Clamping convention (lightcone family, see
+    REFACTOR_PLAN.md section 3.2): an index landing exactly on the upper edge
+    (``== num_bins``) is set to the last bin (``num_bins - 1``).
+    """
+
+    def __init__(self, base):
+        self.r_min = base.r_min
+        self.r_max = base.r_max
+        self.r_bins = base.r_bins
+        self.pi_bins = base.pi_bins
+        self.num_bins_r = base.num_bins_r
+        self.num_bins_pi = base.num_bins_pi
+        self.sub_box_len_logrp = (np.log10(base.r_max) - np.log10(base.r_min)) / base.num_bins_r
+        self.sub_box_len_pi = (base.pi_bins[-1] - base.pi_bins[0]) / base.num_bins_pi
+        # KDTree query annulus for candidate selection (REFACTOR_PLAN.md section 3.2).
+        self.query_r_min = base.r_min
+        self.query_r_max = np.sqrt(base.r_max ** 2 + base.pi_bins[-1] ** 2)
+
+    def bin_pairs(self, s, n_LOS, base):
+        """Bin one position galaxy's separations ``s = s_shape[cand] - s_pos[n]`` to its
+        candidate shape neighbours, given the per-pair midpoint LOS unit vectors ``n_LOS``.
+
+        Returns ``(mask, ind_r, ind_pi, s_perp)`` where ``s_perp`` is the projected
+        separation vector (``s`` minus its ``n_LOS`` component), used by ``accumulate`` for
+        the ellipticity-angle calc.
+        """
+        LOS = base.calculate_dot_product_arrays(s, n_LOS)
+        separation_len = np.sqrt(np.sum(s ** 2, axis=1) - LOS ** 2)
+        s_perp = s - np.sum(s * n_LOS, axis=1, keepdims=True) * n_LOS
+        mask = (separation_len >= self.r_bins[0]) * (separation_len < self.r_bins[-1]) * \
+               (LOS >= self.pi_bins[0]) * (LOS < self.pi_bins[-1])
+        ind_r = np.floor(
+            np.log10(separation_len[mask]) / self.sub_box_len_logrp
+            - np.log10(self.r_bins[0]) / self.sub_box_len_logrp
+        )
+        ind_r = np.array(ind_r, dtype=int)
+        ind_pi = np.floor(
+            LOS[mask] / self.sub_box_len_pi - self.pi_bins[0] / self.sub_box_len_pi
+        )
+        ind_pi = np.array(ind_pi, dtype=int)
+        if np.any(ind_r == self.num_bins_r):
+            ind_r[np.where(ind_r == self.num_bins_r)] = self.num_bins_r - 1
+        if np.any(ind_pi == self.num_bins_pi):
+            ind_pi[np.where(ind_pi == self.num_bins_pi)] = self.num_bins_pi - 1
+        return mask, ind_r, ind_pi, s_perp
+
+
+class SkyRMuR:
+    """(r, mu_r) grid binning for a lightcone sky (multipoles).
+
+    Like ``SkyRpPi`` but the separation bin ``r`` is the full 3D separation length,
+    ``mu_r = LOS / r`` (with the same midpoint ``n_LOS``), and there is no ``pi`` window.
+    Query radius is the annulus ``[r_min, r_max]``. Same lightcone clamp convention as
+    ``SkyRpPi``. ``mu_r`` sub-bin length is ``2.0 / num_bins_pi``.
+    """
+
+    def __init__(self, base):
+        self.r_min = base.r_min
+        self.r_max = base.r_max
+        self.r_bins = base.r_bins
+        self.mu_r_bins = base.mu_r_bins
+        self.num_bins_r = base.num_bins_r
+        self.num_bins_pi = base.num_bins_pi
+        self.sub_box_len_logrp = (np.log10(base.r_max) - np.log10(base.r_min)) / base.num_bins_r
+        self.sub_box_len_mu_r = 2.0 / base.num_bins_pi
+        self.query_r_min = base.r_min
+        self.query_r_max = base.r_max
+
+    def bin_pairs(self, s, n_LOS, base):
+        """Returns ``(mask, ind_r, ind_mu_r, s_perp)``; ``ind_r`` binned on the 3D
+        separation length, ``ind_mu_r`` on ``mu_r = LOS / r_3d``. Window keeps 3D length
+        in ``[r_bins[0], r_bins[-1])`` (no LOS window)."""
+        LOS = base.calculate_dot_product_arrays(s, n_LOS)
+        separation_len = np.sqrt(np.sum(s ** 2, axis=1))
+        mu_r = LOS / separation_len
+        s_perp = s - np.sum(s * n_LOS, axis=1, keepdims=True) * n_LOS
+        mask = (separation_len >= self.r_bins[0]) * (separation_len < self.r_bins[-1])
+        ind_r = np.floor(
+            np.log10(separation_len[mask]) / self.sub_box_len_logrp
+            - np.log10(self.r_bins[0]) / self.sub_box_len_logrp
+        )
+        ind_r = np.array(ind_r, dtype=int)
+        ind_mu_r = np.floor(
+            mu_r[mask] / self.sub_box_len_mu_r - self.mu_r_bins[0] / self.sub_box_len_mu_r
+        )
+        ind_mu_r = np.array(ind_mu_r, dtype=int)
+        if np.any(ind_r == self.num_bins_r):
+            ind_r[np.where(ind_r == self.num_bins_r)] = self.num_bins_r - 1
+        if np.any(ind_mu_r == self.num_bins_pi):
+            ind_mu_r[np.where(ind_mu_r == self.num_bins_pi)] = self.num_bins_pi - 1
+        return mask, ind_r, ind_mu_r, s_perp
+
+
+def _accumulate_lightcone(sample_set, binning, *, base, shapes, chunk_size_outer, backend):
+    """Lightcone (chunk_axis="position") pair-accumulation loop.
+
+    Mirrors the legacy lightcone tree/brute counting order exactly (REFACTOR_PLAN.md
+    section 4): outer loop over **position** chunks of ``chunk_size_outer``; per chunk build
+    ``KDTree(s_pos_chunk)`` and query it against the single full ``KDTree(s_shape)`` over the
+    binning's ``[query_r_min, query_r_max]`` annulus (tree backend) or take every shape as a
+    candidate (brute backend); inner loop over the chunk, vectorised ``np.add.at`` per
+    position. Ellipticity is per *shape* candidate here (``e`` is (M,2) = e1,e2 already
+    scaled by 1/(2R)), and S+ grids are **not** divided by ``2R`` (baked into ``e``).
+    """
+    DD = np.array([[0.0] * binning.num_bins_pi] * binning.num_bins_r)
+    Splus_D = np.array([[0.0] * binning.num_bins_pi] * binning.num_bins_r) if shapes else None
+    Scross_D = np.array([[0.0] * binning.num_bins_pi] * binning.num_bins_r) if shapes else None
+
+    s_pos = sample_set.pos
+    s_shape = sample_set.pos_shape
+    weight = sample_set.weight
+    weight_shape = sample_set.weight_shape
+    Num_position = len(s_pos)
+    Num_shape = len(s_shape)
+
+    if backend == "brute":
+        all_shapes = np.arange(Num_shape)
+    else:
+        shape_tree = KDTree(s_shape)
+
+    for i in np.arange(0, Num_position, chunk_size_outer):
+        i2 = min(Num_position, i + chunk_size_outer)
+        s_pos_i = s_pos[i:i2]
+        weight_i = weight[i:i2]
+        if shapes:
+            east_i = sample_set.east[i:i2]
+            north_i = sample_set.north[i:i2]
+        if backend == "brute":
+            ind_rbin_i = [all_shapes] * len(s_pos_i)
+        else:
+            pos_tree = KDTree(s_pos_i)
+            ind_min_i = pos_tree.query_ball_tree(shape_tree, binning.query_r_min)
+            ind_max_i = pos_tree.query_ball_tree(shape_tree, binning.query_r_max)
+            ind_rbin_i = base.setdiff2D(ind_max_i, ind_min_i)
+
+        for n in np.arange(0, len(s_pos_i)):
+            cand = ind_rbin_i[n]
+            if len(cand) > 0:
+                L = s_pos_i[n] + s_shape[cand]
+                n_LOS = L / np.sqrt(np.sum(L ** 2, axis=1))[:, None]
+                s = s_shape[cand] - s_pos_i[n]
+                mask, ind_r, ind_2nd, s_perp = binning.bin_pairs(s, n_LOS, base)
+
+                if shapes:
+                    x = np.sum(s_perp * east_i[n], axis=1)
+                    y = np.sum(s_perp * north_i[n], axis=1)
+                    phi = np.arctan2(y, x)
+                    e_plus, e_cross = base.get_ellipticity(sample_set.e[cand], phi)
+                    e_plus[np.isnan(e_plus)] = 0.0
+                    e_cross[np.isnan(e_cross)] = 0.0
+                    np.add.at(Splus_D, (ind_r, ind_2nd),
+                              weight_i[n] * weight_shape[cand][mask] * e_plus[mask])
+                    np.add.at(Scross_D, (ind_r, ind_2nd),
+                              weight_i[n] * weight_shape[cand][mask] * e_cross[mask])
+                np.add.at(DD, (ind_r, ind_2nd), weight_i[n] * weight_shape[cand][mask])
+
+    return Grids(DD=DD, Splus_D=Splus_D, Scross_D=Scross_D)
+
+
 def accumulate(sample_set, binning, *, base, R=None, shapes=True,
                chunk_axis="shape", chunk_size_outer=100, jk=False, num_box=None,
                pos_tree=None, backend="tree"):
@@ -342,18 +652,33 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
     batch; when None the tree is built here. ``sample_set.pos`` must be the same
     full position array the tree was built from either way.
     """
-    if chunk_axis != "shape":
-        raise NotImplementedError(
-            "pair_kernel.accumulate: only chunk_axis='shape' (box tree/mp order) "
-            "is implemented so far."
-        )
-    if not isinstance(binning, (BoxRpPi, BoxRMuR)):
-        raise NotImplementedError(
-            "pair_kernel.accumulate: only BoxRpPi / BoxRMuR binnings are implemented so far."
-        )
     if backend not in ("tree", "brute"):
         raise NotImplementedError(
             f"pair_kernel.accumulate: unknown backend {backend!r} (expected 'tree' or 'brute')."
+        )
+    if chunk_axis == "position":
+        if not isinstance(binning, (SkyRpPi, SkyRMuR)):
+            raise NotImplementedError(
+                "pair_kernel.accumulate: chunk_axis='position' (lightcone) requires a "
+                "SkyRpPi / SkyRMuR binning."
+            )
+        if jk:
+            raise NotImplementedError(
+                "pair_kernel.accumulate: lightcone jk (jk=True) is a later migration step."
+            )
+        return _accumulate_lightcone(
+            sample_set, binning, base=base, shapes=shapes,
+            chunk_size_outer=chunk_size_outer, backend=backend,
+        )
+    if chunk_axis != "shape":
+        raise NotImplementedError(
+            "pair_kernel.accumulate: only chunk_axis='shape' (box) and "
+            "chunk_axis='position' (lightcone) are implemented."
+        )
+    if not isinstance(binning, (BoxRpPi, BoxRMuR)):
+        raise NotImplementedError(
+            "pair_kernel.accumulate: only BoxRpPi / BoxRMuR binnings are implemented "
+            "for the box (chunk_axis='shape') path."
         )
     if backend == "brute" and pos_tree is not None:
         raise ValueError(
