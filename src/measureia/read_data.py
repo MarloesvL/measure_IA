@@ -1,3 +1,4 @@
+import os
 import h5py
 import numpy as np
 from .Sim_info import SimInfo
@@ -109,7 +110,10 @@ class ReadData(SimInfo):
 		elif self.catalogue == "Snapshot":
 			raise KeyError("Use read_snapshot method")
 
-		file = h5py.File(f"{self.data_path}{self.catalogue}.hdf5", "r")
+		catalogue_path = f"{self.data_path}{self.catalogue}.hdf5"
+		if not os.path.exists(catalogue_path):
+			raise FileNotFoundError(f"Data file not found: {catalogue_path}")
+		file = h5py.File(catalogue_path, "r")
 		if cut is None and indices is None:
 			data = file[self.snap_group + self.sub_group + dataset_name][:]
 		elif cut is not None:
@@ -140,7 +144,8 @@ class ReadData(SimInfo):
 		try:
 			data = Subhalo[dataset_name][:]
 		except KeyError:
-			print("Variable not found in Subhalo files. Choose from ", Subhalo.keys())
+			raise KeyError(f"Variable '{dataset_name}' not found in Subhalo files. "
+						   f"Choose from {list(Subhalo.keys())}") from None
 		if len(np.shape(data)) > 1:
 			stack = True
 		else:
@@ -150,7 +155,10 @@ class ReadData(SimInfo):
 			Nfiles = self.N_files
 
 		for n in np.arange(1, Nfiles):
-			subhalo_file = h5py.File(f"{self.data_path}{self.fof_folder}.{n}.hdf5", "r")
+			try:
+				subhalo_file = h5py.File(f"{self.data_path}{self.fof_folder}.{n}.hdf5", "r")
+			except OSError as e:
+				raise OSError(f"Could not open file {n} ({self.data_path}{self.fof_folder}.{n}.hdf5).") from e
 			try:
 				Subhalo = subhalo_file[self.catalogue]
 				data_n = Subhalo[dataset_name][:]  # get data single file
@@ -192,17 +200,15 @@ class ReadData(SimInfo):
 		try:
 			data = Snap_data[dataset_name][:]
 		except KeyError:
-			print(f"Variable not found in Snapshot files: {dataset_name}. Choose from ", Snap_data.keys())
+			raise KeyError(f"Variable '{dataset_name}' not found in Snapshot files. "
+						   f"Choose from {list(Snap_data.keys())}") from None
 		if len(np.shape(data)) > 1:
 			stack = True
 		else:
 			stack = False
 		if write_output:
-			try:
-				dataset = group_out[dataset_name]
+			if dataset_name in group_out:
 				del group_out[dataset_name]
-			except:
-				pass
 			if stack:
 				group_out.create_dataset(dataset_name, data=data, maxshape=(None, np.shape(data)[1]), chunks=True)
 			else:
@@ -260,17 +266,15 @@ class ReadData(SimInfo):
 			try:
 				data = Snap_data[dataset_name[i]][:]
 			except KeyError:
-				print(f"Variable not found in Snapshot files {variable}. Choose from ", Snap_data.keys())
+				raise KeyError(f"Variable '{variable}' not found in Snapshot files. "
+							   f"Choose from {list(Snap_data.keys())}") from None
 			if len(np.shape(data)) > 1:
 				stack.append(True)
 			else:
 				stack.append(False)
 			if write_output:
-				try:
-					dataset = group_out[variable]
+				if variable in group_out:
 					del group_out[variable]
-				except:
-					pass
 				if stack[i]:
 					group_out.create_dataset(variable, data=data, maxshape=(None, np.shape(data)[1]), chunks=True)
 				else:
@@ -314,9 +318,6 @@ class ReadData(SimInfo):
 			Name of the dataset in the output file of MeasureIA.
 		num_jk: int or str or NoneType
 			Number of jackknife patches to be generated internally. If None, the covariance will not be read.
-
-		Returns
-		-------
 
 		"""
 		# reset parameters (if same object is used for multiple datasets)
@@ -370,6 +371,44 @@ class ReadData(SimInfo):
 			if num_jk != None:
 				self.cov_w_gp = data_group[f"w_g_plus/{dataset_name}_jackknife_cov_{num_jk}"][:]
 				self.errors_w_gp = data_group[f"w_g_plus/{dataset_name}_jackknife_{num_jk}"][:]
+		except KeyError:
+			pass
+		file.close()
+		return
+
+	def read_modelling_outputs(self, catalogue):
+		"""Reads fitted IA/bias modelling parameters from a results HDF5 file and stores them on
+		the object.
+
+		Reads the ``A_IA``/``b_g`` amplitudes and their errors, written as HDF5 attributes on the
+		``w`` and/or ``multipoles`` groups (of ``self.snap_group`` when set), into
+		``self.{w,multipoles}_{A_IA,A_IA_err,b_g,b_g_err}``. A group that is absent is skipped.
+		``self.z`` is read from the snapshot-group attributes when a snapshot group is used.
+
+		Parameters
+		----------
+		catalogue : str
+			Base name (without extension) of the ``.hdf5`` results file under ``self.data_path``.
+
+		"""
+		file = h5py.File(f"{self.data_path}{catalogue}.hdf5", "r")
+		if self.snap_group != "":
+			data_group = file[self.snap_group]
+			self.z = data_group.attrs["z"]
+		else:
+			data_group = file
+		try:
+			self.w_A_IA = data_group[f"w"].attrs["A_IA"]
+			self.w_A_IA_err = data_group[f"w"].attrs["A_IA_err"]
+			self.w_b_g = data_group[f"w"].attrs["b_g"]
+			self.w_b_g_err = data_group[f"w"].attrs["b_g_err"]
+		except KeyError:
+			pass
+		try:
+			self.multipoles_A_IA = data_group[f"multipoles"].attrs["A_IA"]
+			self.multipoles_A_IA_err = data_group[f"multipoles"].attrs["A_IA_err"]
+			self.multipoles_b_g = data_group[f"multipoles"].attrs["b_g"]
+			self.multipoles_b_g_err = data_group[f"multipoles"].attrs["b_g_err"]
 		except KeyError:
 			pass
 		file.close()

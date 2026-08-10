@@ -1,35 +1,46 @@
 # MeasureIA Documentation
 
-Welcome to the fledgling documentation site of **MeasureIA**, a tool to measure intrinsic alignment correlation
-functions in hydrodynamic simulations
-These docs will be updated in due time.
-Please feel free to contact me (m.l.vanheukelum@uu.nl) if you have any questions or create an issue on GitHub.
-You can also view the [GitHub](https://github.com/MarloesvL/measure_IA)
+Welcome to the documentation site of **MeasureIA**, a tool to measure intrinsic alignment correlation
+functions in hydrodynamic simulations, for both periodic simulation boxes and lightcones.
+Please feel free to contact me (m.l.vanheukelum@uu.nl) if you have any questions, or create an issue on
+[GitHub](https://github.com/MarloesvL/measure_IA).
 
 ## Pages
 
-<ul>
-  <li><a href="/">Home</a></li>
-  <li><a href="/installation/">Installation</a></li>
-  <li><a href="/usage/">Usage</a></li>
-  <li><a href="/output_structure/">Output filestructure</a></li>
-  <li><a href="/roadmap/">Roadmap</a></li>
-  <li>
-    <a href="/api/">API Reference</a>
-    <ul>
-      <li><a href="/api/measureIABox/">MeasureIABox</a></li>
-      <li><a href="/api/measureIALightcone/">MeasureIALightcone</a></li>
-      <li><a href="/api/MeasureIABase/">MeasureIABase</a></li>
-      <li><a href="/api/MeasureJackknife/">MeasureJackknife</a></li>
-      <li><a href="/api/MeasureWBox/">MeasureWBox</a></li>
-      <li><a href="/api/MeasureMBox/">MeasureMultipolesBox</a></li>
-      <li><a href="/api/MeasureWBoxJackknife/">MeasureWBoxJackknife</a></li>
-      <li><a href="/api/MeasureMBoxJackknife/">MeasureMBoxJackknife</a></li>
-      <li><a href="/api/SimInfo/">SimInfo</a></li>
-      <li><a href="/api/ReadData/">ReadData</a></li>
-    </ul>
-  </li>
-</ul>
+- [Getting started](getting_started.md) — what MeasureIA does and when to use the box vs the lightcone
+- [Installation](installation.md)
+- **Guides**
+    - [Input](input.md) — the data dictionaries expected on initialisation
+    - [Usage](usage.md) — worked examples for the box and lightcone
+    - [Output](output_structure.md) — the structure of the output file
+    - [Included simulations](simulations.md) — box sizes and cosmologies known to `SimInfo`
+- **Concepts**
+    - [Conventions](conventions.md) — the shape and sign conventions (incl. the `e1`/`e2` convention) and binning
+    - [Estimator definitions](estimator_definitions.md) — the mathematics of the estimators
+- [Validation](validation.md) — cross-package validation and how to run it yourself
+- [Roadmap](#roadmap) — recently completed and planned developments
+
+The **API Reference** (see the navigation sidebar) documents `MeasureIABox`, `MeasureIALightcone` and the
+supporting classes.
+
+## Roadmap
+
+Recently completed:
+
+- Lightcone methods & cross-code validation (against halotools, treecorr and corr_pc)
+- Multiprocessing support for the lightcone version (both `w` and multipoles)
+- Optional responsivity factor for the shape calibration
+- NumPy 2 support and testing across Python 3.10 – 3.14
+- More exhaustive docstrings and internal method docs
+
+Planned developments include:
+
+- Non-periodic versions of box methods
+- e1,e2 input for box methods
+- look into extra speed up options
+
+The issues on [GitHub](https://github.com/MarloesvL/measure_IA) are also used as To Do's. Feel free to request
+features or comment on those already there to let me know you would like them to have a higher priority.
 
 ## Contributions
 ### Bugs
@@ -38,7 +49,7 @@ If you find a bug, please report it in a GitHub [issue](https://github.com/Marlo
 
 ### Features
 
-If you would like a feature added that is not already on the [Roadmap](roadmap.md) or in an
+If you would like a feature added that is not already on the [Roadmap](#roadmap) or in an
 [issue](https://github.com/MarloesvL/measure_IA/issues) on Github,
 please create an issue with the request.
 Within the issue, we can discuss how best to proceed and what the timeline will be. 

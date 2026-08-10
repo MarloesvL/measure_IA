@@ -1,0 +1,53 @@
+site_name: MeasureIA Documentation
+site_description: Measurement of intrinsic alignment correlation functions
+site_author: Marloes van Heukelum
+nav:
+  - Home: index.md
+  - Getting started: getting_started.md
+  - Installation: installation.md
+  - Guides:
+      - Input: input.md
+      - Usage: usage.md
+      - Output: output_structure.md
+      - Included simulations: simulations.md
+  - Concepts:
+      - Conventions: conventions.md
+      - Estimator definitions: estimator_definitions.md
+  - Validation: validation.md
+  - API Reference:
+      - MeasureIABox: api/measureIABox.md
+      - MeasureIALightcone: api/measureIALightcone.md
+      - MeasureIABase: api/MeasureIABase.md
+      - MeasureJackknife: api/MeasureJackknife.md
+      - Box backends:
+          - MeasureWBox: api/MeasureWBox.md
+          - MeasureMultipolesBox: api/MeasureMBox.md
+          - MeasureWBoxJackknife: api/MeasureWBoxJackknife.md
+          - MeasureMBoxJackknife: api/MeasureMBoxJackknife.md
+      - Lightcone backends:
+          - MeasureWLightcone: api/MeasureWLightcone.md
+          - MeasureMultipolesLightcone: api/MeasureMLightcone.md
+          - MeasureWLightconeJackknife: api/MeasureWLightconeJackknife.md
+          - MeasureMultipolesLightconeJackknife: api/MeasureMLightconeJackknife.md
+      - pair_kernel: api/pair_kernel.md
+      - SimInfo: api/SimInfo.md
+      - ReadData: api/ReadData.md
+theme: readthedocs
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: ["src"]
+          options:
+            docstring_style: numpy
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.arithmatex:
+      generic: true
+
+extra_javascript:
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js

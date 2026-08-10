@@ -1,8 +1,8 @@
 import math
+import warnings
 import numpy as np
 import h5py
-from kmeans_radec import kmeans_sample
-from scipy.special import lpmn
+from scipy.special import assoc_legendre_p
 from .write_data import write_dataset_hdf5, create_group_hdf5
 from .Sim_info import SimInfo
 
@@ -125,6 +125,23 @@ class MeasureIABase(SimInfo):
 		
 		"""
 		SimInfo.__init__(self, simulation, snapshot, boxsize)
+		# --- validate numeric configuration parameters ---
+		if not (isinstance(num_bins_r, (int, np.integer)) and not isinstance(num_bins_r, bool) and num_bins_r >= 1):
+			raise ValueError(f"num_bins_r must be an integer >= 1, got {num_bins_r!r}.")
+		if not (isinstance(num_bins_pi, (int, np.integer)) and not isinstance(num_bins_pi, bool) and num_bins_pi >= 1):
+			raise ValueError(f"num_bins_pi must be an integer >= 1, got {num_bins_pi!r}.")
+		try:
+			r_min_check, r_max_check = separation_limits
+		except (TypeError, ValueError):
+			raise ValueError(
+				f"separation_limits must be a length-2 sequence [r_min, r_max], got {separation_limits!r}.")
+		if not (0 < r_min_check < r_max_check):
+			raise ValueError(
+				f"separation_limits must satisfy 0 < r_min < r_max, got {separation_limits}.")
+		if self.boxsize is not None and self.boxsize is not False and not (self.boxsize > 0):
+			raise ValueError(f"boxsize must be > 0, got {self.boxsize!r}.")
+		if pi_max is not None and not (pi_max > 0):
+			raise ValueError(f"pi_max must be > 0, got {pi_max!r}.")
 		self.data = data
 		self.output_file_name = output_file_name
 		self.periodicity = periodicity
@@ -135,22 +152,18 @@ class MeasureIABase(SimInfo):
 		try:
 			self.Num_position = len(data["Position"])  # number of halos in position sample
 			self.Num_shape = len(data["Position_shape_sample"])  # number of halos in shape sample
-		except:
+		except (KeyError, TypeError):  # TypeError: data is None
 			try:
 				self.Num_position = len(data["RA"])
 				self.Num_shape = len(data["RA_shape_sample"])
-			except:
+			except (KeyError, TypeError):
 				self.Num_position = 0
 				self.Num_shape = 0
-				print("Warning: no Postion or Position_shape_sample given.")
+				print("Warning: no Position or Position_shape_sample given.")
 		if self.Num_position > 0:
-			try:
-				weight = self.data["weight"]
-			except:
+			if "weight" not in self.data:
 				self.data["weight"] = np.ones(self.Num_position)
-			try:
-				weight = self.data["weight_shape_sample"]
-			except:
+			if "weight_shape_sample" not in self.data:
 				self.data["weight_shape_sample"] = np.ones(self.Num_shape)
 		self.r_min = separation_limits[0]  # cMpc/h
 		self.r_max = separation_limits[1]  # cMpc/h
@@ -207,15 +220,25 @@ class MeasureIABase(SimInfo):
 
 	@staticmethod
 	def get_ellipticity(e, phi):
-		"""Calculates the radial and tangential components of the ellipticity, given the size of the ellipticty vector
-		and the angle between the semimajor or semiminor axis and the separation vector.
+		"""Calculates the radial (+) and cross (x) components of the ellipticity with respect to the
+		separation vector, following the intrinsic-alignment sign convention: e_+ > 0 means the
+		major axis points along the separation vector (radial alignment), so radial alignment
+		gives w_g+ > 0.
+
+		For 2D input, e1 and e2 must follow the standard survey shear-catalogue convention
+		(components defined on the local (RA, DEC) axes as delivered by e.g. lensfit/metacal-style
+		catalogues and expected by TreeCorr). Note that the IA e_+ has the opposite sign to the
+		lensing tangential shear: e_+ = -gamma_t.
 
 		Parameters
 		----------
 		e : ndarray
-			size of the ellipticity vector
+			if 1D: size of the ellipticity vector; if 2D: e1,e2 components of the ellipticity vector
+			in the survey shear-catalogue convention
 		phi : ndarray
-			angle between semimajor/semiminor axis and separation vector
+			if e 1D: angle between semimajor/semiminor axis and separation vector;
+			if 2D: angle of the projected separation vector in the internal (east, north) frame,
+			arctan2(north, east)
 
 		Returns
 		-------
@@ -223,7 +246,11 @@ class MeasureIABase(SimInfo):
 			e_+ and e_x
 
 		"""
-		e_plus, e_cross = e * np.cos(2 * phi), e * np.sin(2 * phi)
+		if len(np.shape(e)) > 1:
+			e_plus = e[:, 0] * np.cos(2 * phi) - e[:, 1] * np.sin(2 * phi)
+			e_cross = e[:, 0] * np.sin(2 * phi) + e[:, 1] * np.cos(2 * phi)
+		else:
+			e_plus, e_cross = e * np.cos(2 * phi), e * np.sin(2 * phi)
 		return e_plus, e_cross
 
 	@staticmethod
@@ -372,117 +399,6 @@ class MeasureIABase(SimInfo):
 				del setdiff
 		return diff
 
-	def _get_jackknife_region_indices(self, masks, L_subboxes):
-		"""
-		Split the box in L_subboxes^3 subboxes and return indices of which subbox objects are in for position and
-		shape sample.
-
-		Parameters
-		----------
-		masks: dict or NoneType
-			Input in methods in MeasureIABox that masks the input data dictionary.
-		L_subboxes: int
-			Number of subboxes on one side of the box. L_subboxes^3 is the total number of jackknife realisations.
-
-		Returns
-		-------
-		ndarrays
-			indices of jackknife region of position sample and indices of jackknife region of shape sample
-
-		"""
-		if masks == None:
-			positions = self.data["Position"]
-			positions_shape_sample = self.data["Position_shape_sample"]
-		else:
-			positions = self.data["Position"][masks["Position"]]
-			positions_shape_sample = self.data["Position_shape_sample"][masks["Position_shape_sample"]]
-		L_sub = self.L_0p5 * 2.0 / L_subboxes
-		jackknife_region_indices_pos = np.zeros(len(positions))
-		jackknife_region_indices_shape = np.zeros(len(positions_shape_sample))
-		num_box = 0
-		for i in np.arange(0, L_subboxes):
-			for j in np.arange(0, L_subboxes):
-				for k in np.arange(0, L_subboxes):
-					x_bounds = [i * L_sub, (i + 1) * L_sub]
-					y_bounds = [j * L_sub, (j + 1) * L_sub]
-					z_bounds = [k * L_sub, (k + 1) * L_sub]
-					x_mask = (positions[:, 0] > x_bounds[0]) * (positions[:, 0] < x_bounds[1])
-					y_mask = (positions[:, 1] > y_bounds[0]) * (positions[:, 1] < y_bounds[1])
-					z_mask = (positions[:, 2] > z_bounds[0]) * (positions[:, 2] < z_bounds[1])
-					x_mask_shape = (positions_shape_sample[:, 0] > x_bounds[0]) * (
-								positions_shape_sample[:, 0] < x_bounds[1])
-					y_mask_shape = (positions_shape_sample[:, 1] > y_bounds[0]) * (
-								positions_shape_sample[:, 1] < y_bounds[1])
-					z_mask_shape = (positions_shape_sample[:, 2] > z_bounds[0]) * (
-								positions_shape_sample[:, 2] < z_bounds[1])
-					mask_position = x_mask * y_mask * z_mask  # mask that is True for all positions in the subbox
-					mask_shape = x_mask_shape * y_mask_shape * z_mask_shape  # mask that is True for all positions not in the subbox
-					jackknife_region_indices_pos[mask_position] = num_box
-					jackknife_region_indices_shape[mask_shape] = num_box
-					num_box += 1
-		return np.array(jackknife_region_indices_pos, dtype=int), np.array(jackknife_region_indices_shape, dtype=int)
-
-	def _combine_jackknife_information(self, dataset_name, jk_group_name, corr_group, num_box, return_output=False):
-		"""
-		Combine jackknife realisations into a covariance matrix.
-
-		Parameters
-		----------
-		dataset_name: str
-			Name of the dataset in the output file.
-		jk_group_name: str
-			Name of the subgroup in the output file where the jackknife realisations are saved.
-		corr_group: list of str
-			Name of the subgroups in the output file denoting the correlation (e.g. w_g_plus, multipoles_gg etc).
-		num_box: int
-			Number of jackknife realisations.
-		return_output: bool, optional
-			When True, returns output, otherwise saves to output file.
-
-		Returns
-		-------
-		list of ndarrays
-			list of covariances for each entry in corr_group and list of standard deviations for each entry in corr_group
-
-		"""
-		covs, stds = [], []
-		for d in np.arange(0, len(corr_group)):
-			data_file = h5py.File(self.output_file_name, "a")
-			group_multipoles = data_file[f"{self.snap_group}/{corr_group[d]}/{jk_group_name}/"]
-			# calculating mean of the datavectors
-			mean_multipoles = np.zeros(self.num_bins_r)
-			for b in np.arange(0, num_box):
-				mean_multipoles += group_multipoles[dataset_name + "_" + str(b)][:]
-			mean_multipoles /= num_box
-
-			# calculation the covariance matrix (multipoles) and the standard deviation (sqrt of diag of cov)
-			cov = np.zeros((self.num_bins_r, self.num_bins_r))
-			std = np.zeros(self.num_bins_r)
-			for b in np.arange(0, num_box):
-				std += (group_multipoles[dataset_name + "_" + str(b)][:] - mean_multipoles) ** 2
-				for i in np.arange(self.num_bins_r):
-					cov[:, i] += (group_multipoles[dataset_name + "_" + str(b)][:] - mean_multipoles) * (
-							group_multipoles[dataset_name + "_" + str(b)][i] - mean_multipoles[i]
-					)
-			std *= (num_box - 1) / num_box  # see Singh 2023
-			std = np.sqrt(std)  # size of errorbars
-			cov *= (num_box - 1) / num_box  # cov not sqrt so to get std, sqrt of diag would need to be taken
-			data_file.close()
-			if return_output:
-				covs.append(cov)
-				stds.append(std)
-			else:
-				output_file = h5py.File(self.output_file_name, "a")
-				group_multipoles = create_group_hdf5(output_file, f"{self.snap_group}/" + corr_group[d])
-				write_dataset_hdf5(group_multipoles, dataset_name + "_mean_" + str(num_box), data=mean_multipoles)
-				write_dataset_hdf5(group_multipoles, dataset_name + "_jackknife_" + str(num_box), data=std)
-				write_dataset_hdf5(group_multipoles, dataset_name + "_jackknife_cov_" + str(num_box), data=cov)
-				output_file.close()
-		if return_output:
-			return covs, stds
-		else:
-			return
-
 	def _measure_w_g_i(self, dataset_name, corr_type="both", return_output=False, jk_group_name=""):
 		"""Measures w_gg or w_g+ for a given xi_gi dataset that has been calculated with the _measure_xi_rp_pi_sims
 		methods. Integrates over pi bins via sum * dpi. Stores rp, and w_gg or w_g+.
@@ -517,31 +433,31 @@ class MeasureIABase(SimInfo):
 			raise KeyError("Unknown value for corr_type. Choose from [g+, gg, both]")
 		for i in np.arange(0, len(xi_data)):
 			correlation_data_file = h5py.File(self.output_file_name, "a")
-			group = correlation_data_file[f"{self.snap_group}/w/{xi_data[i]}/{jk_group_name}"]
+			group = correlation_data_file[f"{self.snap_group}w/{xi_data[i]}/{jk_group_name}"]
 			correlation_data = group[dataset_name][:]
-			pi = group[dataset_name + "_pi"]
-			rp = group[dataset_name + "_rp"]
+			pi = group[dataset_name + "_pi"][:]
+			rp = group[dataset_name + "_rp"][:]
 			dpi = (self.pi_bins[1:] - self.pi_bins[:-1])
 			pi_bins = self.pi_bins[:-1] + abs(dpi) / 2.0  # middle of bins
-			# variance = group[dataset_name + "_sigmasq"][:]
 			if sum(np.isin(pi, pi_bins)) == len(pi):
 				dpi = np.array([dpi] * len(correlation_data[:, 0]))
 				correlation_data = correlation_data * abs(dpi)
-			# sigsq_el = variance * dpi ** 2
 			else:
 				raise ValueError("Update pi bins in initialisation of object to match xi_g_plus dataset.")
-			w_g_i = np.sum(correlation_data, axis=1)  # sum over pi values
-			# sigsq = np.sum(sigsq_el, axis=1)
+			# xi carries NaN/inf in bins with zero empirical RR (undefined estimator, already
+			# warned); the pi-integral over such a bin is legitimately NaN, so silence the
+			# redundant reduce/invalid-value warning.
+			with np.errstate(invalid='ignore'):
+				w_g_i = np.sum(correlation_data, axis=1)  # sum over pi values
 			if return_output:
 				output_data = np.array([rp, w_g_i]).transpose()
 				correlation_data_file.close()
 				return output_data
 			else:
 				group_out = create_group_hdf5(correlation_data_file,
-											  f"{self.snap_group}/{wg_data[i]}/{jk_group_name}")
+											  f"{self.snap_group}{wg_data[i]}/{jk_group_name}")
 				write_dataset_hdf5(group_out, dataset_name + "_rp", data=rp)
 				write_dataset_hdf5(group_out, dataset_name, data=w_g_i)
-				# write_dataset_hdf5(group_out, dataset_name + "_sigma", data=np.sqrt(sigsq))
 				correlation_data_file.close()
 		return
 
@@ -566,8 +482,8 @@ class MeasureIABase(SimInfo):
 			[r, multipoles_gg] or [r, multipoles_g+] if return_output is True
 		"""
 		correlation_data_file = h5py.File(self.output_file_name, "a")
-		if corr_type == "g+":  # todo: expand to include ++ option
-			group = correlation_data_file[f"{self.snap_group}/multipoles/xi_g_plus/{jk_group_name}"]
+		if corr_type == "g+":  # '++' (shape-shape) correlations are a planned post-release feature
+			group = correlation_data_file[f"{self.snap_group}multipoles/xi_g_plus/{jk_group_name}"]
 			correlation_data_list = [group[dataset_name][:]]  # xi_g+ in grid of r,mur
 			r_list = [group[dataset_name + "_r"][:]]
 			mu_r_list = [group[dataset_name + "_mu_r"][:]]
@@ -575,7 +491,7 @@ class MeasureIABase(SimInfo):
 			l_list = sab_list
 			corr_type_list = ["g_plus"]
 		elif corr_type == "gg":
-			group = correlation_data_file[f"{self.snap_group}/multipoles/xi_gg/{jk_group_name}"]
+			group = correlation_data_file[f"{self.snap_group}multipoles/xi_gg/{jk_group_name}"]
 			correlation_data_list = [group[dataset_name][:]]  # xi_g+ in grid of rp,pi
 			r_list = [group[dataset_name + "_r"][:]]
 			mu_r_list = [group[dataset_name + "_mu_r"][:]]
@@ -583,11 +499,11 @@ class MeasureIABase(SimInfo):
 			l_list = sab_list
 			corr_type_list = ["gg"]
 		elif corr_type == "both":
-			group = correlation_data_file[f"{self.snap_group}/multipoles/xi_g_plus/{jk_group_name}"]
+			group = correlation_data_file[f"{self.snap_group}multipoles/xi_g_plus/{jk_group_name}"]
 			correlation_data_list = [group[dataset_name][:]]  # xi_g+ in grid of rp,pi
 			r_list = [group[dataset_name + "_r"][:]]
 			mu_r_list = [group[dataset_name + "_mu_r"][:]]
-			group = correlation_data_file[f"{self.snap_group}/multipoles/xi_gg/{jk_group_name}"]
+			group = correlation_data_file[f"{self.snap_group}multipoles/xi_gg/{jk_group_name}"]
 			correlation_data_list.append(group[dataset_name][:])  # xi_g+ in grid of rp,pi
 			r_list.append(group[dataset_name + "_r"][:])
 			mu_r_list.append(group[dataset_name + "_mu_r"][:])
@@ -603,43 +519,47 @@ class MeasureIABase(SimInfo):
 			mu_r = mu_r_list[i]
 			sab = sab_list[i]
 			l = l_list[i]
-			L = np.zeros((len(r), len(mu_r)))
 			mu_r = np.array(list(mu_r) * len(r)).reshape((len(r), len(mu_r)))  # make pi into grid for mu
 
 			r = np.array(list(r) * len(mu_r)).reshape((len(r), len(mu_r)))
 			r = r.transpose()
-			for n in np.arange(0, len(mu_r[:, 0])):
-				for m in np.arange(0, len(mu_r[0])):
-					L_m, dL = lpmn(l, sab, mu_r[n, m])  # make associated Legendre polynomial grid
-					L[n, m] = L_m[-1, -1]  # grid ranges from 0 to sab and 0 to l, so last element is what we seek
+			# Associated Legendre polynomial grid. scipy's lpmn (removed in 1.17) returned a
+			# (l+1, sab+1) grid whose [-1, -1] element was order l, degree sab; that value is
+			# assoc_legendre_p(degree=sab, order=l, z). The call vectorises over the whole
+			# mu_r grid (leading axis is the order, hence [0]); output is bit-identical.
+			L = assoc_legendre_p(sab, l, mu_r)[0]
 			dmur = (self.mu_r_bins[1:] - self.mu_r_bins[:-1])
 			dmu_r_array = np.array(list(dmur) * len(r)).reshape((len(r), len(dmur)))
-			multipoles = (
-					(2 * l + 1)
-					/ 2.0
-					* math.factorial(l - sab)
-					/ math.factorial(l + sab)
-					* L
-					* correlation_data
-					* dmu_r_array
-			)
-			multipoles = np.sum(multipoles, axis=1)
+			# correlation_data carries NaN/inf in bins with zero empirical RR (the estimator
+			# is undefined there and the user was already warned); the integral over such a
+			# bin is legitimately NaN, so silence the redundant reduce/invalid-value warnings.
+			with np.errstate(invalid='ignore'):
+				multipoles = (
+						(2 * l + 1)
+						/ 2.0
+						* math.factorial(l - sab)
+						/ math.factorial(l + sab)
+						* L
+						* correlation_data
+						* dmu_r_array
+				)
+				multipoles = np.sum(multipoles, axis=1)
 			dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
 			separation = self.r_bins[:-1] + abs(dsep)  # middle of bins
 			if return_output:
 				correlation_data_file.close()
-				np.array([separation, multipoles]).transpose()
+				return np.array([separation, multipoles]).transpose()
 			else:
 				group_out = create_group_hdf5(
-					correlation_data_file, f"{self.snap_group}/multipoles_{corr_type_i}/{jk_group_name}"
+					correlation_data_file, f"{self.snap_group}multipoles_{corr_type_i}/{jk_group_name}"
 				)
 				write_dataset_hdf5(group_out, dataset_name + "_r", data=separation)
 				write_dataset_hdf5(group_out, dataset_name, data=multipoles)
 		correlation_data_file.close()
 		return
 
-	def _obs_estimator(self, corr_type, IA_estimator, dataset_name, dataset_name_randoms, num_samples,
-					   jk_group_name="", jk_group_name_randoms=""):
+	def _obs_estimator(self, corr_type, IA_estimator, dataset_name, num_samples,
+					   jk_group_name=""):
 		"""Reads various components of xi and combines into correct estimator for cluster or galaxy
 		lightcone alignment correlations. It then writes the xi_gg or xi_g+ in the correct place in the output file.
 
@@ -651,8 +571,6 @@ class MeasureIABase(SimInfo):
 			Chooser from 'clusters' or 'galaxies' for different estimator definition.
 		dataset_name : str
 			Name of the dataset
-		dataset_name_randoms : str
-			Name of the dataset for data with randoms as positions
 		num_samples : dict
 			Dictionary of samples sizes for position, shape and random samples. Keywords: D, S, R_D, R_S
 		jk_group_name : str
@@ -663,155 +581,70 @@ class MeasureIABase(SimInfo):
 
 		"""
 		output_file = h5py.File(self.output_file_name, "a")
+		group_gg = output_file[f"{self.snap_group}{corr_type[1]}/xi_gg/{jk_group_name}"]
 		if corr_type[0] == "g+" or corr_type[0] == "both":
 			group_gp = output_file[
-				f"{self.snap_group}/{corr_type[1]}/xi_g_plus/{jk_group_name}"]
-			group_gp_r = output_file[
-				f"{self.snap_group}/{corr_type[1]}/xi_g_plus/{jk_group_name_randoms}"]
+				f"{self.snap_group}{corr_type[1]}/xi_g_plus/{jk_group_name}"]
 			SpD = group_gp[f"{dataset_name}_SplusD"][:]
-			SpD /= (num_samples["S"] * num_samples["D"])
-			SpR = group_gp_r[f"{dataset_name_randoms}_SplusD"][:]
-			SpR /= (num_samples["S"] * num_samples["R_D"])
-		group_gg = output_file[f"{self.snap_group}/{corr_type[1]}/xi_gg/{jk_group_name}"]
-		group_gg_r = output_file[f"{self.snap_group}/{corr_type[1]}/xi_gg/{jk_group_name_randoms}"]
-		DD = group_gg[f"{dataset_name}_DD"][:]
-		DD /= (num_samples["D"] * num_samples["S"])
-
-		if IA_estimator == "clusters":
-			if corr_type[0] == "gg":
-				SR = group_gg[f"{dataset_name}_SR"][:]
-				SR /= (num_samples["S"] * num_samples["R_D"])
-			else:
-				SR = group_gg_r[f"{dataset_name_randoms}_DD"][:]
-				SR /= (num_samples["S"] * num_samples["R_D"])
-			if corr_type[0] == "g+" or corr_type[0] == "both":
-				correlation_gp = SpD / DD - SpR / SR
-				write_dataset_hdf5(group_gp, dataset_name, correlation_gp)
-			if corr_type[0] == "gg" or corr_type[0] == "both":
-				RD = group_gg[f"{dataset_name}_RD"][:]
-				RD /= (num_samples["D"] * num_samples["R_S"])
-				RR = group_gg[f"{dataset_name}_RR"][:]
-				RR /= (num_samples["R_D"] * num_samples["R_S"])
-				correlation_gg = (DD - RD - SR) / RR - 1
-				write_dataset_hdf5(group_gg, dataset_name, correlation_gg)
-		elif IA_estimator == "galaxies":
+			SpD /= max(num_samples["S"] * num_samples["D"] - num_samples["D_S"], 1)
+			SpR = group_gp[f"{dataset_name}_SplusR"][:]
+			SpR /= max(num_samples["S"] * num_samples["R_D"], 1)
+			if jk_group_name == "":  # cross (parity null test) only for the full sample
+				group_gc = output_file[f"{self.snap_group}{corr_type[1]}/xi_g_cross/"]
+				ScD = group_gc[f"{dataset_name}_ScrossD"][:]
+				ScD /= max(num_samples["S"] * num_samples["D"] - num_samples["D_S"], 1)
+				ScR = group_gc[f"{dataset_name}_ScrossR"][:]
+				ScR /= max(num_samples["S"] * num_samples["R_D"], 1)
+		if corr_type[0] == "gg" or corr_type[0] == "both" or IA_estimator == "clusters":
+			SR = group_gg[f"{dataset_name}_SR"][:]
+			SR /= max(num_samples["S"] * num_samples["R_D"], 1)
+		if corr_type[0] == "gg" or corr_type[0] == "both":
+			RD = group_gg[f"{dataset_name}_RD"][:]
+			RD /= max(num_samples["D"] * num_samples["R_S"], 1)
+		if IA_estimator == 'clusters' or corr_type[0] == "gg" or corr_type[0] == "both":
+			DD = group_gg[f"{dataset_name}_DD"][:]
+			DD /= max(num_samples["D"] * num_samples["S"] - num_samples["D_S"], 1)
+			DD_denom = DD.copy()  # guard for the clusters division; raw DD keeps 0 in the gg numerator
+			DD_denom[DD_denom == 0] = 1.
+		if IA_estimator == "galaxies" or corr_type[0] == "gg" or corr_type[0] == "both":
 			RR = group_gg[f"{dataset_name}_RR"][:]
-			RR /= (num_samples["R_D"] * num_samples["R_S"])
-			if corr_type[0] == "g+" or corr_type[0] == "both":
-				correlation_gp = (SpD - SpR) / RR
-				write_dataset_hdf5(group_gp, dataset_name, correlation_gp)
-			if corr_type[0] == "gg" or corr_type[0] == "both":
-				RD = group_gg[f"{dataset_name}_RD"][:]
-				RD /= (num_samples["D"] * num_samples["R_S"])
-				if corr_type[0] == "gg":
-					SR = group_gg[f"{dataset_name}_SR"][:]
-					SR /= (num_samples["S"] * num_samples["R_D"])
-				else:
-					SR = group_gg_r[f"{dataset_name_randoms}_DD"][:]
-					SR /= (num_samples["S"] * num_samples["R_D"])
-				correlation_gg = (DD - RD - SR) / RR + 1
-				write_dataset_hdf5(group_gg, dataset_name, correlation_gg)
-		else:
-			raise ValueError("Unknown input for IA_estimator, choose from [clusters, galaxies].")
-		# output_file = h5py.File(self.output_file_name, "a")
-		# 		group_gg = output_file[f"{self.snap_group}/{corr_type[1]}/xi_gg/{jk_group_name}"]
-		# 		if corr_type[0] == "g+" or corr_type[0] == "both":
-		# 			group_gp = output_file[
-		# 				f"{self.snap_group}/{corr_type[1]}/xi_g_plus/{jk_group_name}"]
-		# 			SpD = group_gp[f"{dataset_name}_SplusD"][:]
-		# 			SpD /= (num_samples["S"] * num_samples["D"] - num_samples["D_S"])
-		# 			SpR = group_gp[f"{dataset_name}_SplusR"][:]
-		# 			SpR /= (num_samples["S"] * num_samples["R_D"])
-		# 		if corr_type[0] == "gg" or corr_type[0] == "both":
-		# 			SR = group_gg[f"{dataset_name}_SR"][:]
-		# 			SR /= (num_samples["S"] * num_samples["R_D"])
-		# 			RD = group_gg[f"{dataset_name}_RD"][:]
-		# 			RD /= (num_samples["D"] * num_samples["R_S"])
-		# 		if IA_estimator == 'clusters' or corr_type[0] == "gg" or corr_type[0] == "both":
-		# 			DD = group_gg[f"{dataset_name}_DD"][:]
-		# 			DD[DD == 0] = 1.
-		# 			DD /= (num_samples["D"] * num_samples["S"] - num_samples["D_S"])
-		# 		if IA_estimator == "galaxies" or corr_type[0] == "gg" or corr_type[0] == "both":
-		# 			RR = group_gg[f"{dataset_name}_RR"][:]
-		# 			RR /= (num_samples["R_D"] * num_samples["R_S"])
-		#
-		# 		if IA_estimator == "clusters":
-		# 			if corr_type[0] == "g+" or corr_type[0] == "both":
-		# 				correlation_gp = SpD / DD - SpR / SR
-		# 				write_dataset_hdf5(group_gp, dataset_name, correlation_gp)
-		# 			if corr_type[0] == "gg" or corr_type[0] == "both":
-		# 				correlation_gg = (DD - RD - SR) / RR + 1
-		# 				write_dataset_hdf5(group_gg, dataset_name, correlation_gg)
-		# 		elif IA_estimator == "galaxies":
-		# 			if corr_type[0] == "g+" or corr_type[0] == "both":
-		# 				correlation_gp = (SpD - SpR) / RR
-		# 				write_dataset_hdf5(group_gp, dataset_name, correlation_gp)
-		# 			if corr_type[0] == "gg" or corr_type[0] == "both":
-		# 				correlation_gg = (DD - RD - SR) / RR + 1
-		# 				write_dataset_hdf5(group_gg, dataset_name, correlation_gg)
-		# 		else:
-		# 			raise ValueError("Unknown input for IA_estimator, choose from [clusters, galaxies].")
+			if jk_group_name == "" and np.any(RR == 0):
+				warnings.warn(
+					f"{int(np.sum(RR == 0))} bin(s) of '{dataset_name}' contain zero random-random pairs; "
+					"the estimator is undefined (NaN) there and any w/multipole integral over these bins "
+					"will be NaN. Increase the number of randoms to fill all bins.", RuntimeWarning)
+			RR /= max(num_samples["R_D"] * num_samples["R_S"], 1)
+
+		# Bins with zero empirical RR (or SR) divide to NaN/inf on purpose: the estimator
+		# is undefined there. The zero-RR RuntimeWarning above already tells the user, so
+		# silence the redundant numpy divide/invalid-value warnings from these divisions.
+		with np.errstate(invalid='ignore', divide='ignore'):
+			if IA_estimator == "clusters":
+				if corr_type[0] == "g+" or corr_type[0] == "both":
+					correlation_gp = SpD / DD_denom - SpR / SR
+					write_dataset_hdf5(group_gp, dataset_name, correlation_gp)
+					if jk_group_name == "":
+						correlation_gc = ScD / DD_denom - ScR / SR
+						write_dataset_hdf5(group_gc, dataset_name, correlation_gc)
+				if corr_type[0] == "gg" or corr_type[0] == "both":
+					correlation_gg = (DD - RD - SR) / RR + 1
+					write_dataset_hdf5(group_gg, dataset_name, correlation_gg)
+			elif IA_estimator == "galaxies":
+				if corr_type[0] == "g+" or corr_type[0] == "both":
+					correlation_gp = (SpD - SpR) / RR
+					write_dataset_hdf5(group_gp, dataset_name, correlation_gp)
+					if jk_group_name == "":
+						correlation_gc = (ScD - ScR) / RR
+						write_dataset_hdf5(group_gc, dataset_name, correlation_gc)
+				if corr_type[0] == "gg" or corr_type[0] == "both":
+					correlation_gg = (DD - RD - SR) / RR + 1
+					write_dataset_hdf5(group_gg, dataset_name, correlation_gg)
+			else:
+				raise ValueError("Unknown input for IA_estimator, choose from [clusters, galaxies].")
 		output_file.close()
 		return
 
-	def assign_jackknife_patches(self, data, randoms_data, num_jk):
-		"""Assigns jackknife patches to data and randoms given a number of patches.
-		Based on https://github.com/esheldon/kmeans_radec
 
-		Parameters
-		----------
-		data : dict
-			Dictionary containing position and shape sample data. Keywords: "RA", "DEC", "RA_shape_sample",
-			"DEC_shape_sample"
-		randoms_data : dict
-			Dictionary containing position and shape sample data of randoms. Keywords: "RA", "DEC", "RA_shape_sample",
-			"DEC_shape_sample"
-		num_jk : int
-			Number of jackknife patches
-
-		Returns
-		-------
-		dict
-			Dictionary with patch numbers for each sample. Keywords: 'position', 'shape', 'randoms_position',
-			'randoms_shape'
-
-		"""
-
-		jk_patches = {}
-
-		# Read the randoms file from which the jackknife regions will be created
-		RA = randoms_data['RA']
-		DEC = randoms_data['DEC']
-
-		# Define a number of jaccknife regions and find their centres using kmans
-		X = np.column_stack((RA, DEC))
-		km = kmeans_sample(X, num_jk, maxiter=100, tol=1.0e-5)
-		jk_labels = km.labels
-
-		jk_patches['randoms_position'] = jk_labels
-
-		RA = randoms_data['RA_shape_sample']
-		DEC = randoms_data['DEC_shape_sample']
-		X2 = np.column_stack((RA, DEC))
-		jk_labels = km.find_nearest(X2)
-
-		jk_patches['randoms_shape'] = jk_labels
-
-		RA = data['RA']
-		DEC = data['DEC']
-		X2 = np.column_stack((RA, DEC))
-		jk_labels = km.find_nearest(X2)
-
-		jk_patches['position'] = jk_labels
-
-		RA = data['RA_shape_sample']
-		DEC = data['DEC_shape_sample']
-		X2 = np.column_stack((RA, DEC))
-		jk_labels = km.find_nearest(X2)
-
-		jk_patches['shape'] = jk_labels
-
-		return jk_patches
 
 
 if __name__ == "__main__":

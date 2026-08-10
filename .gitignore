@@ -216,6 +216,8 @@ __marimo__/
 .streamlit/secrets.toml
 
 # custom
+.DS_Store
+.idea/
 src_old
 examples/example_multiprocessing.py
 site/

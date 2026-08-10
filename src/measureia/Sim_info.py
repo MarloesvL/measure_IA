@@ -2,7 +2,7 @@ class SimInfo:
 	"""Class that stores simulation information in an object to be inherited by other classes.
 		Simulation information is hard coded and therefore uses are limited. However, can easily be expanded.
 		Currently, these simulations are available: [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1,
-		FLAMINGO_L2p8].
+		FLAMINGO_L2p8, COLIBRE_L400, COLIBRE_L200].
 
 	Attributes
 	----------
@@ -43,7 +43,8 @@ class SimInfo:
 		----------
 		sim_name : str or NoneType
 			Identifier of the simulation, allowing for correct information to be obtained.
-			Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, FLAMINGO_L2p8].
+			Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, FLAMINGO_L2p8, COLIBRE_L400,
+			COLIBRE_L200].
 			If None, no information will be returned that is not already given as input.
 		snapshot : int or str or NoneType
 			Number of the snapshot, which, if given, will ensure that the output file to contains a group
@@ -82,7 +83,7 @@ class SimInfo:
 
 	def get_specs(self):
 		"""Obtains the boxsize, L_0p5 and h parameters that are stored for [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN,
-		FLAMINGO_L1, FLAMINGO_L2p8].
+		FLAMINGO_L1, FLAMINGO_L2p8, COLIBRE_L400, COLIBRE_L200].
 
 		Raises
 		------
@@ -152,7 +153,7 @@ class SimInfo:
 			self.N_files = 600
 		elif self.simname == "EAGLE":
 			znames = {"28": "z000p000", "17": "z001p487", "19": "z001p004", "21": "z000p736", "23": "z000p503",
-					  "25": "z000p271"}
+					  "25": "z000p271", None: None}
 			zname = znames[self.snapshot]
 			self.snap_folder = f"/snap_0{self.snapshot}/RefL0100N1504/snapshot_0{self.snapshot}_{zname}/snap_0{self.snapshot}_{zname}"  # update for different z?
 			self.fof_folder = None
@@ -171,7 +172,8 @@ class SimInfo:
 			self.N_files = 1
 		else:
 			raise KeyError(
-				"Simulation name not recognised. Choose from [TNG100, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1_m8, FLAMINGO_L1_m9, FLAMINGO_L1_m10, FLAMINGO_L2p8_m9,, COLIBRE_L400, COLIBRE_L200].")
+				"Simulation name not recognised. Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, "
+				"FLAMINGO_L1, FLAMINGO_L2p8, COLIBRE_L400, COLIBRE_L200].")
 		return
 
 

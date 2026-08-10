@@ -1,0 +1,390 @@
+# Cross-package validation
+
+This directory validates measureia's correlation-function estimators against
+independent, publicly available implementations. It complements the unit and
+analytic tests in `tests/` (which check internal consistency and brute-force
+expectations) by checking full pipelines against external codes.
+
+## How it works
+
+- **Mock data** (`mock_catalogues.py`): all comparisons run on a seeded
+  synthetic catalogue with a strong, non-null IA signal — centrals placed
+  uniformly in a periodic box, satellites scattered around them with a
+  Gaussian profile, and satellite projected major axes pointing at their own
+  central plus Gaussian angle noise ("radial alignment"). Both codes read
+  byte-identical inputs, so ratios are meaningful in every bin.
+- **Runnable scripts** (`run_*.py`): one script per comparison. Each script
+  always computes the measureia side. If the external package is installed,
+  it also computes the external side and writes it to
+  `reference_outputs/*.hdf5`; otherwise it compares against the committed
+  reference file.
+- **Reference outputs** (`reference_outputs/`): small committed HDF5 files
+  holding the *external* package's results (plus version metadata). The
+  pytest layer (`tests/test_validation_references.py`) compares measureia
+  against these, so CI and reviewers get a genuine cross-package check
+  without installing the external packages.
+
+To install the external packages:
+
+```bash
+pip install measureia[validation]   # halotools + treecorr
+```
+
+## Comparisons and known convention differences
+
+### Box w_gg / w_g+ vs halotools (`run_box_halotools.py`)
+
+Compares `MeasureIABox.measure_xi_w` against
+`halotools.mock_observables.ia_correlations.gi_plus_projected` (w_g+) and
+`halotools.mock_observables.wp` (w_gg), both with analytic randoms in a
+periodic box, distant-observer LOS along z.
+
+- **Responsivity**: measureia divides the S+D sum by 2R with
+  R = 1 − ⟨e²⟩/2; halotools does not. Therefore
+  `w_g+^measureia × 2R = w_g+^halotools`. This is the only expected
+  difference; the agreement is exact up to floating-point noise because both
+  codes use analytic RR counts (verified: the RR volume factors match
+  analytically).
+- **Result** (halotools 0.9.4, 2026-07-16): with the 2R factor applied,
+  w_g+ agrees to a maximum relative difference of 2×10⁻¹³ and w_gg to
+  4×10⁻¹⁵ across all bins — machine precision. Enforced at rtol=1e-10 in
+  `tests/test_validation_references.py`.
+
+### Lightcone w_gg / w_g+ vs treecorr (`run_lightcone_treecorr.py`)
+
+Compares `MeasureIALightcone.measure_xi_w` ('galaxies' estimator) against
+the same estimator reconstructed from raw treecorr `NN`/`NG` counts, one
+treecorr run per signed pi slab (`min_rpar`/`max_rpar`, `metric='Rperp'`,
+`bin_slop=0`), on the lightcone radial-alignment mock.
+
+- **Ellipticity convention**: measureia's lightcone e1/e2 input follows
+  the standard survey shear-catalogue convention — the same components
+  treecorr and lensfit/metacal-style catalogues use — and returns
+  radial-positive w_g+ (the IA-literature sign, opposite to the lensing
+  tangential shear: e_+ = −γ_t). The treecorr comparison therefore only
+  needs the single, standard IA flip **`g1 = −e1, g2 = −e2`**, after
+  which the ratio is +1. Beware when experimenting with conventions:
+  getting the *chirality* (relative sign of e1 vs e2) wrong does not
+  flip w_g+ — it washes the signal out to incoherent noise (the
+  projection becomes cos(2(φ_axis+φ_sep)) instead of
+  cos(2(φ_axis−φ_sep))), which is easy to misdiagnose as a code bug.
+- **Separation definitions**: treecorr's `Rperp` (FisherRperp) and signed
+  r_par differ from measureia's midpoint-LOS definitions by curvature
+  terms, so a few pairs near bin edges migrate bins; treecorr also
+  projects shears in the great-circle frame of each pair while measureia
+  uses the (east, north) frame of the position-sample galaxy.
+- **Result** (treecorr 5.1.3, 2026-07-16): w_g+ agrees to ~1×10⁻⁵
+  (relative) in all high-signal bins; w_gg is exact in most bins and
+  within 0.4% in the smallest-rp bins (bin migration). The near-zero
+  outer w_g+ bins differ by <0.04 in absolute terms. Enforced at
+  rtol=5e-3, atol=0.05 in `tests/test_validation_references.py`.
+
+### Box vs treecorr (planned)
+
+treecorr has no periodic-boundary support, so measureia must be run without
+analytic randoms and the estimator reconstructed from separate DD/RR/SD
+runs; only one pi bin is practical.
+
+### Plane-parallel consistency (`run_plane_parallel.py`)
+
+The identical radial-alignment box catalogue is measured with
+`MeasureIABox` (periodic, analytic randoms; halotools-anchored) and, after
+exact embedding at comoving distance 12000 Mpc, with `MeasureIALightcone`
+('galaxies' estimator, empirical randoms filling the embedded cube). The
+mock uses a margin so no periodically wrapped pair enters the measured
+separation range.
+
+**Result** (2026-07-16), reported at three levels which fully attribute
+every difference:
+
+1. **Raw pair counts**: DD grids agree to <1%; S+D grids agree to <1%
+   after dividing by the responsivity 2R. This is the actual
+   plane-parallel test — geometry, binning, and the survey-convention
+   e1/e2 shape projection are consistent between the two pipelines.
+2. **w with matched RR**: rebuilding the lightcone estimator with the
+   box's analytic RR gives w_gg within ~1% and w_g+ within ~2% (bins
+   with adequate pair counts).
+3. **w as measured**: differs additionally by a few % at rp ≳ 5 Mpc/h
+   because analytic RR assumes a periodic box while empirical randoms
+   live in a bounded window (boundary pair loss grows with separation) —
+   an understood estimator-design difference, not an error.
+
+**Convention finding**: the box estimator divides S+ terms by the
+responsivity 2R; the lightcone estimator does not (its e1/e2 are treated
+as calibrated shear estimates). This cross-pipeline difference was
+discovered by this check. Both `measure_xi_w` and `measure_xi_multipoles`
+now expose it as the `responsivity` parameter (box default `True`,
+lightcone default `False`); toggling it rescales w_g+ by exactly 2R
+(enforced by tests) and leaves w_gg untouched. Set `responsivity=True`
+on the lightcone when feeding raw distortions rather than calibrated
+shears.
+
+### Box multipoles vs corr_pc (`run_box_multipoles_corrpc.py`)
+
+Compares `MeasureIABox.measure_xi_multipoles` against
+[corr_pc](https://github.com/sukhdeep2/corr_pc) ([Singh
+2021](https://ui.adsabs.harvard.edu/abs/2021MNRAS.508.1632S/abstract)), the
+C++ code used for the original multipole validation of this package.
+corr_pc's periodic-box mode with `coordinates=7` measures ξ_gg(r, μ) and
+ξ_g+(r, μ) on the identical log-r / linear-μ grid with the same natural
+estimators and analytic RR; measureia's own associated-Legendre integration
+is then applied to the corr_pc grid, so the comparison covers both the grid
+and the multipole integration.
+
+- **Responsivity**: as with halotools, measureia divides S+ terms by 2R,
+  corr_pc does not: `ξ_g+^measureia × 2R = ξ_g+^corr_pc`.
+- **Analytic RR normalisation**: measureia's `get_random_pairs_r_mur`
+  uses (N_pos − 1) · N_shape while corr_pc uses N_pos · N_shape — a
+  deterministic (N_pos − 1)/N_pos factor applied in the comparison.
+- **Ellipticity chirality**: corr_pc rotates components as
+  e+ = cos(2θ)e1 − sin(2θ)e2, i.e. its expected input convention is
+  e1 = e·cos(2φ_axis), **e2 = −e·sin(2φ_axis)** (opposite chirality to
+  the survey shear convention used by measureia's lightcone pipeline and
+  treecorr). With that input its e+ is radial-positive, matching
+  measureia. As with treecorr, getting the chirality wrong washes the
+  signal out rather than flipping its sign.
+- **Result** (2026-07-16): ξ(r, μ) grids agree to ≤5×10⁻⁶ in every bin
+  and the multipoles ξ_g+,2 / ξ_gg,0 to ~10⁻⁶ (a few ×10⁻⁵ in near-zero
+  bins) — limited purely by corr_pc's 6-significant-digit text output,
+  i.e. machine-precision agreement. Enforced at rtol=1e-4 in
+  `tests/test_validation_references.py`.
+
+### Lightcone w_gg / w_g+ vs corr_pc (`run_lightcone_corrpc.py`)
+
+A second, independent lightcone cross-check besides treecorr: corr_pc's
+sky mode (`coordinates=0`) implements *exactly* measureia's 'galaxies'
+estimator — ξ_g+ = S+D/RR − S+R/RR and the Landy–Szalay
+ξ_gg = (SD − SR − DR)/RR + 1 with explicit randoms — so the same mock and
+configuration as the treecorr comparison are reused and the enforced
+comparison is w_g+ / w_gg.
+
+- **Separation definitions**: corr_pc uses rp = great-circle angle ×
+  pair-mean comoving distance and π = difference of radial comoving
+  distances (plane-parallel), vs measureia's midpoint-LOS projections —
+  the same class of curvature-term/bin-migration differences as
+  treecorr's Rperp. corr_pc also looks distances up from a tabulated
+  z-grid with floor (no interpolation) lookup; the table is generated
+  from the same CCL cosmology at dz=2×10⁻⁶ so the ~0.01 Mpc quantisation
+  is negligible.
+- **Ellipticity components**: corr_pc's rotation
+  e+ = cos(2θ)e1 − sin(2θ)e2 applied to the raw survey-convention e1/e2
+  reproduces measureia's radial-positive e+ directly — no sign flip
+  (empirically verified; a single-component flip washes w_g+ out to
+  noise, both-component flip only changes the overall sign). The e2 flip
+  in corr_pc's HSC example notebook belongs to that catalogue, not to
+  survey-convention inputs. Note this differs from the *box* comparison
+  (`run_box_multipoles_corrpc.py`), where the inputs are built from
+  raw axis angles and corr_pc's chirality requires e2 = −e·sin(2φ).
+- **Signed-π orientation**: corr_pc reorders each pair-count run by
+  sample size, so different terms can carry mirrored signed-π
+  conventions; this cancels in w (symmetric π range), which is why the
+  comparison is enforced at the w level. The ξ(rp, π) grids are stored
+  in the reference file for inspection only.
+- **Result** (2026-07-17): w_g+ agrees to ≤0.15% in every bin (most
+  ≤0.03%), w_gg to ≤0.4% (near-zero outer bins within atol). Enforced at
+  rtol=5e-3, atol=0.05 in `tests/test_validation_references.py` — the
+  same tolerances as the treecorr comparison.
+
+### Lightcone multipoles vs corr_pc (`run_lightcone_multipoles_corrpc.py`)
+
+Compares `MeasureIALightcone.measure_xi_multipoles` against corr_pc's sky
+r–μ mode (`coordinates=1`) — identical 'galaxies' estimator and randoms
+handling as the w comparison above, with measureia's associated-Legendre
+integration applied to the corr_pc ξ(r, μ) grid. The even-in-μ Legendre
+weights cancel corr_pc's internal signed-π reordering exactly, so the
+multipole level is the meaningful comparison (grids stored for
+inspection only).
+
+- **Randoms density**: the (r, μ) grid dilutes the randoms over many more
+  cells than the π-integrated w, so this comparison uses r ≥ 2 Mpc and a
+  5× larger randoms factor than the w scripts — with the defaults the
+  smallest cells have empty empirical RR (ξ undefined) on the measureia
+  side.
+- **Result** (2026-07-17): ξ_g+,2 agrees to ≤0.2% and ξ_gg,0 to ≤0.3% in
+  all signal bins (near-zero outer bins within atol) — the same
+  separation-definition-limited agreement as the w comparison. Enforced
+  at rtol=5e-3, atol=0.05 in `tests/test_validation_references.py`.
+
+**Building corr_pc without MPI**: corr_pc's Makefile asks for `mpic++`,
+but its only MPI usage is `MPI::Init/Finalize` and
+`MPI::COMM_WORLD.Get_size/Get_rank` via the deprecated C++ bindings. The
+single-process stub header in `corrpc_mpi_stub/mpi.h` replaces the whole
+dependency. The sky-mode (lightcone) run additionally needs the one-line
+patch in `corrpc_patches/drs_pair_count.patch`: for shape-density
+correlations corr_pc dispatches the D×R_s pair count to the
+shape-rotating kernel even though neither sample has ellipticities
+(randoms never read them), dereferencing an unallocated pointer — it
+happens not to crash on some platforms (and the stray sums are never
+used), but it segfaults reproducibly on macOS. The patch routes that
+term to the plain pair counter; it changes no numbers. The covariance
+legs additionally want `corrpc_patches/outp_2dbins_precision.patch`,
+which re-enables the (commented-out) `setprecision` call in the 2D bin
+writer so the outputs are not truncated to 6 significant digits — a
+formatting-only change. On macOS with homebrew gsl + libomp:
+
+```bash
+git clone https://github.com/sukhdeep2/corr_pc && cd corr_pc
+git apply /path/to/measure_IA/validation/corrpc_patches/drs_pair_count.patch
+git apply /path/to/measure_IA/validation/corrpc_patches/outp_2dbins_precision.patch
+make compiler=clang++ \
+  CFLAGS="-c -I/path/to/measure_IA/validation/corrpc_mpi_stub \
+          -I/opt/homebrew/opt/gsl/include -Xpreprocessor -fopenmp \
+          -I/opt/homebrew/opt/libomp/include" \
+  LDFLAGS="-L/opt/homebrew/opt/gsl/lib -lgsl -lgslcblas \
+           -L/opt/homebrew/opt/libomp/lib -lomp"
+CORR_PC_BIN=$PWD/corr_pc python run_box_multipoles_corrpc.py
+CORR_PC_BIN=$PWD/corr_pc python run_lightcone_corrpc.py
+CORR_PC_BIN=$PWD/corr_pc python run_lightcone_multipoles_corrpc.py
+```
+
+### Jackknife covariance vs treecorr (`run_lightcone_treecorr_cov.py`)
+
+The identical seeded kmeans patch assignment (from measureia's
+`assign_jackknife_patches`) is supplied to both codes on the lightcone
+mock, so both compute the same deterministic delete-one-patch statistic
+with the standard (N−1)/N formula. Because measureia's RR-normalised
+w_g+ estimator is not what treecorr's compensated NG `calculateXi`
+computes, treecorr's built-in covariance machinery cannot reproduce it
+directly; instead the jackknife loop is explicit — each patch-deleted
+sample is re-processed with treecorr and the estimator rebuilt from raw
+counts, mirroring measureia's internal definition exactly.
+
+- **Result** (treecorr 5.1.3, 2026-07-16, 9 patches): jackknife standard
+  deviations agree to ≤5×10⁻⁵ for w_g+ in all high-signal bins (≤2% in
+  the near-zero outer bins) and ≤0.6% for w_gg; full correlation-matrix
+  elements agree to ≤0.02 absolute. Enforced at rtol=3%, atol=0.05 in
+  `tests/test_validation_references.py`.
+
+### Box jackknife covariance (`run_box_cov_bridge.py`)
+
+Two-level validation of the box jackknife (subbox partition, delete-one
+reconstruction by count subtraction, analytic RR rescaled to the retained
+counts and volume). No external package is needed — the reference here is
+measureia's own validated full-sample estimators.
+
+1. **Delete-one identity (machine precision, the rigorous test)**: every
+   reconstructed realisation is compared against an independent direct
+   measurement in which the subbox galaxies are physically removed and the
+   plain (non-jackknife) box estimator is rerun. The retained DD grids
+   match exactly, S+D (including the per-realisation responsivity 2R_i)
+   to ≤10⁻¹², the jackknife RR equals the direct analytic RR times exactly
+   V/V_del = L³/(L³−1), and the per-realisation w vectors follow to
+   ≤10⁻¹³. This locks the count-subtraction machinery: pairs are removed
+   when *either* member is in the deleted subbox, identical to physically
+   deleting the patch from both samples. Enforced at <10⁻¹⁰ in
+   `tests/test_validation_references.py` (runs in CI, no reference file
+   needed).
+
+2. **Cross-pipeline bridge (loose by expectation)**: the identical subbox
+   partition is fed as `jk_patches` to the treecorr-validated lightcone
+   jackknife on the plane-parallel embedding (`responsivity=True`).
+   Jackknife std ratios come out at 0.68–1.05 and correlation-matrix
+   elements differ by up to ~0.7 — and this is the *expected* result, not
+   a defect. Realization-level forensics (2026-07-16) attributed it fully:
+   rebuilding the box-style estimator from the lightcone run's own
+   retained counts reproduces the *lightcone* stds to ~0.8–1.1, so the
+   jackknife machinery is consistent and the residual comes from
+   (a) plane-parallel-vs-sky geometry migrating ~0.1–1% of pairs per
+   realisation between bins — amplified because 8-patch delete-one
+   deviations are only a few % of the mean; (b) genuinely different
+   estimator definitions (box: natural DD/RR−1, S+D/RR_analytic,
+   per-realisation responsivity; lightcone: LS-compensated
+   (DD−RD−SR)/RR+1, (S+D−S+R)/RR_empirical, full-sample responsivity) —
+   different estimators have different covariances; and (c) the
+   analytic-RR-under-deletion approximation, whose count/volume amplitude
+   is exact and whose missed hole-boundary bin-shape is ~2% (moving stds
+   ≲15%). The committed reference file stores both covariances, the
+   box-style reconstruction, and these metrics; the tests enforce the
+   documented bands.
+
+**Known approximation (by design)**: under deletion the analytic RR is
+rescaled by retained counts and volume but keeps the full-box bin shape;
+the ~2% hole-boundary shape effect above shrinks as the number of patches
+grows (the deleted hole gets smaller). Users needing that last few percent
+should use more patches or the lightcone pipeline with explicit randoms.
+
+### Box jackknife covariance vs corr_pc (`run_box_corrpc_cov.py`)
+
+External covariance validation of the box jackknife, for **w and
+multipoles**. corr_pc does have a built-in periodic-box jackknife, but it
+assigns each galaxy a *random* `jk_prob` (read_dat.cpp) so cross-region
+pairs are tallied stochastically (≈exclusive deletion in expectation) —
+a different jackknife definition from measureia's deterministic union
+deletion, so it is *not* used. Instead the delete-one loop is explicit:
+each of the L³ subboxes is physically removed from both samples and
+corr_pc's full pipeline is run on every deleted catalogue, in rp–π mode
+(`coordinates=6` → w; this doubles as the box-w signal validation against
+corr_pc, previously halotools-only) and r–μ mode (`coordinates=7` →
+multipoles, via measureia's Legendre integration as in the signal leg).
+
+The delete-one identity (`run_box_cov_bridge.py`) states that measureia's
+jackknife realisations equal direct measurements on the physically
+deleted catalogues up to the exact volume factor VF = V/V_del: ξ_jk =
+ξ_direct/VF (g+) and ξ_jk+1 = (ξ_direct+1)/VF (gg). The corr_pc
+realisations are mapped through this affine relation (per realisation, so
+covariances map exactly too) and compared realisation by realisation.
+
+- **Conventions**: measureia runs with `responsivity=False` (corr_pc has
+  no responsivity), and the r–μ-mode-only (N−1)/N analytic-RR factor is
+  applied with the retained N per realisation. The rp–π mode has no such
+  factor: full-sample w agrees to ~10⁻⁶ with no adjustment at all.
+- **Result** (2026-07-17, 8 subboxes, full-precision corr_pc output):
+  delete-one realisations match to ≤5×10⁻⁵ (all four channels), jackknife
+  stds to ≤5×10⁻⁷ and correlation matrices to ≤10⁻⁷ after the exact
+  affine mapping. Enforced in `tests/test_validation_references.py`
+  (`TestBoxJackknifeAgainstCorrPC`).
+- **Found by this comparison**: the box jackknife backends computed the
+  per-realisation responsivity R_jk unconditionally, so
+  `responsivity=False` was ignored inside the jk realisations (they came
+  out exactly 2R too small while the full-sample vector was correct).
+  Fixed in `measure_w_box_jk.py` / `measure_m_box_jk.py` (all six
+  brute/tree/multiproc sites) and locked by
+  `TestResponsivityOption::test_box_jackknife_realisations_honour_flag`.
+
+### Lightcone jackknife covariance vs corr_pc (`run_lightcone_corrpc_cov.py`)
+
+Fully independent end-to-end jackknife validation: unlike the treecorr
+leg (where the estimator had to be rebuilt externally in an explicit
+loop), corr_pc's sky-mode built-in jackknife (`do_jk=1`) implements the
+whole chain itself — per-galaxy jk-region files for all four samples,
+pair tallies into both members' regions (once if shared), subtraction
+from the full-sample counts (union deletion, the same semantics as
+measureia), its own compensated estimator per delete-one sample, and the
+(N−1)/N delete-one formula. The identical seeded kmeans patches as the
+treecorr covariance leg are used, so all three codes' covariances are
+mutually comparable.
+
+Two genuine convention differences were found and are held fixed in the
+enforced comparison:
+
+- **Normalisation**: corr_pc normalises every delete-one sample by the
+  *full-sample* weight products (`final_calc` uses the global S/D/R
+  weights), measureia by the *retained* sample sizes.
+- **Empty-cell policy**: corr_pc zeroes a ξ_g+ (rp, π) cell whenever its
+  SD, SR or RR term has zero raw pairs (`final_calc_bins`), measureia
+  only needs RR > 0. In sparse cells of delete-one realisations this
+  moves single bins substantially.
+
+- **Result** (2026-07-17, 9 patches): retained pair counts match corr_pc's
+  exactly (±1–2 boundary pairs; DD/RD/SR identically zero difference,
+  π-summed) — the union-deletion count subtraction is locked externally.
+  With corr_pc's convention rebuilt from measureia's own retained counts,
+  delete-one w realisations agree to ≤3×10⁻⁴ (g+) / ≤1.4×10⁻³ (gg) and
+  jackknife stds to ≤10⁻³ in every bin. Each code's own convention
+  differs by the documented normalisation/empty-cell effects (std ratios
+  0.68–1.31, banded at 0.5–1.5 in the tests).
+
+### Lightcone multipole jackknife covariance vs corr_pc (`run_lightcone_multipoles_corrpc_cov.py`)
+
+The multipole-level version of the previous leg (`coordinates=1`, sky
+r–μ mode, same mock/config as the multipole signal leg: r ≥ 2 Mpc, 25×
+randoms; measureia's even-in-μ Legendre weights cancel corr_pc's internal
+signed-μ mirroring). Tolerances are wider than the w leg because the two
+codes' r and μ definitions differ at the curvature level, migrating
+~10⁻³ of pairs across (r, μ) cell edges — the w-level rp binning is
+identical between the codes, the r–μ binning is not.
+
+- **Result** (2026-07-17, 9 patches): matched-convention delete-one
+  multipole realisations agree to ≤0.6%, jackknife stds to ≤3.5% (worst
+  bin); pair counts to ≤2×10⁻³. Own-convention std ratios are banded at
+  0.3–2.0 (the empty-cell policy bites harder on the sparser r–μ grid).

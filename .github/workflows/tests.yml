@@ -1,0 +1,43 @@
+name: tests
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # numpy>=2.1 (see pyproject.toml): all deps ship cp310-cp314 binary wheels
+        # (astropy via cp311-abi3), so no source builds. 3.15 is excluded — not a stable
+        # release yet. On 3.10 the resolver caps astropy at 6.1.7 (astropy 7+ drops 3.10).
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      # The validation extras (halotools, treecorr) are deliberately NOT installed:
+      # tests/test_validation_references.py compares against the committed reference
+      # outputs in validation/reference_outputs/ and imports the external packages
+      # only inside the generator functions.
+      - name: Install the package and test dependencies
+        run: uv sync --group dev --python ${{ matrix.python-version }}
+
+      - name: Run the test suite
+        run: uv run --python ${{ matrix.python-version }} pytest -q

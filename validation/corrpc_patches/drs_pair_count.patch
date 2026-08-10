@@ -1,0 +1,19 @@
+diff --git a/initialization.cpp b/initialization.cpp
+index 23a9988..bb70022 100755
+--- a/initialization.cpp
++++ b/initialization.cpp
+@@ -489,9 +489,13 @@ void bins_ini(bins &B,data_info &data_inf)
+ 
+ void choose_corel_func(calc_temp &ct,data_info &data_inf)
+ {
+-  if ((data_inf.do_RsRs==1||data_inf.do_RsRd==1))
++  if ((data_inf.do_RsRs==1||data_inf.do_RsRd==1
++       ||(data_inf.do_DRs==1&&data_inf.which_corr==1)))
+     //&&data_inf.which_corr<7&&(data_inf.coordinates!=2&&data_inf.coordinates!=4))
+     {
++      //do_DRs: for shape-density correlations neither sample in D x R_s has
++      //shapes (randoms never read e), and only the DR pair counts are used,
++      //so use the plain pair counter instead of dereferencing g.e.
+       ct.corel=&density_density_corel;
+       return;
+     }
