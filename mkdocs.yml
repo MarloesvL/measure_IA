@@ -3,24 +3,35 @@ site_description: Measurement of intrinsic alignment correlation functions
 site_author: Marloes van Heukelum
 nav:
   - Home: index.md
-  - Estimator definitions: estimator_definitions.md
+  - Getting started: getting_started.md
   - Installation: installation.md
-  - Input: input.md
-  - Usage: usage.md
-  - Output: output_structure.md
-  - Roadmap: roadmap.md
+  - Guides:
+      - Input: input.md
+      - Usage: usage.md
+      - Output: output_structure.md
+  - Concepts:
+      - Conventions: conventions.md
+      - Estimator definitions: estimator_definitions.md
+  - Validation: validation.md
   - API Reference:
       - MeasureIABox: api/measureIABox.md
       - MeasureIALightcone: api/measureIALightcone.md
       - MeasureIABase: api/MeasureIABase.md
       - MeasureJackknife: api/MeasureJackknife.md
-      - MeasureWBox: api/MeasureWBox.md
-      - MeasureMultipolesBox: api/MeasureMBox.md
-      - MeasureWBoxJackknife: api/MeasureWBoxJackknife.md
-      - MeasureMBoxJackknife: api/MeasureMBoxJackknife.md
+      - Box backends:
+          - MeasureWBox: api/MeasureWBox.md
+          - MeasureMultipolesBox: api/MeasureMBox.md
+          - MeasureWBoxJackknife: api/MeasureWBoxJackknife.md
+          - MeasureMBoxJackknife: api/MeasureMBoxJackknife.md
+      - Lightcone backends:
+          - MeasureWLightcone: api/MeasureWLightcone.md
+          - MeasureMultipolesLightcone: api/MeasureMLightcone.md
+          - MeasureWLightconeJackknife: api/MeasureWLightconeJackknife.md
+          - MeasureMultipolesLightconeJackknife: api/MeasureMLightconeJackknife.md
       - pair_kernel: api/pair_kernel.md
       - SimInfo: api/SimInfo.md
       - ReadData: api/ReadData.md
+  - Roadmap: roadmap.md
 theme: readthedocs
 plugins:
   - search

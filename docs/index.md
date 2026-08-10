@@ -1,35 +1,26 @@
 # MeasureIA Documentation
 
-Welcome to the fledgling documentation site of **MeasureIA**, a tool to measure intrinsic alignment correlation
-functions in hydrodynamic simulations
-These docs will be updated in due time.
-Please feel free to contact me (m.l.vanheukelum@uu.nl) if you have any questions or create an issue on GitHub.
-You can also view the [GitHub](https://github.com/MarloesvL/measure_IA)
+Welcome to the documentation site of **MeasureIA**, a tool to measure intrinsic alignment correlation
+functions in hydrodynamic simulations, for both periodic simulation boxes and lightcones.
+Please feel free to contact me (m.l.vanheukelum@uu.nl) if you have any questions, or create an issue on
+[GitHub](https://github.com/MarloesvL/measure_IA).
 
 ## Pages
 
-<ul>
-  <li><a href="/">Home</a></li>
-  <li><a href="/installation/">Installation</a></li>
-  <li><a href="/usage/">Usage</a></li>
-  <li><a href="/output_structure/">Output filestructure</a></li>
-  <li><a href="/roadmap/">Roadmap</a></li>
-  <li>
-    <a href="/api/">API Reference</a>
-    <ul>
-      <li><a href="/api/measureIABox/">MeasureIABox</a></li>
-      <li><a href="/api/measureIALightcone/">MeasureIALightcone</a></li>
-      <li><a href="/api/MeasureIABase/">MeasureIABase</a></li>
-      <li><a href="/api/MeasureJackknife/">MeasureJackknife</a></li>
-      <li><a href="/api/MeasureWBox/">MeasureWBox</a></li>
-      <li><a href="/api/MeasureMBox/">MeasureMultipolesBox</a></li>
-      <li><a href="/api/MeasureWBoxJackknife/">MeasureWBoxJackknife</a></li>
-      <li><a href="/api/MeasureMBoxJackknife/">MeasureMBoxJackknife</a></li>
-      <li><a href="/api/SimInfo/">SimInfo</a></li>
-      <li><a href="/api/ReadData/">ReadData</a></li>
-    </ul>
-  </li>
-</ul>
+- [Getting started](getting_started.md) — what MeasureIA does and when to use the box vs the lightcone
+- [Installation](installation.md)
+- **Guides**
+    - [Input](input.md) — the data dictionaries expected on initialisation
+    - [Usage](usage.md) — worked examples for the box and lightcone
+    - [Output](output_structure.md) — the structure of the output file
+- **Concepts**
+    - [Conventions](conventions.md) — the shape and sign conventions (incl. the `e1`/`e2` convention) and binning
+    - [Estimator definitions](estimator_definitions.md) — the mathematics of the estimators
+- [Validation](validation.md) — cross-package validation and how to run it yourself
+- [Roadmap](roadmap.md)
+
+The **API Reference** (see the navigation sidebar) documents `MeasureIABox`, `MeasureIALightcone` and the
+supporting classes.
 
 ## Contributions
 ### Bugs

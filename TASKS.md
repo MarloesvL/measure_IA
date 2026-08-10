@@ -236,8 +236,47 @@ P1 = features, P2 = input validation, P3 = test suite, P4 = cleanup & docs.
   committed validation-reference tolerances hold under numpy 2 + pyccl 3.3.6. `requires-python`
   stays `>=3.10` (honest). Remaining: mention the supported range in the docs (folds into the
   docs-review item below).*
-- [ ] **Documentation review.** Take a proper look at the current docs (mkdocs site + the
-  docstrings) before the JOSS submission: what is missing, what is stale after the kernel
-  refactor and the P0-P3 changes, and whether the public API is documented end to end
-  (incl. the `responsivity`, `tree`, `temp_file_path` params flagged in the P4 docstring
-  item above).
+- [x] **Documentation review.** *Done (2026-08-10). mkdocs (readthedocs theme) + mkdocstrings
+  pulling numpy-style docstrings from src/; docs are fully merged into dev (127 commits ahead of
+  origin/docs), so the work is on dev. Fixes:
+  - **Docstrings / griffe:** the site now builds with zero griffe warnings (was 3). Documented
+    `responsivity` on all four public measure methods; removed the phantom `randoms_data` param
+    from both lightcone docstrings; documented `tree` and `temp_file_path` on both lightcone
+    methods; removed the empty Returns section in `read_data.read_MeasureIA_output`.
+  - **Narrative staleness:** `installation.md` now states Python 3.10-3.14 + NumPy 2; `roadmap.md`
+    moves completed items (lightcone methods/validation, lightcone multiprocessing, responsivity)
+    out of "planned"; `index.md` drops the placeholder tone and replaces the broken absolute-link
+    Pages list (which also omitted Input + Estimator definitions) with relative links; "adn" typo
+    fixed in `estimator_definitions.md`.
+  - **Coverage:** `input.md` gained a lightcone-input section (RA/DEC/Redshift + e1/e2 + randoms)
+    and a custom-key-names section; `usage.md` reorganised into Box/Lightcone with a lightcone
+    example.
+  Verified: `mkdocs build --strict` exits 0 (clean, only the informational note that the internal
+  docs/REFACTOR_PLAN.md is not in the nav); suite still 565 passed. Leftover (optional): docs/
+  REFACTOR_PLAN.md is an internal planning doc lingering in the tree (not published) — could be
+  moved out of docs/ later.*
+  - [x] **Full site restructure** *(2026-08-10, follow-up pass). Made box and lightcone peers throughout
+    and added the missing conceptual material, treecorr-inspired. Corrected the responsivity definition in
+    `estimator_definitions.md` to match the code (R = 1 - <e^2>/2 = <w(1-e^2/2)>/<w>, dividing S+D by 2R;
+    was wrongly R = 1 - <e^2>). New `conventions.md` page (separation vector, phi, e+/ex, ellipticity defs,
+    responsivity, and the lightcone e1/e2 survey shear-catalogue convention incl. chirality, radial-positive
+    w_g+ / e+ = -gamma_t, and the treecorr g -> -g relation). New `getting_started.md` (box-vs-lightcone
+    orientation + minimal example of each). De-boxed `input.md` (Box input / Lightcone input as peer
+    sections), `estimator_definitions.md` (added a Lightcone estimators section: explicit randoms, clusters
+    vs galaxies g+ forms, parity null test; lightcone kmeans jackknife paragraph), `output_structure.md`
+    (box vs lightcone note: Snapshot group box-only, analytic vs empirical RR). Nav regrouped into
+    Guides / Concepts / API, with the four lightcone backend classes added to the API reference (the two
+    jackknife ones referenced by module path since they are not re-exported from the package). Verified:
+    mkdocs build --strict exits 0, all lightcone API pages render class docs.*
+  - [x] **Lightcone JK backends exported + refactor plan moved** *(2026-08-10). Added
+    MeasureWLightconeJackknife / MeasureMultipolesLightconeJackknife to `src/measureia/__init__.py`
+    (mirroring the box JK exports); their API pages now use the clean `measureia.X` path. Moved
+    `docs/REFACTOR_PLAN.md` → new `plans/` folder (git mv), so the strict build is fully clean with no
+    "not in nav" note. Suite 565 passed.*
+  - [x] **Validation page + binning conventions** *(2026-08-10). New `docs/validation.md` distilled from
+    `validation/README.md`: the cross-package validation approach, a results table (halotools / treecorr /
+    corr_pc, w + multipoles + jackknife covariance, with agreements), and how to run it yourself
+    (`pip install measureia[validation]`, `pytest tests/test_validation_references.py`, the run_*.py scripts;
+    corr_pc build recipe left in the repo README, linked). Added a **Binning** section to `conventions.md`
+    (log r/r_p over separation_limits, linear signed pi over ±pi_max, linear mu_r over [-1,1], midpoint bin
+    coordinates, units). Nav gained a top-level Validation entry. Verified mkdocs build --strict clean.*

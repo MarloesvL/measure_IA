@@ -1,5 +1,13 @@
 # Installation
 
+## Requirements
+
+MeasureIA supports **Python 3.10 – 3.14** and requires **NumPy 2**. The remaining
+dependencies (astropy, scipy, h5py, matplotlib, pyccl, sympy, kmeans_radec) are resolved
+automatically; their versions are pinned in `pyproject.toml` / `uv.lock`.
+
+## Installing
+
 You can install MeasureIA via:
 
 ```bash

@@ -56,3 +56,15 @@ If you choose to measure multipoles instead of wg+, all 'w' will be replaced by 
 For the multipoles, all xi_g+, DD (etc) grids are in (r, mu_r), not in (r_p, pi) and the suffixes of the bin values are also replaced by '_r' and '_mu_r' accordingly.
 In one file, multiple redshift (snapshot) measurements can be saved without being overwritten, as well as the jackknife
 information for different numbers of jackknife realisations (num_jk) for the same dataset.
+
+## Box vs lightcone
+
+The structure above applies to both `MeasureIABox` and `MeasureIALightcone`. Two things differ:
+
+- The `Snapshot_[snapshot]` group only appears for the box, when a `snapshot` label is given at initialisation;
+  the lightcone has no snapshot grouping and this level is omitted.
+- The `RR` grids (`RR_gg`, `RR_g_plus`, `RR_g_cross`) are computed **analytically** from the sample sizes and
+  volume for the box, and counted from the **explicit random catalogues** for the lightcone. For the lightcone,
+  the additional density–random and shape–random pair-count terms of the Landy–Szalay estimators are stored
+  alongside them. Bins with zero empirical random–random pairs are left as `NaN` (the estimator is undefined
+  there) and trigger a warning advising more randoms — see the [Estimator definitions](estimator_definitions.md).
