@@ -444,7 +444,11 @@ class MeasureIABase(SimInfo):
 				correlation_data = correlation_data * abs(dpi)
 			else:
 				raise ValueError("Update pi bins in initialisation of object to match xi_g_plus dataset.")
-			w_g_i = np.sum(correlation_data, axis=1)  # sum over pi values
+			# xi carries NaN/inf in bins with zero empirical RR (undefined estimator, already
+			# warned); the pi-integral over such a bin is legitimately NaN, so silence the
+			# redundant reduce/invalid-value warning.
+			with np.errstate(invalid='ignore'):
+				w_g_i = np.sum(correlation_data, axis=1)  # sum over pi values
 			if return_output:
 				output_data = np.array([rp, w_g_i]).transpose()
 				correlation_data_file.close()
@@ -526,16 +530,20 @@ class MeasureIABase(SimInfo):
 			L = assoc_legendre_p(sab, l, mu_r)[0]
 			dmur = (self.mu_r_bins[1:] - self.mu_r_bins[:-1])
 			dmu_r_array = np.array(list(dmur) * len(r)).reshape((len(r), len(dmur)))
-			multipoles = (
-					(2 * l + 1)
-					/ 2.0
-					* math.factorial(l - sab)
-					/ math.factorial(l + sab)
-					* L
-					* correlation_data
-					* dmu_r_array
-			)
-			multipoles = np.sum(multipoles, axis=1)
+			# correlation_data carries NaN/inf in bins with zero empirical RR (the estimator
+			# is undefined there and the user was already warned); the integral over such a
+			# bin is legitimately NaN, so silence the redundant reduce/invalid-value warnings.
+			with np.errstate(invalid='ignore'):
+				multipoles = (
+						(2 * l + 1)
+						/ 2.0
+						* math.factorial(l - sab)
+						/ math.factorial(l + sab)
+						* L
+						* correlation_data
+						* dmu_r_array
+				)
+				multipoles = np.sum(multipoles, axis=1)
 			dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
 			separation = self.r_bins[:-1] + abs(dsep)  # middle of bins
 			if return_output:
@@ -607,28 +615,32 @@ class MeasureIABase(SimInfo):
 					"will be NaN. Increase the number of randoms to fill all bins.", RuntimeWarning)
 			RR /= max(num_samples["R_D"] * num_samples["R_S"], 1)
 
-		if IA_estimator == "clusters":
-			if corr_type[0] == "g+" or corr_type[0] == "both":
-				correlation_gp = SpD / DD_denom - SpR / SR
-				write_dataset_hdf5(group_gp, dataset_name, correlation_gp)
-				if jk_group_name == "":
-					correlation_gc = ScD / DD_denom - ScR / SR
-					write_dataset_hdf5(group_gc, dataset_name, correlation_gc)
-			if corr_type[0] == "gg" or corr_type[0] == "both":
-				correlation_gg = (DD - RD - SR) / RR + 1
-				write_dataset_hdf5(group_gg, dataset_name, correlation_gg)
-		elif IA_estimator == "galaxies":
-			if corr_type[0] == "g+" or corr_type[0] == "both":
-				correlation_gp = (SpD - SpR) / RR
-				write_dataset_hdf5(group_gp, dataset_name, correlation_gp)
-				if jk_group_name == "":
-					correlation_gc = (ScD - ScR) / RR
-					write_dataset_hdf5(group_gc, dataset_name, correlation_gc)
-			if corr_type[0] == "gg" or corr_type[0] == "both":
-				correlation_gg = (DD - RD - SR) / RR + 1
-				write_dataset_hdf5(group_gg, dataset_name, correlation_gg)
-		else:
-			raise ValueError("Unknown input for IA_estimator, choose from [clusters, galaxies].")
+		# Bins with zero empirical RR (or SR) divide to NaN/inf on purpose: the estimator
+		# is undefined there. The zero-RR RuntimeWarning above already tells the user, so
+		# silence the redundant numpy divide/invalid-value warnings from these divisions.
+		with np.errstate(invalid='ignore', divide='ignore'):
+			if IA_estimator == "clusters":
+				if corr_type[0] == "g+" or corr_type[0] == "both":
+					correlation_gp = SpD / DD_denom - SpR / SR
+					write_dataset_hdf5(group_gp, dataset_name, correlation_gp)
+					if jk_group_name == "":
+						correlation_gc = ScD / DD_denom - ScR / SR
+						write_dataset_hdf5(group_gc, dataset_name, correlation_gc)
+				if corr_type[0] == "gg" or corr_type[0] == "both":
+					correlation_gg = (DD - RD - SR) / RR + 1
+					write_dataset_hdf5(group_gg, dataset_name, correlation_gg)
+			elif IA_estimator == "galaxies":
+				if corr_type[0] == "g+" or corr_type[0] == "both":
+					correlation_gp = (SpD - SpR) / RR
+					write_dataset_hdf5(group_gp, dataset_name, correlation_gp)
+					if jk_group_name == "":
+						correlation_gc = (ScD - ScR) / RR
+						write_dataset_hdf5(group_gc, dataset_name, correlation_gc)
+				if corr_type[0] == "gg" or corr_type[0] == "both":
+					correlation_gg = (DD - RD - SR) / RR + 1
+					write_dataset_hdf5(group_gg, dataset_name, correlation_gg)
+			else:
+				raise ValueError("Unknown input for IA_estimator, choose from [clusters, galaxies].")
 		output_file.close()
 		return
 

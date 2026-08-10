@@ -47,6 +47,20 @@ testpaths = ["tests"]
 # A test marked xfail that unexpectedly passes is now a failure (keeps parked-xfail
 # scaffolding honest; the suite currently has zero xfails).
 xfail_strict = true
+# Turn every warning into an error so a new one (e.g. a numpy/scipy deprecation on any
+# Python in the 3.10-3.14 matrix) fails CI instead of hiding in ~1000 lines of output.
+# The redundant numpy divide/invalid-value noise is silenced at its source via np.errstate
+# (empty empirical-RR bins are undefined on purpose); what remains are the package's own
+# deliberate, informative warnings, allowed through by the targeted ignores below:
+#   - the zero-random-random-pairs signal (measure_IA_base._obs_estimator), which fires
+#     once per full-sample dataset and is asserted in tests via pytest.warns;
+#   - the input-validation UserWarnings from check_input (also asserted via pytest.warns).
+filterwarnings = [
+    "error",
+    "ignore:.*zero random-random pairs.*:RuntimeWarning",
+    "ignore:.*maximum separation exceeds.*:UserWarning",
+    "ignore:.*too many r.*:UserWarning",
+]
 
 [build-system]
 requires = ["uv_build>=0.8.17,<0.9.0"]

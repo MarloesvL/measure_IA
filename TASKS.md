@@ -200,15 +200,21 @@ P1 = features, P2 = input validation, P3 = test suite, P4 = cleanup & docs.
 
 ## P5 — Next session (queued 2026-07-21)
 
-- [ ] **Warnings policy.** Make a plan before touching `filterwarnings`. The suite emits
-  ~1000 warnings per run, nearly all the deliberate `RuntimeWarning` from
-  `measure_IA_base.py` about bins with zero empirical random-random pairs (plus
-  `invalid value encountered in divide/sqrt` from the same NaN bins). Decide: which of
-  these are genuine user-facing signals worth keeping, which should be raised once per run
-  rather than per call, whether the numpy divide warnings should be suppressed at the
-  division sites (`np.errstate`) now that the NaN is intentional and documented, and only
-  then what `filterwarnings` belongs in `[tool.pytest.ini_options]` (e.g. `error` with
-  targeted ignores, so new warnings cannot appear unnoticed).
+- [x] **Warnings policy.** *Done (2026-08-10). The ~1000 warnings/run were two families:
+  (a) the deliberate zero-empirical-RR `RuntimeWarning` from `_obs_estimator` — a genuine,
+  informative user signal, kept as-is (fires once per full-sample dataset, the right
+  granularity); (b) redundant numpy `invalid value`/`divide by zero` noise from the same
+  intentional NaN/inf bins. Family (b) is now silenced at its source with `np.errstate` so
+  end users (not just the test suite) stop seeing it: the estimator divisions in
+  `_obs_estimator`, the `w` pi-integral and the multipole integral in `measure_IA_base.py`,
+  the jackknife `sqrt` in `measure_jackknife.py`, and the `mu_r` division in
+  `pair_kernel.SkyRMuR.bin_pairs` (matching its already-guarded siblings). Pytest policy:
+  `filterwarnings = ["error", ...]` in `pyproject.toml` — every warning is now an error so a
+  new numpy/scipy deprecation on any Python in the 3.10-3.14 matrix fails CI instead of
+  hiding — with three targeted `ignore`s for the package's own deliberate warnings (the
+  zero-RR `RuntimeWarning` and the two `check_input` UserWarnings, all asserted in tests via
+  `pytest.warns`). Suite is now warning-clean: 565 passed / 0 warnings, verified in strict
+  mode on all of 3.10/3.11/3.12/3.13/3.14.*
 - [x] **Support newer numpy and Python.** *Done (2026-08-10). All `~=` pins widened to `>=`
   lower bounds (library best practice; `uv.lock` still pins exact versions): `numpy>=2.1`,
   `scipy>=1.15`, `h5py>=3.11`, `matplotlib>=3.9`, `sympy>=1.12`. Two dependency subtleties

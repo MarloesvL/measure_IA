@@ -317,7 +317,8 @@ class MeasureJackknife(MeasureIABase):
 			raise KeyError("Too many datasets given, choose either 1 or 2")
 
 		std *= (num_box - 1) / num_box  # see Singh 2023
-		std = np.sqrt(std)  # size of errorbars
+		with np.errstate(invalid='ignore'):  # NaN variance in undefined (empty-RR) bins -> NaN errorbar
+			std = np.sqrt(std)  # size of errorbars
 		cov *= (num_box - 1) / num_box  # cov not sqrt so to get std, sqrt of diag would need to be taken
 
 		data_file.close()

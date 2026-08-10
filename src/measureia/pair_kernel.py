@@ -523,7 +523,8 @@ class SkyRMuR:
         in ``[r_bins[0], r_bins[-1])`` (no LOS window)."""
         LOS = base.calculate_dot_product_arrays(s, n_LOS)
         separation_len = np.sqrt(np.sum(s ** 2, axis=1))
-        mu_r = LOS / separation_len
+        with np.errstate(invalid='ignore'):  # coincident pairs give 0/0; masked out below
+            mu_r = LOS / separation_len
         s_perp = s - np.sum(s * n_LOS, axis=1, keepdims=True) * n_LOS
         mask = (separation_len >= self.r_bins[0]) * (separation_len < self.r_bins[-1])
         ind_r = np.floor(
