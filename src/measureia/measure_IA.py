@@ -152,6 +152,12 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 		ellipticity : str, optional
 			Definition of ellipticity. Choose from 'distortion', defined as (1-q^2)/(1+q^2), or 'ellipticity', defined
 			 as (1-q)/(1+q). Default is 'distortion'.
+		responsivity : bool, optional
+			If True (default), the g+ shape signal is calibrated by the responsivity factor 2R, with
+			R = <w (1 - e^2 / 2)> / <w> the weighted shear responsivity (R falls back to 0.5, i.e. no correction,
+			when False or when the shape weights sum to zero). Use the default for raw shape distortions derived
+			from axis ratios; set to False when the input shapes are already calibrated shears. Only the g+
+			correlations are affected; the clustering (gg) signal is unchanged. Default is True.
 
 		"""
 		self._validate_measure_options(corr_type, ellipticity, num_jk)

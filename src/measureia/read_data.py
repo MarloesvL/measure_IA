@@ -319,9 +319,6 @@ class ReadData(SimInfo):
 		num_jk: int or str or NoneType
 			Number of jackknife patches to be generated internally. If None, the covariance will not be read.
 
-		Returns
-		-------
-
 		"""
 		# reset parameters (if same object is used for multiple datasets)
 		self.r = None

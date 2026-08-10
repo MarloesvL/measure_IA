@@ -490,8 +490,6 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			Name of the dataset in the output file.
 		corr_type : str
 			Type of correlation to be measured. Choose from [g+, gg, both].
-		randoms_data : dict or NoneType
-			Dictionary that includes the randoms data in the same form as the data dictionary.
 		jk_patches : dict or NoneType, optional
 			Dictionary with entries of the jackknife patch numbers (ndarray) for each sample, named "position", "shape"
 			and "random". Default is None.
@@ -510,12 +508,24 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			ccl.Cosmology(Omega_c=0.225, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.0)
 		over_h : bool, optional
 			If True, the units are assumed to be in not-over-h and converted to over-h units. Default is False.
+		tree : bool, optional
+			If True (default), pair counts use a KDTree backend; if False, a brute-force pair count is used.
+			Default is True.
 		chunk_size: int, optional
 			Size of the chunks of data sent to each multiprocessing node. If larger, more RAM is needed per node.
 			Default is 1000.
+		temp_file_path : str or NoneType, optional
+			Path to where the data is temporarily stored during multiprocessing [file name generated
+			automatically]. Default is None.
 		seed : int or NoneType, optional
 			Seed for the internal jackknife patch generation (used only when num_jk is given), making the patch
 			assignment reproducible. Default is None.
+		responsivity : bool, optional
+			If True, the g+ shape signal is calibrated by dividing by the responsivity factor 2R, with
+			R = <w (1 - e^2 / 2)> / <w> the weighted shear responsivity. Default is False, appropriate when the
+			input e1/e2 are already calibrated shears (e.g. from a shear catalogue); set to True for raw
+			distortions. Only the g+ correlations are affected; the clustering (gg) signal is unchanged.
+			Default is False.
 
 		"""
 		if IA_estimator == "clusters":
@@ -685,8 +695,6 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			Name of the dataset in the output file.
 		corr_type : str
 			Type of correlation to be measured. Choose from [g+, gg, both].
-		randoms_data : dict or NoneType
-			Dictionary that includes the randoms data in the same form as the data dictionary.
 		jk_patches : dict or NoneType, optional
 			Dictionary with entries of the jackknife patch numbers (ndarray) for each sample, named "position", "shape"
 			and "random". Default is None.
@@ -705,12 +713,24 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			ccl.Cosmology(Omega_c=0.225, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.0)
 		over_h : bool, optional
 			If True, the units are assumed to be in not-over-h and converted to over-h units. Default is False.
+		tree : bool, optional
+			If True (default), pair counts use a KDTree backend; if False, a brute-force pair count is used.
+			Default is True.
 		chunk_size: int, optional
 			Size of the chunks of data sent to each multiprocessing node. If larger, more RAM is needed per node.
 			Default is 1000.
+		temp_file_path : str or NoneType, optional
+			Path to where the data is temporarily stored during multiprocessing [file name generated
+			automatically]. Default is None.
 		seed : int or NoneType, optional
 			Seed for the internal jackknife patch generation (used only when num_jk is given), making the patch
 			assignment reproducible. Default is None.
+		responsivity : bool, optional
+			If True, the g+ shape signal is calibrated by dividing by the responsivity factor 2R, with
+			R = <w (1 - e^2 / 2)> / <w> the weighted shear responsivity. Default is False, appropriate when the
+			input e1/e2 are already calibrated shears (e.g. from a shear catalogue); set to True for raw
+			distortions. Only the g+ correlations are affected; the clustering (gg) signal is unchanged.
+			Default is False.
 
 		"""
 		if IA_estimator == "clusters":
