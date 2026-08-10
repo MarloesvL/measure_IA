@@ -32,7 +32,6 @@ nav:
       - pair_kernel: api/pair_kernel.md
       - SimInfo: api/SimInfo.md
       - ReadData: api/ReadData.md
-  - Roadmap: roadmap.md
 theme: readthedocs
 plugins:
   - search
