@@ -36,8 +36,12 @@ validation = [
     "treecorr>=5.0",
 ]
 
-[dependency-groups] # doc packages also in dev
+[dependency-groups]
 dev = ["pytest~=8.3.1"]
+# Documentation toolchain (mkdocs + mkdocstrings). The readthedocs theme is built into
+# mkdocs, so no separate theme package is needed. Used by .github/workflows/docs.yml and
+# for local builds: `uv run --group docs mkdocs serve`.
+docs = ["mkdocs>=1.6", "mkdocstrings[python]>=0.26"]
 
 [tool.uv.sources]
 kmeans-radec = { git = "https://github.com/esheldon/kmeans_radec" }
