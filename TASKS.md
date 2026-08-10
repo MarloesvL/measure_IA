@@ -209,13 +209,27 @@ P1 = features, P2 = input validation, P3 = test suite, P4 = cleanup & docs.
   division sites (`np.errstate`) now that the NaN is intentional and documented, and only
   then what `filterwarnings` belongs in `[tool.pytest.ini_options]` (e.g. `error` with
   targeted ignores, so new warnings cannot appear unnoticed).
-- [ ] **Support newer numpy and Python.** `pyproject.toml` pins `numpy~=1.26.2`, which has
-  wheels for cp310-cp312 only — that is why `.github/workflows/tests.yml` stops at 3.12
-  while `requires-python` advertises `>=3.10`. Move to `numpy>=2.1` (check `astropy`,
-  `scipy`, `pyccl`, `h5py`, `matplotlib`, `sympy` pins at the same time; several are `~=`
-  pins that will need widening), fix any numpy-2 API breakage, re-run the validation
-  reference tests to confirm the committed tolerances still hold, then add 3.13 (and 3.14?)
-  to the CI matrix and state the supported range honestly in `requires-python` and the docs.
+- [x] **Support newer numpy and Python.** *Done (2026-08-10). All `~=` pins widened to `>=`
+  lower bounds (library best practice; `uv.lock` still pins exact versions): `numpy>=2.1`,
+  `scipy>=1.15`, `h5py>=3.11`, `matplotlib>=3.9`, `sympy>=1.12`. Two dependency subtleties
+  required more than a version bump:
+  - **astropy split by Python:** 6.1.7 (last release supporting 3.10) calls the removed
+    `np.in1d` and only works on numpy where `in1d` survives (≤2.2, which is what 3.10 resolves
+    to); astropy 7+ dropped 3.10. Pinned `astropy>=6.1; python_version<'3.11'` and
+    `astropy>=7.0; python_version>='3.11'` (resolves to 8.x, handles numpy≥2.3).
+  - **pyccl bumped to `>=3.3.4`:** 3.2.x is sdist-only (compiled from source on every Python)
+    and its SWIG bindings **segfault at import on Python 3.14**. 3.3.4 is the first release with
+    cp310–cp314 binary wheels — fixes 3.14 and removes source builds everywhere.
+  One source-code break: **scipy removed `scipy.special.lpmn` in 1.17.** Replaced with the
+  vectorised `assoc_legendre_p(sab, l, mu_r)[0]` in `measure_IA_base._measure_multipoles` (and
+  the `legendre_multipole` cross-check in `validation/run_box_multipoles_corrpc.py`); output is
+  bit-identical (verified, and the Condon–Shortley phase is +1 for the m=0,2 used here). No other
+  numpy-2/scipy API breakage in the source.
+  CI matrix now `["3.10","3.11","3.12","3.13","3.14"]` (3.15 excluded — not a stable release).
+  Full suite (565 tests) verified green locally on all five versions with the final lock;
+  committed validation-reference tolerances hold under numpy 2 + pyccl 3.3.6. `requires-python`
+  stays `>=3.10` (honest). Remaining: mention the supported range in the docs (folds into the
+  docs-review item below).*
 - [ ] **Documentation review.** Take a proper look at the current docs (mkdocs site + the
   docstrings) before the JOSS submission: what is missing, what is stale after the kernel
   refactor and the P0-P3 changes, and whether the public API is documented end to end

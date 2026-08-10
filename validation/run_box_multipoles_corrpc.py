@@ -89,9 +89,11 @@ def legendre_multipole(xi, mu_centers, l, sab):
 	for g+."""
 	import math
 
-	from scipy.special import lpmn
+	from scipy.special import assoc_legendre_p
 
-	L = np.array([lpmn(l, sab, m)[0][-1, -1] for m in mu_centers])
+	# lpmn(l, sab, m)[0][-1, -1] (order l, degree sab) == assoc_legendre_p(sab, l, m);
+	# scipy removed lpmn in 1.17. Vectorised over mu_centers (leading axis is order).
+	L = assoc_legendre_p(sab, l, np.asarray(mu_centers))[0]
 	dmu = 2.0 / len(mu_centers)
 	weight = ((2 * l + 1) / 2.0
 			  * math.factorial(l - sab) / math.factorial(l + sab))

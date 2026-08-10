@@ -16,10 +16,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # numpy 1.26.4 (the pinned version) ships wheels for cp310-cp312 only, so
-        # 3.13 would have to build it from source. Add 3.13 here once the numpy
-        # pin in pyproject.toml moves to >=2.1.
-        python-version: ["3.10", "3.11", "3.12"]
+        # numpy>=2.1 (see pyproject.toml): all deps ship cp310-cp314 binary wheels
+        # (astropy via cp311-abi3), so no source builds. 3.15 is excluded — not a stable
+        # release yet. On 3.10 the resolver caps astropy at 6.1.7 (astropy 7+ drops 3.10).
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
 
     steps:
       - uses: actions/checkout@v4

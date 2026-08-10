@@ -6,14 +6,28 @@ authors = [{ name = "Marloes van Heukelum", email = "m.l.vanheukelum@uu.nl" }]
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "astropy~=6.1.0",
-    "h5py~=3.10.0",
+    # numpy 2 migration (P5): lower bounds so downstream users aren't over-constrained;
+    # uv.lock pins exact versions for reproducibility. Floors chosen for numpy-2 support:
+    # h5py>=3.11 first ships numpy-2 wheels; scipy>=1.15 is required for
+    # scipy.special.assoc_legendre_p (the replacement for lpmn, which scipy removed in 1.17)
+    # used in measure_IA_base.py.
+    #
+    # astropy is split by Python version: 6.1.7 (the last release supporting 3.10) still calls
+    # the now-removed np.in1d and only works on numpy where in1d survives (<=2.2, what 3.10
+    # resolves to); on 3.11+ we require astropy>=7 (resolves to 8.x), which handles numpy>=2.3
+    # where in1d is gone. astropy 7+ dropped Python 3.10, so the split is unavoidable.
+    "astropy>=6.1; python_version < '3.11'",
+    "astropy>=7.0; python_version >= '3.11'",
+    "h5py>=3.11",
     "kmeans-radec",
-    "matplotlib~=3.10.6",
-    "numpy~=1.26.2",
-    "pyccl~=3.2",
-    "scipy~=1.11.4",
-    "sympy~=1.12",
+    "matplotlib>=3.9",
+    "numpy>=2.1",
+    # pyccl 3.2.x is sdist-only (compiled from source everywhere) and its SWIG bindings
+    # segfault at import on Python 3.14; 3.3.4 is the first release shipping cp310-cp314
+    # binary wheels, so it both fixes 3.14 and avoids source builds on every Python.
+    "pyccl>=3.3.4",
+    "scipy>=1.15",
+    "sympy>=1.12",
 ]
 
 [project.optional-dependencies]

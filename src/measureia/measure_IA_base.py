@@ -2,7 +2,7 @@ import math
 import warnings
 import numpy as np
 import h5py
-from scipy.special import lpmn
+from scipy.special import assoc_legendre_p
 from .write_data import write_dataset_hdf5, create_group_hdf5
 from .Sim_info import SimInfo
 
@@ -515,15 +515,15 @@ class MeasureIABase(SimInfo):
 			mu_r = mu_r_list[i]
 			sab = sab_list[i]
 			l = l_list[i]
-			L = np.zeros((len(r), len(mu_r)))
 			mu_r = np.array(list(mu_r) * len(r)).reshape((len(r), len(mu_r)))  # make pi into grid for mu
 
 			r = np.array(list(r) * len(mu_r)).reshape((len(r), len(mu_r)))
 			r = r.transpose()
-			for n in np.arange(0, len(mu_r[:, 0])):
-				for m in np.arange(0, len(mu_r[0])):
-					L_m, dL = lpmn(l, sab, mu_r[n, m])  # make associated Legendre polynomial grid
-					L[n, m] = L_m[-1, -1]  # grid ranges from 0 to sab and 0 to l, so last element is what we seek
+			# Associated Legendre polynomial grid. scipy's lpmn (removed in 1.17) returned a
+			# (l+1, sab+1) grid whose [-1, -1] element was order l, degree sab; that value is
+			# assoc_legendre_p(degree=sab, order=l, z). The call vectorises over the whole
+			# mu_r grid (leading axis is the order, hence [0]); output is bit-identical.
+			L = assoc_legendre_p(sab, l, mu_r)[0]
 			dmur = (self.mu_r_bins[1:] - self.mu_r_bins[:-1])
 			dmu_r_array = np.array(list(dmur) * len(r)).reshape((len(r), len(dmur)))
 			multipoles = (
