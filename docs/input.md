@@ -32,7 +32,7 @@ Here, the 'Position' key contains an array with the coordinates of the position 
 to an object and the columns are the $x,y,z,$ coordinates.
 Note that the coordinates are assumed to be $\in$ \[0,boxsize\] and that the units need to be the same as those of the
 given boxsize. When using an initialisation of MeasureIABox with the internal 'simulation' input option, the
-boxsize will be in Mpc/$h$.
+boxsize will be in cMpc/$h$ (see [Included simulations](simulations.md) for the available presets).
 In the same fashion, the 'Position_shape_sample' key contains the array with the coordinates of the shape sample,
 or the second position sample in case only clustering is measured.
 
