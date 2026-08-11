@@ -1,7 +1,7 @@
 """Measure w_gg, w_g+ and the multipoles on lightcone (sky-coordinate) data.
 
 The example runs on the synthetic radial-alignment lightcone mock from
-``validation/mock_catalogues.py``: centrals uniform in comoving volume inside a
+``measureia.mocks``: centrals uniform in comoving volume inside a
 cone section, with satellites scattered around them whose ellipticities e1/e2
 point at their own central. The position (density) sample is the centrals and
 the shape sample is the satellites, giving a strong, seeded (i.e. reproducible)
@@ -19,16 +19,10 @@ Run it from this directory:
 
 It writes ./example_IA_lightcone.hdf5.
 """
-import os
-import sys
-
 import pyccl as ccl
 
 from measureia import MeasureIALightcone
-
-# The mock generator lives in the repository's validation/ directory, next to examples/.
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "validation"))
-from mock_catalogues import radial_alignment_lightcone_mock
+from measureia.mocks import radial_alignment_lightcone_mock
 
 # parameters for MeasureIA object
 h = 0.7  # value of hubble parameter

@@ -57,7 +57,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import run_plane_parallel as pp
-from mock_catalogues import embed_box_mock_on_lightcone, subbox_labels
+from measureia.mocks import embed_box_mock_on_lightcone, subbox_labels
 from run_lightcone_treecorr import COSMOLOGY, _redshift_of_chi
 from measureia import MeasureIABox, MeasureIALightcone
 

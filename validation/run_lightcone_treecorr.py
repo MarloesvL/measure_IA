@@ -1,7 +1,7 @@
 """Cross-validation of MeasureIALightcone w_gg / w_g+ against treecorr.
 
 Runs both codes on the synthetic lightcone radial-alignment mock (see
-mock_catalogues.py). measureia uses its 'galaxies' estimator; the treecorr
+measureia.mocks). measureia uses its 'galaxies' estimator; the treecorr
 side reconstructs exactly the same estimator from raw NN/NG counts:
 
 	xi_g+(rp, pi) = ( S+D/(N_S N_D) - S+R/(N_S N_RD) ) / ( RR/(N_RD N_RS) )
@@ -35,7 +35,7 @@ import numpy as np
 import pyccl as ccl
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from mock_catalogues import radial_alignment_lightcone_mock
+from measureia.mocks import radial_alignment_lightcone_mock
 
 from measureia import MeasureIALightcone
 

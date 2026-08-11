@@ -7,7 +7,7 @@ expectations) by checking full pipelines against external codes.
 
 ## How it works
 
-- **Mock data** (`mock_catalogues.py`): all comparisons run on a seeded
+- **Mock data** (`measureia.mocks`): all comparisons run on a seeded
   synthetic catalogue with a strong, non-null IA signal — centrals placed
   uniformly in a periodic box, satellites scattered around them with a
   Gaussian profile, and satellite projected major axes pointing at their own

@@ -51,7 +51,7 @@ import h5py
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from mock_catalogues import radial_alignment_box_mock
+from measureia.mocks import radial_alignment_box_mock
 from run_box_multipoles_corrpc import legendre_multipole
 
 from measureia import MeasureIABox

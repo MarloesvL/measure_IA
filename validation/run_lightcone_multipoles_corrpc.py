@@ -29,7 +29,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import run_lightcone_treecorr as lc
-from mock_catalogues import radial_alignment_lightcone_mock
+from measureia.mocks import radial_alignment_lightcone_mock
 from run_box_multipoles_corrpc import legendre_multipole
 from run_lightcone_corrpc import corrpc_write_inputs
 

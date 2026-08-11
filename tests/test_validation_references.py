@@ -33,7 +33,7 @@ import run_lightcone_multipoles_corrpc_cov as lc_mp_corrpc_cov
 import run_lightcone_treecorr as lc_treecorr
 import run_lightcone_treecorr_cov as lc_treecorr_cov
 import run_plane_parallel as plane_parallel
-from mock_catalogues import (radial_alignment_box_mock, responsivity,
+from measureia.mocks import (radial_alignment_box_mock, responsivity,
                              radial_alignment_lightcone_mock)
 
 _BOX_REF = box_halotools.REFERENCE_FILE

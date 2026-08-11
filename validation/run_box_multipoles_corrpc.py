@@ -42,7 +42,7 @@ import h5py
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from mock_catalogues import radial_alignment_box_mock, responsivity
+from measureia.mocks import radial_alignment_box_mock, responsivity
 
 from measureia import MeasureIABox
 

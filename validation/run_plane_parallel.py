@@ -37,7 +37,7 @@ import h5py
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from mock_catalogues import (radial_alignment_box_mock, embed_box_mock_on_lightcone,
+from measureia.mocks import (radial_alignment_box_mock, embed_box_mock_on_lightcone,
 							 responsivity)
 from run_lightcone_treecorr import COSMOLOGY, _redshift_of_chi
 

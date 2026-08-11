@@ -1,7 +1,7 @@
 """Cross-validation of MeasureIABox w_gg / w_g+ against halotools.
 
 Runs both codes on the synthetic radial-alignment mock (see
-mock_catalogues.py) and compares:
+measureia.mocks) and compares:
 
 - w_g+ : MeasureIABox.measure_xi_w vs halotools gi_plus_projected
   (halotools.mock_observables.ia_correlations, available in halotools >= 0.9).
@@ -25,7 +25,7 @@ import h5py
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from mock_catalogues import radial_alignment_box_mock, halotools_inputs, responsivity
+from measureia.mocks import radial_alignment_box_mock, halotools_inputs, responsivity
 
 from measureia import MeasureIABox
 

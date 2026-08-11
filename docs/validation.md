@@ -7,7 +7,7 @@ implementations, for both the box and the lightcone.
 
 ## Approach
 
-- **Mock catalogues** (`validation/mock_catalogues.py`): all comparisons run on a seeded synthetic catalogue
+- **Mock catalogues** (`measureia.mocks`): all comparisons run on a seeded synthetic catalogue
   with a strong, known radial-alignment signal, so ratios are meaningful in every bin. Both codes read
   byte-identical inputs.
 - **Runnable scripts** (`validation/run_*.py`): one per comparison. Each always computes the MeasureIA side; if
