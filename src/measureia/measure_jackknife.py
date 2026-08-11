@@ -91,7 +91,7 @@ class MeasureJackknife(MeasureIABase):
 		-----
 		UserWarning
 			If any sample ends up with patches holding fewer than 10 objects, which makes the
-			jackknife covariance unreliable.
+			jackknife covariance unreliable, or if the k-means fit does not converge.
 
 		"""
 

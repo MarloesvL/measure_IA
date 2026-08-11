@@ -84,6 +84,7 @@ filterwarnings = [
     "ignore:.*maximum separation exceeds.*:UserWarning",
     "ignore:.*too many r.*:UserWarning",
     "ignore:.*jackknife patches holding fewer than.*:UserWarning",
+    "ignore:.*K-means on the sphere did not converge.*:UserWarning",
 ]
 
 [build-system]

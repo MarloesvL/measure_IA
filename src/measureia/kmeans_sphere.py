@@ -20,6 +20,8 @@ strategy for large catalogues: cluster a random subsample first to place the
 centres, then run to convergence on the full sample starting from those centres.
 """
 
+import warnings
+
 import numpy as np
 
 _MAXITER = 100
@@ -183,6 +185,13 @@ def kmeans_sample(X, num_centers, nsample=None, maxiter=_MAXITER, tol=_TOL, seed
 	ValueError
 		If X is not an (N, 2) array, or there are fewer points than centres.
 
+	Warns
+	-----
+	UserWarning
+		If the fit does not converge within `maxiter` iterations. The clustering is still
+		usable — every point is assigned to its nearest centre — but the regions are less
+		settled than usual.
+
 	"""
 	X = np.asarray(X)
 	if X.ndim != 2 or X.shape[1] != 2:
@@ -207,4 +216,11 @@ def kmeans_sample(X, num_centers, nsample=None, maxiter=_MAXITER, tol=_TOL, seed
 
 	# second pass: run to convergence on everything
 	centers, labels, converged = _lloyd(vectors, centers, maxiter=maxiter, tol=tol)
+	if not converged:
+		warnings.warn(
+			f"K-means on the sphere did not converge within {maxiter} iterations "
+			f"(tol={tol:g}). Every point is still assigned to its nearest centre, so the "
+			f"clustering is usable, but the regions are less settled than usual and may be "
+			f"unevenly shaped. This normally points to an unusual distribution of the input "
+			f"positions; a different seed, or fewer clusters, generally helps.", UserWarning)
 	return SphericalKMeans(centers, labels, converged)

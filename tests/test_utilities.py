@@ -749,6 +749,29 @@ class TestAssignJackknifePatches:
         assert np.random.random() == np_before
         assert _random.random() == py_before
 
+    def test_warns_when_the_fit_does_not_converge(self):
+        """A fit that runs out of iterations still returns usable patches, but
+        the user should be told the regions are less settled than usual."""
+        from measureia.kmeans_sphere import kmeans_sample
+
+        rng = np.random.default_rng(0)
+        X = np.column_stack([rng.uniform(150, 160, 2000), rng.uniform(0, 8, 2000)])
+        with pytest.warns(UserWarning, match="did not converge within 2 iterations"):
+            km = kmeans_sample(X, 9, maxiter=2, tol=1e-5, seed=1)
+        assert km.converged is False
+        assert len(km.labels) == 2000
+
+    def test_no_convergence_warning_on_a_normal_fit(self, recwarn):
+        """The warning must stay quiet for an ordinary catalogue, or it becomes
+        noise users learn to ignore."""
+        from measureia.kmeans_sphere import kmeans_sample
+
+        rng = np.random.default_rng(0)
+        X = np.column_stack([rng.uniform(150, 160, 2000), rng.uniform(0, 8, 2000)])
+        km = kmeans_sample(X, 9, seed=1)
+        assert km.converged is True
+        assert [w for w in recwarn if "did not converge" in str(w.message)] == []
+
     @pytest.mark.parametrize("maxiter", [1, 2, 3, 5, 100])
     def test_labels_always_match_the_returned_centres(self, maxiter):
         """A fit's labels must describe a partition against its own centres,

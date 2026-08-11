@@ -8,6 +8,19 @@ public API mean a major version bump.
 
 ## [Unreleased]
 
+### Added
+
+- A warning when the sky k-means fit does not converge within its iteration limit. The patches
+  remain usable, but the regions are less settled than usual.
+
+### Fixed
+
+- Jackknife patch labels are now always computed against the centres the fit returns. When the
+  k-means hit its iteration limit, `assign_jackknife_patches` mixed labels from two different
+  centre sets across its four samples, so the delete-one jackknife removed non-corresponding sky
+  regions and biased the covariance without raising anything. Reachable only on a non-converging
+  fit, which the default of 100 iterations made rare.
+
 ## [0.4.0] - 2026-08-11
 
 The first release that installs with a plain `pip install measureia`: every earlier published version
