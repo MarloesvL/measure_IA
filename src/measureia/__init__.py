@@ -1,5 +1,14 @@
 # import internal classes for use, so the module file names do not need to be called.
 
+from importlib.metadata import PackageNotFoundError, version as _version
+
+try:
+	# read from the installed distribution metadata, so the version can never drift
+	# from the one declared in pyproject.toml
+	__version__ = _version("measureia")
+except PackageNotFoundError:  # running from a source tree that was never installed
+	__version__ = "unknown"
+
 # import base and wrapper classes
 from .measure_IA import MeasureIABox
 from .measure_IA_lightcone import MeasureIALightcone

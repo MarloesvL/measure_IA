@@ -43,20 +43,17 @@ The issues on [GitHub](https://github.com/MarloesvL/measure_IA) are also used as
 features or comment on those already there to let me know you would like them to have a higher priority.
 
 ## Contributions
-### Bugs
 
-If you find a bug, please report it in a GitHub [issue](https://github.com/MarloesvL/measure_IA/issues).
+Bug reports, feature requests and questions are all welcome as
+[GitHub issues](https://github.com/MarloesvL/measure_IA/issues).
 
-### Features
+See [CONTRIBUTING.md](https://github.com/MarloesvL/measure_IA/blob/main/CONTRIBUTING.md) for what makes a
+bug report easy to act on (`measureia.mocks` usually reproduces a problem without your data), how feature
+requests are prioritised, and the workflow for contributing code. Pull requests that have not been
+discussed in an issue beforehand will not be accepted.
 
-If you would like a feature added that is not already on the [Roadmap](#roadmap) or in an
-[issue](https://github.com/MarloesvL/measure_IA/issues) on Github,
-please create an issue with the request.
-Within the issue, we can discuss how best to proceed and what the timeline will be. 
-Pull requests that have not been discussed beforehand will not be accepted.
-
-Note that the issues on GitHub contain a priority. Please comment on those you would like to have added, if there is 
-enough interest, I will consider increasing the priority status.
+Issues carry a priority label. If you would like something that is already listed, comment on it — enough
+interest is a good reason to raise its priority.
 
 ## Citation
 

@@ -158,16 +158,13 @@ Planned developments include non-periodic versions of the box methods, e1/e2 inp
 speed-up options. See the [roadmap](https://marloesvl.github.io/measure_IA/#roadmap) in the documentation for the
 current list.
 
-## Requests
+## Contributing
 
-### Bugs
-
-If you find a bug, please report it in a GitHub issue.
-
-### Features
-
-If you would like a feature added, please create an issue with the request. Within the issue, we can discuss how best
-to proceed and what the timeline will be. Pull requests that have not been discussed beforehand will not be accepted.
+Bug reports, feature requests and questions are all welcome as
+[GitHub issues](https://github.com/MarloesvL/measure_IA/issues). See
+[CONTRIBUTING.md](CONTRIBUTING.md) for what makes a bug report easy to act on, how features are prioritised,
+and the workflow for contributing code. Note that pull requests which have not been discussed in an issue
+beforehand will not be accepted.
 
 ## Citation
 
