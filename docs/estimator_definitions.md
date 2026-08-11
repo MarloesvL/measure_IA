@@ -131,6 +131,6 @@ The jack-knife realisations are created by omitting one sub-box from the full vo
 saves the information about each sub-box so that the correlations do not need to be remeasured $N_\mathrm{jk}$ times.
 
 For the **lightcone**, the jackknife regions are instead defined on the sky: the objects are grouped into
-$N_\mathrm{jk}$ patches by k-means clustering of the random catalogue (using `kmeans_radec`), and one patch is
+$N_\mathrm{jk}$ patches by k-means clustering of the random catalogue on the sphere, and one patch is
 omitted at a time. The number of patches is set with the `num_jk` argument, or the patch assignment can be
 supplied directly through `jk_patches`; the same delete-one covariance formula above then applies.

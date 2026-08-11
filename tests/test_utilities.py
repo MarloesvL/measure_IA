@@ -649,7 +649,7 @@ class TestCreateFullCovMatrixProjections:
 # ===========================================================================
 
 class TestAssignJackknifePatches:
-    """Unit tests for the kmeans_radec-based patch assignment: output
+    """Unit tests for the spherical-k-means patch assignment: output
     structure, label ranges, seed determinism, and the geometric sanity of the
     assignment (nearby objects land in the same patch)."""
 
@@ -732,9 +732,9 @@ class TestAssignJackknifePatches:
         b = obj.assign_jackknife_patches(data, randoms, self.NUM_JK, seed=999)
         assert any(not np.array_equal(a[k], b[k]) for k in a)
 
-    def test_global_random_state_is_restored(self, tmp_path):
-        """The seeded branch seeds both numpy and the stdlib random module
-        (kmeans_radec uses the latter); neither may leak out."""
+    def test_global_random_state_is_untouched(self, tmp_path):
+        """The fit draws from its own Generator, so neither the global numpy
+        state nor the stdlib random state may move."""
         import random as _random
         obj = self._obj(tmp_path)
         data, randoms = self._catalogs()
@@ -769,23 +769,24 @@ class TestAssignJackknifePatches:
         with pytest.raises(ValueError, match="num_jk must be an integer"):
             obj.assign_jackknife_patches(data, randoms, bad)
 
-    def test_too_few_randoms_per_patch_raises(self, tmp_path):
-        """kmeans_radec samples 10 points per patch without replacement, so
-        fewer than 10 randoms per patch must be rejected up front rather than
-        failing inside the stdlib random module."""
+    def test_more_patches_than_randoms_raises(self, tmp_path):
+        """The centres are fitted to the position randoms, so there must be at
+        least one random per patch."""
         obj = self._obj(tmp_path)
         data, randoms = self._catalogs(N=20, NR=50)
         with pytest.raises(ValueError,
-                           match="at least 10 randoms per jackknife patch"):
-            obj.assign_jackknife_patches(data, randoms, 6, seed=1)
+                           match="cannot exceed the number of position randoms"):
+            obj.assign_jackknife_patches(data, randoms, 51, seed=1)
 
-    def test_exactly_ten_randoms_per_patch_is_allowed(self, tmp_path):
-        """The boundary of the 10-randoms-per-patch requirement works."""
+    def test_few_randoms_per_patch_is_allowed(self, tmp_path):
+        """Sparse randoms are fine: unlike the old kmeans_radec backend, which
+        drew 10 points per patch without replacement, the fit only needs one
+        random per patch."""
         obj = self._obj(tmp_path)
-        data, randoms = self._catalogs(N=20, NR=40)
-        p = obj.assign_jackknife_patches(data, randoms, 4, seed=1)
-        assert len(p["randoms_position"]) == 40
-        assert p["randoms_position"].max() < 4
+        data, randoms = self._catalogs(N=20, NR=50)
+        p = obj.assign_jackknife_patches(data, randoms, 6, seed=1)
+        assert len(p["randoms_position"]) == 50
+        assert p["randoms_position"].max() < 6
 
     def test_more_patches_than_data_objects_still_assigns(self, tmp_path):
         """num_jk may exceed the number of *data* objects — the patches are

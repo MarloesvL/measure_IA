@@ -756,16 +756,6 @@ wheels = [
 ]
 
 [[package]]
-name = "kmeans-radec"
-version = "0.9.0"
-source = { git = "https://github.com/esheldon/kmeans_radec#6d521e08b4cbe76fafa80d705e2fd2209f3c80f9" }
-dependencies = [
-    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
-    { name = "numpy", version = "2.5.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
-]
-
-[[package]]
 name = "lsstdesc-coord"
 version = "1.3.1"
 source = { registry = "https://pypi.org/simple" }
@@ -958,7 +948,6 @@ dependencies = [
     { name = "astropy", version = "6.1.7", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "astropy", version = "8.0.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "h5py" },
-    { name = "kmeans-radec" },
     { name = "matplotlib" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
@@ -991,7 +980,6 @@ requires-dist = [
     { name = "astropy", marker = "python_full_version >= '3.11'", specifier = ">=7.0" },
     { name = "h5py", specifier = ">=3.11" },
     { name = "halotools", marker = "python_full_version >= '3.11' and extra == 'validation'", specifier = ">=0.9.4" },
-    { name = "kmeans-radec", git = "https://github.com/esheldon/kmeans_radec" },
     { name = "matplotlib", specifier = ">=3.9" },
     { name = "numpy", specifier = ">=2.1" },
     { name = "pyccl", specifier = ">=3.3.4" },

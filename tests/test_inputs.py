@@ -292,7 +292,7 @@ class TestLightconeInputChecks:
     def test_num_jk_exceeds_randoms_raises(self, tmp_path):
         data, randoms = _lc_catalogs(N=40, NR=60)
         obj = MeasureIALightcone(data, randoms, str(tmp_path / "o.hdf5"), pi_max=60)
-        with pytest.raises(ValueError, match="at least 10 randoms per jackknife patch"):
+        with pytest.raises(ValueError, match="cannot exceed the number of position randoms"):
             obj.assign_jackknife_patches(data, randoms, num_jk=1000)
 
     def test_custom_name_missing_under_default_raises(self, tmp_path):

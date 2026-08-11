@@ -34,7 +34,6 @@ dependencies = [
     "astropy>=6.1; python_version < '3.11'",
     "astropy>=7.0; python_version >= '3.11'",
     "h5py>=3.11",
-    "kmeans-radec",
     "matplotlib>=3.9",
     "numpy>=2.1",
     # pyccl 3.2.x is sdist-only (compiled from source everywhere) and its SWIG bindings
@@ -65,9 +64,6 @@ dev = ["pytest~=8.3.1"]
 # mkdocs, so no separate theme package is needed. Used by .github/workflows/docs.yml and
 # for local builds: `uv run --group docs mkdocs serve`.
 docs = ["mkdocs>=1.6", "mkdocstrings[python]>=0.26"]
-
-[tool.uv.sources]
-kmeans-radec = { git = "https://github.com/esheldon/kmeans_radec" }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

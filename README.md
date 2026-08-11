@@ -26,9 +26,7 @@ This package can be installed via pip or uv.
 ```angular2html
 pip install measureia
 ```
-Note that you need to install the kmeans_radec package yourself as it is not pip-installable.
-See https://github.com/esheldon/kmeans_radec for installation.
-When using uv, this is not necessary as uv takes care of all the dependencies (see below).
+That is the whole installation: every dependency is on PyPI.
 
 ### Installation via uv
 
@@ -59,7 +57,6 @@ uv run [script_name].py
 #### Installing manually without uv
 
 If you do not want to use uv, you can also install dependencies the provided requirements.txt document.
-Note that you need to also download the kmeans-radec repository (https://github.com/esheldon/kmeans_radec) in this case.
 Also, make sure your Python version is compatible. This package supports Python 3.10 - 3.14 and is tested on all of them.
 Both the extra repository and the python version are handeled by uv automatically so please consider using this for
 easy installation.

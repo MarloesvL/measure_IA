@@ -1,8 +1,6 @@
-import random as _random
-
 import numpy as np
 import h5py
-from kmeans_radec import kmeans_sample
+from .kmeans_sphere import kmeans_sample
 from .write_data import write_dataset_hdf5, create_group_hdf5
 from .measure_IA_base import MeasureIABase
 
@@ -58,7 +56,10 @@ class MeasureJackknife(MeasureIABase):
 
 	def assign_jackknife_patches(self, data, randoms_data, num_jk, seed=None):
 		"""Assigns jackknife patches to data and randoms given a number of patches.
-		Based on https://github.com/esheldon/kmeans_radec
+
+		The patch centres are fitted to the position randoms with k-means on the sphere
+		(see `measureia.kmeans_sphere`), so the patches are compact sky regions; every
+		other sample is then assigned to its nearest centre.
 
 		Parameters
 		----------
@@ -69,11 +70,11 @@ class MeasureJackknife(MeasureIABase):
 			Dictionary containing position and shape sample data of randoms. Keywords: "RA", "DEC", "RA_shape_sample",
 			"DEC_shape_sample"
 		num_jk : int
-			Number of jackknife patches. At least 10 randoms per patch are required (the k-means
-			initialisation samples that many points without replacement).
+			Number of jackknife patches. Cannot exceed the number of position randoms, since the
+			patch centres are fitted to them.
 		seed : int or NoneType, optional
 			Seed for the k-means initialisation, making the patch assignment reproducible. If None (default),
-			the patches differ between runs. The global numpy random state is restored afterwards.
+			the patches differ between runs. The global random state is never touched.
 
 		Returns
 		-------
@@ -89,30 +90,15 @@ class MeasureJackknife(MeasureIABase):
 		RA = randoms_data['RA']
 		DEC = randoms_data['DEC']
 
-		# Define a number of jaccknife regions and find their centres using kmans
+		# Define a number of jackknife regions and find their centres using k-means
 		X = np.column_stack((RA, DEC))
 		if not (isinstance(num_jk, (int, np.integer)) and not isinstance(num_jk, bool) and num_jk >= 1):
 			raise ValueError(f"num_jk must be an integer >= 1, got {num_jk!r}.")
-		# kmeans_sample draws its first-pass sample of max(2*sqrt(N), 10*num_jk) points without
-		# replacement, so it needs at least 10 randoms per patch; below that it fails inside the
-		# stdlib random module with an opaque "Sample larger than population".
-		if 10 * num_jk > len(X):
+		if num_jk > len(X):
 			raise ValueError(
-				f"num_jk ({num_jk}) needs at least 10 randoms per jackknife patch "
-				f"({10 * num_jk} in total) to build the patch centres, but only {len(X)} randoms "
-				f"were given. Lower num_jk or provide more randoms.")
-		if seed is None:
-			km = kmeans_sample(X, num_jk, maxiter=100, tol=1.0e-5)
-		else:
-			# kmeans_radec draws its starting sample with the stdlib random module
-			np_state, py_state = np.random.get_state(), _random.getstate()
-			np.random.seed(seed)
-			_random.seed(seed)
-			try:
-				km = kmeans_sample(X, num_jk, maxiter=100, tol=1.0e-5)
-			finally:
-				np.random.set_state(np_state)
-				_random.setstate(py_state)
+				f"num_jk ({num_jk}) cannot exceed the number of position randoms ({len(X)}), since the "
+				f"patch centres are fitted to them. Lower num_jk or provide more randoms.")
+		km = kmeans_sample(X, num_jk, maxiter=100, tol=1.0e-5, seed=seed)
 		jk_labels = km.labels
 
 		jk_patches['randoms_position'] = jk_labels

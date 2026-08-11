@@ -218,6 +218,12 @@ def main():
 			f.attrs["r_lims"] = mp.R_LIMS
 			for k, v in N.items():
 				f.attrs[f"n_{k}"] = v
+			# Store the patches this reference was built with: the covariance is only
+			# comparable against these exact regions, so the test reads them back rather
+			# than regenerating them.
+			for key, labels in patches.items():
+				f.create_dataset(f"patches/{key}", data=np.asarray(labels, dtype=np.int16),
+										 compression="gzip", compression_opts=9)
 			f["mu"] = pc["mu"]
 			for k in ["mult_gp_full", "mult_gg_full", "mult_gp_own",
 					  "mult_gg_own"]:

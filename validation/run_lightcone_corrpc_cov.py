@@ -214,6 +214,12 @@ def main():
 			f.attrs["pi_max"] = lc.PI_MAX
 			for k, v in N.items():
 				f.attrs[f"n_{k}"] = v
+			# Store the patches this reference was built with: the covariance is only
+			# comparable against these exact regions, so the test reads them back rather
+			# than regenerating them.
+			for key, labels in patches.items():
+				f.create_dataset(f"patches/{key}", data=np.asarray(labels, dtype=np.int16),
+										 compression="gzip", compression_opts=9)
 			f["w_gp_full"] = pc["w_gp_full"]
 			f["w_gg_full"] = pc["w_gg_full"]
 			f["w_gp_own"] = pc["w_gp_own"]
