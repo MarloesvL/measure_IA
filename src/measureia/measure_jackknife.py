@@ -1,8 +1,13 @@
+import warnings
+
 import numpy as np
 import h5py
 from .kmeans_sphere import kmeans_sample
 from .write_data import write_dataset_hdf5, create_group_hdf5
 from .measure_IA_base import MeasureIABase
+
+#: Objects per patch below which the delete-one jackknife becomes unreliable.
+MIN_PATCH_OCCUPANCY = 10
 
 
 class MeasureJackknife(MeasureIABase):
@@ -82,6 +87,12 @@ class MeasureJackknife(MeasureIABase):
 			Dictionary with patch numbers for each sample. Keywords: 'position', 'shape', 'randoms_position',
 			'randoms_shape'
 
+		Warns
+		-----
+		UserWarning
+			If any sample ends up with patches holding fewer than 10 objects, which makes the
+			jackknife covariance unreliable.
+
 		"""
 
 		jk_patches = {}
@@ -124,7 +135,49 @@ class MeasureJackknife(MeasureIABase):
 
 		jk_patches['shape'] = jk_labels
 
+		self._warn_on_sparse_patches(jk_patches, num_jk)
+
 		return jk_patches
+
+	@staticmethod
+	def _warn_on_sparse_patches(jk_patches, num_jk):
+		"""Warn when any sample has patches holding too few objects.
+
+		A delete-one jackknife estimates the covariance from how much the signal moves
+		when each patch is removed, so patches holding only a handful of objects give a
+		noisy covariance and can empty whole separation bins in a realisation. The
+		remedy differs per sample: a sparse randoms sample means too few randoms, while
+		a sparse data sample means the catalogue cannot support this many patches.
+
+		Parameters
+		----------
+		jk_patches : dict
+			Patch labels per sample, as returned by assign_jackknife_patches.
+		num_jk : int
+			Number of jackknife patches, so that patches nothing landed in are counted.
+
+		"""
+		sparse = {}
+		for sample, labels in jk_patches.items():
+			smallest = int(np.bincount(np.asarray(labels, dtype=int), minlength=num_jk).min())
+			if smallest < MIN_PATCH_OCCUPANCY:
+				sparse[sample] = smallest
+		if not sparse:
+			return
+
+		details = ", ".join(f"'{sample}' has {count}"
+							for sample, count in sorted(sparse.items(), key=lambda item: item[1]))
+		if any(sample.startswith("randoms") for sample in sparse):
+			advice = ("Provide more randoms, and/or lower num_jk"
+					  if any(not sample.startswith("randoms") for sample in sparse)
+					  else "Provide more randoms, or lower num_jk")
+		else:
+			advice = "Lower num_jk, or use a larger data sample"
+		warnings.warn(
+			f"{len(sparse)} of the {len(jk_patches)} samples have jackknife patches holding fewer "
+			f"than {MIN_PATCH_OCCUPANCY} objects (smallest patch: {details}). The jackknife "
+			f"covariance is unreliable when patches are this sparse, and delete-one realisations "
+			f"may contain empty separation bins. {advice}.", UserWarning)
 
 	def _combine_jackknife_information(self, dataset_name, jk_group_name, corr_group, num_box, return_output=False):
 		"""

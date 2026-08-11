@@ -83,6 +83,7 @@ filterwarnings = [
     "ignore:.*zero random-random pairs.*:RuntimeWarning",
     "ignore:.*maximum separation exceeds.*:UserWarning",
     "ignore:.*too many r.*:UserWarning",
+    "ignore:.*jackknife patches holding fewer than.*:UserWarning",
 ]
 
 [build-system]
