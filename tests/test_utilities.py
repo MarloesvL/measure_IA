@@ -855,9 +855,9 @@ class TestCovarianceUtilitiesLightcone:
         the two IA estimators, which use different random terms."""
         tp = str(tmp_path) + "/"
         obj.measure_xi_w("galaxies", "lc_A", "g+", num_jk=self.LC_NUM_JK,
-                         measure_cov=True, temp_file_path=tp)
+                         temp_file_path=tp)
         obj.measure_xi_w("clusters", "lc_B", "g+", num_jk=self.LC_NUM_JK,
-                         measure_cov=True, temp_file_path=tp)
+                         temp_file_path=tp)
 
     def test_auto_covariance_shape_and_symmetry(self, IA_mock_lc_n1, tmp_path):
         obj = IA_mock_lc_n1
@@ -902,7 +902,7 @@ class TestCovarianceUtilitiesLightcone:
         N = len(obj.data["RA"])
         half = np.arange(N) % 2 == 0
         obj.measure_xi_w("galaxies", "lc_C", "g+", num_jk=self.LC_NUM_JK,
-                         measure_cov=True, masks={k: half for k in obj.data},
+                         masks={k: half for k in obj.data},
                          temp_file_path=str(tmp_path) + "/")
 
         ref, _ = obj.measure_covariance_multiple_datasets(

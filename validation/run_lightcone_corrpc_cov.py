@@ -71,7 +71,7 @@ def run_measureia_jk(data, randoms, patches, output_file, temp_path):
 	the per-realisation retained raw count grids."""
 	ia = tcov.make_measureia(data, randoms, output_file)
 	ia.measure_xi_w("galaxies", DATASET, "both", jk_patches=patches,
-					num_jk=NUM_JK, measure_cov=True, tree=True,
+					num_jk=NUM_JK, tree=True,
 					cosmology=lc.COSMOLOGY, over_h=False,
 					temp_file_path=temp_path)
 	out = {}

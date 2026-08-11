@@ -73,7 +73,7 @@ def run_measureia(data, randoms, output_file, temp_path):
 		pi_max=R_LIMS[1],
 		num_nodes=1,
 	)
-	ia.measure_xi_multipoles("galaxies", DATASET, "both", measure_cov=False,
+	ia.measure_xi_multipoles("galaxies", DATASET, "both", 
 							 tree=True, cosmology=lc.COSMOLOGY, over_h=False,
 							 temp_file_path=temp_path)
 	out = {}

@@ -106,7 +106,7 @@ def run_lightcone(mock, output_file, temp_path):
 		pi_max=PI_MAX,
 		num_nodes=1,
 	)
-	ia.measure_xi_w("galaxies", DATASET, "both", measure_cov=False, tree=True,
+	ia.measure_xi_w("galaxies", DATASET, "both", tree=True,
 					cosmology=COSMOLOGY, over_h=False, temp_file_path=temp_path)
 	with h5py.File(output_file, "r") as f:
 		out = {

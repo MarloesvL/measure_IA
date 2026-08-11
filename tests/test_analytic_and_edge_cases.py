@@ -324,7 +324,7 @@ class TestAnalyticLimitsLightcone:
             N, np.zeros(N), np.zeros(N), rng, tmp_path)
         obj = _lc(data, rand, tmp_path)
         obj.measure_xi_w("galaxies", "lc_zero_e", "g+",
-                          measure_cov=False, tree=False,
+                          tree=False,
                           temp_file_path=str(tmp_path) + "/")
         w = _read(obj, "w/xi_g_plus", "lc_zero_e")
         w_finite = np.where(np.isfinite(w), w, 0.0)
@@ -356,10 +356,10 @@ class TestAnalyticLimitsLightcone:
                                       pi_max=60.0)
 
         obj_pos.measure_xi_w("galaxies", "lc_pos_e", "g+",
-                              measure_cov=False, tree=False,
+                              tree=False,
                               temp_file_path=None)
         obj_neg.measure_xi_w("galaxies", "lc_neg_e", "g+",
-                              measure_cov=False, tree=False,
+                              tree=False,
                               temp_file_path=None)
 
         w_pos = _read(obj_pos, "w/xi_g_plus", "lc_pos_e")
@@ -391,10 +391,10 @@ class TestAnalyticLimitsLightcone:
                                    num_bins_r=_NR, num_bins_pi=_NPI, pi_max=60.0)
 
         obj1.measure_xi_w("galaxies", "lc_1x", "g+",
-                           measure_cov=False, tree=False,
+                           tree=False,
                            temp_file_path=None)
         obj2.measure_xi_w("galaxies", "lc_2x", "g+",
-                           measure_cov=False, tree=False,
+                           tree=False,
                            temp_file_path=None)
 
         w1 = _read(obj1, "w/xi_g_plus", "lc_1x")
@@ -409,7 +409,7 @@ class TestAnalyticLimitsLightcone:
                                          rng, tmp_path)
         obj = _lc(data, rand, tmp_path)
         obj.measure_xi_w("galaxies", "lc_swap_ab", "gg",
-                          measure_cov=False, tree=False,
+                          tree=False,
                           temp_file_path=None)
 
         # swap position and shape samples in both the data and the randoms;
@@ -436,7 +436,7 @@ class TestAnalyticLimitsLightcone:
                                    num_bins_r=_NR, num_bins_pi=_NPI,
                                    pi_max=60.0)
         obj2.measure_xi_w("galaxies", "lc_swap_ba", "gg",
-                           measure_cov=False, tree=False,
+                           tree=False,
                            temp_file_path=None)
 
         w_ab = _read(obj,  "w/xi_gg", "lc_swap_ab")
@@ -759,7 +759,7 @@ class TestCosmologyConversion:
             pi_max=expected_dchi * 1.5,
         )
         obj.measure_xi_w("galaxies", "cosmo_test", "gg",
-                          measure_cov=False, tree=False,
+                          tree=False,
                           temp_file_path=None)
 
         pi_grid = _read(obj, "w/xi_gg", "cosmo_test_pi")
@@ -809,7 +809,7 @@ class TestCosmologyConversion:
                                       num_bins_r=_NR, num_bins_pi=_NPI,
                                       pi_max=60.0)
             obj.measure_xi_w("galaxies", f"oh_{tag}", "gg",
-                              measure_cov=False, tree=False,
+                              tree=False,
                               over_h=flag,
                               temp_file_path=None)
 
@@ -1076,7 +1076,7 @@ class TestEdgeCasesLightcone:
         obj = _lc(data, rand, tmp_path)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)
-            obj.measure_xi_w("galaxies", "lc_zw", "g+", measure_cov=False,
+            obj.measure_xi_w("galaxies", "lc_zw", "g+", 
                              tree=False, temp_file_path=None)
         w = _read(obj, "w/xi_g_plus", "lc_zw")
         assert w.shape == (_NR, _NPI)
@@ -1095,7 +1095,7 @@ class TestEdgeCasesLightcone:
                  "RA_shape_sample": np.zeros(N, dtype=bool)}
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)
-            obj.measure_xi_w("galaxies", "lc_em", "g+", measure_cov=False,
+            obj.measure_xi_w("galaxies", "lc_em", "g+", 
                              tree=False, masks=empty, temp_file_path=None)
         w = _read(obj, "w/xi_g_plus", "lc_em")
         assert w.shape == (_NR, _NPI)
@@ -1113,7 +1113,7 @@ class TestEdgeCasesLightcone:
         obj = _lc(data, rand, tmp_path)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)
-            obj.measure_xi_w("galaxies", "lc_n1", "g+", measure_cov=False,
+            obj.measure_xi_w("galaxies", "lc_n1", "g+", 
                              tree=False, temp_file_path=None)
         w = _read(obj, "w/xi_g_plus", "lc_n1")
         assert w.shape == (_NR, _NPI)
@@ -1122,7 +1122,7 @@ class TestEdgeCasesLightcone:
         """Lightcone twin of the box restore test: a Pool failure after the
         temp-file offload must still leave self.data intact. The lightcone
         multiprocessing path lives on the jackknife backend, so this needs
-        measure_cov=True."""
+        a jackknife run (num_jk)."""
         rng = np.random.default_rng(_SEED)
         N   = 40
         data, rand = self._cat(N, 3 * N, rng)
@@ -1138,7 +1138,6 @@ class TestEdgeCasesLightcone:
         monkeypatch.setattr("measureia.measure_w_lightcone_jk.Pool", _boom)
         with pytest.raises(RuntimeError):
             obj.measure_xi_w("galaxies", "lc_fail", "g+", num_jk=4,
-                             measure_cov=True,
                              temp_file_path=str(tmp_path) + "/")
         assert len(obj.data["RA"]) == N, \
             "self.data was not restored after a failed backend call"
@@ -1172,10 +1171,10 @@ class TestEdgeCasesLightcone:
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)
-            obj_a.measure_xi_w("galaxies", "cos_a", "g+", measure_cov=False,
+            obj_a.measure_xi_w("galaxies", "cos_a", "g+", 
                                tree=False, cosmology=cosmo_a,
                                temp_file_path=None)
-            obj_b.measure_xi_w("galaxies", "cos_b", "g+", measure_cov=False,
+            obj_b.measure_xi_w("galaxies", "cos_b", "g+", 
                                tree=False, cosmology=cosmo_b,
                                temp_file_path=None)
 

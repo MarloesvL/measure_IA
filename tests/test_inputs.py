@@ -307,13 +307,13 @@ class TestLightconeInputChecks:
                       pi_max=60)
         obj_def = MeasureIALightcone(dict(data), dict(randoms),
                                      str(tmp_path / "def.hdf5"), **kwargs)
-        obj_def.measure_xi_w("galaxies", "t", "both", measure_cov=False)
+        obj_def.measure_xi_w("galaxies", "t", "both")
 
         obj_cus = MeasureIALightcone(_renamed(data, _LC_RENAME),
                                      _renamed(randoms, _LC_RENAME),
                                      str(tmp_path / "cus.hdf5"), **kwargs,
                                      **_LC_NAME_KWARGS)
-        obj_cus.measure_xi_w("galaxies", "t", "both", measure_cov=False)
+        obj_cus.measure_xi_w("galaxies", "t", "both")
 
         with h5py.File(tmp_path / "def.hdf5") as fd, h5py.File(tmp_path / "cus.hdf5") as fc:
             for ds in ("w_g_plus/t", "w_gg/t"):
@@ -344,7 +344,7 @@ class TestLightconeInputChecks:
         obj = MeasureIALightcone(data, randoms, str(tmp_path / "o.hdf5"),
                                  separation_limits=[2.0, 20.0], num_bins_r=5,
                                  num_bins_pi=10, pi_max=60)
-        obj.measure_xi_w("galaxies", "t", "gg", measure_cov=False)
+        obj.measure_xi_w("galaxies", "t", "gg")
         assert set(data.keys()) == data_keys  # weight defaults go to the remapped copies
         assert set(randoms.keys()) == randoms_keys
 

@@ -303,7 +303,7 @@ class TestResponsivityOption:
                 output_file_name=out,
                 separation_limits=v.RP_LIMS, num_bins_r=v.NUM_BINS_RP,
                 num_bins_pi=v.NUM_BINS_PI, pi_max=v.PI_MAX, num_nodes=1)
-            ia.measure_xi_w("galaxies", v.DATASET, "both", measure_cov=False,
+            ia.measure_xi_w("galaxies", v.DATASET, "both", 
                             tree=True, cosmology=v.COSMOLOGY, over_h=False,
                             temp_file_path=str(tmp_path) + "/", responsivity=flag)
             with h5py.File(out) as f:

@@ -6,7 +6,7 @@ Comprehensive tests for MeasureIALightcone.measure_xi_multipoles(), covering:
   - IA_estimator: 'clusters', 'galaxies'
   - corr_type: 'both', 'g+', 'gg'
   - Computation backends: brute (tree=False) and tree (tree=True)
-  - measure_cov=False and measure_cov=True (with JK)
+  - with and without jackknife covariance (num_jk / jk_patches)
   - JK patches provided externally (jk_patches) vs generated internally (num_jk)
   - Single random sample vs separate position/shape random catalogues
   - Auto weight injection
@@ -45,43 +45,43 @@ class TestIAEstimatorM:
         with pytest.raises(KeyError):
             IA_mock_lc_n1.measure_xi_multipoles(
                 "bad_estimator", "lc_m_bad", "both",
-                measure_cov=False, tree=False,
+                tree=False,
                 temp_file_path=str(tmp_path) + "/")
 
     def test_clusters_without_randoms_raises(self, IA_mock_lc_no_randoms, tmp_path):
         with pytest.raises(KeyError):
             IA_mock_lc_no_randoms.measure_xi_multipoles(
                 "clusters", "lc_m_no_rand", "both",
-                measure_cov=False, tree=False,
+                tree=False,
                 temp_file_path=str(tmp_path) + "/")
 
     def test_galaxies_without_randoms_raises(self, IA_mock_lc_no_randoms, tmp_path):
         with pytest.raises(KeyError):
             IA_mock_lc_no_randoms.measure_xi_multipoles(
                 "galaxies", "lc_m_no_rand", "both",
-                measure_cov=False, tree=False,
+                tree=False,
                 temp_file_path=str(tmp_path) + "/")
 
     def test_clusters_estimator_runs(self, IA_mock_lc_n1, tmp_path):
         IA_mock_lc_n1.measure_xi_multipoles(
             "clusters", "lc_m_clusters_nc", "both",
-            measure_cov=False, tree=True,
+            tree=True,
             temp_file_path=str(tmp_path) + "/")
 
     def test_galaxies_estimator_runs(self, IA_mock_lc_n1, tmp_path):
         IA_mock_lc_n1.measure_xi_multipoles(
             "galaxies", "lc_m_galaxies_nc", "both",
-            measure_cov=False, tree=True,
+            tree=True,
             temp_file_path=str(tmp_path) + "/")
 
     def test_clusters_vs_galaxies_gp_differ(self, IA_mock_lc_n1, tmp_path):
         IA_mock_lc_n1.measure_xi_multipoles(
             "clusters", "lc_m_est_cl", "g+",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
         IA_mock_lc_n1.measure_xi_multipoles(
             "galaxies", "lc_m_est_gx", "g+",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
         obj = IA_mock_lc_n1
         assert not np.allclose(_read(obj, "multipoles_g_plus", "lc_m_est_cl"),
@@ -97,11 +97,11 @@ class TestCorrTypeM:
     def test_gp_matches_both(self, IA_mock_lc_n1, tmp_path):
         IA_mock_lc_n1.measure_xi_multipoles(
             "galaxies", "lc_m_ct_both", "both",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
         IA_mock_lc_n1.measure_xi_multipoles(
             "galaxies", "lc_m_ct_gp", "g+",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
         obj = IA_mock_lc_n1
         np.testing.assert_array_equal(_read(obj, "multipoles_g_plus", "lc_m_ct_both"),
@@ -112,10 +112,10 @@ class TestCorrTypeM:
     def test_gg_matches_both(self, IA_mock_lc_n1, tmp_path):
         obj = IA_mock_lc_n1
         obj.measure_xi_multipoles("galaxies", "lc_m_ct_both2", "both",
-                                   measure_cov=False, tree=False,
+                                   tree=False,
                                    temp_file_path=str(tmp_path) + "/")
         obj.measure_xi_multipoles("galaxies", "lc_m_ct_gg", "gg",
-                                   measure_cov=False, tree=False,
+                                   tree=False,
                                    temp_file_path=str(tmp_path) + "/")
         np.testing.assert_array_equal(_read(obj, "multipoles_gg", "lc_m_ct_both2"),
                                       _read(obj, "multipoles_gg", "lc_m_ct_gg"))
@@ -124,7 +124,7 @@ class TestCorrTypeM:
         with pytest.raises(KeyError):
             IA_mock_lc_n1.measure_xi_multipoles(
                 "galaxies", "lc_m_bad_ct", "gg+",
-                measure_cov=False, tree=False,
+                tree=False,
                 temp_file_path=str(tmp_path) + "/")
 
 
@@ -137,11 +137,11 @@ class TestBackendsNoCovM:
     def test_brute_vs_tree_gp(self, IA_mock_lc_n1, tmp_path):
         IA_mock_lc_n1.measure_xi_multipoles(
             "galaxies", "lc_m_bvt_brute", "both",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
         IA_mock_lc_n1.measure_xi_multipoles(
             "galaxies", "lc_m_bvt_tree", "both",
-            measure_cov=False, tree=True,
+            tree=True,
             temp_file_path=str(tmp_path) + "/")
 
         obj = IA_mock_lc_n1
@@ -153,10 +153,10 @@ class TestBackendsNoCovM:
     def test_brute_vs_tree_gg(self, IA_mock_lc_n1, tmp_path):
         obj = IA_mock_lc_n1
         obj.measure_xi_multipoles("galaxies", "lc_m_bvt_brute", "both",
-                                   measure_cov=False, tree=False,
+                                   tree=False,
                                    temp_file_path=str(tmp_path) + "/")
         obj.measure_xi_multipoles("galaxies", "lc_m_bvt_tree", "both",
-                                   measure_cov=False, tree=True,
+                                   tree=True,
                                    temp_file_path=str(tmp_path) + "/")
         np.testing.assert_allclose(_read(obj, "multipoles_gg", "lc_m_bvt_brute"),
                                    _read(obj, "multipoles_gg", "lc_m_bvt_tree"))
@@ -164,10 +164,10 @@ class TestBackendsNoCovM:
     def test_r_bins_same_across_backends(self, IA_mock_lc_n1, tmp_path):
         obj = IA_mock_lc_n1
         obj.measure_xi_multipoles("galaxies", "lc_m_bvt_brute", "both",
-                                   measure_cov=False, tree=False,
+                                   tree=False,
                                    temp_file_path=str(tmp_path) + "/")
         obj.measure_xi_multipoles("galaxies", "lc_m_bvt_tree", "both",
-                                   measure_cov=False, tree=True,
+                                   tree=True,
                                    temp_file_path=str(tmp_path) + "/")
         np.testing.assert_array_equal(
             _read(obj, "multipoles_g_plus", "lc_m_bvt_brute_r"),
@@ -180,17 +180,21 @@ class TestBackendsNoCovM:
 
 class TestCovarianceM:
 
-    def test_measure_cov_without_jk_args_raises(self, IA_mock_lc_n1, tmp_path):
-        with pytest.raises(ValueError):
-            IA_mock_lc_n1.measure_xi_multipoles(
-                "galaxies", "lc_m_no_jk", "both",
-                measure_cov=True,
-                temp_file_path=str(tmp_path) + "/")
+    def test_no_jk_args_means_no_covariance(self, IA_mock_lc_n1, tmp_path):
+        """Neither jk_patches nor num_jk means no covariance, matching the
+        box's num_jk=0 default. It used to raise, when covariance was opt-out."""
+        obj = IA_mock_lc_n1
+        obj.measure_xi_multipoles("galaxies", "lc_m_no_jk", "both",
+                                  temp_file_path=str(tmp_path) + "/")
+        with h5py.File(obj.output_file_name, "r") as f:
+            assert "lc_m_no_jk" in f["multipoles_g_plus"]
+            assert not any(k.startswith("lc_m_no_jk_jackknife")
+                           for k in f["multipoles_g_plus"])
 
     def test_internal_jk_generation(self, IA_mock_lc_n1, tmp_path):
         IA_mock_lc_n1.measure_xi_multipoles(
             "galaxies", "lc_m_int_jk", "both",
-            measure_cov=True, num_jk=NUM_JK,
+            num_jk=NUM_JK,
             tree=True, temp_file_path=str(tmp_path) + "/")
         obj = IA_mock_lc_n1
         cov = _read(obj, "multipoles_g_plus", f"lc_m_int_jk_jackknife_cov_{NUM_JK}")
@@ -199,7 +203,7 @@ class TestCovarianceM:
     def test_external_jk_patches(self, IA_mock_lc_n1, lc_jk_patches, tmp_path):
         IA_mock_lc_n1.measure_xi_multipoles(
             "galaxies", "lc_m_ext_jk", "both",
-            measure_cov=True, jk_patches=lc_jk_patches,
+            jk_patches=lc_jk_patches,
             tree=True, temp_file_path=str(tmp_path) + "/")
         obj = IA_mock_lc_n1
         assert _read(obj, "multipoles_g_plus", "lc_m_ext_jk") is not None
@@ -207,10 +211,10 @@ class TestCovarianceM:
     def test_internal_vs_external_agree(self, IA_mock_lc_n1, lc_jk_patches, tmp_path):
         obj = IA_mock_lc_n1
         obj.measure_xi_multipoles("galaxies", "lc_m_int_jk2", "both",
-                                   measure_cov=True, num_jk=NUM_JK,
+                                   num_jk=NUM_JK,
                                    tree=True, temp_file_path=str(tmp_path) + "/")
         obj.measure_xi_multipoles("galaxies", "lc_m_ext_jk2", "both",
-                                   measure_cov=True, jk_patches=lc_jk_patches,
+                                   jk_patches=lc_jk_patches,
                                    tree=True, temp_file_path=str(tmp_path) + "/")
         np.testing.assert_allclose(
             _read(obj, "multipoles_g_plus", "lc_m_int_jk2"),
@@ -223,11 +227,11 @@ class TestCovarianceM:
         tree jk backend: final vectors and covariances."""
         IA_mock_lc_n1.measure_xi_multipoles(
             "galaxies", "lc_m_jk_n1", "both",
-            measure_cov=True, jk_patches=lc_jk_patches,
+            jk_patches=lc_jk_patches,
             tree=True, temp_file_path=str(tmp_path) + "/")
         IA_mock_lc_n8.measure_xi_multipoles(
             "galaxies", "lc_m_jk_n8", "both",
-            measure_cov=True, jk_patches=lc_jk_patches,
+            jk_patches=lc_jk_patches,
             tree=True, temp_file_path=str(tmp_path) + "/",
             chunk_size=50)
         for grp in ("multipoles_g_plus", "multipoles_gg"):
@@ -247,11 +251,11 @@ class TestCovarianceM:
         obj = IA_mock_lc_n1
         obj.measure_xi_multipoles(
             "galaxies", "lc_m_jk_tree",  "both",
-            measure_cov=True, jk_patches=lc_jk_patches,
+            jk_patches=lc_jk_patches,
             tree=True, temp_file_path=str(tmp_path) + "/")
         obj.measure_xi_multipoles(
             "galaxies", "lc_m_jk_brute", "both",
-            measure_cov=True, jk_patches=lc_jk_patches,
+            jk_patches=lc_jk_patches,
             tree=False, temp_file_path=str(tmp_path) + "/")
 
         for i in range(NUM_JK):
@@ -268,11 +272,11 @@ class TestCovarianceM:
         obj = IA_mock_lc_n1
         obj.measure_xi_multipoles(
             "galaxies", "lc_m_jk_tree",  "both",
-            measure_cov=True, jk_patches=lc_jk_patches,
+            jk_patches=lc_jk_patches,
             tree=True, temp_file_path=str(tmp_path) + "/")
         obj.measure_xi_multipoles(
             "galaxies", "lc_m_jk_brute", "both",
-            measure_cov=True, jk_patches=lc_jk_patches,
+            jk_patches=lc_jk_patches,
             tree=False, temp_file_path=str(tmp_path) + "/")
 
         for i in range(NUM_JK):
@@ -289,11 +293,11 @@ class TestCovarianceM:
         obj = IA_mock_lc_n1
         obj.measure_xi_multipoles(
             "galaxies", "lc_m_jk_tree",  "both",
-            measure_cov=True, jk_patches=lc_jk_patches,
+            jk_patches=lc_jk_patches,
             tree=True, temp_file_path=str(tmp_path) + "/")
         obj.measure_xi_multipoles(
             "galaxies", "lc_m_jk_brute", "both",
-            measure_cov=True, jk_patches=lc_jk_patches,
+            jk_patches=lc_jk_patches,
             tree=False, temp_file_path=str(tmp_path) + "/")
 
         for i in range(NUM_JK):
@@ -310,11 +314,11 @@ class TestCovarianceM:
         obj = IA_mock_lc_n1
         obj.measure_xi_multipoles(
             "galaxies", "lc_m_jk_tree",  "both",
-            measure_cov=True, jk_patches=lc_jk_patches,
+            jk_patches=lc_jk_patches,
             tree=True, temp_file_path=str(tmp_path) + "/")
         obj.measure_xi_multipoles(
             "galaxies", "lc_m_jk_brute", "both",
-            measure_cov=True, jk_patches=lc_jk_patches,
+            jk_patches=lc_jk_patches,
             tree=False, temp_file_path=str(tmp_path) + "/")
 
         for i in range(NUM_JK):
@@ -341,13 +345,13 @@ class TestRandomCataloguesM:
     def test_single_random_sample_runs(self, IA_mock_lc_single_rand, tmp_path):
         IA_mock_lc_single_rand.measure_xi_multipoles(
             "galaxies", "lc_m_single_rand", "both",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
 
     def test_separate_random_samples_run(self, IA_mock_lc_n1, tmp_path):
         IA_mock_lc_n1.measure_xi_multipoles(
             "galaxies", "lc_m_sep_rand", "both",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
 
     def test_single_vs_sep_rand_gg_same(
@@ -356,11 +360,11 @@ class TestRandomCataloguesM:
         same result as explicitly passing identical position/shape randoms."""
         IA_mock_lc_dup_rand.measure_xi_multipoles(
             "galaxies", "lc_m_sep_rand", "gg",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
         IA_mock_lc_single_rand.measure_xi_multipoles(
             "galaxies", "lc_m_single_rand", "gg",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
         np.testing.assert_allclose(
             _read(IA_mock_lc_dup_rand,    "multipoles_gg", "lc_m_sep_rand"),
@@ -377,25 +381,25 @@ class TestWeightInjectionM:
     def test_missing_data_weight_defaults_to_ones(self, IA_mock_lc_no_weight, tmp_path):
         IA_mock_lc_no_weight.measure_xi_multipoles(
             "galaxies", "lc_m_no_wt_data", "g+",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
 
     def test_missing_randoms_weight_defaults_to_ones(
             self, IA_mock_lc_rand_no_weight, tmp_path):
         IA_mock_lc_rand_no_weight.measure_xi_multipoles(
             "galaxies", "lc_m_no_wt_rand", "g+",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
 
     def test_explicit_ones_equals_missing_weight(
             self, IA_mock_lc_n1, IA_mock_lc_no_weight, tmp_path):
         IA_mock_lc_n1.measure_xi_multipoles(
             "galaxies", "lc_m_exp_ones", "g+",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
         IA_mock_lc_no_weight.measure_xi_multipoles(
             "galaxies", "lc_m_no_wt_data", "g+",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
         np.testing.assert_allclose(
             _read(IA_mock_lc_n1,       "multipoles_g_plus", "lc_m_exp_ones"),
@@ -411,11 +415,11 @@ class TestOverHM:
     def test_over_h_changes_result(self, IA_mock_lc_n1, tmp_path):
         IA_mock_lc_n1.measure_xi_multipoles(
             "galaxies", "lc_m_oh_false", "gg",
-            measure_cov=False, tree=False, over_h=False,
+            tree=False, over_h=False,
             temp_file_path=str(tmp_path) + "/")
         IA_mock_lc_n1.measure_xi_multipoles(
             "galaxies", "lc_m_oh_true",  "gg",
-            measure_cov=False, tree=False, over_h=True,
+            tree=False, over_h=True,
             temp_file_path=str(tmp_path) + "/")
         assert not np.allclose(
             _read(IA_mock_lc_n1, "multipoles_gg", "lc_m_oh_false"),
@@ -431,11 +435,11 @@ class TestMasksM:
     def test_mask_reduces_pair_count(self, IA_mock_lc_n1, lc_masks, tmp_path):
         IA_mock_lc_n1.measure_xi_multipoles(
             "galaxies", "lc_m_no_mask",   "gg",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
         IA_mock_lc_n1.measure_xi_multipoles(
             "galaxies", "lc_m_with_mask", "gg",
-            measure_cov=False, tree=False, masks=lc_masks,
+            tree=False, masks=lc_masks,
             temp_file_path=str(tmp_path) + "/")
 
         obj = IA_mock_lc_n1
@@ -453,7 +457,7 @@ class TestOutputShapeM:
     def test_r_length_matches_num_bins_r(self, IA_mock_lc_n1, tmp_path):
         IA_mock_lc_n1.measure_xi_multipoles(
             "galaxies", "lc_m_shape_chk", "both",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
         obj = IA_mock_lc_n1
         r = _read(obj, "multipoles_g_plus", "lc_m_shape_chk_r")
@@ -464,7 +468,7 @@ class TestOutputShapeM:
     def test_r_bins_sorted_ascending(self, IA_mock_lc_n1, tmp_path):
         obj = IA_mock_lc_n1
         obj.measure_xi_multipoles("galaxies", "lc_m_shape_chk", "both",
-                                   measure_cov=False, tree=False,
+                                   tree=False,
                                    temp_file_path=str(tmp_path) + "/")
         r = _read(obj, "multipoles_g_plus", "lc_m_shape_chk_r")
         assert np.all(np.diff(r) > 0)
@@ -472,7 +476,7 @@ class TestOutputShapeM:
     def test_r_bins_within_separation_limits(self, IA_mock_lc_n1, tmp_path):
         obj = IA_mock_lc_n1
         obj.measure_xi_multipoles("galaxies", "lc_m_shape_chk", "both",
-                                   measure_cov=False, tree=False,
+                                   tree=False,
                                    temp_file_path=str(tmp_path) + "/")
         r = _read(obj, "multipoles_g_plus", "lc_m_shape_chk_r")
         assert r[0]  >= obj.r_bins[0]
@@ -481,11 +485,11 @@ class TestOutputShapeM:
     def test_r_bins_consistent_across_corr_types(self, IA_mock_lc_n1, tmp_path):
         IA_mock_lc_n1.measure_xi_multipoles(
             "galaxies", "lc_m_r_gp", "g+",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
         IA_mock_lc_n1.measure_xi_multipoles(
             "galaxies", "lc_m_r_gg", "gg",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
         obj = IA_mock_lc_n1
         np.testing.assert_array_equal(
@@ -496,7 +500,7 @@ class TestOutputShapeM:
             self, IA_mock_lc_n1, lc_jk_patches, tmp_path):
         obj = IA_mock_lc_n1
         obj.measure_xi_multipoles("galaxies", "lc_m_cov_sz", "both",
-                                   measure_cov=True, jk_patches=lc_jk_patches,
+                                   jk_patches=lc_jk_patches,
                                    tree=True, temp_file_path=str(tmp_path) + "/")
         cov = _read(obj, "multipoles_g_plus", f"lc_m_cov_sz_jackknife_cov_{NUM_JK}")
         assert cov.ndim == 2
@@ -506,7 +510,7 @@ class TestOutputShapeM:
     def test_covariance_is_symmetric(self, IA_mock_lc_n1, lc_jk_patches, tmp_path):
         obj = IA_mock_lc_n1
         obj.measure_xi_multipoles("galaxies", "lc_m_cov_sym", "both",
-                                   measure_cov=True, jk_patches=lc_jk_patches,
+                                   jk_patches=lc_jk_patches,
                                    tree=True, temp_file_path=str(tmp_path) + "/")
         cov = _read(obj, "multipoles_g_plus", f"lc_m_cov_sym_jackknife_cov_{NUM_JK}")
         np.testing.assert_allclose(cov, cov.T, atol=1e-12)
@@ -515,7 +519,7 @@ class TestOutputShapeM:
             self, IA_mock_lc_n1, lc_jk_patches, tmp_path):
         obj = IA_mock_lc_n1
         obj.measure_xi_multipoles("galaxies", "lc_m_cov_diag", "both",
-                                   measure_cov=True, jk_patches=lc_jk_patches,
+                                   jk_patches=lc_jk_patches,
                                    tree=True, temp_file_path=str(tmp_path) + "/")
         cov = _read(obj, "multipoles_g_plus", f"lc_m_cov_diag_jackknife_cov_{NUM_JK}")
         # Bins with no pairs in the sparse mock give NaN variance; only the
@@ -527,7 +531,7 @@ class TestOutputShapeM:
     def test_gg_covariance_is_symmetric(self, IA_mock_lc_n1, lc_jk_patches, tmp_path):
         obj = IA_mock_lc_n1
         obj.measure_xi_multipoles("galaxies", "lc_m_cov_gg_sym", "both",
-                                   measure_cov=True, jk_patches=lc_jk_patches,
+                                   jk_patches=lc_jk_patches,
                                    tree=True, temp_file_path=str(tmp_path) + "/")
         cov = _read(obj, "multipoles_gg", f"lc_m_cov_gg_sym_jackknife_cov_{NUM_JK}")
         np.testing.assert_allclose(cov, cov.T, atol=1e-12)
@@ -543,10 +547,10 @@ class TestDeterminismM:
         """Run twice; identical config must give identical result."""
         obj = IA_mock_lc_n1
         obj.measure_xi_multipoles("galaxies", "lc_m_reg_a", "both",
-                                   measure_cov=True, num_jk=NUM_JK,
+                                   num_jk=NUM_JK,
                                    tree=True, temp_file_path=str(tmp_path) + "/")
         obj.measure_xi_multipoles("galaxies", "lc_m_reg_b", "both",
-                                   measure_cov=True, num_jk=NUM_JK,
+                                   num_jk=NUM_JK,
                                    tree=True, temp_file_path=str(tmp_path) + "/")
         np.testing.assert_allclose(
             _read(obj, "multipoles_g_plus", "lc_m_reg_a"),
@@ -555,10 +559,10 @@ class TestDeterminismM:
     def test_gg_multipoles_is_deterministic(self, IA_mock_lc_n1, tmp_path):
         obj = IA_mock_lc_n1
         obj.measure_xi_multipoles("galaxies", "lc_m_reg_gg_a", "gg",
-                                   measure_cov=False, tree=True,
+                                   tree=True,
                                    temp_file_path=str(tmp_path) + "/")
         obj.measure_xi_multipoles("galaxies", "lc_m_reg_gg_b", "gg",
-                                   measure_cov=False, tree=True,
+                                   tree=True,
                                    temp_file_path=str(tmp_path) + "/")
         np.testing.assert_allclose(
             _read(obj, "multipoles_gg", "lc_m_reg_gg_a"),
@@ -567,10 +571,10 @@ class TestDeterminismM:
     def test_cov_gp_is_deterministic(self, IA_mock_lc_n1, tmp_path):
         obj = IA_mock_lc_n1
         obj.measure_xi_multipoles("galaxies", "lc_m_cov_reg_a", "g+",
-                                   measure_cov=True, num_jk=NUM_JK, seed=42,
+                                   num_jk=NUM_JK, seed=42,
                                    tree=True, temp_file_path=str(tmp_path) + "/")
         obj.measure_xi_multipoles("galaxies", "lc_m_cov_reg_b", "g+",
-                                   measure_cov=True, num_jk=NUM_JK, seed=42,
+                                   num_jk=NUM_JK, seed=42,
                                    tree=True, temp_file_path=str(tmp_path) + "/")
         np.testing.assert_allclose(
             _read(obj, "multipoles_g_plus",
@@ -582,10 +586,10 @@ class TestDeterminismM:
     def test_cov_gg_is_deterministic(self, IA_mock_lc_n1, tmp_path):
         obj = IA_mock_lc_n1
         obj.measure_xi_multipoles("galaxies", "lc_m_cov_gg_a", "gg",
-                                   measure_cov=True, num_jk=NUM_JK, seed=42,
+                                   num_jk=NUM_JK, seed=42,
                                    tree=True, temp_file_path=str(tmp_path) + "/")
         obj.measure_xi_multipoles("galaxies", "lc_m_cov_gg_b", "gg",
-                                   measure_cov=True, num_jk=NUM_JK, seed=42,
+                                   num_jk=NUM_JK, seed=42,
                                    tree=True, temp_file_path=str(tmp_path) + "/")
         np.testing.assert_allclose(
             _read(obj, "multipoles_gg",
@@ -623,12 +627,12 @@ class TestIntermediateOutputsLCM:
     def _run_no_cov(self, obj, estimator="galaxies", tmp_path=None):
         tp = str(tmp_path) + "/" if tmp_path else None
         obj.measure_xi_multipoles(estimator, "lc_m_int_nojk", "both",
-                                   measure_cov=False, tree=False,
+                                   tree=False,
                                    temp_file_path=tp)
 
     def _run_cov(self, obj, tmp_path, estimator="galaxies"):
         obj.measure_xi_multipoles(estimator, "lc_m_int_jk", "both",
-                                   measure_cov=True, num_jk=NUM_JK,
+                                   num_jk=NUM_JK,
                                    tree=False,
                                    temp_file_path=str(tmp_path) + "/")
 
@@ -646,10 +650,10 @@ class TestIntermediateOutputsLCM:
         the estimator choice only affects the observable formula, not the pair counts."""
         obj = IA_mock_lc_n1
         obj.measure_xi_multipoles("galaxies", "lc_m_sp_gx", "g+",
-                                   measure_cov=False, tree=False,
+                                   tree=False,
                                    temp_file_path=str(tmp_path) + "/")
         obj.measure_xi_multipoles("clusters", "lc_m_sp_cl", "g+",
-                                   measure_cov=False, tree=False,
+                                   tree=False,
                                    temp_file_path=str(tmp_path) + "/")
         sp_gx = _read(obj, "multipoles/xi_g_plus", "lc_m_sp_gx_SplusD")
         sp_cl = _read(obj, "multipoles/xi_g_plus", "lc_m_sp_cl_SplusD")
@@ -719,7 +723,7 @@ class TestIntermediateOutputsLCM:
         """Both estimators write DD, SR, RD, RR to xi_gg when corr_type='gg'."""
         obj = IA_mock_lc_n1
         obj.measure_xi_multipoles("galaxies", "lc_m_gg_all", "gg",
-                                   measure_cov=False, tree=False,
+                                   tree=False,
                                    temp_file_path=str(tmp_path) + "/")
         for suffix in ("_DD", "_SR", "_RD", "_RR"):
             arr = _read(obj, "multipoles/xi_gg", f"lc_m_gg_all{suffix}")
@@ -731,10 +735,10 @@ class TestIntermediateOutputsLCM:
         IA estimator — both estimators must produce identical values."""
         obj = IA_mock_lc_n1
         obj.measure_xi_multipoles("galaxies", "lc_m_gg_gx2", "gg",
-                                   measure_cov=False, tree=False,
+                                   tree=False,
                                    temp_file_path=str(tmp_path) + "/")
         obj.measure_xi_multipoles("clusters", "lc_m_gg_cl2", "gg",
-                                   measure_cov=False, tree=False,
+                                   tree=False,
                                    temp_file_path=str(tmp_path) + "/")
         for suffix in ("_DD", "_SR", "_RD", "_RR"):
             np.testing.assert_array_equal(
@@ -810,7 +814,7 @@ class TestIntermediatePairCountEqualityLCM:
     """
 
     def _run(self, obj, name, estimator="galaxies", tree=False, tmp_path=None):
-        kwargs = dict(measure_cov=False, tree=tree,
+        kwargs = dict(tree=tree,
                       temp_file_path=(str(tmp_path) + "/" if tmp_path else None))
         obj.measure_xi_multipoles(estimator, name, "both", **kwargs)
 
@@ -908,7 +912,7 @@ class TestIntermediatePairCountEqualityLCM:
         tp = str(tmp_path) + "/"
         self._run(IA_mock_lc_n1, "mmp_n1", tree=True, tmp_path=tmp_path)
         IA_mock_lc_n8.measure_xi_multipoles("galaxies", "mmp_n8", "both",
-                                             measure_cov=False, tree=True,
+                                             tree=True,
                                              temp_file_path=tp,
                                              chunk_size=50)
         np.testing.assert_allclose(
@@ -921,7 +925,7 @@ class TestIntermediatePairCountEqualityLCM:
         tp = str(tmp_path) + "/"
         self._run(IA_mock_lc_n1, "mmp_n1", tree=True, tmp_path=tmp_path)
         IA_mock_lc_n8.measure_xi_multipoles("galaxies", "mmp_n8", "both",
-                                             measure_cov=False, tree=True,
+                                             tree=True,
                                              temp_file_path=tp,
                                              chunk_size=50)
         np.testing.assert_allclose(

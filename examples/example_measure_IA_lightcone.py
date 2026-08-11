@@ -49,8 +49,8 @@ IA_estimator = "galaxies"  # type of estimator to be used. Choose "clusters" or 
 cosmology = ccl.Cosmology(Omega_c=0.27, Omega_b=0.049, h=h, sigma8=0.8, n_s=0.96)  # pyccl cosmology to be used.
 # If None, a default cosmology is used (Omega_c=0.225, Omega_b=0.045, sigma8=0.8, h=0.7, n_s=1.0).
 over_h = False  # if True, units are changed from Mpc -> Mpc/h
-calc_errors = True  # If true, jackknife errors are calculated (Default is True)
-num_jk = 8  # number of jackknife patches, assigned internally on the sky with kmeans
+num_jk = 8  # number of jackknife patches, assigned internally on the sky with kmeans.
+# The covariance is measured whenever num_jk > 0 or jk_patches is given; use num_jk=0 to skip it.
 corr_type = "both"  # type of correlation to be calculated, choose g+, gg or both
 masks = None  # optional directory in form of data_dir containing masks to be placed over data in data_dir
 masks_randoms = None  # same as masks, but for the randoms
@@ -99,11 +99,11 @@ if __name__ == "__main__":  # when using multiprocessing, this statement is need
 											num_bins_pi=num_bins_pi, output_file_name=data_path_out + file_name)
 	# measure wgg, wg+
 	MeasureIA_mock_obs.measure_xi_w(IA_estimator, dataset_name, corr_type, jk_patches=patches, num_jk=num_jk,
-									measure_cov=calc_errors, masks=masks, masks_randoms=masks_randoms,
+									masks=masks, masks_randoms=masks_randoms,
 									cosmology=cosmology, over_h=over_h)
 	# measure multipoles
 	MeasureIA_mock_obs.measure_xi_multipoles(IA_estimator, dataset_name, corr_type, jk_patches=patches,
-											 num_jk=num_jk, measure_cov=calc_errors, masks=masks,
+											 num_jk=num_jk, masks=masks,
 											 masks_randoms=masks_randoms,
 											 cosmology=cosmology, over_h=over_h)
 	print(f"wrote {data_path_out + file_name}")
