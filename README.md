@@ -2,20 +2,24 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17252215.svg)](https://doi.org/10.5281/zenodo.17252215)
 
-MeasureIA is a tool that can be used to easily measure intrinsic alignment correlation functions and clustering in simulation boxes.
+MeasureIA is a tool that can be used to easily measure intrinsic alignment correlation functions and clustering.
 It includes measurement of wg+, wgg and the multipole moment estimator introduced in Singh et al (2024).
-The correlation functions are measured for simulations in cartesian coordinates with periodic boundary conditions.
-[Lightcone version is coming up, see Roadmap.]
+Two kinds of data are supported: simulation boxes in cartesian coordinates with periodic boundary conditions
+(`MeasureIABox`), and lightcone or survey-like data in sky coordinates with a random catalogue (`MeasureIALightcone`).
 Furthermore, the jackknife method is used to estimate the covariance matrix.
 Outputs are saved in hdf5 files.
 
-#### WARNING: This package is still in a development phase and this is therefore a beta-version.
+The estimators are cross-validated against halotools, treecorr and corr_pc; see the
+[validation](https://marloesvl.github.io/measure_IA/validation/) page for the comparisons and how to run them
+yourself.
 
-You can find a documentation site [here](https://marloesvl.github.io/measure_IA/) (under development).
+#### Note: this package is pre-1.0, so the API may still change between releases.
+
+You can find the documentation site [here](https://marloesvl.github.io/measure_IA/).
 
 ## Installation
  
-The beta-version of this package can be installed via pip or uv.
+This package can be installed via pip or uv.
 
 ### Installation via pip
 
@@ -56,7 +60,7 @@ uv run [script_name].py
 
 If you do not want to use uv, you can also install dependencies the provided requirements.txt document.
 Note that you need to also download the kmeans-radec repository (https://github.com/esheldon/kmeans_radec) in this case.
-Also, make sure your Python version is compatible. This package has been set up to use Python 3.11.
+Also, make sure your Python version is compatible. This package supports Python 3.10 - 3.14 and is tested on all of them.
 Both the extra repository and the python version are handeled by uv automatically so please consider using this for
 easy installation.
 
@@ -83,9 +87,10 @@ It is advisable to check out all the optional inputs in the examples.
 
 ## Documentation
 
-The documentation for this package is still under development (see roadmap). Currently, the methods meant for use and
-the inits of all classes have docstrings that provide the information needed. Please feel free to contact me for any
-additional questions.
+The documentation site is at [marloesvl.github.io/measure_IA](https://marloesvl.github.io/measure_IA/). It covers the
+input dictionaries, the output file structure, the shape and sign conventions, the estimator definitions and the
+validation, alongside an API reference generated from the docstrings. All classes and the methods meant for use also
+have docstrings that provide the information needed. Please feel free to contact me for any additional questions.
 
 ## Output file structure
 Your output file with your own input of [output_file_name, snapshot, dataset_name, num_jk] will have the following structure:
@@ -148,11 +153,13 @@ information for different numbers of jackknife realisations (num_jk) for the sam
 
 ## Roadmap
 
-Upcoming developments include adding docstrings for all (internal) methods; creating a documentation website; extending
-the tests; validating the lightcone methods and adding the Landy-Salazy estimator for the lightcone code.
-Once the lightcone code is sufficiently validated, multiprocessing methods will be added there too.
-Further down the road, another speed update may be added for the box methods; along with more variability
-in definitions (e.g. optional resposivity factor).
+Recently completed: the lightcone methods and their cross-code validation (against halotools, treecorr and corr_pc);
+multiprocessing support for the lightcone version; an optional responsivity factor for the shape calibration; NumPy 2
+support and testing across Python 3.10 - 3.14; a documentation website; and more exhaustive docstrings.
+
+Planned developments include non-periodic versions of the box methods, e1/e2 input for the box methods, and further
+speed-up options. See the [roadmap](https://marloesvl.github.io/measure_IA/#roadmap) in the documentation for the
+current list.
 
 ## Requests
 
