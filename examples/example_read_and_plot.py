@@ -1,20 +1,20 @@
 """Read a MeasureIA output file and plot the result with jackknife error bars.
 
-This continues from ``example_measure_IA_box.py``, which writes ``./testing_IA.hdf5``
-with dataset ``"test"`` and ``num_jk=27`` for simulation ``TNG300``, snapshot 99.
-The ``ReadData`` class loads the measured correlation functions (and their jackknife
-covariance) back into convenient attributes.
+This continues from ``example_measure_IA_box.py``, which writes
+``./example_IA_box.hdf5`` with dataset ``"mock"`` and ``num_jk=27``. Run that
+script first, from this directory, then run this one. The ``ReadData`` class
+loads the measured correlation functions (and their jackknife covariance) back
+into convenient attributes.
 """
-import numpy as np
 import matplotlib.pyplot as plt
 from measureia import ReadData
 
 # These must match the run that produced the output file.
-simulation = "TNG300"          # simulation identifier used at measurement time
-catalogue = "testing_IA"       # output file name without the .hdf5 extension
+simulation = None              # simulation identifier used at measurement time (None for the mock)
+catalogue = "example_IA_box"   # output file name without the .hdf5 extension
 data_path = "./"               # folder holding <catalogue>.hdf5  (reads data_path + catalogue + ".hdf5")
-snapshot = 99                  # snapshot label; selects the "Snapshot_99" group (use None if none was given)
-dataset_name = "test"          # dataset name passed to measure_xi_w / measure_xi_multipoles
+snapshot = None                # snapshot label; would select the "Snapshot_99" group if 99 was given
+dataset_name = "mock"          # dataset name passed to measure_xi_w / measure_xi_multipoles
 num_jk = 27                    # number of jackknife regions used (None if no covariance was measured)
 
 # Load the output. read_MeasureIA_output fills whichever of w_gp, w_gg, multipoles_gp,

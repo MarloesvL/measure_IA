@@ -62,6 +62,8 @@ easy installation.
 
 See the example script 'example_measure_IA_box.py' or the jupyter notebook 'example_measureIA_box.ipynb' in the
 examples directory for short examples on how this package can be used.
+These run as-is on a seeded mock catalogue with a known intrinsic alignment signal (from
+'validation/mock_catalogues.py'), so no simulation or survey data is needed to try them out.
 Explanations on various input parameters are explained in the comments (and more fully in the docstrings of the methods
 and classes).
 Given the data dictionary in the correct format, the methods (with all optional parameters as their default)
