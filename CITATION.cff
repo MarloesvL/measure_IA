@@ -21,10 +21,8 @@ identifiers:
       latest released version. Cite this one unless you need
       to refer to a specific version.
   - type: doi
-    value: 10.5281/zenodo.18196849
-    description: >-
-      DOI of MeasureIA v0.3.0. Replace with the v0.4.0 DOI once
-      Zenodo has minted it for the new release.
+    value: 10.5281/zenodo.21889768
+    description: DOI of MeasureIA v0.4.0.
 repository-code: 'https://github.com/MarloesvL/measure_IA'
 url: 'https://marloesvl.github.io/measure_IA/'
 abstract: >-
