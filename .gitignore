@@ -221,4 +221,7 @@ __marimo__/
 src_old
 examples/example_multiprocessing.py
 site/
-create_mock_data.py
+
+# output written by the example scripts/notebooks when run in place
+examples/*.hdf5
+examples/*.png

@@ -60,9 +60,11 @@ enough interest, I will consider increasing the priority status.
 
 ## Citation
 
-Please use the [CITATION](https://github.com/MarloesvL/measure_IA/blob/main/CITATION.cff) file to cite this package 
-properly. Note that a DOI will be added to this soon. If you would like to cite this package and the DOI is not there,
-please contact me.
+Please use the [CITATION](https://github.com/MarloesvL/measure_IA/blob/main/CITATION.cff) file to cite this package
+properly. MeasureIA is archived on Zenodo under the DOI
+[10.5281/zenodo.17252215](https://doi.org/10.5281/zenodo.17252215), which always resolves to the latest
+released version. If you need to cite the exact version you used, take that version's own DOI from the
+[Zenodo record](https://doi.org/10.5281/zenodo.17252215) instead.
 
 ## Licence
 [MIT](https://choosealicense.com/licenses/mit/)
