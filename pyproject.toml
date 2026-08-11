@@ -1,6 +1,6 @@
 [project]
 name = "measureia"
-version = "0.3.0"
+version = "0.4.0"
 description = "Measurement tool for intrinsic alignment correlation functions in simulation boxes and lightcones."
 authors = [{ name = "Marloes van Heukelum", email = "m.l.vanheukelum@uu.nl" }]
 readme = "README.md"
