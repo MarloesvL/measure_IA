@@ -1,5 +1,7 @@
 # MeasureIA - The tool for measuring intrinsic alignment correlation functions in hydrodynamic simulations
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17252215.svg)](https://doi.org/10.5281/zenodo.17252215)
+
 MeasureIA is a tool that can be used to easily measure intrinsic alignment correlation functions and clustering in simulation boxes.
 It includes measurement of wg+, wgg and the multipole moment estimator introduced in Singh et al (2024).
 The correlation functions are measured for simulations in cartesian coordinates with periodic boundary conditions.
@@ -162,6 +164,13 @@ If you find a bug, please report it in a GitHub issue.
 
 If you would like a feature added, please create an issue with the request. Within the issue, we can discuss how best
 to proceed and what the timeline will be. Pull requests that have not been discussed beforehand will not be accepted.
+
+## Citation
+
+Please use the [CITATION.cff](CITATION.cff) file to cite this package properly. MeasureIA is archived on Zenodo under
+the DOI [10.5281/zenodo.17252215](https://doi.org/10.5281/zenodo.17252215), which always resolves to the latest
+released version. If you need to cite the exact version you used, take that version's own DOI from the
+[Zenodo record](https://doi.org/10.5281/zenodo.17252215) instead.
 
 ## License
 

@@ -16,9 +16,24 @@ authors:
 identifiers:
   - type: doi
     value: 10.5281/zenodo.17252215
+    description: >-
+      Concept DOI of MeasureIA, which always resolves to the
+      latest released version. Cite this one unless you need
+      to refer to a specific version.
+  - type: doi
+    value: 10.5281/zenodo.18196849
+    description: DOI of MeasureIA v0.3.0.
 repository-code: 'https://github.com/MarloesvL/measure_IA'
+url: 'https://marloesvl.github.io/measure_IA/'
 abstract: >-
   MeasureIA is a tool that can be used to easily measure
   intrinsic alignment correlation functions and clustering
-  in simulation boxes.
+  in simulation boxes and lightcone data.
+keywords:
+  - intrinsic alignments
+  - cosmology
+  - large-scale structure
+  - correlation functions
 license: MIT
+version: v0.3.0
+date-released: '2026-01-09'
