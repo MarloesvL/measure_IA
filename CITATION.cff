@@ -22,7 +22,9 @@ identifiers:
       to refer to a specific version.
   - type: doi
     value: 10.5281/zenodo.18196849
-    description: DOI of MeasureIA v0.3.0.
+    description: >-
+      DOI of MeasureIA v0.3.0. Replace with the v0.4.0 DOI once
+      Zenodo has minted it for the new release.
 repository-code: 'https://github.com/MarloesvL/measure_IA'
 url: 'https://marloesvl.github.io/measure_IA/'
 abstract: >-
@@ -35,5 +37,5 @@ keywords:
   - large-scale structure
   - correlation functions
 license: MIT
-version: v0.3.0
-date-released: '2026-01-09'
+version: v0.4.0
+date-released: '2026-08-11'
