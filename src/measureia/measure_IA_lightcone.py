@@ -476,7 +476,7 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 		return
 
 	def measure_xi_w(self, IA_estimator, dataset_name, corr_type, jk_patches=None, num_jk=None,
-					 measure_cov=True, masks=None, masks_randoms=None, cosmology=None, over_h=False, tree=True,
+					 masks=None, masks_randoms=None, cosmology=None, over_h=False, tree=True,
 					 chunk_size=1000, temp_file_path=None, seed=None, responsivity=False):
 		"""Measures xi_gg, xi_g+ and w_gg, w_g+ including jackknife covariance if desired for lightcone data.
 		Manages the various _measure_xi_rp_pi_obs and _measure_jackknife_covariance options in MeasureWObservations
@@ -494,9 +494,9 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			Dictionary with entries of the jackknife patch numbers (ndarray) for each sample, named "position", "shape"
 			and "random". Default is None.
 		num_jk : int, optional
-			Number of jackknife patches to be generated internally. Default is None.
-		measure_cov : bool, optional
-			If True, jackknife errors are calculated. Default is True.
+			Number of jackknife patches to be generated internally. Default is None (no covariance).
+			The jackknife covariance is measured whenever jk_patches is given, or num_jk is greater
+			than 0; pass neither (or num_jk=0) to skip it.
 		masks : dict or NoneType, optional
 			Dictionary of mask information in the same form as the data dictionary, where the masks are placed over
 			the data to apply selections. Default is None.
@@ -569,12 +569,12 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			else:
 				self.randoms_data["weight_shape_sample"] = np.ones(len(self.randoms_data["RA_shape_sample"]))
 
+		# Covariance is requested by supplying patches or a positive patch count; num_jk=0/None
+		# with no jk_patches means "no covariance", matching MeasureIABox's num_jk=0.
+		measure_cov = jk_patches is not None or (num_jk is not None and num_jk > 0)
 		if measure_cov:
 			if jk_patches is None:
-				if num_jk is not None:
-					jk_patches = self.assign_jackknife_patches(data, self.randoms_data, num_jk, seed=seed)
-				else:
-					raise ValueError("Set measure_cov to False, or provide either jk_patches or num_jk input.")
+				jk_patches = self.assign_jackknife_patches(data, self.randoms_data, num_jk, seed=seed)
 			else:
 				if one_random_sample:
 					jk_patches["randoms_position"] = jk_patches["randoms"]
@@ -681,7 +681,7 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 		return
 
 	def measure_xi_multipoles(self, IA_estimator, dataset_name, corr_type, jk_patches=None, num_jk=None,
-							  measure_cov=True, masks=None, masks_randoms=None, cosmology=None, over_h=False,
+							  masks=None, masks_randoms=None, cosmology=None, over_h=False,
 							  tree=True, chunk_size=1000, temp_file_path=None, seed=None, responsivity=False):
 		"""Measures xi_gg, xi_g+ and multipoles including jackknife covariance if desired for lightcone data.
 		Manages the various _measure_xi_rp_pi_obs and _measure_jackknife_covariance options in MeasureWObservations
@@ -699,9 +699,9 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			Dictionary with entries of the jackknife patch numbers (ndarray) for each sample, named "position", "shape"
 			and "random". Default is None.
 		num_jk : int, optional
-			Number of jackknife patches to be generated internally. Default is None.
-		measure_cov : bool, optional
-			If True, jackknife errors are calculated. Default is True.
+			Number of jackknife patches to be generated internally. Default is None (no covariance).
+			The jackknife covariance is measured whenever jk_patches is given, or num_jk is greater
+			than 0; pass neither (or num_jk=0) to skip it.
 		masks : dict or NoneType, optional
 			Dictionary of mask information in the same form as the data dictionary, where the masks are placed over
 			the data to apply selections. Default is None.
@@ -774,12 +774,12 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			else:
 				self.randoms_data["weight_shape_sample"] = np.ones(len(self.randoms_data["RA_shape_sample"]))
 
+		# Covariance is requested by supplying patches or a positive patch count; num_jk=0/None
+		# with no jk_patches means "no covariance", matching MeasureIABox's num_jk=0.
+		measure_cov = jk_patches is not None or (num_jk is not None and num_jk > 0)
 		if measure_cov:
 			if jk_patches is None:
-				if num_jk is not None:
-					jk_patches = self.assign_jackknife_patches(data, self.randoms_data, num_jk, seed=seed)
-				else:
-					raise ValueError("Set measure_cov to False, or provide either jk_patches or num_jk input.")
+				jk_patches = self.assign_jackknife_patches(data, self.randoms_data, num_jk, seed=seed)
 			else:
 				if one_random_sample:
 					jk_patches["randoms_position"] = jk_patches["randoms"]

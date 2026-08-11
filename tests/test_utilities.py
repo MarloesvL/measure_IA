@@ -649,7 +649,7 @@ class TestCreateFullCovMatrixProjections:
 # ===========================================================================
 
 class TestAssignJackknifePatches:
-    """Unit tests for the kmeans_radec-based patch assignment: output
+    """Unit tests for the spherical-k-means patch assignment: output
     structure, label ranges, seed determinism, and the geometric sanity of the
     assignment (nearby objects land in the same patch)."""
 
@@ -732,9 +732,9 @@ class TestAssignJackknifePatches:
         b = obj.assign_jackknife_patches(data, randoms, self.NUM_JK, seed=999)
         assert any(not np.array_equal(a[k], b[k]) for k in a)
 
-    def test_global_random_state_is_restored(self, tmp_path):
-        """The seeded branch seeds both numpy and the stdlib random module
-        (kmeans_radec uses the latter); neither may leak out."""
+    def test_global_random_state_is_untouched(self, tmp_path):
+        """The fit draws from its own Generator, so neither the global numpy
+        state nor the stdlib random state may move."""
         import random as _random
         obj = self._obj(tmp_path)
         data, randoms = self._catalogs()
@@ -769,34 +769,73 @@ class TestAssignJackknifePatches:
         with pytest.raises(ValueError, match="num_jk must be an integer"):
             obj.assign_jackknife_patches(data, randoms, bad)
 
-    def test_too_few_randoms_per_patch_raises(self, tmp_path):
-        """kmeans_radec samples 10 points per patch without replacement, so
-        fewer than 10 randoms per patch must be rejected up front rather than
-        failing inside the stdlib random module."""
+    def test_more_patches_than_randoms_raises(self, tmp_path):
+        """The centres are fitted to the position randoms, so there must be at
+        least one random per patch."""
         obj = self._obj(tmp_path)
         data, randoms = self._catalogs(N=20, NR=50)
         with pytest.raises(ValueError,
-                           match="at least 10 randoms per jackknife patch"):
-            obj.assign_jackknife_patches(data, randoms, 6, seed=1)
+                           match="cannot exceed the number of position randoms"):
+            obj.assign_jackknife_patches(data, randoms, 51, seed=1)
 
-    def test_exactly_ten_randoms_per_patch_is_allowed(self, tmp_path):
-        """The boundary of the 10-randoms-per-patch requirement works."""
+    def test_few_randoms_per_patch_is_allowed(self, tmp_path):
+        """Sparse randoms are fine: unlike the old kmeans_radec backend, which
+        drew 10 points per patch without replacement, the fit only needs one
+        random per patch. It does warn, though."""
         obj = self._obj(tmp_path)
-        data, randoms = self._catalogs(N=20, NR=40)
-        p = obj.assign_jackknife_patches(data, randoms, 4, seed=1)
-        assert len(p["randoms_position"]) == 40
-        assert p["randoms_position"].max() < 4
+        data, randoms = self._catalogs(N=20, NR=50)
+        with pytest.warns(UserWarning, match="jackknife patches holding fewer than 10"):
+            p = obj.assign_jackknife_patches(data, randoms, 6, seed=1)
+        assert len(p["randoms_position"]) == 50
+        assert p["randoms_position"].max() < 6
 
     def test_more_patches_than_data_objects_still_assigns(self, tmp_path):
         """num_jk may exceed the number of *data* objects — the patches are
         built from the randoms, and each datum simply falls in the nearest
         patch. Some patches then hold no data, which is a valid (if noisy)
-        delete-one setup."""
+        delete-one setup, so it warns rather than raising."""
         obj = self._obj(tmp_path)
         data, randoms = self._catalogs(N=5, NR=200)
-        p = obj.assign_jackknife_patches(data, randoms, 10, seed=1)
+        with pytest.warns(UserWarning, match="jackknife patches holding fewer than 10"):
+            p = obj.assign_jackknife_patches(data, randoms, 10, seed=1)
         assert len(p["position"]) == 5
         assert len(np.unique(p["randoms_position"])) == 10
+
+    def test_no_warning_when_all_patches_are_well_populated(self, tmp_path, recwarn):
+        """The warning must stay quiet for a sensibly sized configuration,
+        otherwise it is noise users learn to ignore."""
+        obj = self._obj(tmp_path)
+        data, randoms = self._catalogs(N=400, NR=800)
+        obj.assign_jackknife_patches(data, randoms, 4, seed=1)
+        assert [w for w in recwarn
+                if "jackknife patches holding fewer" in str(w.message)] == []
+
+    def test_sparse_randoms_advise_more_randoms(self, tmp_path):
+        """When a randoms sample is the sparse one, the advice must mention
+        providing more randoms — that is the fix the user controls."""
+        obj = self._obj(tmp_path)
+        data, randoms = self._catalogs(N=400, NR=60)
+        with pytest.warns(UserWarning, match="Provide more randoms"):
+            obj.assign_jackknife_patches(data, randoms, 12, seed=1)
+
+    def test_sparse_data_only_advises_lowering_num_jk(self, tmp_path):
+        """When only the data samples are sparse, more randoms would not help,
+        so the advice is to lower num_jk instead."""
+        obj = self._obj(tmp_path)
+        data, randoms = self._catalogs(N=30, NR=4000)
+        with pytest.warns(UserWarning, match="Lower num_jk"):
+            obj.assign_jackknife_patches(data, randoms, 8, seed=1)
+
+    def test_warning_names_the_sparse_samples(self, tmp_path):
+        """The message must say which sample is short and how short, so the
+        user can tell a thin data catalogue from thin randoms."""
+        obj = self._obj(tmp_path)
+        data, randoms = self._catalogs(N=30, NR=4000)
+        with pytest.warns(UserWarning) as record:
+            obj.assign_jackknife_patches(data, randoms, 8, seed=1)
+        message = str(record[0].message)
+        assert "'position' has" in message and "'shape' has" in message
+        assert "randoms_position" not in message
 
 
 # ===========================================================================
@@ -816,9 +855,9 @@ class TestCovarianceUtilitiesLightcone:
         the two IA estimators, which use different random terms."""
         tp = str(tmp_path) + "/"
         obj.measure_xi_w("galaxies", "lc_A", "g+", num_jk=self.LC_NUM_JK,
-                         measure_cov=True, temp_file_path=tp)
+                         temp_file_path=tp)
         obj.measure_xi_w("clusters", "lc_B", "g+", num_jk=self.LC_NUM_JK,
-                         measure_cov=True, temp_file_path=tp)
+                         temp_file_path=tp)
 
     def test_auto_covariance_shape_and_symmetry(self, IA_mock_lc_n1, tmp_path):
         obj = IA_mock_lc_n1
@@ -863,7 +902,7 @@ class TestCovarianceUtilitiesLightcone:
         N = len(obj.data["RA"])
         half = np.arange(N) % 2 == 0
         obj.measure_xi_w("galaxies", "lc_C", "g+", num_jk=self.LC_NUM_JK,
-                         measure_cov=True, masks={k: half for k in obj.data},
+                         masks={k: half for k in obj.data},
                          temp_file_path=str(tmp_path) + "/")
 
         ref, _ = obj.measure_covariance_multiple_datasets(

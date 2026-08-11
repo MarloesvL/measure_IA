@@ -6,8 +6,10 @@ major axes point at their own central (plus Gaussian angle noise), giving a
 strong, deterministic w_g+ signal on scales up to a few times the satellite
 profile scale, and the central-satellite clumps give a non-null w_gg.
 
-All randomness is controlled by a single seed so that every validation script
-and test sees byte-identical catalogues.
+All randomness is controlled by a single seed so that every caller sees
+byte-identical catalogues: the validation scripts, the test suite, the examples
+under ``examples/``, and anyone who wants a catalogue to try MeasureIA on
+without having simulation or survey data to hand.
 """
 
 import numpy as np

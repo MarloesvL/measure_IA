@@ -26,9 +26,7 @@ This package can be installed via pip or uv.
 ```angular2html
 pip install measureia
 ```
-Note that you need to install the kmeans_radec package yourself as it is not pip-installable.
-See https://github.com/esheldon/kmeans_radec for installation.
-When using uv, this is not necessary as uv takes care of all the dependencies (see below).
+That is the whole installation: every dependency is on PyPI.
 
 ### Installation via uv
 
@@ -59,7 +57,6 @@ uv run [script_name].py
 #### Installing manually without uv
 
 If you do not want to use uv, you can also install dependencies the provided requirements.txt document.
-Note that you need to also download the kmeans-radec repository (https://github.com/esheldon/kmeans_radec) in this case.
 Also, make sure your Python version is compatible. This package supports Python 3.10 - 3.14 and is tested on all of them.
 Both the extra repository and the python version are handeled by uv automatically so please consider using this for
 easy installation.
@@ -69,7 +66,7 @@ easy installation.
 See the example script 'example_measure_IA_box.py' or the jupyter notebook 'example_measureIA_box.ipynb' in the
 examples directory for short examples on how this package can be used.
 These run as-is on a seeded mock catalogue with a known intrinsic alignment signal (from
-'validation/mock_catalogues.py'), so no simulation or survey data is needed to try them out.
+'measureia.mocks'), so no simulation or survey data is needed to try them out.
 Explanations on various input parameters are explained in the comments (and more fully in the docstrings of the methods
 and classes).
 Given the data dictionary in the correct format, the methods (with all optional parameters as their default)
@@ -161,16 +158,13 @@ Planned developments include non-periodic versions of the box methods, e1/e2 inp
 speed-up options. See the [roadmap](https://marloesvl.github.io/measure_IA/#roadmap) in the documentation for the
 current list.
 
-## Requests
+## Contributing
 
-### Bugs
-
-If you find a bug, please report it in a GitHub issue.
-
-### Features
-
-If you would like a feature added, please create an issue with the request. Within the issue, we can discuss how best
-to proceed and what the timeline will be. Pull requests that have not been discussed beforehand will not be accepted.
+Bug reports, feature requests and questions are all welcome as
+[GitHub issues](https://github.com/MarloesvL/measure_IA/issues). See
+[CONTRIBUTING.md](CONTRIBUTING.md) for what makes a bug report easy to act on, how features are prioritised,
+and the workflow for contributing code. Note that pull requests which have not been discussed in an issue
+beforehand will not be accepted.
 
 ## Citation
 

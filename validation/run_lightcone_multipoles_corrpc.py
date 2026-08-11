@@ -29,7 +29,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import run_lightcone_treecorr as lc
-from mock_catalogues import radial_alignment_lightcone_mock
+from measureia.mocks import radial_alignment_lightcone_mock
 from run_box_multipoles_corrpc import legendre_multipole
 from run_lightcone_corrpc import corrpc_write_inputs
 
@@ -73,7 +73,7 @@ def run_measureia(data, randoms, output_file, temp_path):
 		pi_max=R_LIMS[1],
 		num_nodes=1,
 	)
-	ia.measure_xi_multipoles("galaxies", DATASET, "both", measure_cov=False,
+	ia.measure_xi_multipoles("galaxies", DATASET, "both", 
 							 tree=True, cosmology=lc.COSMOLOGY, over_h=False,
 							 temp_file_path=temp_path)
 	out = {}

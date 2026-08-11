@@ -104,3 +104,9 @@ The correction is controlled by the `responsivity` argument: it defaults to `Tru
 `False` for the lightcone (where `e1`/`e2` are assumed to be already-calibrated shears). When switched off,
 $\mathcal{R} = 0.5$ so that $2\mathcal{R} = 1$ and no calibration is applied. Only the $g+$ correlations are
 affected; the clustering ($gg$) signal is unchanged.
+
+The differing defaults are deliberate rather than an oversight: they match what each input format usually
+contains, so the common case needs no argument. Pass `responsivity` explicitly whenever your inputs do not
+follow that pattern — for example `responsivity=True` on the lightcone when your `e1`/`e2` are raw
+distortions rather than calibrated shears, or `responsivity=False` on the box when the shapes you supply
+have already been calibrated.

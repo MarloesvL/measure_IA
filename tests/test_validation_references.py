@@ -33,11 +33,31 @@ import run_lightcone_multipoles_corrpc_cov as lc_mp_corrpc_cov
 import run_lightcone_treecorr as lc_treecorr
 import run_lightcone_treecorr_cov as lc_treecorr_cov
 import run_plane_parallel as plane_parallel
-from mock_catalogues import (radial_alignment_box_mock, responsivity,
+from measureia.mocks import (radial_alignment_box_mock, responsivity,
                              radial_alignment_lightcone_mock)
 
 _BOX_REF = box_halotools.REFERENCE_FILE
 _LC_REF = lc_treecorr.REFERENCE_FILE
+
+
+def _reference_patches(reference_file, ia, data, randoms, num_jk, seed):
+    """Jackknife patches for a covariance comparison.
+
+    The external code's covariance in a reference file was computed with one
+    specific patch assignment, so the comparison is only meaningful against
+    those same patches. They are stored in the reference file for exactly this
+    reason — reading them back keeps the test independent of how measureia
+    happens to generate patches today. Falls back to generating them when a
+    reference predates the stored labels.
+    """
+    with h5py.File(reference_file, "r") as f:
+        if "patches" in f:
+            return {key: f["patches"][key][:] for key in f["patches"]}
+    patches = ia.assign_jackknife_patches(data, randoms, num_jk, seed=seed)
+    if "randoms_position" not in patches:
+        patches["randoms_position"] = patches["randoms"]
+        patches["randoms_shape"] = patches["randoms"]
+    return patches
 
 requires_box_reference = pytest.mark.skipif(
     not os.path.exists(_BOX_REF),
@@ -206,11 +226,8 @@ class TestJackknifeCovarianceAgainstTreecorr:
         tmp = tmp_path_factory.mktemp("validation_cov")
         out = str(tmp / "cov_mia.hdf5")
         ia = v.make_measureia(data, randoms, out)
-        patches = ia.assign_jackknife_patches(data, randoms, v.NUM_JK,
-                                              seed=v.PATCH_SEED)
-        if "randoms_position" not in patches:
-            patches["randoms_position"] = patches["randoms"]
-            patches["randoms_shape"] = patches["randoms"]
+        patches = _reference_patches(_COV_REF, ia, data, randoms,
+                                     v.NUM_JK, v.PATCH_SEED)
         if os.path.exists(out):
             os.remove(out)
         ia, mia = v.run_measureia_jk(data, randoms, patches, out, str(tmp) + "/")
@@ -286,7 +303,7 @@ class TestResponsivityOption:
                 output_file_name=out,
                 separation_limits=v.RP_LIMS, num_bins_r=v.NUM_BINS_RP,
                 num_bins_pi=v.NUM_BINS_PI, pi_max=v.PI_MAX, num_nodes=1)
-            ia.measure_xi_w("galaxies", v.DATASET, "both", measure_cov=False,
+            ia.measure_xi_w("galaxies", v.DATASET, "both", 
                             tree=True, cosmology=v.COSMOLOGY, over_h=False,
                             temp_file_path=str(tmp_path) + "/", responsivity=flag)
             with h5py.File(out) as f:
@@ -701,11 +718,8 @@ def lc_corrpc_cov_results(tmp_path_factory):
     out = str(tmp_path_factory.mktemp("validation") / "lc_corrpc_cov.hdf5")
     temp = str(tmp_path_factory.mktemp("validation_tmp")) + "/"
     ia = lc_treecorr_cov.make_measureia(data, randoms, out)
-    patches = ia.assign_jackknife_patches(data, randoms, lc_corrpc_cov.NUM_JK,
-                                          seed=lc_corrpc_cov.PATCH_SEED)
-    if "randoms_position" not in patches:
-        patches["randoms_position"] = patches["randoms"]
-        patches["randoms_shape"] = patches["randoms"]
+    patches = _reference_patches(_LC_CORRPC_COV_REF, ia, data, randoms,
+                                 lc_corrpc_cov.NUM_JK, lc_corrpc_cov.PATCH_SEED)
     if os.path.exists(out):
         os.remove(out)
     mia = lc_corrpc_cov.run_measureia_jk(data, randoms, patches, out, temp)
@@ -766,11 +780,8 @@ def lc_mp_corrpc_cov_results(tmp_path_factory):
     out = str(tmp_path_factory.mktemp("validation") / "lc_mp_corrpc_cov.hdf5")
     temp = str(tmp_path_factory.mktemp("validation_tmp")) + "/"
     ia = lc_mp_corrpc_cov.make_measureia(data, randoms, out)
-    patches = ia.assign_jackknife_patches(data, randoms, lc_corrpc_cov.NUM_JK,
-                                          seed=lc_corrpc_cov.PATCH_SEED)
-    if "randoms_position" not in patches:
-        patches["randoms_position"] = patches["randoms"]
-        patches["randoms_shape"] = patches["randoms"]
+    patches = _reference_patches(_LC_MP_CORRPC_COV_REF, ia, data, randoms,
+                                 lc_corrpc_cov.NUM_JK, lc_corrpc_cov.PATCH_SEED)
     if os.path.exists(out):
         os.remove(out)
     mia = lc_mp_corrpc_cov.run_measureia_jk(data, randoms, patches, out, temp)

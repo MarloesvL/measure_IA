@@ -7,7 +7,7 @@ Comprehensive tests for MeasureIALightcone.measure_xi_w(), covering:
   - corr_type: 'both', 'g+', 'gg'
   - Computation backends: brute (tree=False) and tree (tree=True)
   - Multiprocessing backend (num_nodes > 1)
-  - measure_cov=False (no covariance) and measure_cov=True (with JK)
+  - with and without jackknife covariance (num_jk / jk_patches)
   - JK patches provided externally (jk_patches) vs generated internally (num_jk)
   - Single random sample vs separate position/shape random catalogues
   - Automatic weight injection when missing from data / randoms dict
@@ -45,46 +45,46 @@ class TestIAEstimatorW:
         with pytest.raises(KeyError):
             IA_mock_lc_n1.measure_xi_w(
                 "bad_estimator", "lc_bad", "both",
-                measure_cov=False, tree=False,
+                tree=False,
                 temp_file_path=str(tmp_path) + "/")
 
     def test_clusters_without_randoms_raises(self, IA_mock_lc_no_randoms, tmp_path):
         with pytest.raises(KeyError):
             IA_mock_lc_no_randoms.measure_xi_w(
                 "clusters", "lc_no_rand", "both",
-                measure_cov=False, tree=False,
+                tree=False,
                 temp_file_path=str(tmp_path) + "/")
 
     def test_galaxies_without_randoms_raises(self, IA_mock_lc_no_randoms, tmp_path):
         with pytest.raises(KeyError):
             IA_mock_lc_no_randoms.measure_xi_w(
                 "galaxies", "lc_no_rand", "both",
-                measure_cov=False, tree=False,
+                tree=False,
                 temp_file_path=str(tmp_path) + "/")
 
     def test_clusters_estimator_runs(self, IA_mock_lc_n1, tmp_path):
         """Clusters estimator should complete without error."""
         IA_mock_lc_n1.measure_xi_w(
             "clusters", "lc_clusters_nocov", "both",
-            measure_cov=False, tree=True,
+            tree=True,
             temp_file_path=str(tmp_path) + "/")
 
     def test_galaxies_estimator_runs(self, IA_mock_lc_n1, tmp_path):
         """Galaxies estimator should complete without error."""
         IA_mock_lc_n1.measure_xi_w(
             "galaxies", "lc_galaxies_nocov", "both",
-            measure_cov=False, tree=True,
+            tree=True,
             temp_file_path=str(tmp_path) + "/")
 
     def test_clusters_vs_galaxies_gp_differ(self, IA_mock_lc_n1, tmp_path):
         """The two estimators use different xi formulas, so w_g+ should differ."""
         IA_mock_lc_n1.measure_xi_w(
             "clusters", "lc_est_cl", "g+",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
         IA_mock_lc_n1.measure_xi_w(
             "galaxies", "lc_est_gx", "g+",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
         obj = IA_mock_lc_n1
         assert not np.allclose(_read(obj, "w/xi_g_plus", "lc_est_cl"),
@@ -101,11 +101,11 @@ class TestCorrTypeW:
     def test_gp_matches_both(self, IA_mock_lc_n1, tmp_path):
         IA_mock_lc_n1.measure_xi_w(
             "galaxies", "lc_ct_both", "both",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
         IA_mock_lc_n1.measure_xi_w(
             "galaxies", "lc_ct_gp", "g+",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
         obj = IA_mock_lc_n1
         np.testing.assert_array_equal(_read(obj, "w/xi_g_plus", "lc_ct_both"),
@@ -116,10 +116,10 @@ class TestCorrTypeW:
     def test_gg_matches_both(self, IA_mock_lc_n1, tmp_path):
         obj = IA_mock_lc_n1
         obj.measure_xi_w("galaxies", "lc_ct_both2", "both",
-                          measure_cov=False, tree=False,
+                          tree=False,
                           temp_file_path=str(tmp_path) + "/")
         obj.measure_xi_w("galaxies", "lc_ct_gg", "gg",
-                          measure_cov=False, tree=False,
+                          tree=False,
                           temp_file_path=str(tmp_path) + "/")
         np.testing.assert_array_equal(_read(obj, "w/xi_gg", "lc_ct_both2"),
                                       _read(obj, "w/xi_gg", "lc_ct_gg"))
@@ -128,7 +128,7 @@ class TestCorrTypeW:
         with pytest.raises(KeyError):
             IA_mock_lc_n1.measure_xi_w(
                 "galaxies", "lc_bad_ct", "gg+",
-                measure_cov=False, tree=False,
+                tree=False,
                 temp_file_path=str(tmp_path) + "/")
 
 
@@ -141,11 +141,11 @@ class TestBackendsNoCovW:
     def test_brute_vs_tree_gp(self, IA_mock_lc_n1, tmp_path):
         IA_mock_lc_n1.measure_xi_w(
             "galaxies", "lc_bvt_brute", "both",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
         IA_mock_lc_n1.measure_xi_w(
             "galaxies", "lc_bvt_tree", "both",
-            measure_cov=False, tree=True,
+            tree=True,
             temp_file_path=str(tmp_path) + "/")
 
         obj = IA_mock_lc_n1
@@ -157,10 +157,10 @@ class TestBackendsNoCovW:
     def test_brute_vs_tree_gg(self, IA_mock_lc_n1, tmp_path):
         obj = IA_mock_lc_n1
         obj.measure_xi_w("galaxies", "lc_bvt_brute", "both",
-                          measure_cov=False, tree=False,
+                          tree=False,
                           temp_file_path=str(tmp_path) + "/")
         obj.measure_xi_w("galaxies", "lc_bvt_tree", "both",
-                          measure_cov=False, tree=True,
+                          tree=True,
                           temp_file_path=str(tmp_path) + "/")
         np.testing.assert_allclose(_read(obj, "w/xi_gg", "lc_bvt_brute"),
                                    _read(obj, "w/xi_gg", "lc_bvt_tree"))
@@ -168,11 +168,11 @@ class TestBackendsNoCovW:
     def test_tree_vs_multiproc(self, IA_mock_lc_n1, IA_mock_lc_n8, tmp_path):
         IA_mock_lc_n1.measure_xi_w(
             "galaxies", "lc_mp_tree", "both",
-            measure_cov=False, tree=True,
+            tree=True,
             temp_file_path=str(tmp_path) + "/")
         IA_mock_lc_n8.measure_xi_w(
             "galaxies", "lc_mp_multi", "both",
-            measure_cov=False, tree=True,
+            tree=True,
             temp_file_path=str(tmp_path) + "/",
             chunk_size=50)
 
@@ -188,20 +188,30 @@ class TestBackendsNoCovW:
 
 class TestCovarianceW:
 
-    def test_measure_cov_true_without_jk_args_raises(self, IA_mock_lc_n1, tmp_path):
-        """measure_cov=True but no jk_patches and no num_jk must raise."""
-        with pytest.raises(ValueError):
-            IA_mock_lc_n1.measure_xi_w(
-                "galaxies", "lc_no_jk", "both",
-                measure_cov=True,
-                temp_file_path=str(tmp_path) + "/")
+    def test_no_jk_args_means_no_covariance(self, IA_mock_lc_n1, tmp_path):
+        """Neither jk_patches nor num_jk means no covariance, matching the
+        box's num_jk=0 default. It used to raise, when covariance was opt-out."""
+        obj = IA_mock_lc_n1
+        obj.measure_xi_w("galaxies", "lc_no_jk", "both",
+                         temp_file_path=str(tmp_path) + "/")
+        with h5py.File(obj.output_file_name, "r") as f:
+            assert "lc_no_jk" in f["w_g_plus"]
+            assert not any(k.startswith("lc_no_jk_jackknife") for k in f["w_g_plus"])
+
+    @pytest.mark.parametrize("num_jk", [0, None])
+    def test_num_jk_zero_or_none_means_no_covariance(self, IA_mock_lc_n1, tmp_path, num_jk):
+        obj = IA_mock_lc_n1
+        obj.measure_xi_w("galaxies", "lc_zero_jk", "both", num_jk=num_jk,
+                         temp_file_path=str(tmp_path) + "/")
+        with h5py.File(obj.output_file_name, "r") as f:
+            assert not any(k.startswith("lc_zero_jk_jackknife") for k in f["w_g_plus"])
 
     def test_internal_jk_generation(self, IA_mock_lc_n1, tmp_path):
         """num_jk triggers internal patch assignment — should not raise."""
         obj = IA_mock_lc_n1
         obj.measure_xi_w(
             "galaxies", "lc_int_jk", "both",
-            measure_cov=True, num_jk=NUM_JK,
+            num_jk=NUM_JK,
             tree=True, temp_file_path=str(tmp_path) + "/")
 
         cov = _read(obj, "w_g_plus", f"lc_int_jk_jackknife_cov_{NUM_JK}")
@@ -212,7 +222,7 @@ class TestCovarianceW:
         obj = IA_mock_lc_n1
         obj.measure_xi_w(
             "galaxies", "lc_ext_jk", "both",
-            measure_cov=True, jk_patches=lc_jk_patches,
+            jk_patches=lc_jk_patches,
             tree=True, temp_file_path=str(tmp_path) + "/")
 
         assert _read(obj, "w_g_plus", "lc_ext_jk") is not None
@@ -221,10 +231,10 @@ class TestCovarianceW:
         """Both patch-assignment paths produce the same final w_g+."""
         obj = IA_mock_lc_n1
         obj.measure_xi_w("galaxies", "lc_int_jk2", "both",
-                          measure_cov=True, num_jk=NUM_JK,
+                          num_jk=NUM_JK,
                           tree=True, temp_file_path=str(tmp_path) + "/")
         obj.measure_xi_w("galaxies", "lc_ext_jk2", "both",
-                          measure_cov=True, jk_patches=lc_jk_patches,
+                          jk_patches=lc_jk_patches,
                           tree=True, temp_file_path=str(tmp_path) + "/")
         np.testing.assert_allclose(
             _read(obj, "w_g_plus", "lc_int_jk2"),
@@ -239,7 +249,7 @@ class TestCovarianceW:
         with pytest.raises(ValueError, match="must start at 0"):
             IA_mock_lc_n1.measure_xi_w(
                 "galaxies", "lc_jk_1based", "both",
-                measure_cov=True, jk_patches=shifted,
+                jk_patches=shifted,
                 tree=True, temp_file_path=str(tmp_path) + "/")
 
     def test_multiproc_vs_tree_jk(self, IA_mock_lc_n1, IA_mock_lc_n8,
@@ -250,11 +260,11 @@ class TestCovarianceW:
         sample (S+R term)."""
         IA_mock_lc_n1.measure_xi_w(
             "galaxies", "lc_w_jk_n1", "both",
-            measure_cov=True, jk_patches=lc_jk_patches,
+            jk_patches=lc_jk_patches,
             tree=True, temp_file_path=str(tmp_path) + "/")
         IA_mock_lc_n8.measure_xi_w(
             "galaxies", "lc_w_jk_n8", "both",
-            measure_cov=True, jk_patches=lc_jk_patches,
+            jk_patches=lc_jk_patches,
             tree=True, temp_file_path=str(tmp_path) + "/",
             chunk_size=50)
         for grp in ("w_g_plus", "w_gg"):
@@ -277,11 +287,11 @@ class TestCovarianceW:
         the same answer."""
         IA_mock_lc_n1.measure_xi_w(
             "galaxies", "lc_uneven_n1", "both",
-            measure_cov=True, jk_patches=lc_jk_patches,
+            jk_patches=lc_jk_patches,
             tree=True, temp_file_path=str(tmp_path) + "/")
         IA_mock_lc_n8.measure_xi_w(
             "galaxies", "lc_uneven_n8", "both",
-            measure_cov=True, jk_patches=lc_jk_patches,
+            jk_patches=lc_jk_patches,
             tree=True, temp_file_path=str(tmp_path) + "/",
             chunk_size=37)
         for grp in ("w_g_plus", "w_gg"):
@@ -295,11 +305,11 @@ class TestCovarianceW:
         obj = IA_mock_lc_n1
         obj.measure_xi_w(
             "galaxies", "lc_jk_tree",  "both",
-            measure_cov=True, jk_patches=lc_jk_patches,
+            jk_patches=lc_jk_patches,
             tree=True, temp_file_path=str(tmp_path) + "/")
         obj.measure_xi_w(
             "galaxies", "lc_jk_brute", "both",
-            measure_cov=True, jk_patches=lc_jk_patches,
+            jk_patches=lc_jk_patches,
             tree=False, temp_file_path=str(tmp_path) + "/")
 
         for i in range(NUM_JK):
@@ -315,11 +325,11 @@ class TestCovarianceW:
         obj = IA_mock_lc_n1
         obj.measure_xi_w(
             "galaxies", "lc_jk_tree",  "both",
-            measure_cov=True, jk_patches=lc_jk_patches,
+            jk_patches=lc_jk_patches,
             tree=True, temp_file_path=str(tmp_path) + "/")
         obj.measure_xi_w(
             "galaxies", "lc_jk_brute", "both",
-            measure_cov=True, jk_patches=lc_jk_patches,
+            jk_patches=lc_jk_patches,
             tree=False, temp_file_path=str(tmp_path) + "/")
 
         for i in range(NUM_JK):
@@ -343,14 +353,14 @@ class TestRandomCataloguesW:
         keys), the code should auto-duplicate it for the shape sample."""
         IA_mock_lc_single_rand.measure_xi_w(
             "galaxies", "lc_single_rand", "both",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
 
     def test_separate_random_samples_run(self, IA_mock_lc_n1, tmp_path):
         """Full randoms dict with separate position/shape keys should work."""
         IA_mock_lc_n1.measure_xi_w(
             "galaxies", "lc_sep_rand", "both",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
 
     def test_single_vs_sep_rand_gg_same(
@@ -359,11 +369,11 @@ class TestRandomCataloguesW:
         same result as explicitly passing identical position/shape randoms."""
         IA_mock_lc_dup_rand.measure_xi_w(
             "galaxies", "lc_sep_rand", "gg",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
         IA_mock_lc_single_rand.measure_xi_w(
             "galaxies", "lc_single_rand", "gg",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
         np.testing.assert_allclose(
             _read(IA_mock_lc_dup_rand,   "w/xi_gg", "lc_sep_rand"),
@@ -382,14 +392,14 @@ class TestWeightInjectionW:
         all-ones weights and continue without error."""
         IA_mock_lc_no_weight.measure_xi_w(
             "galaxies", "lc_no_wt_data", "g+",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
 
     def test_missing_randoms_weight_defaults_to_ones(self, IA_mock_lc_rand_no_weight, tmp_path):
         """Same for the randoms dict."""
         IA_mock_lc_rand_no_weight.measure_xi_w(
             "galaxies", "lc_no_wt_rand", "g+",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
 
     def test_explicit_ones_equals_missing_weight_gp(
@@ -397,11 +407,11 @@ class TestWeightInjectionW:
         """Explicit weight=1 and missing weight should produce identical w_g+."""
         IA_mock_lc_n1.measure_xi_w(
             "galaxies", "lc_exp_ones", "g+",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
         IA_mock_lc_no_weight.measure_xi_w(
             "galaxies", "lc_no_wt_data", "g+",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
 
         np.testing.assert_allclose(
@@ -419,11 +429,11 @@ class TestOverHW:
         """Toggling over_h changes coordinate units → different pair counts."""
         IA_mock_lc_n1.measure_xi_w(
             "galaxies", "lc_oh_false", "gg",
-            measure_cov=False, tree=False, over_h=False,
+            tree=False, over_h=False,
             temp_file_path=str(tmp_path) + "/")
         IA_mock_lc_n1.measure_xi_w(
             "galaxies", "lc_oh_true",  "gg",
-            measure_cov=False, tree=False, over_h=True,
+            tree=False, over_h=True,
             temp_file_path=str(tmp_path) + "/")
         assert not np.allclose(_read(IA_mock_lc_n1, "w/xi_gg", "lc_oh_false"),
                                _read(IA_mock_lc_n1, "w/xi_gg", "lc_oh_true"))
@@ -438,11 +448,11 @@ class TestMasksW:
     def test_mask_reduces_pair_count(self, IA_mock_lc_n1, lc_masks, tmp_path):
         IA_mock_lc_n1.measure_xi_w(
             "galaxies", "lc_no_mask",   "gg",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
         IA_mock_lc_n1.measure_xi_w(
             "galaxies", "lc_with_mask", "gg",
-            measure_cov=False, tree=False, masks=lc_masks,
+            tree=False, masks=lc_masks,
             temp_file_path=str(tmp_path) + "/")
 
         obj = IA_mock_lc_n1
@@ -453,7 +463,7 @@ class TestMasksW:
     def test_masked_gp_nonzero(self, IA_mock_lc_n1, lc_masks, tmp_path):
         IA_mock_lc_n1.measure_xi_w(
             "galaxies", "lc_mask_gp", "g+",
-            measure_cov=False, tree=False, masks=lc_masks,
+            tree=False, masks=lc_masks,
             temp_file_path=str(tmp_path) + "/")
         # After masking there should still be some non-zero bins
         assert np.any(_read(IA_mock_lc_n1, "w/xi_g_plus", "lc_mask_gp") != 0)
@@ -468,11 +478,11 @@ class TestMasksW:
                    "RA_shape_sample": lc_masks["RA_shape_sample"]}
         IA_mock_lc_n1.measure_xi_w(
             "galaxies", "lc_mask_full", "both",
-            measure_cov=False, tree=True, masks=lc_masks,
+            tree=True, masks=lc_masks,
             temp_file_path=str(tmp_path) + "/")
         IA_mock_lc_n1.measure_xi_w(
             "galaxies", "lc_mask_partial", "both",
-            measure_cov=False, tree=True, masks=partial,
+            tree=True, masks=partial,
             temp_file_path=str(tmp_path) + "/")
         for grp in ("w_g_plus", "w_gg"):
             np.testing.assert_array_equal(
@@ -490,7 +500,7 @@ class TestOutputShapeW:
     def test_rp_length_matches_num_bins_r(self, IA_mock_lc_n1, tmp_path):
         IA_mock_lc_n1.measure_xi_w(
             "galaxies", "lc_shape_chk", "both",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
         obj = IA_mock_lc_n1
         rp = _read(obj, "w/xi_g_plus", "lc_shape_chk_rp")
@@ -501,7 +511,7 @@ class TestOutputShapeW:
     def test_rp_bins_sorted_ascending(self, IA_mock_lc_n1, tmp_path):
         obj = IA_mock_lc_n1
         obj.measure_xi_w("galaxies", "lc_shape_chk", "both",
-                          measure_cov=False, tree=False,
+                          tree=False,
                           temp_file_path=str(tmp_path) + "/")
         rp = _read(obj, "w/xi_g_plus", "lc_shape_chk_rp")
         assert np.all(np.diff(rp) > 0)
@@ -510,11 +520,11 @@ class TestOutputShapeW:
         obj = IA_mock_lc_n1
         obj.measure_xi_w(
             "galaxies", "lc_rp_gp", "g+",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
         obj.measure_xi_w(
             "galaxies", "lc_rp_gg", "gg",
-            measure_cov=False, tree=False,
+            tree=False,
             temp_file_path=str(tmp_path) + "/")
         np.testing.assert_array_equal(
             _read(obj, "w/xi_g_plus", "lc_rp_gp_rp"),
@@ -524,7 +534,7 @@ class TestOutputShapeW:
             self, IA_mock_lc_n1, lc_jk_patches, tmp_path):
         obj = IA_mock_lc_n1
         obj.measure_xi_w("galaxies", "lc_cov_sz", "both",
-                          measure_cov=True, jk_patches=lc_jk_patches,
+                          jk_patches=lc_jk_patches,
                           tree=True, temp_file_path=str(tmp_path) + "/")
         cov = _read(obj, "w_g_plus", f"lc_cov_sz_jackknife_cov_{NUM_JK}")
         assert cov.ndim == 2
@@ -534,7 +544,7 @@ class TestOutputShapeW:
     def test_covariance_is_symmetric(self, IA_mock_lc_n1, lc_jk_patches, tmp_path):
         obj = IA_mock_lc_n1
         obj.measure_xi_w("galaxies", "lc_cov_sym", "both",
-                          measure_cov=True, jk_patches=lc_jk_patches,
+                          jk_patches=lc_jk_patches,
                           tree=True, temp_file_path=str(tmp_path) + "/")
         cov = _read(obj, "w_g_plus", f"lc_cov_sym_jackknife_cov_{NUM_JK}")
         np.testing.assert_allclose(cov, cov.T, atol=1e-12)
@@ -542,7 +552,7 @@ class TestOutputShapeW:
     def test_covariance_diagonal_non_negative(self, IA_mock_lc_n1, lc_jk_patches, tmp_path):
         obj = IA_mock_lc_n1
         obj.measure_xi_w("galaxies", "lc_cov_diag", "both",
-                          measure_cov=True, jk_patches=lc_jk_patches,
+                          jk_patches=lc_jk_patches,
                           tree=True, temp_file_path=str(tmp_path) + "/")
         cov = _read(obj, "w_g_plus", f"lc_cov_diag_jackknife_cov_{NUM_JK}")
         # Bins with no pairs in the sparse mock give NaN variance; only the
@@ -562,10 +572,10 @@ class TestDeterminismW:
         """Run twice with the same config; results must be identical (determinism)."""
         obj = IA_mock_lc_n1
         obj.measure_xi_w("galaxies", "lc_reg_a", "both",
-                          measure_cov=True, num_jk=NUM_JK,
+                          num_jk=NUM_JK,
                           tree=True, temp_file_path=str(tmp_path) + "/")
         obj.measure_xi_w("galaxies", "lc_reg_b", "both",
-                          measure_cov=True, num_jk=NUM_JK,
+                          num_jk=NUM_JK,
                           tree=True, temp_file_path=str(tmp_path) + "/")
         np.testing.assert_allclose(
             _read(obj, "w/xi_g_plus", "lc_reg_a"),
@@ -574,10 +584,10 @@ class TestDeterminismW:
     def test_wgg_is_deterministic(self, IA_mock_lc_n1, tmp_path):
         obj = IA_mock_lc_n1
         obj.measure_xi_w("galaxies", "lc_reg_gg_a", "gg",
-                          measure_cov=False, tree=True,
+                          tree=True,
                           temp_file_path=str(tmp_path) + "/")
         obj.measure_xi_w("galaxies", "lc_reg_gg_b", "gg",
-                          measure_cov=False, tree=True,
+                          tree=True,
                           temp_file_path=str(tmp_path) + "/")
         np.testing.assert_allclose(
             _read(obj, "w/xi_gg", "lc_reg_gg_a"),
@@ -586,10 +596,10 @@ class TestDeterminismW:
     def test_cov_wgp_is_deterministic(self, IA_mock_lc_n1, tmp_path):
         obj = IA_mock_lc_n1
         obj.measure_xi_w("galaxies", "lc_cov_reg_a", "g+",
-                          measure_cov=True, num_jk=NUM_JK, seed=42,
+                          num_jk=NUM_JK, seed=42,
                           tree=True, temp_file_path=str(tmp_path) + "/")
         obj.measure_xi_w("galaxies", "lc_cov_reg_b", "g+",
-                          measure_cov=True, num_jk=NUM_JK, seed=42,
+                          num_jk=NUM_JK, seed=42,
                           tree=True, temp_file_path=str(tmp_path) + "/")
         np.testing.assert_allclose(
             _read(obj, "w_g_plus", f"lc_cov_reg_a_jackknife_cov_{NUM_JK}"),
@@ -599,10 +609,10 @@ class TestDeterminismW:
     def test_cov_wgg_is_deterministic(self, IA_mock_lc_n1, tmp_path):
         obj = IA_mock_lc_n1
         obj.measure_xi_w("galaxies", "lc_cov_gg_a", "gg",
-                          measure_cov=True, num_jk=NUM_JK, seed=42,
+                          num_jk=NUM_JK, seed=42,
                           tree=True, temp_file_path=str(tmp_path) + "/")
         obj.measure_xi_w("galaxies", "lc_cov_gg_b", "gg",
-                          measure_cov=True, num_jk=NUM_JK, seed=42,
+                          num_jk=NUM_JK, seed=42,
                           tree=True, temp_file_path=str(tmp_path) + "/")
         np.testing.assert_allclose(
             _read(obj, "w_gg", f"lc_cov_gg_a_jackknife_cov_{NUM_JK}"),
@@ -636,12 +646,12 @@ class TestIntermediateOutputsLCW:
 
     def _run_no_cov(self, obj, tmp_path, estimator="galaxies"):
         obj.measure_xi_w(estimator, "lc_int_nojk", "both",
-                         measure_cov=False, tree=False,
+                         tree=False,
                          temp_file_path=str(tmp_path) + "/")
 
     def _run_cov(self, obj, tmp_path, estimator="galaxies"):
         obj.measure_xi_w(estimator, "lc_int_jk", "both",
-                         measure_cov=True, num_jk=NUM_JK,
+                         num_jk=NUM_JK,
                          tree=False,
                          temp_file_path=str(tmp_path) + "/")
 
@@ -659,10 +669,10 @@ class TestIntermediateOutputsLCW:
         the estimator choice only affects the observable formula, not the pair counts."""
         obj = IA_mock_lc_n1
         obj.measure_xi_w("galaxies", "lc_sp_gx", "g+",
-                         measure_cov=False, tree=False,
+                         tree=False,
                          temp_file_path=str(tmp_path) + "/")
         obj.measure_xi_w("clusters", "lc_sp_cl", "g+",
-                         measure_cov=False, tree=False,
+                         tree=False,
                          temp_file_path=str(tmp_path) + "/")
         sp_gx = _read(obj, "w/xi_g_plus", "lc_sp_gx_SplusD")
         sp_cl = _read(obj, "w/xi_g_plus", "lc_sp_cl_SplusD")
@@ -732,7 +742,7 @@ class TestIntermediateOutputsLCW:
         """Both estimators write DD, SR, RD, RR to xi_gg when corr_type='gg'."""
         obj = IA_mock_lc_n1
         obj.measure_xi_w("galaxies", "lc_gg_all", "gg",
-                         measure_cov=False, tree=False,
+                         tree=False,
                          temp_file_path=str(tmp_path) + "/")
         for suffix in ("_DD", "_SR", "_RD", "_RR"):
             arr = _read(obj, "w/xi_gg", f"lc_gg_all{suffix}")
@@ -744,10 +754,10 @@ class TestIntermediateOutputsLCW:
         IA estimator — both estimators must produce identical values."""
         obj = IA_mock_lc_n1
         obj.measure_xi_w("galaxies", "lc_gg_gx2", "gg",
-                         measure_cov=False, tree=False,
+                         tree=False,
                          temp_file_path=str(tmp_path) + "/")
         obj.measure_xi_w("clusters", "lc_gg_cl2", "gg",
-                         measure_cov=False, tree=False,
+                         tree=False,
                          temp_file_path=str(tmp_path) + "/")
         for suffix in ("_DD", "_SR", "_RD", "_RR"):
             np.testing.assert_array_equal(
@@ -825,7 +835,7 @@ class TestIntermediatePairCountEqualityLCW:
     """
 
     def _run(self, obj, name, estimator="galaxies", tree=False, tmp_path=None):
-        kwargs = dict(measure_cov=False, tree=tree,
+        kwargs = dict(tree=tree,
                       temp_file_path=(str(tmp_path) + "/" if tmp_path else None))
         obj.measure_xi_w(estimator, name, "both", **kwargs)
 
@@ -926,7 +936,7 @@ class TestIntermediatePairCountEqualityLCW:
         tp = str(tmp_path) + "/"
         self._run(IA_mock_lc_n1, "mp_n1", tree=True, tmp_path=tmp_path)
         IA_mock_lc_n8.measure_xi_w("galaxies", "mp_n8", "both",
-                                    measure_cov=False, tree=True,
+                                    tree=True,
                                     temp_file_path=tp, chunk_size=50)
         np.testing.assert_allclose(
             _read(IA_mock_lc_n1, "w/xi_g_plus", "mp_n1_SplusD"),
@@ -938,7 +948,7 @@ class TestIntermediatePairCountEqualityLCW:
         tp = str(tmp_path) + "/"
         self._run(IA_mock_lc_n1, "mp_n1", tree=True, tmp_path=tmp_path)
         IA_mock_lc_n8.measure_xi_w("galaxies", "mp_n8", "both",
-                                    measure_cov=False, tree=True,
+                                    tree=True,
                                     temp_file_path=tp, chunk_size=50)
         np.testing.assert_allclose(
             _read(IA_mock_lc_n1, "w/xi_gg", "mp_n1_DD"),

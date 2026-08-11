@@ -37,7 +37,7 @@ import h5py
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from mock_catalogues import (radial_alignment_box_mock, embed_box_mock_on_lightcone,
+from measureia.mocks import (radial_alignment_box_mock, embed_box_mock_on_lightcone,
 							 responsivity)
 from run_lightcone_treecorr import COSMOLOGY, _redshift_of_chi
 
@@ -106,7 +106,7 @@ def run_lightcone(mock, output_file, temp_path):
 		pi_max=PI_MAX,
 		num_nodes=1,
 	)
-	ia.measure_xi_w("galaxies", DATASET, "both", measure_cov=False, tree=True,
+	ia.measure_xi_w("galaxies", DATASET, "both", tree=True,
 					cosmology=COSMOLOGY, over_h=False, temp_file_path=temp_path)
 	with h5py.File(output_file, "r") as f:
 		out = {

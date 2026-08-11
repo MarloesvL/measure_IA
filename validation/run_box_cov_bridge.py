@@ -57,7 +57,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import run_plane_parallel as pp
-from mock_catalogues import embed_box_mock_on_lightcone, subbox_labels
+from measureia.mocks import embed_box_mock_on_lightcone, subbox_labels
 from run_lightcone_treecorr import COSMOLOGY, _redshift_of_chi
 from measureia import MeasureIABox, MeasureIALightcone
 
@@ -200,7 +200,7 @@ def run_lightcone_jk(mock, output_file, temp_path):
 							separation_limits=pp.RP_LIMS, num_bins_r=pp.NUM_BINS_RP,
 							num_bins_pi=pp.NUM_BINS_PI, pi_max=pp.PI_MAX, num_nodes=1)
 	ia.measure_xi_w("galaxies", DATASET, "both", jk_patches=labels, num_jk=NUM_JK,
-					measure_cov=True, tree=True, cosmology=COSMOLOGY, over_h=False,
+					tree=True, cosmology=COSMOLOGY, over_h=False,
 					temp_file_path=temp_path, responsivity=True)
 	out = _read_cov(output_file)
 	out["counts"], out["counts_i"] = counts, counts_i

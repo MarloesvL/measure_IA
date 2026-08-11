@@ -17,7 +17,7 @@ lightcone / survey-like data where you have a random catalogue and shear-style s
 See [Installation](installation.md). In short (Python 3.10–3.14):
 
 ```bash
-pip install measureia   # plus kmeans_radec, see the installation page
+pip install measureia
 ```
 
 ## A first measurement

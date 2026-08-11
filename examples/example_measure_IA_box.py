@@ -1,7 +1,7 @@
 """Measure w_gg, w_g+ and the multipoles on a periodic simulation box.
 
 The example runs on the synthetic radial-alignment mock from
-``validation/mock_catalogues.py``: centrals placed uniformly in a periodic box
+``measureia.mocks``: centrals placed uniformly in a periodic box
 with satellites scattered around them, whose projected major axes point at
 their own central. That gives a strong, seeded (i.e. reproducible) w_g+ and
 w_gg signal, so the run below produces a real measurement in ~1 s without
@@ -14,14 +14,8 @@ Run it from this directory:
 
 It writes ./example_IA_box.hdf5, which example_read_and_plot.py reads back.
 """
-import os
-import sys
-
 from measureia import MeasureIABox
-
-# The mock generator lives in the repository's validation/ directory, next to examples/.
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "validation"))
-from mock_catalogues import radial_alignment_box_mock
+from measureia.mocks import radial_alignment_box_mock
 
 # parameters for MeasureIA object
 simulation = None  # Indicator of simulation.

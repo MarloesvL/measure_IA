@@ -56,7 +56,7 @@ def make_measureia(data, randoms, output_file):
 def run_measureia_jk(data, randoms, patches, output_file, temp_path):
 	ia = make_measureia(data, randoms, output_file)
 	ia.measure_xi_w("galaxies", DATASET, "both", jk_patches=patches, num_jk=NUM_JK,
-					measure_cov=True, tree=True, cosmology=COSMOLOGY, over_h=False,
+					tree=True, cosmology=COSMOLOGY, over_h=False,
 					temp_file_path=temp_path)
 	out = {}
 	with h5py.File(output_file, "r") as f:
@@ -141,6 +141,12 @@ def main():
 		f.attrs["num_jk"] = NUM_JK
 		f.attrs["patch_seed"] = PATCH_SEED
 		f.attrs["mock_seed"] = info["seed"]
+		# The covariance below is only comparable against these exact patches, so store
+		# them: the test then reads them back instead of regenerating, which keeps the
+		# comparison independent of how patches happen to be assigned today.
+		for key, labels in patches.items():
+			f.create_dataset(f"patches/{key}", data=np.asarray(labels, dtype=np.int16),
+							 compression="gzip", compression_opts=9)
 		f["cov_w_g_plus"] = cov_gp_tc
 		f["cov_w_gg"] = cov_gg_tc
 

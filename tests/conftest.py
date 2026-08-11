@@ -366,7 +366,9 @@ def lc_jk_patches(_lc_catalog, tmp_path):
     """
     data, rand = _lc_catalog
     obj     = _build_lc(_copy_lc(data), _copy_lc(rand), 1, tmp_path)
-    patches = obj.assign_jackknife_patches(data, rand, _NUM_JK)
+    # seeded: an unseeded assignment varies per run, so patch occupancy (and anything
+    # derived from it) would be non-deterministic across the suite
+    patches = obj.assign_jackknife_patches(data, rand, _NUM_JK, seed=_LC_SEED)
     if "randoms_position" not in patches:
         patches["randoms_position"] = patches["randoms"]
         patches["randoms_shape"]    = patches["randoms"]

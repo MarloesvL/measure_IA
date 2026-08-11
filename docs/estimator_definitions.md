@@ -131,6 +131,16 @@ The jack-knife realisations are created by omitting one sub-box from the full vo
 saves the information about each sub-box so that the correlations do not need to be remeasured $N_\mathrm{jk}$ times.
 
 For the **lightcone**, the jackknife regions are instead defined on the sky: the objects are grouped into
-$N_\mathrm{jk}$ patches by k-means clustering of the random catalogue (using `kmeans_radec`), and one patch is
+$N_\mathrm{jk}$ patches by k-means clustering of the random catalogue on the sphere, and one patch is
 omitted at a time. The number of patches is set with the `num_jk` argument, or the patch assignment can be
 supplied directly through `jk_patches`; the same delete-one covariance formula above then applies.
+
+### How many patches?
+
+The covariance is estimated from how much the signal moves when each patch is removed, so patches need
+enough objects in them for that shift to be meaningful. `assign_jackknife_patches` warns when any of the
+four samples (position, shape, and the two randoms samples) ends up with a patch holding fewer than ten
+objects, since the resulting covariance is unreliable and individual delete-one realisations can contain
+empty separation bins. The fix depends on which sample is thin: sparse *randoms* patches mean the random
+catalogue is too small for this many patches, while sparse *data* patches mean the catalogue itself
+cannot support them, and `num_jk` should come down.
