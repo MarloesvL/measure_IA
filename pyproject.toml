@@ -1,10 +1,25 @@
 [project]
 name = "measureia"
 version = "0.3.0"
-description = "Measureing tool for intrinsic alignment correlation functions."
+description = "Measurement tool for intrinsic alignment correlation functions in simulation boxes and lightcones."
 authors = [{ name = "Marloes van Heukelum", email = "m.l.vanheukelum@uu.nl" }]
 readme = "README.md"
 requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["intrinsic alignments", "cosmology", "large-scale structure", "correlation functions", "astronomy"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "Topic :: Scientific/Engineering :: Physics",
+]
 dependencies = [
     # numpy 2 migration (P5): lower bounds so downstream users aren't over-constrained;
     # uv.lock pins exact versions for reproducibility. Floors chosen for numpy-2 support:
@@ -29,6 +44,14 @@ dependencies = [
     "scipy>=1.15",
     "sympy>=1.12",
 ]
+
+[project.urls]
+Documentation = "https://marloesvl.github.io/measure_IA/"
+Repository = "https://github.com/MarloesvL/measure_IA"
+Issues = "https://github.com/MarloesvL/measure_IA/issues"
+Changelog = "https://github.com/MarloesvL/measure_IA/blob/main/CHANGELOG.md"
+# Concept DOI: always resolves to the latest release.
+Archive = "https://doi.org/10.5281/zenodo.17252215"
 
 [project.optional-dependencies]
 validation = [
