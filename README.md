@@ -58,8 +58,7 @@ uv run [script_name].py
 
 If you do not want to use uv, you can also install dependencies the provided requirements.txt document.
 Also, make sure your Python version is compatible. This package supports Python 3.10 - 3.14 and is tested on all of them.
-Both the extra repository and the python version are handeled by uv automatically so please consider using this for
-easy installation.
+The python version is handled by uv automatically, so please consider using this for easy installation.
 
 ## Usage
 

@@ -749,6 +749,27 @@ class TestAssignJackknifePatches:
         assert np.random.random() == np_before
         assert _random.random() == py_before
 
+    @pytest.mark.parametrize("maxiter", [1, 2, 3, 5, 100])
+    def test_labels_always_match_the_returned_centres(self, maxiter):
+        """A fit's labels must describe a partition against its own centres,
+        converged or not.
+
+        assign_jackknife_patches takes 'randoms_position' straight from
+        km.labels but derives the other three samples via find_nearest (which
+        uses km.centers). If the two disagree, the four samples are partitioned
+        against different centre sets and the delete-one jackknife removes
+        non-corresponding sky regions — silently biasing the covariance. This
+        used to happen whenever the fit hit maxiter, because the loop exits
+        after a centre update that the labels do not reflect.
+        """
+        from measureia.kmeans_sphere import kmeans_sample
+
+        rng = np.random.default_rng(0)
+        X = np.column_stack([rng.uniform(150, 160, 2000), rng.uniform(0, 8, 2000)])
+        km = kmeans_sample(X, 9, maxiter=maxiter, tol=1e-5, seed=1)
+
+        np.testing.assert_array_equal(km.labels, km.find_nearest(X))
+
     def test_identical_coordinates_share_a_patch(self, tmp_path):
         """Data objects placed exactly on random positions inherit those
         randoms' patch labels (find_nearest is a nearest-centre lookup)."""

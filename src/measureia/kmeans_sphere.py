@@ -138,6 +138,12 @@ def _lloyd(vectors, centers, maxiter=_MAXITER, tol=_TOL):
 			if mean is not None:
 				centers[index] = mean
 
+	# Label against the centres actually returned. On the converged path the break
+	# happens before the centre update, so `labels` already matches; but when maxiter
+	# is exhausted the loop exits *after* an update, leaving labels one step stale.
+	# Callers mix `labels` with `find_nearest` (which uses `centers`) across samples,
+	# so the two must describe the same partition.
+	labels = np.argmax(vectors @ centers.T, axis=1)
 	return centers, labels, converged
 
 
