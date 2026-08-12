@@ -18,6 +18,15 @@ public API mean a major version bump.
   rebuilds every delete-one realisation without re-counting any pairs. This is the input needed to
   regress the alignment signal on per-galaxy properties: any number of properties can be fitted
   from one pair traversal instead of one correlation-function run per weighting.
+- `per_galaxy_jk_sparse` on `pair_kernel.accumulate` (used by default from
+  `measure_galaxy_contributions`), storing the per-galaxy jackknife decomposition only for the
+  patches each galaxy actually has pairs in. A galaxy's neighbours span a ball of `r_max`, so it
+  reaches only a few sub-boxes however many there are, and the rest of the patch axis is
+  structurally zero. Pure change of representation — the stored values are identical and a test
+  asserts bit-equality with the dense form. For a COLIBRE-L400-sized run (301k shape galaxies,
+  125 patches, 12 bins) this is 3.6 GB -> 0.78 GB per array.
+- `delete_one_estimator` and `jk_columns` helpers, which rebuild a delete-one realisation from
+  the per-galaxy output without the caller needing to know the storage convention.
 - `per_galaxy`, `per_galaxy_proj` and `per_galaxy_jk` options on `pair_kernel.accumulate`, which
   provide the above. All default to off, and when off the pair loop, its iteration order and its
   float summation order are unchanged, so existing measurements are bit-identical and no slower.

@@ -53,6 +53,59 @@ from .write_data import create_group_hdf5, write_dataset_hdf5
 _STATISTICS = ("multipoles", "w")
 
 
+def jk_columns(out, n):
+    r"""The delete-one column for realisation ``n``: what each galaxy contributes through
+    position-sample partners lying in patch ``n``.
+
+    Handles the sparse storage, where a galaxy only carries the patches it has pairs in.
+
+    Parameters
+    ----------
+    out : dict
+        Output of :meth:`MeasureGalaxyContributionsBox.measure_galaxy_contributions`.
+    n : int
+        Jackknife patch index.
+
+    Returns
+    -------
+    (ndarray, ndarray)
+        ``(Y_column, P_column)``, each (M, num_bins_r).
+    """
+    hit = out["jk_patches"] == n                             # (M, K), at most one per row
+    Y = np.einsum("mk,mkb->mb", hit, out["Y_jk_values"])
+    P = np.einsum("mk,mkb->mb", hit, out["P_jk_values"])
+    return Y, P
+
+
+def delete_one_estimator(out, n):
+    r"""Rebuild delete-one jackknife realisation ``n`` of the estimator from the per-galaxy
+    contributions.
+
+    Drops every shape galaxy in patch ``n``, subtracts the pairs whose position partner is
+    in patch ``n`` from the rest, and undoes the two normalisations that ``Y_jk_values``
+    deliberately leaves off (the responsivity ``2R`` and the ``RR`` amplitude, both of
+    which change under delete-one).
+
+    Parameters
+    ----------
+    out : dict
+        Output of :meth:`MeasureGalaxyContributionsBox.measure_galaxy_contributions`,
+        measured with ``num_jk > 0``.
+    n : int
+        Jackknife patch index.
+
+    Returns
+    -------
+    ndarray
+        The estimator for realisation ``n``, shape (num_bins_r,).
+    """
+    keep = out["jk_shape"] != n
+    Y_col, _ = jk_columns(out, n)
+    total = out["Y_jk_values"].sum(axis=1)
+    est = (total[keep] - Y_col[keep]).sum(axis=0)
+    return est / (out["rr_ratio"][n] * 2 * out["R_jk"][n])
+
+
 class MeasureGalaxyContributionsBox:
     """Mixin providing :meth:`measure_galaxy_contributions` for ``MeasureIABox``."""
 
@@ -257,7 +310,7 @@ class MeasureGalaxyContributionsBox:
         pos_tree = KDTree(binning.tree_coords(sample_set.pos, sample_set.not_LOS), boxsize=self.boxsize)
 
         if num_nodes > 1:
-            Y, P, Y_jk, P_jk = self._galaxy_contributions_multiprocessing(
+            Y, P, Y_jk, P_jk, jk_patches = self._galaxy_contributions_multiprocessing(
                 sample_set, statistic, K, R, num_jk, pos_tree, dataset_name,
                 temp_file_path, chunk_size, num_nodes, masks,
             )
@@ -266,10 +319,12 @@ class MeasureGalaxyContributionsBox:
                 sample_set, binning, base=self, R=R, shapes=True,
                 chunk_axis="shape", chunk_size_outer=100, backend="tree", pos_tree=pos_tree,
                 per_galaxy=True, per_galaxy_proj=K, per_galaxy_jk=num_jk > 0,
+                per_galaxy_jk_sparse=num_jk > 0,
                 num_box=num_jk if num_jk > 0 else None,
             )
             Y, P = grids.Splus_D_gal, grids.DD_gal
-            Y_jk, P_jk = grids.Splus_D_gal_jk, grids.DD_gal_jk
+            Y_jk, P_jk = grids.Splus_D_gal_jk_values, grids.DD_gal_jk_values
+            jk_patches = grids.gal_jk_patches
 
         out = {"Y": Y, "P": P, "r": self._galaxy_separation_bins()}
         if num_jk > 0:
@@ -284,8 +339,8 @@ class MeasureGalaxyContributionsBox:
                 n_shape_jk = int(np.count_nonzero(jk_shape != n))
                 rr_ratio[n] = self._galaxy_rr_ratio(statistic, volume_jk, n_pos_jk, n_shape_jk,
                                                     L3, Num_position, Num_shape)
-            out.update({"Y_jk": Y_jk, "P_jk": P_jk, "jk_shape": jk_shape,
-                        "R_jk": R_jk, "rr_ratio": rr_ratio, "R": R})
+            out.update({"Y_jk_values": Y_jk, "P_jk_values": P_jk, "jk_patches": jk_patches,
+                        "jk_shape": jk_shape, "R_jk": R_jk, "rr_ratio": rr_ratio, "R": R})
 
         if return_output:
             return out
@@ -297,7 +352,8 @@ class MeasureGalaxyContributionsBox:
         write_dataset_hdf5(group, dataset_name + "_r", data=out["r"])
         if num_jk > 0:
             jk_group = create_group_hdf5(group, f"{dataset_name}_jk{num_jk}")
-            for key in ("Y_jk", "P_jk", "jk_shape", "R_jk", "rr_ratio"):
+            for key in ("Y_jk_values", "P_jk_values", "jk_patches", "jk_shape",
+                        "R_jk", "rr_ratio"):
                 write_dataset_hdf5(jk_group, key, data=out[key])
             jk_group.attrs["R"] = out["R"]
         output_file.close()
@@ -340,11 +396,13 @@ class MeasureGalaxyContributionsBox:
             sample_set, binning, base=self, R=self.R, shapes=True,
             chunk_axis="shape", chunk_size_outer=100, backend="tree", pos_tree=self.pos_tree,
             per_galaxy=True, per_galaxy_proj=self._pg_proj,
-            per_galaxy_jk=self.num_box is not None, num_box=self.num_box,
+            per_galaxy_jk=self.num_box is not None,
+            per_galaxy_jk_sparse=self.num_box is not None, num_box=self.num_box,
         )
         for shm in shms:
             shm.close()
-        return grids.Splus_D_gal, grids.DD_gal, grids.Splus_D_gal_jk, grids.DD_gal_jk
+        return (grids.Splus_D_gal, grids.DD_gal, grids.Splus_D_gal_jk_values,
+                grids.DD_gal_jk_values, grids.gal_jk_patches)
 
     def _galaxy_contributions_multiprocessing(self, sample_set, statistic, K, R, num_jk,
                                               pos_tree, dataset_name, temp_file_path,
@@ -438,8 +496,11 @@ class MeasureGalaxyContributionsBox:
         Y = np.concatenate([r[0] for r in result], axis=0)
         P = np.concatenate([r[1] for r in result], axis=0)
         if num_jk > 0:
-            Y_jk = np.concatenate([r[2] for r in result], axis=0)
-            P_jk = np.concatenate([r[3] for r in result], axis=0)
+            # each worker packed its own slice, so K differs between them
+            Y_jk = pair_kernel._pad_and_stack([r[2] for r in result], fill=0.0)
+            P_jk = pair_kernel._pad_and_stack([r[3] for r in result], fill=0.0)
+            jk_patches = pair_kernel._pad_and_stack([r[4] for r in result], fill=-1,
+                                                    dtype=np.int32)
         else:
-            Y_jk = P_jk = None
-        return Y, P, Y_jk, P_jk
+            Y_jk = P_jk = jk_patches = None
+        return Y, P, Y_jk, P_jk, jk_patches

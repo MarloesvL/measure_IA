@@ -88,6 +88,11 @@ class Grids:
     Splus_D_gal: Optional[np.ndarray] = None
     DD_gal_jk: Optional[np.ndarray] = None
     Splus_D_gal_jk: Optional[np.ndarray] = None
+    # sparse (per_galaxy_jk_sparse) form of the two arrays above: values for only the
+    # patches a galaxy actually has pairs in, with the shared patch index array.
+    gal_jk_patches: Optional[np.ndarray] = None
+    DD_gal_jk_values: Optional[np.ndarray] = None
+    Splus_D_gal_jk_values: Optional[np.ndarray] = None
 
 
 def prepare_box_samples(data, masks, Num_position, Num_shape, *, shapes, ellipticity, base,
@@ -659,7 +664,8 @@ def _accumulate_lightcone(sample_set, binning, *, base, shapes, chunk_size_outer
 def accumulate(sample_set, binning, *, base, R=None, shapes=True,
                chunk_axis="shape", chunk_size_outer=100, jk=False, num_box=None,
                pos_tree=None, shape_tree=None, backend="tree",
-               per_galaxy=False, per_galaxy_proj=None, per_galaxy_jk=False):
+               per_galaxy=False, per_galaxy_proj=None, per_galaxy_jk=False,
+               per_galaxy_jk_sparse=False):
     """Run the pair-accumulation loop and return the resulting grids.
 
     Implemented so far: box geometry, ``BoxRpPi`` / ``BoxRMuR`` binnings,
@@ -708,6 +714,16 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
         materialising the ``mu_r`` axis per galaxy. ``DD_gal`` is *not* contracted with
         ``W`` — it is the plain pair count per radial bin, which is what a per-galaxy
         regression design matrix needs — so it has shape ``(M, num_bins_r)`` too.
+
+    ``per_galaxy_jk_sparse=True`` stores that decomposition only for the patches each
+    galaxy actually has pairs in. A galaxy's neighbours span a ball of radius ``r_max``, so
+    it reaches at most a handful of sub-boxes however many there are in total, and the rest
+    of the patch axis is *structurally* zero. The dense ``(M, num_box, num_bins_r)`` form
+    becomes ``gal_jk_patches`` ``(M, K)`` plus ``*_gal_jk_values`` ``(M, K, num_bins_r)``,
+    with ``K`` the largest number of patches any one galaxy touches and unused slots padded
+    with patch ``-1`` and zero values. ``DD`` and ``S+D`` share one patch array, since a
+    pair contributes to both. This is a pure change of representation: the stored floats
+    are the same values, so results are bit-identical (asserted by a test).
 
     ``per_galaxy_jk=True`` further decomposes the per-galaxy arrays by the jackknife
     patch of the *position-sample* partner, giving ``(M, num_box, num_bins_r)``. Combined
@@ -778,6 +794,10 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
         )
     if per_galaxy_jk and num_box is None:
         raise ValueError("pair_kernel.accumulate: per_galaxy_jk=True requires num_box.")
+    if per_galaxy_jk_sparse and not per_galaxy_jk:
+        raise ValueError(
+            "pair_kernel.accumulate: per_galaxy_jk_sparse=True requires per_galaxy_jk=True."
+        )
     if per_galaxy_jk and (sample_set.jk_pos is None or sample_set.jk_shape is None):
         raise ValueError(
             "pair_kernel.accumulate: per_galaxy_jk=True requires sample_set.jk_pos and "
@@ -807,10 +827,18 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
             gal_shape = (num_gal, binning.num_bins_r)
         DD_gal = np.zeros(gal_shape)
         Splus_D_gal = np.zeros(gal_shape) if shapes else None
-        if per_galaxy_jk:
+        if per_galaxy_jk and not per_galaxy_jk_sparse:
             jk_gal_shape = (num_gal, num_box, binning.num_bins_r)
             DD_gal_jk = np.zeros(jk_gal_shape)
             Splus_D_gal_jk = np.zeros(jk_gal_shape) if shapes else None
+    # Sparse jackknife decomposition: accumulate one outer chunk at a time into a small
+    # dense buffer, then keep only the patches that chunk actually touched. The buffer is
+    # (chunk_size_outer, num_box, num_bins_r), which stays small however large num_box is.
+    sp_buffer_DD = sp_buffer_Splus = None
+    sp_chunks_patches, sp_chunks_DD, sp_chunks_Splus = [], [], []
+    if per_galaxy and per_galaxy_jk_sparse:
+        sp_buffer_DD = np.zeros((chunk_size_outer, num_box, binning.num_bins_r))
+        sp_buffer_Splus = np.zeros((chunk_size_outer, num_box, binning.num_bins_r)) if shapes else None
 
     positions = sample_set.pos
     positions_shape_sample = sample_set.pos_shape
@@ -826,6 +854,10 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
         pos_tree = KDTree(binning.tree_coords(positions, not_LOS), boxsize=base.boxsize)
     for i in np.arange(0, len(positions_shape_sample), chunk_size_outer):
         i2 = min(len(positions_shape_sample), i + chunk_size_outer)
+        if sp_buffer_DD is not None:
+            sp_buffer_DD[:i2 - i] = 0.0
+            if sp_buffer_Splus is not None:
+                sp_buffer_Splus[:i2 - i] = 0.0
         positions_shape_sample_i = positions_shape_sample[i:i2]
         weight_shape_i = weight_shape[i:i2]
         if shapes:
@@ -916,14 +948,84 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
                         # therefore reproduces the union deletion of DD_jk / Splus_D_jk.
                         # Splus_D_gal_jk is raw (not divided by 2R), matching Splus_D_jk.
                         pos_patches_gal = jk_pos[ind_rbin_i[n]][mask]
-                        np.add.at(DD_gal_jk[gj], (pos_patches_gal, ind_r), w_pairs_gal)
+                        # dense target, or this chunk's buffer row when storing sparsely
+                        target_DD = sp_buffer_DD[n] if per_galaxy_jk_sparse else DD_gal_jk[gj]
+                        np.add.at(target_DD, (pos_patches_gal, ind_r), w_pairs_gal)
                         if shapes:
-                            np.add.at(Splus_D_gal_jk[gj], (pos_patches_gal, ind_r),
+                            target_S = (sp_buffer_Splus[n] if per_galaxy_jk_sparse
+                                        else Splus_D_gal_jk[gj])
+                            np.add.at(target_S, (pos_patches_gal, ind_r),
                                       proj_gal * w_pairs_gal * e_plus[mask])
+
+        if sp_buffer_DD is not None:
+            patches_c, DD_c, Splus_c = _compress_jk_chunk(
+                sp_buffer_DD, sp_buffer_Splus, i2 - i)
+            sp_chunks_patches.append(patches_c)
+            sp_chunks_DD.append(DD_c)
+            if Splus_c is not None:
+                sp_chunks_Splus.append(Splus_c)
+
+    gal_jk_patches = DD_gal_jk_values = Splus_D_gal_jk_values = None
+    if sp_buffer_DD is not None:
+        gal_jk_patches = _pad_and_stack(sp_chunks_patches, fill=-1, dtype=np.int32)
+        DD_gal_jk_values = _pad_and_stack(sp_chunks_DD, fill=0.0)
+        if sp_chunks_Splus:
+            Splus_D_gal_jk_values = _pad_and_stack(sp_chunks_Splus, fill=0.0)
 
     return Grids(DD=DD, Splus_D=Splus_D, Scross_D=Scross_D, DD_jk=DD_jk, Splus_D_jk=Splus_D_jk,
                  DD_gal=DD_gal, Splus_D_gal=Splus_D_gal,
-                 DD_gal_jk=DD_gal_jk, Splus_D_gal_jk=Splus_D_gal_jk)
+                 DD_gal_jk=DD_gal_jk, Splus_D_gal_jk=Splus_D_gal_jk,
+                 gal_jk_patches=gal_jk_patches,
+                 DD_gal_jk_values=DD_gal_jk_values,
+                 Splus_D_gal_jk_values=Splus_D_gal_jk_values)
+
+
+def _compress_jk_chunk(buffer_DD, buffer_Splus, used):
+    """Keep only the patches this chunk of galaxies actually has pairs in.
+
+    A patch counts as occupied when its ``DD`` row is nonzero — ``DD`` is a pair count, so
+    it is nonzero whenever the galaxy has any pair in that patch, whereas ``S+D`` can
+    legitimately cancel to zero. Using ``DD`` as the occupancy mask therefore never drops a
+    nonzero ``S+D`` entry.
+
+    Returns ``(patches, DD_values, Splus_values)`` for this chunk, each with the chunk's own
+    ``K`` (padded to a common ``K`` later).
+    """
+    occupied = buffer_DD[:used].any(axis=2)             # (used, num_box)
+    counts = occupied.sum(axis=1)
+    K = int(counts.max()) if used and counts.size else 0
+    K = max(K, 1)
+    num_bins_r = buffer_DD.shape[2]
+
+    patches = np.full((used, K), -1, dtype=np.int32)
+    DD_values = np.zeros((used, K, num_bins_r))
+    Splus_values = np.zeros((used, K, num_bins_r)) if buffer_Splus is not None else None
+
+    rows, cols = np.nonzero(occupied)                   # row-major, so rows are grouped
+    if rows.size:
+        # rank of each entry within its own row, to fill left-packed slots
+        starts = np.concatenate([[0], np.cumsum(counts)[:-1]])
+        slots = np.arange(rows.size) - np.repeat(starts, counts)
+        patches[rows, slots] = cols
+        DD_values[rows, slots] = buffer_DD[:used][rows, cols]
+        if Splus_values is not None:
+            Splus_values[rows, slots] = buffer_Splus[:used][rows, cols]
+    return patches, DD_values, Splus_values
+
+
+def _pad_and_stack(chunks, *, fill, dtype=None):
+    """Concatenate per-chunk sparse arrays along the galaxy axis, padding each chunk's
+    patch axis out to the largest ``K`` seen across chunks."""
+    K = max(c.shape[1] for c in chunks)
+    padded = []
+    for c in chunks:
+        if c.shape[1] == K:
+            padded.append(c)
+            continue
+        pad_width = [(0, 0), (0, K - c.shape[1])] + [(0, 0)] * (c.ndim - 2)
+        padded.append(np.pad(c, pad_width, constant_values=fill))
+    out = np.concatenate(padded, axis=0)
+    return out.astype(dtype) if dtype is not None else out
 
 
 def compute_R_jk(e, weight_shape, jk_shape, num_box, responsivity_correction):
