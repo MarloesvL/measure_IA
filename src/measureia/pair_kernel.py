@@ -74,12 +74,20 @@ class Grids:
     per-realisation jackknife grids ``DD_jk``/``Splus_D_jk`` are None unless
     ``jk=True`` (and ``Splus_D_jk`` also requires ``shapes=True``). ``Splus_D_jk``
     stores the *raw* (un-responsivity-divided) S+ contribution — responsivity is
-    applied later in the reduction, matching the legacy jk grids."""
+    applied later in the reduction, matching the legacy jk grids.
+
+    The ``*_gal`` fields carry the same sums resolved *per shape galaxy* and are
+    None unless ``per_galaxy=True``; see ``accumulate`` for their axes and for the
+    ``*_gal_jk`` position-patch decomposition."""
     DD: np.ndarray
     Splus_D: Optional[np.ndarray] = None
     Scross_D: Optional[np.ndarray] = None
     DD_jk: Optional[np.ndarray] = None
     Splus_D_jk: Optional[np.ndarray] = None
+    DD_gal: Optional[np.ndarray] = None
+    Splus_D_gal: Optional[np.ndarray] = None
+    DD_gal_jk: Optional[np.ndarray] = None
+    Splus_D_gal_jk: Optional[np.ndarray] = None
 
 
 def prepare_box_samples(data, masks, Num_position, Num_shape, *, shapes, ellipticity, base,
@@ -650,7 +658,8 @@ def _accumulate_lightcone(sample_set, binning, *, base, shapes, chunk_size_outer
 
 def accumulate(sample_set, binning, *, base, R=None, shapes=True,
                chunk_axis="shape", chunk_size_outer=100, jk=False, num_box=None,
-               pos_tree=None, shape_tree=None, backend="tree"):
+               pos_tree=None, shape_tree=None, backend="tree",
+               per_galaxy=False, per_galaxy_proj=None, per_galaxy_jk=False):
     """Run the pair-accumulation loop and return the resulting grids.
 
     Implemented so far: box geometry, ``BoxRpPi`` / ``BoxRMuR`` binnings,
@@ -682,6 +691,36 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
         deliberate consolidation choice (REFACTOR_PLAN.md section 4). It counts
         exactly the same pairs the legacy brute did (same window mask), so integer
         (unit-weight) DD grids still match exactly.
+
+    ``per_galaxy=True`` (box path only) additionally resolves the same sums **per shape
+    galaxy**, i.e. without summing over the shape sample. It changes nothing about the
+    grids above: the per-galaxy arrays are accumulated in their own branch and satisfy
+    ``per_galaxy_arrays.sum(axis=0) == the corresponding grid`` by construction. The
+    galaxy axis is indexed as in ``sample_set.pos_shape`` (so, in the multiprocessing
+    path, local to the batch — the caller concatenates batches in order).
+
+      - ``per_galaxy_proj=None``: ``DD_gal``/``Splus_D_gal`` have shape
+        ``(M, num_bins_r, num_bins_pi)``, the same axes as the grids.
+      - ``per_galaxy_proj=W`` with ``W`` of shape ``(num_bins_r, num_bins_pi)``: the
+        second bin axis is contracted with ``W`` as it is accumulated, giving
+        ``Splus_D_gal`` of shape ``(M, num_bins_r)``. This is how the multipole kernel
+        (Legendre weight / RR, both analytic in the box) is folded in without ever
+        materialising the ``mu_r`` axis per galaxy. ``DD_gal`` is *not* contracted with
+        ``W`` — it is the plain pair count per radial bin, which is what a per-galaxy
+        regression design matrix needs — so it has shape ``(M, num_bins_r)`` too.
+
+    ``per_galaxy_jk=True`` further decomposes the per-galaxy arrays by the jackknife
+    patch of the *position-sample* partner, giving ``(M, num_box, num_bins_r)``. Combined
+    with the patch of the shape galaxy itself this reproduces the union-deletion of
+    ``DD_jk``/``Splus_D_jk`` exactly: realisation ``n`` drops every shape galaxy with
+    ``jk_shape == n`` and subtracts column ``n`` from the rest. It requires
+    ``per_galaxy_proj`` (and ``sample_set.jk_pos``/``jk_shape``), since the undecomposed
+    ``mu_r`` axis would multiply the footprint by ``num_bins_pi``.
+
+    All of this is inert when ``per_galaxy=False`` (the default): the pair loop, its
+    iteration order and its float summation order are untouched, so the bit-identity
+    guarantee of REFACTOR_PLAN.md section 4 still holds and normal measurements pay
+    nothing beyond one branch test per shape galaxy.
 
     ``pos_tree`` may be a prebuilt ``KDTree`` over ``sample_set.pos[:, not_LOS]``
     (tree backend only). The multiprocessing path passes the tree it built once in
@@ -727,12 +766,51 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
         )
     if jk and num_box is None:
         raise ValueError("pair_kernel.accumulate: jk=True requires num_box.")
+    if per_galaxy_jk and not per_galaxy:
+        raise ValueError(
+            "pair_kernel.accumulate: per_galaxy_jk=True requires per_galaxy=True."
+        )
+    if per_galaxy_jk and per_galaxy_proj is None:
+        raise ValueError(
+            "pair_kernel.accumulate: per_galaxy_jk=True requires per_galaxy_proj, so that "
+            "the mu_r/pi axis is contracted before the per-patch decomposition (an "
+            "undecomposed axis would multiply the per-galaxy footprint by num_bins_pi)."
+        )
+    if per_galaxy_jk and num_box is None:
+        raise ValueError("pair_kernel.accumulate: per_galaxy_jk=True requires num_box.")
+    if per_galaxy_jk and (sample_set.jk_pos is None or sample_set.jk_shape is None):
+        raise ValueError(
+            "pair_kernel.accumulate: per_galaxy_jk=True requires sample_set.jk_pos and "
+            "sample_set.jk_shape."
+        )
+    if per_galaxy_proj is not None:
+        per_galaxy_proj = np.asarray(per_galaxy_proj, dtype=float)
+        expected = (binning.num_bins_r, binning.num_bins_pi)
+        if per_galaxy_proj.shape != expected:
+            raise ValueError(
+                f"pair_kernel.accumulate: per_galaxy_proj has shape {per_galaxy_proj.shape}, "
+                f"expected {expected} (num_bins_r, num_bins_pi)."
+            )
 
     DD = np.array([[0.0] * binning.num_bins_pi] * binning.num_bins_r)
     Splus_D = np.array([[0.0] * binning.num_bins_pi] * binning.num_bins_r) if shapes else None
     Scross_D = np.array([[0.0] * binning.num_bins_pi] * binning.num_bins_r) if shapes else None
     DD_jk = np.zeros((num_box, binning.num_bins_r, binning.num_bins_pi)) if jk else None
     Splus_D_jk = np.zeros((num_box, binning.num_bins_r, binning.num_bins_pi)) if (jk and shapes) else None
+
+    DD_gal = Splus_D_gal = DD_gal_jk = Splus_D_gal_jk = None
+    if per_galaxy:
+        num_gal = len(sample_set.pos_shape)
+        if per_galaxy_proj is None:
+            gal_shape = (num_gal, binning.num_bins_r, binning.num_bins_pi)
+        else:
+            gal_shape = (num_gal, binning.num_bins_r)
+        DD_gal = np.zeros(gal_shape)
+        Splus_D_gal = np.zeros(gal_shape) if shapes else None
+        if per_galaxy_jk:
+            jk_gal_shape = (num_gal, num_box, binning.num_bins_r)
+            DD_gal_jk = np.zeros(jk_gal_shape)
+            Splus_D_gal_jk = np.zeros(jk_gal_shape) if shapes else None
 
     positions = sample_set.pos
     positions_shape_sample = sample_set.pos_shape
@@ -811,7 +889,41 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
                               (pos_patches[pos_diff], ind_r[pos_diff], ind_pi[pos_diff]),
                               w_pairs[pos_diff])
 
-    return Grids(DD=DD, Splus_D=Splus_D, Scross_D=Scross_D, DD_jk=DD_jk, Splus_D_jk=Splus_D_jk)
+                if per_galaxy:
+                    # Same pairs, same weights, resolved on the shape-galaxy axis. Kept
+                    # last and in its own branch so that nothing above changes when
+                    # per_galaxy is off.
+                    gj = i + n
+                    w_pairs_gal = weight[ind_rbin_i[n]][mask] * weight_shape_i[n]
+                    if per_galaxy_proj is None:
+                        np.add.at(DD_gal[gj], (ind_r, ind_pi), w_pairs_gal)
+                        if shapes:
+                            np.add.at(Splus_D_gal[gj], (ind_r, ind_pi),
+                                      w_pairs_gal * e_plus[mask] / (2 * R))
+                    else:
+                        proj_gal = per_galaxy_proj[ind_r, ind_pi]
+                        # DD_gal stays the plain pair count per radial bin: the projection
+                        # belongs to the estimator (S+D), not to the design matrix.
+                        np.add.at(DD_gal[gj], ind_r, w_pairs_gal)
+                        if shapes:
+                            np.add.at(Splus_D_gal[gj], ind_r,
+                                      proj_gal * w_pairs_gal * e_plus[mask] / (2 * R))
+                    if per_galaxy_jk:
+                        # Decompose by the position partner's patch only: the shape
+                        # galaxy's own patch is known from jk_shape, and delete-one drops
+                        # such a galaxy wholesale. Reconstructing realisation n as
+                        #   sum_{j: jk_shape[j] != n} (total_j - column_n_j)
+                        # therefore reproduces the union deletion of DD_jk / Splus_D_jk.
+                        # Splus_D_gal_jk is raw (not divided by 2R), matching Splus_D_jk.
+                        pos_patches_gal = jk_pos[ind_rbin_i[n]][mask]
+                        np.add.at(DD_gal_jk[gj], (pos_patches_gal, ind_r), w_pairs_gal)
+                        if shapes:
+                            np.add.at(Splus_D_gal_jk[gj], (pos_patches_gal, ind_r),
+                                      proj_gal * w_pairs_gal * e_plus[mask])
+
+    return Grids(DD=DD, Splus_D=Splus_D, Scross_D=Scross_D, DD_jk=DD_jk, Splus_D_jk=Splus_D_jk,
+                 DD_gal=DD_gal, Splus_D_gal=Splus_D_gal,
+                 DD_gal_jk=DD_gal_jk, Splus_D_gal_jk=Splus_D_gal_jk)
 
 
 def compute_R_jk(e, weight_shape, jk_shape, num_box, responsivity_correction):

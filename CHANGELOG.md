@@ -10,6 +10,16 @@ public API mean a major version bump.
 
 ### Added
 
+- `MeasureIABox.measure_galaxy_contributions`, which resolves the multipole estimator **per shape
+  galaxy**: for each galaxy and radial bin it returns the projected alignment contribution `Y` and
+  the pair count `P`, such that `Y.sum(axis=0)` is the ordinary `xi_g+,2(r)`. With `num_jk > 0` it
+  also returns both decomposed by the jackknife patch of the position-sample partner, which
+  rebuilds every delete-one realisation without re-counting any pairs. This is the input needed to
+  regress the alignment signal on per-galaxy properties: any number of properties can be fitted
+  from one pair traversal instead of one correlation-function run per weighting.
+- `per_galaxy`, `per_galaxy_proj` and `per_galaxy_jk` options on `pair_kernel.accumulate`, which
+  provide the above. All default to off, and when off the pair loop, its iteration order and its
+  float summation order are unchanged, so existing measurements are bit-identical and no slower.
 - A warning when the sky k-means fit does not converge within its iteration limit. The patches
   remain usable, but the regions are less settled than usual.
 

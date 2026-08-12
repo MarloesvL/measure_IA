@@ -5,11 +5,12 @@ from .measure_m_box_jk import MeasureMBoxJackknife
 from .measure_w_box import MeasureWBox
 from .measure_m_box import MeasureMultipolesBox
 from .measure_jackknife import MeasureJackknife
+from .measure_galaxy_box import MeasureGalaxyContributionsBox
 from .check_input import CheckInput
 
 
 class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, MeasureMBoxJackknife, MeasureJackknife,
-				   CheckInput):
+				   MeasureGalaxyContributionsBox, CheckInput):
 	r"""Manages the IA correlation function measurement methods used in the MeasureIA package based on speed and input.
 	This class is used to call the methods that measure $w_{gg}$, $w_{g+}$ and multipoles for simulations in cartesian
 	coordinates. Depending on the input parameters, various correlations incl covariance estimates are measured for
