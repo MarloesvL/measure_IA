@@ -10,9 +10,10 @@ public API mean a major version bump.
 
 ### Added
 
-- `MeasureIABox.measure_galaxy_contributions`, which resolves the multipole estimator **per shape
+- `MeasureIABox.measure_galaxy_contributions`, which resolves the box estimators **per shape
   galaxy**: for each galaxy and radial bin it returns the projected alignment contribution `Y` and
-  the pair count `P`, such that `Y.sum(axis=0)` is the ordinary `xi_g+,2(r)`. With `num_jk > 0` it
+  the pair count `P`, such that `Y.sum(axis=0)` is the ordinary `xi_g+,2(r)` (`statistic=
+  "multipoles"`) or `w_g+(r_p)` (`statistic="w"`). Runs on `num_nodes` cores. With `num_jk > 0` it
   also returns both decomposed by the jackknife patch of the position-sample partner, which
   rebuilds every delete-one realisation without re-counting any pairs. This is the input needed to
   regress the alignment signal on per-galaxy properties: any number of properties can be fitted

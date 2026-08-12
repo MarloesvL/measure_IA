@@ -35,10 +35,10 @@ def mock_data():
     }
 
 
-def _box(mock_data, outfile):
+def _box(mock_data, outfile, num_nodes=1):
     return MeasureIABox(mock_data, boxsize=BOXSIZE, separation_limits=SEP_LIMS,
                         num_bins_r=NUM_BINS_R, num_bins_pi=NUM_BINS_PI,
-                        output_file_name=str(outfile))
+                        num_nodes=num_nodes, output_file_name=str(outfile))
 
 
 def _sample_and_binning(mi, num_box=None, seed=0):
@@ -164,12 +164,63 @@ def test_contributions_rebuild_multipole_and_jackknife(mock_data, tmp_path):
         assert np.allclose(rec, ref_jk[n], rtol=1e-10, atol=0), f"realisation {n}"
 
 
+def test_contributions_rebuild_wgplus_and_jackknife(mock_data, tmp_path):
+    """Same identity for the projected statistic: statistic='w' reproduces
+    measure_xi_w's w_g+ and each of its jackknife realisations."""
+    outfile = tmp_path / "ref.hdf5"
+    _box(mock_data, outfile).measure_xi_w(
+        "ref", "g+", num_jk=NUM_JK, temp_file_path=str(tmp_path))
+    out = _box(mock_data, tmp_path / "gal.hdf5").measure_galaxy_contributions(
+        "gal", num_jk=NUM_JK, statistic="w", return_output=True)
+
+    with h5py.File(outfile, "r") as f:
+        g = f["w_g_plus"]
+        ref = g["ref"][:]
+        ref_jk = np.array([g[f"ref_jk{NUM_JK}"][f"ref_{i}"][:] for i in range(NUM_JK)])
+
+    assert np.allclose(out["Y"].sum(axis=0), ref, rtol=1e-12, atol=0)
+
+    Y_jk, jk_shape = out["Y_jk"], out["jk_shape"]
+    for n in range(NUM_JK):
+        keep = jk_shape != n
+        rec = (Y_jk[keep].sum(axis=1) - Y_jk[keep, n]).sum(axis=0)
+        rec /= out["rr_ratio"][n] * 2 * out["R_jk"][n]
+        assert np.allclose(rec, ref_jk[n], rtol=1e-10, atol=0), f"realisation {n}"
+
+
+@pytest.mark.parametrize("statistic", ["multipoles", "w"])
+def test_multiprocessing_matches_single_process(mock_data, tmp_path, statistic):
+    """The multiprocessing path must return exactly the single-process arrays: the galaxy
+    axis is contiguous per slice and Pool.map preserves slice order, so concatenation
+    reproduces the whole sample."""
+    single = _box(mock_data, tmp_path / "s.hdf5").measure_galaxy_contributions(
+        "gal", num_jk=NUM_JK, statistic=statistic, return_output=True)
+    multi = _box(mock_data, tmp_path / "m.hdf5", num_nodes=2).measure_galaxy_contributions(
+        "gal", num_jk=NUM_JK, statistic=statistic, temp_file_path=str(tmp_path),
+        chunk_size=300, return_output=True)
+
+    for key in ("Y", "P", "Y_jk", "P_jk", "jk_shape", "R_jk", "rr_ratio", "r"):
+        assert np.array_equal(single[key], multi[key]), key
+
+
+def test_multiprocessing_requires_temp_file_path(mock_data, tmp_path):
+    mi = _box(mock_data, tmp_path / "o.hdf5", num_nodes=2)
+    with pytest.raises(ValueError, match="requires temp_file_path"):
+        mi.measure_galaxy_contributions("gal", num_jk=NUM_JK)
+
+
+def test_unknown_statistic_rejected(mock_data, tmp_path):
+    mi = _box(mock_data, tmp_path / "o.hdf5")
+    with pytest.raises(ValueError, match="Unknown statistic"):
+        mi.measure_galaxy_contributions("gal", statistic="xi")
+
+
 def test_contributions_written_to_file(mock_data, tmp_path):
     outfile = tmp_path / "gal.hdf5"
     mi = _box(mock_data, outfile)
     assert mi.measure_galaxy_contributions("gal", num_jk=NUM_JK) is None
     with h5py.File(outfile, "r") as f:
-        grp = f["galaxy_contributions"]
+        grp = f["galaxy_contributions/multipoles"]
         assert grp["gal_Y"].shape == (mi.Num_shape, NUM_BINS_R)
         assert grp["gal_P"].shape == (mi.Num_shape, NUM_BINS_R)
         assert grp["gal_r"].shape == (NUM_BINS_R,)
