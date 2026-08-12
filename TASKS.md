@@ -5,6 +5,63 @@ P1 = features, P2 = input validation, P3 = test suite, P4 = cleanup & docs.
 
 ## P0 — Confirmed bugs (fix before release)
 
+- [ ] **OPEN (raised 2026-08-12): the two analytic `RR` functions disagree on whether the
+  cross count carries `Num_position - 1`.** Not yet resolved — the investigation below found
+  contradictory evidence, so this is an investigation task, not a ready fix.
+
+  **The inconsistency.** Three of the four analytic-`RR` branches exclude a self-pair, one
+  does not (`measure_IA_base.py`):
+
+  | function | corrtype | normalisation |
+  |---|---|---|
+  | `get_random_pairs_r_mur` (r, mu_r) | `auto`  | `(N_position - 1)/2 * N_shape` |
+  | `get_random_pairs_r_mur` (r, mu_r) | `cross` | `(N_position - 1) * N_shape` |
+  | `get_random_pairs` (rp, pi)        | `auto`  | `(N_position - 1) * N_shape / 2` |
+  | `get_random_pairs` (rp, pi)        | `cross` | `N_position * N_shape` ← odd one out |
+
+  **Why it looks wrong.** In the standard IA setup the shape sample is drawn *from* the
+  position sample, so a shape galaxy cannot pair with itself and `N_position - 1` partners
+  are available. That is true of the package's own mock: `radial_alignment_box_mock` returns
+  `Position` = centrals + satellites and `Position_shape_sample` = satellites, a strict
+  subset (`mocks.py:88-92`). On that reasoning the `-1` belongs in all four branches.
+
+  **Why it is not that simple.** Both branches are currently pinned by cross-code
+  validations that fail if changed, on that same mock:
+
+  - Adding `-1` to `get_random_pairs` cross → **6 failures**:
+    `TestGetRandomPairs::test_formula_cross` (hard-codes the current formula, expected),
+    `TestBoxAgainstHalotools::{test_w_g_plus_matches_halotools_up_to_2R, test_w_gg_matches_halotools}`,
+    `TestBoxCovarianceBridge::test_box_covariance_regression`,
+    `TestBoxJackknifeAgainstCorrPC::{test_full_sample_w_signal, test_delete_one_realisations}`.
+  - Removing `-1` from `get_random_pairs_r_mur` cross → **4 different failures**:
+    `TestBoxMultipolesAgainstCorrPC::{test_xi_grids_match_corrpc, test_multipoles_match_corrpc}`,
+    `TestBoxJackknifeAgainstCorrPC::{test_full_sample_multipole_signal, test_delete_one_realisations}`.
+
+  So each convention is validated *as written* against an external code, on the same
+  catalogue. They cannot both be describing the same normalisation correctly. The likely
+  explanation is that at least one comparison is matching how that reference code normalises
+  its own counts rather than testing the normalisation — which would make that validation
+  self-fulfilling on this point.
+
+  **Where to look.** How the reference counts are set up in
+  `validation/run_box_halotools.py` and `validation/run_box_multipoles_corrpc.py` (and the
+  `corr_pc` jackknife bridge), specifically whether the reference is given
+  `N_position * N_shape` or `(N_position - 1) * N_shape` pairs, and whether the shape sample
+  is passed as a distinct catalogue or as a subset flag.
+
+  **Impact — small but real.** The two differ by a uniform factor `N/(N-1)`: ~4.8e-4 on the
+  mock (`N_position = 2100`), ~1e-5 to 1e-6 at simulation sample sizes. Note the corr_pc
+  delete-one comparison runs at a 5e-4 tolerance, so on the mock the effect sits *just* under
+  the threshold — the current tests cannot distinguish the two conventions at that size. A
+  discriminating test would need a deliberately small sample, where `1/N` is large enough to
+  exceed the tolerance.
+
+  **Already insulated.** `measure_galaxy_box._galaxy_rr_ratio` derives the jackknife `RR`
+  amplitude ratio by calling these functions twice and dividing, rather than restating the
+  normalisation, so per-galaxy contributions stay consistent under either convention and
+  will not need changing when this is settled. Any fix does need to update
+  `TestGetRandomPairs::test_formula_cross`, which hard-codes the current formula.
+
 - [x] **NEW (found during P0 work): lightcone backend weight-mask fallback misalignment.**
   *Investigated and resolved. Verdict: NOT reachable through the public API — `_merged_masks`
   always injects `weight`/`weight_shape_sample` keys defaulting to the slot's coordinate mask,
