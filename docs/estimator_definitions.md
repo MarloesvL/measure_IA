@@ -25,8 +25,34 @@ DD &= \sum_{\{i,j\}}^{(r_\mathrm{p},\Pi)} w_i w_j \,.
 Both $w_i$ and $w_j$ denote the weights of objects in pair ${i,j}$, which are both set to $1$ if not provided.
 The weights can be provided using the 'weight' and 'weight_shape_sample' keys in the data dictionary upon
 initialisation.
-In the **box**, the $RR$ term is calculated analytically using the number of objects in the samples and the
-simulation volume. As $DR$ is expected to be equal to $RR$ in simulations, the equation for $\xi_\mathrm{gg}$
+In the **box**, the $RR$ term is calculated analytically from the number of *available* pairs and the
+simulation volume. That count is
+
+\begin{align}
+N_\mathrm{pairs} &= N_\mathrm{position} N_\mathrm{shape} - N_\mathrm{overlap}
+\end{align}
+
+(halved for an auto-correlation), where $N_\mathrm{overlap}$ is the number of objects present in **both**
+samples. The subtraction is there because a shape galaxy cannot pair with itself: such a pair has zero
+separation and is dropped by the pair loop, whose window starts at $r_\mathrm{min}>0$. There is exactly one
+self-pair per shared object, hence the single subtraction.
+
+This subsumes the two conventions in common use. For genuinely independent samples
+$N_\mathrm{overlap}=0$ and the count is the plain product $N_\mathrm{position}N_\mathrm{shape}$; when the
+shape sample is drawn *from* the position sample — the usual intrinsic-alignment setup — every shape object
+is shared, $N_\mathrm{overlap}=N_\mathrm{shape}$, and the count becomes
+$N_\mathrm{shape}(N_\mathrm{position}-1)$.
+
+MeasureIA **measures** the overlap from the coordinates rather than assuming it, so the right convention is
+used without the user having to declare anything, and partial overlap is handled correctly too. It can be
+overridden with the `num_overlap` argument of `MeasureIABox` when you need a specific convention: passing
+`0` reproduces what external codes such as halotools and corr_pc do, which is to treat the two samples as
+independent regardless of whether they overlap. The cross-code validation runs pass `num_overlap=0` for
+exactly that reason. The difference is a uniform factor $N/(N-1)$, negligible for a measured signal but
+worth being explicit about.
+
+The lightcone applies the same rule through its `num_samples["D_S"]` term, so both geometries agree on what
+"the same object in both samples" means. As $DR$ is expected to be equal to $RR$ in simulations, the equation for $\xi_\mathrm{gg}$
 reduces to $\xi_\mathrm{gg}=DD/RR-1$. (For the **lightcone**, $RR$ and the $DR$ terms are counted from explicit
 random catalogues instead — see [Lightcone estimators](#lightcone-estimators) below.)
 

@@ -53,6 +53,12 @@ def run_measureia(mock, output_file):
 		pi_max=PI_MAX,
 		boxsize=mock["boxsize"],
 		num_nodes=1,
+		# halotools and corr_pc both normalise a cross count by N_1 * N_2, i.e. they
+		# treat the two samples as independent. The mock's shape sample is drawn from
+		# its position sample, so MeasureIA would otherwise measure an overlap and
+		# subtract the self-pairs; num_overlap=0 states the reference codes' convention
+		# explicitly so the comparison comes out like for like.
+		num_overlap=0,
 	)
 	ia.measure_xi_w(DATASET, "both", 0, temp_file_path=False)
 	with h5py.File(output_file, "r") as f:

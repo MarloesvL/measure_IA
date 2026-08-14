@@ -13,6 +13,19 @@ public API mean a major version bump.
 - A warning when the sky k-means fit does not converge within its iteration limit. The patches
   remain usable, but the regions are less settled than usual.
 
+### Changed
+
+- The analytic `RR` in the box is now normalised by `Num_position * Num_shape - num_overlap`, one formula
+  replacing four ad-hoc branches, where `num_overlap` is the number of objects present in both samples. The
+  two `get_random_pairs*` functions previously disagreed with each other about this: the (rp, pi) form
+  assumed the samples were independent while the (r, mu_r) form assumed the shape sample was drawn from the
+  position sample, so `w_g+` and `xi_g+,2` measured from one catalogue differed by `N/(N-1)` for no stated
+  reason. The overlap is now measured from the coordinates instead of assumed, matching what the lightcone
+  already did through `num_samples["D_S"]`. `MeasureIABox` gains a `num_overlap` argument to override it;
+  `num_overlap=0` reproduces the convention of external codes such as halotools and corr_pc, and the
+  cross-code validation runs now pass it explicitly rather than correcting for the difference afterwards.
+  Box `w_gg`/`w_g+` values shift by `N/(N-1)` when the samples overlap; `xi_gg`/`xi_g+,2` are unchanged.
+
 ### Fixed
 
 - Jackknife patch labels are now always computed against the centres the fit returns. When the

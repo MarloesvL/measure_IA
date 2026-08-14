@@ -131,10 +131,10 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_g_plus[i, p] = self.get_random_pairs_r_mur(
 					self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, "cross",
-					Num_position, Num_shape)
+					Num_position, Num_shape, self.num_overlap)
 				RR_gg[i, p] = self.get_random_pairs_r_mur(
 					self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, corrtype,
-					Num_position, Num_shape)
+					Num_position, Num_shape, self.num_overlap)
 
 		RR_jk = np.zeros((num_box, self.num_bins_r, self.num_bins_pi))
 		volume_jk = L3 * (num_box - 1) / (num_box)
@@ -146,7 +146,8 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 					RR_jk[jk, i, p] = self.get_random_pairs_r_mur(
 						self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], volume_jk,
 						"cross",
-						Num_position_jk, Num_shape_jk)
+						Num_position_jk, Num_shape_jk,
+						self.num_overlap - self.overlap_jk_counts[jk])
 
 		RR_g_plus_denom = RR_g_plus.copy()  # guard against empty samples/bins in the divisions; raw RR grids are written to file
 		RR_g_plus_denom[RR_g_plus_denom == 0] = 1
@@ -273,10 +274,10 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_g_plus[i, p] = self.get_random_pairs_r_mur(
 					self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, "cross",
-					Num_position, Num_shape)
+					Num_position, Num_shape, self.num_overlap)
 				RR_gg[i, p] = self.get_random_pairs_r_mur(
 					self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, corrtype,
-					Num_position, Num_shape)
+					Num_position, Num_shape, self.num_overlap)
 
 		RR_jk = np.zeros((num_box, self.num_bins_r, self.num_bins_pi))
 		volume_jk = L3 * (num_box - 1) / num_box
@@ -288,7 +289,8 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 					RR_jk[jk, i, p] = self.get_random_pairs_r_mur(
 						self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], volume_jk,
 						"cross",
-						Num_position_jk, Num_shape_jk)
+						Num_position_jk, Num_shape_jk,
+						self.num_overlap - self.overlap_jk_counts[jk])
 
 		RR_g_plus_denom = RR_g_plus.copy()  # guard against empty samples/bins in the divisions; raw RR grids are written to file
 		RR_g_plus_denom[RR_g_plus_denom == 0] = 1
@@ -552,10 +554,10 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_g_plus[i, p] = self.get_random_pairs_r_mur(
 					self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, "cross",
-					self.Num_position_masked, self.Num_shape_masked)
+					self.Num_position_masked, self.Num_shape_masked, self.num_overlap)
 				RR_gg[i, p] = self.get_random_pairs_r_mur(
 					self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, corrtype,
-					self.Num_position_masked, self.Num_shape_masked)
+					self.Num_position_masked, self.Num_shape_masked, self.num_overlap)
 
 		RR_jk = np.zeros((self.num_box, self.num_bins_r, self.num_bins_pi))
 		volume_jk = L3 * (self.num_box - 1) / self.num_box
@@ -567,7 +569,8 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 					RR_jk[jk, i, p] = self.get_random_pairs_r_mur(
 						self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], volume_jk,
 						"cross",
-						Num_position_jk, Num_shape_jk)
+						Num_position_jk, Num_shape_jk,
+						self.num_overlap - self.overlap_jk_counts[jk])
 
 		RR_g_plus_denom = RR_g_plus.copy()  # guard against empty samples/bins in the divisions; raw RR grids are written to file
 		RR_g_plus_denom[RR_g_plus_denom == 0] = 1
@@ -681,7 +684,7 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_gg[i, p] = self.get_random_pairs_r_mur(
 					self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, corrtype,
-					Num_position, Num_shape)
+					Num_position, Num_shape, self.num_overlap)
 
 		RR_jk = np.zeros((num_box, self.num_bins_r, self.num_bins_pi))
 		volume_jk = L3 * (num_box - 1) / (num_box)
@@ -693,7 +696,8 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 					RR_jk[jk, i, p] = self.get_random_pairs_r_mur(
 						self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], volume_jk,
 						"cross",
-						Num_position_jk, Num_shape_jk)
+						Num_position_jk, Num_shape_jk,
+						self.num_overlap - self.overlap_jk_counts[jk])
 
 		RR_gg_denom = RR_gg.copy()  # guard against empty samples/bins in the division; raw RR grid is written to file
 		RR_gg_denom[RR_gg_denom == 0] = 1
@@ -780,7 +784,7 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_gg[i, p] = self.get_random_pairs_r_mur(
 					self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, corrtype,
-					Num_position, Num_shape)
+					Num_position, Num_shape, self.num_overlap)
 
 		RR_jk = np.zeros((num_box, self.num_bins_r, self.num_bins_pi))
 		volume_jk = L3 * (num_box - 1) / num_box
@@ -792,7 +796,8 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 					RR_jk[jk, i, p] = self.get_random_pairs_r_mur(
 						self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], volume_jk,
 						"cross",
-						Num_position_jk, Num_shape_jk)
+						Num_position_jk, Num_shape_jk,
+						self.num_overlap - self.overlap_jk_counts[jk])
 
 		RR_gg_denom = RR_gg.copy()  # guard against empty samples/bins in the division; raw RR grid is written to file
 		RR_gg_denom[RR_gg_denom == 0] = 1
@@ -1003,7 +1008,7 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_gg[i, p] = self.get_random_pairs_r_mur(
 					self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, corrtype,
-					self.Num_position_masked, self.Num_shape_masked)
+					self.Num_position_masked, self.Num_shape_masked, self.num_overlap)
 
 		RR_jk = np.zeros((self.num_box, self.num_bins_r, self.num_bins_pi))
 		volume_jk = L3 * (self.num_box - 1) / self.num_box
@@ -1015,7 +1020,8 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 					RR_jk[jk, i, p] = self.get_random_pairs_r_mur(
 						self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], volume_jk,
 						"cross",
-						Num_position_jk, Num_shape_jk)
+						Num_position_jk, Num_shape_jk,
+						self.num_overlap - self.overlap_jk_counts[jk])
 
 		RR_gg_denom = RR_gg.copy()  # guard against empty samples/bins in the division; raw RR grid is written to file
 		RR_gg_denom[RR_gg_denom == 0] = 1

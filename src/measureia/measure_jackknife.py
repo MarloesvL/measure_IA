@@ -288,7 +288,28 @@ class MeasureJackknife(MeasureIABase):
 					jackknife_region_indices_pos[mask_position] = num_box
 					jackknife_region_indices_shape[mask_shape] = num_box
 					num_box += 1
-		return np.array(jackknife_region_indices_pos, dtype=int), np.array(jackknife_region_indices_shape, dtype=int)
+		jk_pos = np.array(jackknife_region_indices_pos, dtype=int)
+		jk_shape = np.array(jackknife_region_indices_shape, dtype=int)
+
+		# Per-region counts of objects present in both samples, so a delete-one realisation
+		# adjusts the available-pair count by exactly the overlap it removes. An overlapping
+		# object has identical coordinates in both samples and so falls in the same sub-box
+		# in both; counting it once on the shape side is enough. Imported here rather than at
+		# module scope to keep the import graph acyclic.
+		override = getattr(self, "_num_overlap_override", None)
+		if override is not None:
+			# An explicit override is a statement about the whole sample, so it is applied
+			# uniformly and no per-region adjustment is made. For the usual override (0,
+			# matching codes that treat the samples as independent) that is exact.
+			self.num_overlap = int(override)
+			self.overlap_jk_counts = np.zeros(L_subboxes ** 3, dtype=int)
+		else:
+			from .measure_IA_base import overlap_indices
+			ov = overlap_indices(positions, positions_shape_sample)
+			self.num_overlap = int(len(ov))
+			self.overlap_jk_counts = (np.bincount(jk_shape[ov], minlength=L_subboxes ** 3)
+									  if len(ov) else np.zeros(L_subboxes ** 3, dtype=int))
+		return jk_pos, jk_shape
 
 	def measure_covariance_multiple_datasets(self, corr_types, dataset_names, num_box=27, return_output=False):
 		"""Combines the jackknife measurements for different datasets into one covariance matrix.

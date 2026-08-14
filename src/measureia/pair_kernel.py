@@ -173,6 +173,16 @@ def prepare_box_samples(data, masks, Num_position, Num_shape, *, shapes, ellipti
     LOS_ind = data["LOS"]
     not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], LOS_ind, invert=True)]
 
+    # How many objects sit in both samples, after masking. The analytic RR needs this:
+    # a shape galaxy cannot pair with itself, and the pair loop already drops that
+    # self-pair because the separation window starts at r_min > 0. Recorded on the
+    # caller so every RR call in the backends can use one consistent value.
+    # Imported here rather than at module scope to keep the import graph acyclic.
+    from .measure_IA_base import count_overlap
+    override = getattr(base, "_num_overlap_override", None)
+    base.num_overlap = (int(override) if override is not None
+                        else count_overlap(positions, positions_shape_sample))
+
     return SampleSet(
         pos=positions, pos_shape=positions_shape_sample,
         weight=weight, weight_shape=weight_shape,

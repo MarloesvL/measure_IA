@@ -5,6 +5,49 @@ P1 = features, P2 = input validation, P3 = test suite, P4 = cleanup & docs.
 
 ## P0 — Confirmed bugs (fix before release)
 
+- [x] **The two analytic `RR` functions assumed different things about sample overlap.**
+  *Resolved 2026-08-14. The four ad-hoc branches are replaced by one count in
+  `available_pairs()`:*
+
+      N_pairs = Num_position * Num_shape - num_overlap        (halved for "auto")
+
+  *`num_overlap` is the number of objects in **both** samples. A shape galaxy cannot pair
+  with itself, that pair has zero separation and is dropped by the loop (the window starts
+  at `r_min > 0`), and there is exactly one such pair per shared object. This subsumes both
+  previous conventions: `Num_position * Num_shape` when the samples are independent, and
+  `Num_shape * (Num_position - 1)` when the shape sample is drawn from the position sample.*
+
+  *The earlier reading of the evidence was wrong twice over, and both errors are worth
+  recording. First, the branch count was treated as the argument ("three of four carry the
+  `-1`"), which counts branches instead of asking what each is for. Second, the validations
+  were read as contradictory when in fact both reference codes (halotools, corr_pc) use the
+  independent-sample convention, and the corr_pc comparison merely **compensated** for
+  MeasureIA differing, with a hard-coded `(n_pos - 1)/n_pos`. Those tests encoded the `-1`
+  rather than confirming it. The real defect was never one wrong branch: it was that `w_g+`
+  and `xi_g+,2` from one catalogue differed by `N/(N-1)` for no stated reason.*
+
+  *The overlap is now **measured** from the coordinates, mirroring how the lightcone
+  determines `num_samples["D_S"]`, so box and lightcone agree on what "the same object in
+  both samples" means and partial overlap is handled too. Threaded through two choke points
+  (`prepare_box_samples`, `_get_jackknife_region_indices`) rather than 48 call sites, with
+  the jackknife subtracting only the overlap each region removes.*
+
+  *`MeasureIABox` gained a `num_overlap` argument to override the measurement.
+  `num_overlap=0` states the reference codes' convention explicitly, and all five box
+  validation runs now pass it — which let the corr_pc comparison **drop** its compensation
+  factor and its delete-one mapping term, so the validations now compare like for like
+  instead of correcting afterwards.*
+
+  *Box `w_gg`/`w_g+` shift by `N/(N-1)` when the samples overlap; `xi_gg`/`xi_g+,2` are
+  unchanged (the new formula reproduces the old (r, mu_r) value exactly). Documented in
+  `docs/estimator_definitions.md` and the changelog; 579 tests pass, including a new
+  `TestSampleOverlap` covering the two limits, the auto case, the measurement, the override
+  and its validation.*
+
+  *Still open, deliberately: the corr_pc delete-one comparison runs at a 5e-4 tolerance
+  while the mock effect is 4.8e-4, so the suite still cannot discriminate the conventions on
+  that mock. A test on a deliberately small sample would pin it properly.*
+
 - [x] **NEW (found during P0 work): lightcone backend weight-mask fallback misalignment.**
   *Investigated and resolved. Verdict: NOT reachable through the public API — `_merged_masks`
   always injects `weight`/`weight_shape_sample` keys defaulting to the slot's coordinate mask,
