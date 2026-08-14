@@ -44,9 +44,17 @@ P1 = features, P2 = input validation, P3 = test suite, P4 = cleanup & docs.
   `TestSampleOverlap` covering the two limits, the auto case, the measurement, the override
   and its validation.*
 
-  *Still open, deliberately: the corr_pc delete-one comparison runs at a 5e-4 tolerance
-  while the mock effect is 4.8e-4, so the suite still cannot discriminate the conventions on
-  that mock. A test on a deliberately small sample would pin it properly.*
+  *The suite can now discriminate the conventions, which it previously could not: the
+  cross-code comparisons run on a 200-object mock where the difference is 5e-3 against a
+  5e-4 tolerance -- close enough to the threshold that the two functions disagreeing went
+  unnoticed. `TestOverlapConventionIsDiscriminated` replaces that with an exact check on a
+  12-object catalogue confined to a clump, with the binning window containing every pair
+  separation. `sum(DD)` is then an integer -- the pairs the loop actually found -- and
+  `sum(RR)` divided by the binned volume over the box volume recovers the pair count the
+  normalisation assumed; the two must agree, with no tolerance beyond floating point. At
+  N = 12 the conventions differ by 9%. Verified to fail under each old convention in the
+  regime where that convention is wrong (disjoint-everywhere fails the overlapping case,
+  (N-1)-everywhere fails the disjoint case), so neither could pass it.*
 
 - [x] **NEW (found during P0 work): lightcone backend weight-mask fallback misalignment.**
   *Investigated and resolved. Verdict: NOT reachable through the public API — `_merged_masks`

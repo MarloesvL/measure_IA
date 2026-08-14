@@ -28,6 +28,8 @@ Covers
 """
 
 import math
+
+import h5py
 import numpy as np
 import pytest
 from measureia import MeasureIABase, MeasureIABox, SimInfo
@@ -746,3 +748,95 @@ class TestSampleOverlap:
         from measureia import MeasureIABox
         with pytest.raises(ValueError, match="num_overlap"):
             MeasureIABox(_box_catalog, "dummy_output.hdf5", boxsize=205.0, num_overlap=bad)
+
+
+class TestOverlapConventionIsDiscriminated:
+    r"""End-to-end check that the analytic RR is normalised by the pairs the loop
+    actually counts.
+
+    This is the test the cross-code validations cannot provide. Those compare against
+    halotools and corr_pc on a 200-object mock, where the difference between the two
+    conventions is ``1/(N-1) = 5e-3`` against a 5e-4 tolerance -- close enough to the
+    threshold that the suite could not tell them apart, which is how the two
+    ``get_random_pairs*`` functions came to disagree with each other unnoticed.
+
+    The trick here is to make the check *exact* rather than statistical. The catalogue is
+    tiny and confined to a small clump, and the binning window is chosen to contain every
+    pair separation present. Then:
+
+    - ``sum(DD)`` is an integer: the number of ordered pairs the counting loop found, which
+      is ``N_position * N_shape`` minus one self-pair per shared object;
+    - ``sum(RR)`` is analytic, and dividing it by the total binned volume over the box
+      volume recovers whatever pair count the normalisation assumed.
+
+    Those two numbers must agree. No random catalogue, no convergence, no tolerance beyond
+    floating point -- and with ``N = 12`` the two conventions differ by 9%, far outside any
+    plausible slack.
+    """
+
+    BOX = 100.0
+    R_MIN, R_MAX, PI_MAX = 0.01, 25.0, 25.0
+    N_POS, N_SHAPE = 12, 5
+
+    def _catalogue(self, overlapping):
+        """Twelve positions in a clump, and a shape sample either drawn from them
+        (overlapping) or made of five separate objects (disjoint)."""
+        rng = np.random.default_rng(20260814)
+        pos = rng.uniform(45.0, 55.0, size=(self.N_POS, 3))
+        if overlapping:
+            shape_pos = pos[:self.N_SHAPE].copy()
+        else:
+            shape_pos = rng.uniform(45.0, 55.0, size=(self.N_SHAPE, 3))
+            assert not np.any(np.all(shape_pos[:, None, :] == pos[None, :, :], axis=-1))
+        n = len(shape_pos)
+        return {
+            "Position": pos,
+            "Position_shape_sample": shape_pos,
+            "Axis_Direction": np.tile([1.0, 0.0], (n, 1)),
+            "q": np.full(n, 0.5),
+            "LOS": 2,
+        }
+
+    def _measure(self, tmp_path, overlapping, statistic):
+        from measureia import MeasureIABox
+        data = self._catalogue(overlapping)
+        out = str(tmp_path / f"overlap_{statistic}_{overlapping}.hdf5")
+        obj = MeasureIABox(data, out, boxsize=self.BOX,
+                           separation_limits=[self.R_MIN, self.R_MAX],
+                           num_bins_r=4, num_bins_pi=4, pi_max=self.PI_MAX)
+        if statistic == "w":
+            obj.measure_xi_w("cv", "gg", 0, temp_file_path=False)
+            group = "w/xi_gg"
+            # cylinder of radius r_max and full height 2 pi_max, less the r < r_min core
+            volume = (np.pi * (self.R_MAX ** 2 - self.R_MIN ** 2) * 2 * self.PI_MAX)
+        else:
+            obj.measure_xi_multipoles("cv", "gg", 0, temp_file_path=False)
+            group = "multipoles/xi_gg"
+            # spherical shell between r_min and r_max, over the full mu_r range
+            volume = 4.0 * np.pi / 3.0 * (self.R_MAX ** 3 - self.R_MIN ** 3)
+        with h5py.File(out, "r") as f:
+            dd = f[obj.snap_group + group]["cv_DD"][:]
+            rr = f[obj.snap_group + group]["cv_RR_gg"][:]
+        return obj, dd.sum(), rr.sum() * self.BOX ** 3 / volume
+
+    @pytest.mark.parametrize("statistic", ["w", "multipoles"])
+    @pytest.mark.parametrize("overlapping", [True, False])
+    def test_rr_normalisation_matches_the_pairs_counted(self, tmp_path, statistic,
+                                                        overlapping):
+        obj, counted, implied = self._measure(tmp_path, overlapping, statistic)
+
+        expected_overlap = self.N_SHAPE if overlapping else 0
+        assert obj.num_overlap == expected_overlap
+        # every pair sits inside the window, so the loop finds all of them
+        assert counted == pytest.approx(self.N_POS * self.N_SHAPE - expected_overlap)
+        # ... and RR must be normalised by that same number
+        assert implied == pytest.approx(counted, rel=1e-12)
+
+    @pytest.mark.parametrize("statistic", ["w", "multipoles"])
+    def test_the_two_conventions_are_far_apart_here(self, tmp_path, statistic):
+        """Guard on the guard: the sample is small enough that getting the convention
+        wrong is a 9% error, so this test cannot be passed by accident the way the 200-object
+        cross-code comparisons could."""
+        _, counted, _ = self._measure(tmp_path, True, statistic)
+        wrong = self.N_POS * self.N_SHAPE          # the disjoint-sample convention
+        assert abs(wrong - counted) / counted > 0.05
