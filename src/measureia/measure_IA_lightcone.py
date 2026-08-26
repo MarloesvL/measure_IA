@@ -5,6 +5,7 @@ from .measure_m_lightcone_jk import MeasureMultipolesLightconeJackknife
 from .measure_m_lightcone import MeasureMultipolesLightcone
 from .measure_jackknife import MeasureJackknife
 from .check_input import CheckInput
+from . import worker_pool
 
 
 class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureWLightconeJackknife,
@@ -475,6 +476,7 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 
 		return
 
+	@worker_pool.pooled
 	def measure_xi_w(self, IA_estimator, dataset_name, corr_type, jk_patches=None, num_jk=None,
 					 masks=None, masks_randoms=None, cosmology=None, over_h=False, tree=True,
 					 chunk_size=1000, temp_file_path=None, seed=None, responsivity=False):
@@ -680,6 +682,7 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 		self.data = data
 		return
 
+	@worker_pool.pooled
 	def measure_xi_multipoles(self, IA_estimator, dataset_name, corr_type, jk_patches=None, num_jk=None,
 							  masks=None, masks_randoms=None, cosmology=None, over_h=False,
 							  tree=True, chunk_size=1000, temp_file_path=None, seed=None, responsivity=False):

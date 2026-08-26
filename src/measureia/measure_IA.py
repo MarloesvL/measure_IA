@@ -7,6 +7,7 @@ from .measure_m_box import MeasureMultipolesBox
 from .measure_jackknife import MeasureJackknife
 from .measure_galaxy_box import MeasureGalaxyContributionsBox
 from .check_input import CheckInput
+from . import worker_pool
 
 
 class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, MeasureMBoxJackknife, MeasureJackknife,
@@ -128,6 +129,7 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 		if not (isinstance(num_jk, (int, np.integer)) and not isinstance(num_jk, bool) and num_jk >= 0):
 			raise ValueError(f"num_jk must be an integer >= 0, got {num_jk!r}.")
 
+	@worker_pool.pooled
 	def measure_xi_w(self, dataset_name, corr_type, num_jk=0, temp_file_path=None, masks=None,
 					 ellipticity='distortion', chunk_size=1000, responsivity=True):
 		r"""Measures $\xi_{gg}$, $\xi_{g+}$ and $w_{gg}$, $w_{g+}$ including jackknife covariance if desired.
@@ -257,6 +259,7 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 
 		return
 
+	@worker_pool.pooled
 	def measure_xi_multipoles(self, dataset_name, corr_type, num_jk=0, temp_file_path=None, masks=None, rp_cut=None,
 							  ellipticity='distortion', chunk_size=1000, responsivity=True):
 		r"""Measures $\xi_{gg}$, $\xi_{g+}$ and $\tilde{\xi}_{gg,0}$, $\tilde{\xi}_{g+,2}$ including jackknife covariance

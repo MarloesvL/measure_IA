@@ -37,6 +37,8 @@ re-running the correlation function once per weighting.
 """
 import math
 import multiprocessing as mp
+
+from . import worker_pool
 import os
 from multiprocessing import Pool, shared_memory
 
@@ -186,6 +188,7 @@ class MeasureGalaxyContributionsBox:
     # public entry point
     # ------------------------------------------------------------------
 
+    @worker_pool.pooled
     def measure_galaxy_contributions(self, dataset_name, num_jk=0, masks=None, rp_cut=None,
                                      ellipticity='distortion', responsivity=True, ell=2,
                                      statistic="multipoles", temp_file_path=None,
@@ -475,8 +478,7 @@ class MeasureGalaxyContributionsBox:
             sample_set.pos = sample_set.pos_shape = None
             sample_set.axis_direction = sample_set.e = None
             sample_set.jk_pos = sample_set.jk_shape = None
-            mp.set_start_method("spawn", force=True)
-            with Pool(num_nodes) as p:
+            with worker_pool.active_pool(num_nodes) as p:
                 result = p.map(self._galaxy_contributions_batch, indices)
         finally:
             for shm in shm_blocks:

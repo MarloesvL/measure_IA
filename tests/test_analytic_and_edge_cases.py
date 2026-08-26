@@ -1015,9 +1015,11 @@ class TestEdgeCasesNowHandled:
         def _boom(*args, **kwargs):
             raise RuntimeError("simulated pool failure")
 
-        # Pool is created after self.data has been emptied and written to the
-        # temp file — exactly the state that used to be left behind on error.
-        monkeypatch.setattr("measureia.measure_w_box.Pool", _boom)
+        # The backend asks worker_pool for a pool after self.data has been
+        # emptied and written to the temp file — the same moment the direct
+        # Pool() call used to happen, and exactly the state that used to be left
+        # behind on error.
+        monkeypatch.setattr("measureia.worker_pool.active_pool", _boom)
         with pytest.raises(RuntimeError):
             obj.measure_xi_w("fail", "g+", 0,
                              temp_file_path=str(tmp_path) + "/")
@@ -1135,7 +1137,7 @@ class TestEdgeCasesLightcone:
         def _boom(*args, **kwargs):
             raise RuntimeError("simulated pool failure")
 
-        monkeypatch.setattr("measureia.measure_w_lightcone_jk.Pool", _boom)
+        monkeypatch.setattr("measureia.worker_pool.active_pool", _boom)
         with pytest.raises(RuntimeError):
             obj.measure_xi_w("galaxies", "lc_fail", "g+", num_jk=4,
                              temp_file_path=str(tmp_path) + "/")

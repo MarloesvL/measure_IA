@@ -4,6 +4,8 @@ import os
 import sys
 from multiprocessing import Pool, shared_memory
 import multiprocessing as mp
+
+from . import worker_pool
 from scipy.spatial import KDTree
 from .write_data import write_dataset_hdf5, create_group_hdf5
 from .measure_IA_base import MeasureIABase
@@ -492,8 +494,7 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 				masks = {}
 			del shared_data, shared_arr
 			del positions, positions_shape_sample, axis_direction, weight, weight_shape, jackknife_region_indices_pos, jackknife_region_indices_shape
-			mp.set_start_method("spawn", force=True)
-			with Pool(num_nodes) as p:
+			with worker_pool.active_pool(num_nodes) as p:
 				result = p.map(self._measure_xi_rp_pi_box_jk_batch, indices)
 
 		finally:
@@ -946,8 +947,7 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 				masks = {}
 			del shared_data, shared_arr
 			del positions, positions_shape_sample, weight, weight_shape, jackknife_region_indices_pos, jackknife_region_indices_shape
-			mp.set_start_method("spawn", force=True)
-			with Pool(num_nodes) as p:
+			with worker_pool.active_pool(num_nodes) as p:
 				result = p.map(self._count_pairs_xi_rp_pi_box_jk_batch, indices)
 
 		finally:
