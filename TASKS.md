@@ -481,7 +481,30 @@ and treecorr (lightcone), plus measureia-only profiling. Methodology in
   density; the sweep needs a density axis to match. Note the absolute runtimes grow
   ~20-30x with the pair count, so the size ceiling will need lowering.
 
-- [ ] **Settle the lightcone memory ceiling at 1e6-1e7 with 10x randoms.** The analytic
+- [x] **RESOLVED (2026-08-26): the lightcone memory ceiling is ~23 GB at 1e7 with 10x
+  randoms, so 64 GB of RAM is sufficient and no cluster is needed.** Measured RSS at
+  constant density: 216 MB / 722 MB / 2.34 GB at 100k / 300k / 1e6 shape galaxies with
+  10x randoms. The overhead over the analytic array model is a stable **~2.9x** across a
+  decade (2.71, 3.02, 2.94) rather than shrinking, i.e. it is proportional to the arrays
+  (per-chunk transients and intermediates in prepare_lightcone_samples) rather than a
+  fixed cost -- which makes the extrapolation to 1e7 (~23 GB) trustworthy. Memory
+  optimisation is therefore a nice-to-have, not a blocker for the 1e7 target. Caveat:
+  num_nodes>1 transiently doubles the derived arrays during shared-memory setup, so the
+  parallel peak is higher (~30 GB at 1e7) and should be measured before a production run.
+  Earlier estimates of 55-77 GB and then 13-48 GB were both wrong; superseded.
+
+- [ ] **The multi-core cross-package comparison, which is the unfavourable one.** The
+  ratios recorded so far are single-thread. All three codes parallelise but not
+  comparably: halotools and treecorr use OpenMP threads with negligible startup, while
+  measureia uses processes via 'spawn' with ~0.9 s pool startup and a best-measured
+  parallel efficiency of 26% (2.06x from 8 workers), and is a net loss below ~40k
+  galaxies. So single-thread numbers flatter measureia, and the multi-core comparison
+  must be run rather than omitted. Roughly doubles the sweep (~40 min to 100k, ~2 h with
+  300k). This is also the strongest argument for the forkserver work, since cluster runs
+  are multi-core.
+
+  (superseded item: settle the lightcone memory ceiling at 1e6-1e7 with 10x randoms.)
+  <!-- The analytic
   array model gives ~1.3 GB at 1e6 and ~13.3 GB at 1e7, but measured RSS at 100k shape /
   5x randoms is 3.6x the model (156 MB against 44 MB) because of per-chunk transients,
   HDF5 buffers and RSS being a high-water mark over four sequential pair-count runs. If
@@ -498,4 +521,4 @@ and treecorr (lightcone), plus measureia-only profiling. Methodology in
     separation. Must be tested against the smallest bin edge before being considered.
   - computing the east/north/n_pos sky basis per chunk instead of storing it: 0.7 GB.
   - **not** the KDTree: measured at 8 bytes/point (it stores an index permutation, not a
-    copy of the coordinates), so it is negligible at any of these scales.
+    copy of the coordinates), so it is negligible at any of these scales. -->
