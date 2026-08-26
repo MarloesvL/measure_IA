@@ -565,3 +565,30 @@ and treecorr (lightcone), plus measureia-only profiling. Methodology in
   hardcoded 100 is already optimal; 400 and 1600 are slightly *slower* (1.22x, 1.19x
   against 1.25x) while costing up to 15x the peak memory. Only worth revisiting if the
   batching refactor above is ever taken.
+
+- [ ] **`docs/performance.md`, mirroring `docs/validation.md`.** Same shape and length
+  (~70-90 lines, four sections, table with footnotes, ends pointing at
+  `benchmarks/README.md` for the detail). Content:
+  - **how it is measured** — briefly: identical seeded mocks, binning imported from
+    `validation/`, every timing gated on reproducing the reference result, threads pinned
+    on both sides, best-of-N. Say that the numbers are quoted at a *realistic* number
+    density (~1e-2 per (Mpc/h)^3, ~345 candidates per galaxy), because the reference mock
+    is ~30x sparser and the ratios differ substantially there (FINDINGS.md F6).
+  - **comparison table** — time and memory against halotools (box) and treecorr
+    (lightcone), single- and multi-core, with the scaling exponents.
+  - **trade-offs, honestly both ways** — pure Python/NumPy so `pip install` needs no
+    compiler and no build step, against a constant factor versus Cython/OpenMP codes;
+    substantially lower memory than treecorr on the lightcone; one call returns w_gg,
+    w_g+, the responsivity and the jackknife covariance where the reference codes need
+    the estimator assembled from raw counts; multiprocessing is a net loss below ~40k
+    galaxies and should be left off there.
+  - **"roughly how long will my measurement take"** — the practical bit. A short table of
+    wall time against sample size for the four measurement types at realistic density, so
+    a user can size a run before starting it. Mention the ~330 bytes/galaxy (box) and
+    ~240-357 bytes/point (lightcone) memory scaling so they can size RAM too.
+  - **how to run it yourself** — `pip install measureia[validation]`, then
+    `python benchmarks/run_sweep.py`.
+
+  Numbers come from `benchmarks/results/laptop_simdensity.jsonl`; regenerate the tables
+  with `plot_results.py`. Note the CPU model in the caption, as `validation.md` does for
+  package versions.

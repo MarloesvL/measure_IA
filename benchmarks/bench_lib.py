@@ -42,6 +42,7 @@ REF_BOX_BOXSIZE = 205.0
 REF_LC_N_SHAPE = 3200       # radial_alignment_lightcone_mock: 400 centrals x 8
 REF_LC_RA_RANGE = (40.0, 50.0)
 REF_LC_DEC_RANGE = (-5.0, 5.0)
+REF_LC_R_RANGE = (2450.0, 2650.0)
 N_SAT = 8
 
 
@@ -148,6 +149,46 @@ def _filesystem_of(path):
 	return {"fstype": fstype, "mount": mount, "source": source}
 
 
+def parallel_capabilities():
+	"""How each reference code actually parallelises, on this machine.
+
+	Not a detail: a reference code that silently refuses to parallelise makes a
+	multi-core comparison meaningless, and in measureia's favour. The macOS
+	treecorr wheels are built without OpenMP -- `num_threads` is accepted, a
+	warning goes to stderr, and the run stays single-threaded. A comparison taken
+	on such a build would have shown measureia parallelising 4x against a
+	"treecorr" that did not move, which is a statement about the build and not
+	about either code.
+
+	halotools is a different story: its ``num_threads`` drives
+	``multiprocessing.Pool``, not OpenMP, so it pays process start-up much as
+	measureia does and can be *slower* with more workers on small problems. That
+	is a real property and comparable.
+
+	Returns a dict recorded with every result, so a record always says whether
+	its multi-core numbers mean anything.
+	"""
+	caps = {}
+	try:
+		import treecorr
+		# treecorr warns rather than raising; the flag is what to trust
+		caps["treecorr_openmp"] = bool(getattr(treecorr, "_ffi", None) and
+									   treecorr.config.get_omp_num_threads() > 1) \
+			if hasattr(treecorr, "config") else None
+	except Exception:
+		caps["treecorr_openmp"] = None
+	if caps.get("treecorr_openmp") is None:
+		# fall back to the direct probe: ask for 2 threads and see what we get
+		try:
+			import treecorr
+			caps["treecorr_openmp"] = treecorr.set_omp_threads(2) > 1
+			treecorr.set_omp_threads(1)
+		except Exception:
+			caps["treecorr_openmp"] = None
+	caps["halotools_parallel"] = "multiprocessing"   # not OpenMP; see docstring
+	return caps
+
+
 def _package_versions():
 	import importlib.metadata as md
 	out = {}
@@ -182,6 +223,7 @@ def environment(scratch_dir=None):
 		"scratch_dir": scratch_dir,
 		"scratch_fs": _filesystem_of(scratch_dir),
 		"omp_num_threads": os.environ.get("OMP_NUM_THREADS"),
+		"parallel_capabilities": parallel_capabilities(),
 	}
 
 
@@ -259,7 +301,31 @@ def box_mock_for(n_shape, density_mode, boxsize=None, seed=42, margin=0.0,
 	)
 
 
-def lightcone_mock_for(n_shape, density_mode, n_randoms_factor=5, seed=4242):
+def lightcone_solid_angle(ra_range, dec_range):
+	"""Solid angle of a RA/DEC window, in steradians."""
+	return (np.deg2rad(ra_range[1] - ra_range[0])
+			* (np.sin(np.deg2rad(dec_range[1])) - np.sin(np.deg2rad(dec_range[0]))))
+
+
+def lightcone_window_for_density(n_total, density, r_range=REF_LC_R_RANGE):
+	"""RA/DEC window putting ``n_total`` objects at the given number density.
+
+	The mock fills a cone section, so the volume is ``Omega/3 * (r2^3 - r1^3)``.
+	Scale the reference window isotropically until that volume gives the density
+	asked for. Returns ``(ra_range, dec_range)``.
+	"""
+	ref_omega = lightcone_solid_angle(REF_LC_RA_RANGE, REF_LC_DEC_RANGE)
+	want_volume = n_total / density
+	want_omega = 3.0 * want_volume / (r_range[1] ** 3 - r_range[0] ** 3)
+	scale = np.sqrt(want_omega / ref_omega)
+	ra0 = REF_LC_RA_RANGE[0]
+	ra_range = (ra0, ra0 + (REF_LC_RA_RANGE[1] - REF_LC_RA_RANGE[0]) * scale)
+	dec_range = (REF_LC_DEC_RANGE[0] * scale, REF_LC_DEC_RANGE[1] * scale)
+	return ra_range, dec_range
+
+
+def lightcone_mock_for(n_shape, density_mode, n_randoms_factor=5, seed=4242,
+					   density=None):
 	"""Radial-alignment lightcone mock scaled to ``n_shape`` shape galaxies.
 
 	``'fixed_density'`` scales the RA/DEC window area in proportion to N at a
@@ -272,14 +338,19 @@ def lightcone_mock_for(n_shape, density_mode, n_randoms_factor=5, seed=4242):
 
 	n_centrals = max(1, int(round(n_shape / N_SAT)))
 	n_shape_actual = n_centrals * N_SAT
-	if density_mode == "fixed_density":
+	if density is not None:
+		# absolute number density, so the lightcone can be measured in the same
+		# regime as the box rather than the one the reference mock sits in
+		ra_range, dec_range = lightcone_window_for_density(
+			n_shape_actual + n_centrals, density)
+	elif density_mode == "fixed_density":
 		s = np.sqrt(n_shape_actual / REF_LC_N_SHAPE)
 		ra0 = REF_LC_RA_RANGE[0]
 		ra_range = (ra0, ra0 + (REF_LC_RA_RANGE[1] - REF_LC_RA_RANGE[0]) * s)
 		dec_range = (REF_LC_DEC_RANGE[0] * s, REF_LC_DEC_RANGE[1] * s)
 	elif density_mode == "fixed_volume":
 		ra_range, dec_range = REF_LC_RA_RANGE, REF_LC_DEC_RANGE
-	else:
+	elif density_mode != "fixed_density":
 		raise ValueError(f"lightcone_mock_for: unknown density_mode {density_mode!r}")
 	return radial_alignment_lightcone_mock(
 		n_centrals=n_centrals, n_sat=N_SAT,
@@ -357,7 +428,7 @@ class CandidateCounter:
 # part of the key.
 KEY_FIELDS = (
 	"task", "code", "n_shape", "density_mode", "threads", "scratch",
-	"boxsize", "num_jk", "bin_slop", "variant",
+	"boxsize", "num_jk", "bin_slop", "variant", "density",
 )
 
 

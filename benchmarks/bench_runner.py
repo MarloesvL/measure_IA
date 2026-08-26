@@ -73,6 +73,7 @@ def _scratch_file(scratch_dir, name):
 def _box_data(cfg):
 	mock = bench_lib.box_mock_for(
 		cfg["n_shape"], cfg["density_mode"], boxsize=cfg.get("boxsize"),
+		density=cfg.get("density"),
 	)
 	data = {k: mock[k] for k in
 			("Position", "Position_shape_sample", "Axis_Direction", "q", "LOS")}
@@ -147,7 +148,8 @@ def _make_box_halotools(cfg):
 def _lc_data(cfg):
 	import pyccl as ccl
 
-	data, randoms, info = bench_lib.lightcone_mock_for(cfg["n_shape"], cfg["density_mode"])
+	data, randoms, info = bench_lib.lightcone_mock_for(
+		cfg["n_shape"], cfg["density_mode"], density=cfg.get("density"))
 	for d in (data, randoms):
 		d["Redshift"] = 1.0 / ccl.scale_factor_of_chi(V_LC.COSMOLOGY, d.pop("r_com")) - 1.0
 		d["Redshift_shape_sample"] = (

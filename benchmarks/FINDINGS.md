@@ -944,3 +944,78 @@ same pattern appeared in F1 (a tracemalloc artifact reversed the conclusion) and
 in F5 (a mock-density profile inflated the expected gain by ~2x). **Measure the
 operation as the caller actually invokes it, at the density the data actually
 has** — every shortcut in this file's history flattered the change under test.
+
+
+---
+
+## F9 — The realistic-density comparison, and a multi-core result that was an artifact
+
+**Status:** single-thread comparison complete and trustworthy (2026-08-26, 46
+points, all 8 correctness gates pass). **The multi-core comparison against
+treecorr is invalid on this machine** and must not be quoted — see below.
+
+### Single thread, at the density real catalogues have
+
+`n = 1e-2` per (Mpc/h)^3, ~345 candidates per galaxy within `r_max = 20`. This
+is the comparison that belongs in the paper; everything measured earlier was at
+the reference mock's ~3.1e-4 (F6).
+
+| | N | measureia | reference | time | measureia RSS | ref RSS | memory |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| box `w` vs halotools | 2,400 | 0.328 s | 0.122 s | 2.7x | 170 MB | 193 MB | 1.1x |
+| | 9,600 | 1.620 s | 0.447 s | 3.6x | 176 MB | 197 MB | 1.1x |
+| | 38,400 | 6.383 s | 1.782 s | 3.6x | 188 MB | 214 MB | 1.1x |
+| | 100,000 | 16.561 s | 4.636 s | **3.6x** | 212 MB | 241 MB | 1.1x |
+| lightcone `w` vs treecorr | 2,400 | 0.705 s | 0.352 s | 2.0x | 188 MB | 185 MB | 1.0x |
+| | 9,600 | 4.089 s | 1.695 s | 2.4x | 228 MB | 295 MB | 1.3x |
+| | 38,400 | 19.067 s | 7.485 s | 2.5x | 281 MB | 621 MB | 2.2x |
+| | 100,000 | 53.307 s | 20.276 s | **2.6x** | 345 MB | 1,542 MB | **4.5x** |
+
+Scaling exponents: measureia **1.05** against halotools 0.98, and measureia
+**1.16** against treecorr 1.09. The ratios are flat rather than diverging.
+
+**This supersedes the mock-density comparison entirely.** There the box ratio ran
+12.9x -> 22.3x and *growing*; here it settles at 3.6x. The difference is not the
+code — it is that measureia's fixed ~33.8 us per galaxy amortises over 345
+candidates instead of 19. Quoting the mock figures would have understated the
+package by a factor of six and implied a scalability defect that does not exist.
+
+### The multi-core result, and why it must be discarded
+
+At N = 38,400, `num_nodes` / `num_threads` = 8 against 1:
+
+| task | code | 1 | 8 | speedup |
+|---|---|---:|---:|---:|
+| box | measureia | 6.383 s | 2.581 s | 2.47x |
+| box | halotools | 1.782 s | 4.270 s | **0.42x** |
+| lightcone | measureia | 19.067 s | 4.835 s | 3.94x |
+| lightcone | treecorr | 7.485 s | 7.532 s | **0.99x** |
+
+This was predicted to go the *other* way — measureia uses processes with ~0.9 s
+of pool start-up, the reference codes were assumed to use OpenMP threads with
+almost none. A result that contradicts the mechanism *and* flatters the package
+under test is the one to distrust, and on inspection:
+
+- **treecorr: invalid.** The installed wheel is built without OpenMP. It accepts
+  `num_threads`, prints `Unable to use multiple threads, since OpenMP is not
+  enabled` to stderr, and runs single-threaded. Verified directly: a single
+  `NNCorrelation` over 200,000 points gives 1.908 / 1.857 / 1.859 / 1.858 s at
+  1 / 2 / 4 / 8 threads. **The 0.99x is a property of this build, not of
+  treecorr**, and "measureia parallelises where treecorr does not" would have
+  been a badly wrong claim. macOS wheels commonly ship without OpenMP because
+  Apple clang does not include libomp.
+- **halotools: valid, and a genuine finding.** Its `num_threads` drives
+  `multiprocessing.Pool`, *not* OpenMP — so it pays process start-up much as
+  measureia does, and at 1.78 s of work eight workers cost more than they save.
+  This also corrects an earlier claim in these notes that halotools threads with
+  negligible start-up; it does not.
+
+`bench_lib.parallel_capabilities()` now probes for this and records it on every
+result, and `run_sweep.py` prints a warning before running a thread sweep against
+a treecorr without OpenMP. The check exists because the failure is silent, only
+visible on stderr, and biased in one direction.
+
+**To get a real multi-core comparison:** rebuild treecorr against libomp
+(`brew install libomp`, then build from source), or run the thread sweep on Linux
+where the wheels normally have OpenMP. Until then only the single-thread table
+above should be quoted.

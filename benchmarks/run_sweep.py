@@ -104,12 +104,19 @@ def build_grid(args, sizes, scratch_dir):
 			scratch=args.scratch, scratch_dir=scratch_dir,
 			repeats=args.repeats, warmup=args.warmup,
 			boxsize=None, num_jk=0, bin_slop=None, variant="tree",
+			density=args.density,
 		)
 		cfg.update(kw)
 		points.append(cfg)
 
+	# With an absolute density the boxsize is derived from it, so the two density
+	# modes would build identical mocks -- run one of them.
+	modes = ["fixed_density"] if args.density else DENSITY_MODES
+
 	def sizes_for(mode):
 		"""Sizes to run in a given scaling regime (see MAX_N_FIXED_VOLUME)."""
+		if args.density:
+			return sizes          # density is fixed explicitly; no N^2 regime
 		if mode == "fixed_volume":
 			return [n for n in sizes if n <= MAX_N_FIXED_VOLUME]
 		return sizes
@@ -121,7 +128,7 @@ def build_grid(args, sizes, scratch_dir):
 		# w-vs-multipoles comparison at each size.
 		for task in args.tasks:
 			for code in TASK_CODES[task]:
-				for mode in DENSITY_MODES:
+				for mode in modes:
 					for n in sizes_for(mode):
 						extra = {"bin_slop": 0} if code == "treecorr" else {}
 						add(task=task, code=code, n_shape=n,
@@ -282,6 +289,10 @@ def main():
 	p.add_argument("--repeats", type=int, default=5)
 	p.add_argument("--warmup", type=int, default=1)
 	p.add_argument("--timeout", type=int, default=3600, help="per-point timeout in seconds")
+	p.add_argument("--density", type=float, default=None,
+				   help="absolute number density for the mocks, e.g. 1e-2 for a "
+						"simulation-like catalogue. Default: the reference mock's own "
+						"~3.1e-4, which is ~30x sparser than real data (FINDINGS.md F6)")
 	p.add_argument("--max-cpus", type=int, default=None,
 				   help="cap the thread/num_nodes axis, so a run cannot exceed a CPU budget")
 	p.add_argument("--smoke", action="store_true", help="smallest grid, for checking the harness")
@@ -309,6 +320,12 @@ def main():
 	done = bench_lib.completed_keys(out_path)
 	todo = [c for c in points if bench_lib.config_key(c) not in done]
 
+	caps = bench_lib.parallel_capabilities()
+	if caps.get("treecorr_openmp") is False:
+		print("WARNING: this treecorr build has no OpenMP -- num_threads is accepted "
+			  "but ignored, so any multi-core comparison against it is meaningless "
+			  "(it will appear not to parallelise). Rebuild treecorr against libomp, "
+			  "or run the thread sweep on a machine whose wheel has OpenMP.")
 	print(f"scratch : {scratch_dir}")
 	print(f"output  : {out_path}")
 	print(f"points  : {len(points)} total, {len(points) - len(todo)} already done, "
