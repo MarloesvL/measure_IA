@@ -14,6 +14,7 @@ nav:
       - Conventions: conventions.md
       - Estimator definitions: estimator_definitions.md
   - Validation: validation.md
+  - Performance: performance.md
   - API Reference:
       - MeasureIABox: api/measureIABox.md
       - MeasureIALightcone: api/measureIALightcone.md
