@@ -449,9 +449,7 @@ def multipoles_measureia_results(tmp_path_factory):
     mock = radial_alignment_box_mock()
     out = str(tmp_path_factory.mktemp("validation_mp") / "multipoles.hdf5")
     mia = box_multipoles.run_measureia(mock, out)
-    n_pos = len(mock["Position"])
-    return {"mia": mia, "R": responsivity(mock),
-            "rr_norm": (n_pos - 1.0) / n_pos}
+    return {"mia": mia, "R": responsivity(mock)}
 
 
 @requires_multipoles_reference
@@ -459,9 +457,10 @@ class TestBoxMultipolesAgainstCorrPC:
     """measureia's box multipoles vs corr_pc (github.com/sukhdeep2/corr_pc,
     Singh 2021) in periodic-box (r, mu) mode, with measureia's own Legendre
     integration applied to the corr_pc grid. Documented convention
-    adjustments: responsivity 2R, the (N_pos-1)/N_pos analytic-RR
-    normalisation, and corr_pc's opposite e2 chirality (handled when writing
-    its inputs). Agreement is limited only by corr_pc's 6-significant-digit
+    adjustments: responsivity 2R and corr_pc's opposite e2 chirality (handled
+    when writing its inputs). Both codes normalise the analytic RR by
+    N_pos * N_shape; measureia is constructed with num_overlap=0 to state that
+    convention explicitly. Agreement is limited only by corr_pc's 6-significant-digit
     text output (~1e-6; a few 1e-5 in near-zero bins)."""
 
     def test_reference_binning_matches(self, multipoles_measureia_results):
@@ -477,10 +476,10 @@ class TestBoxMultipolesAgainstCorrPC:
         with h5py.File(_MULTIPOLES_REF, "r") as f:
             xi_gp_pc, xi_gg_pc = f["xi_gp"][:], f["xi_gg"][:]
         np.testing.assert_allclose(
-            res["mia"]["xi_gp"] * 2 * res["R"] * res["rr_norm"], xi_gp_pc,
+            res["mia"]["xi_gp"] * 2 * res["R"], xi_gp_pc,
             rtol=1e-4, atol=1e-6)
         np.testing.assert_allclose(
-            (res["mia"]["xi_gg"] + 1) * res["rr_norm"], xi_gg_pc + 1,
+            res["mia"]["xi_gg"] + 1, xi_gg_pc + 1,
             rtol=1e-4, atol=1e-6)
 
     def test_multipoles_match_corrpc(self, multipoles_measureia_results):
@@ -488,10 +487,10 @@ class TestBoxMultipolesAgainstCorrPC:
         with h5py.File(_MULTIPOLES_REF, "r") as f:
             mp_gp_pc, mp_gg_pc = f["multipole_gp"][:], f["multipole_gg"][:]
         np.testing.assert_allclose(
-            res["mia"]["multipole_gp"] * 2 * res["R"] * res["rr_norm"], mp_gp_pc,
+            res["mia"]["multipole_gp"] * 2 * res["R"], mp_gp_pc,
             rtol=1e-4, atol=1e-6)
         np.testing.assert_allclose(
-            (res["mia"]["multipole_gg"] + 1) * res["rr_norm"], mp_gg_pc + 1,
+            res["mia"]["multipole_gg"] + 1, mp_gg_pc + 1,
             rtol=1e-4, atol=1e-6)
 
     def test_signal_is_non_null(self, multipoles_measureia_results):
@@ -652,10 +651,9 @@ class TestBoxJackknifeAgainstCorrPC:
         """Multipoles vs corr_pc coordinates=7 with the (N-1)/N analytic-RR
         normalisation difference applied (r-mu mode only)."""
         mia, pc, _ = box_corrpc_cov_results
-        rr_norm = (pc["n_pos_full"] - 1.0) / pc["n_pos_full"]
-        np.testing.assert_allclose(mia["mult_gp_full"] * rr_norm,
+        np.testing.assert_allclose(mia["mult_gp_full"],
                                    pc["mult_gp_full"], rtol=1e-4)
-        np.testing.assert_allclose((mia["mult_gg_full"] + 1) * rr_norm - 1,
+        np.testing.assert_allclose(mia["mult_gg_full"],
                                    pc["mult_gg_full"], rtol=1e-4)
 
     def test_delete_one_realisations(self, box_corrpc_cov_results):

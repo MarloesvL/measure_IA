@@ -5,62 +5,56 @@ P1 = features, P2 = input validation, P3 = test suite, P4 = cleanup & docs.
 
 ## P0 — Confirmed bugs (fix before release)
 
-- [ ] **OPEN (raised 2026-08-12): the two analytic `RR` functions disagree on whether the
-  cross count carries `Num_position - 1`.** Not yet resolved — the investigation below found
-  contradictory evidence, so this is an investigation task, not a ready fix.
+- [x] **The two analytic `RR` functions assumed different things about sample overlap.**
+  *Resolved 2026-08-14. The four ad-hoc branches are replaced by one count in
+  `available_pairs()`:*
 
-  **The inconsistency.** Three of the four analytic-`RR` branches exclude a self-pair, one
-  does not (`measure_IA_base.py`):
+      N_pairs = Num_position * Num_shape - num_overlap        (halved for "auto")
 
-  | function | corrtype | normalisation |
-  |---|---|---|
-  | `get_random_pairs_r_mur` (r, mu_r) | `auto`  | `(N_position - 1)/2 * N_shape` |
-  | `get_random_pairs_r_mur` (r, mu_r) | `cross` | `(N_position - 1) * N_shape` |
-  | `get_random_pairs` (rp, pi)        | `auto`  | `(N_position - 1) * N_shape / 2` |
-  | `get_random_pairs` (rp, pi)        | `cross` | `N_position * N_shape` ← odd one out |
+  *`num_overlap` is the number of objects in **both** samples. A shape galaxy cannot pair
+  with itself, that pair has zero separation and is dropped by the loop (the window starts
+  at `r_min > 0`), and there is exactly one such pair per shared object. This subsumes both
+  previous conventions: `Num_position * Num_shape` when the samples are independent, and
+  `Num_shape * (Num_position - 1)` when the shape sample is drawn from the position sample.*
 
-  **Why it looks wrong.** In the standard IA setup the shape sample is drawn *from* the
-  position sample, so a shape galaxy cannot pair with itself and `N_position - 1` partners
-  are available. That is true of the package's own mock: `radial_alignment_box_mock` returns
-  `Position` = centrals + satellites and `Position_shape_sample` = satellites, a strict
-  subset (`mocks.py:88-92`). On that reasoning the `-1` belongs in all four branches.
+  *The earlier reading of the evidence was wrong twice over, and both errors are worth
+  recording. First, the branch count was treated as the argument ("three of four carry the
+  `-1`"), which counts branches instead of asking what each is for. Second, the validations
+  were read as contradictory when in fact both reference codes (halotools, corr_pc) use the
+  independent-sample convention, and the corr_pc comparison merely **compensated** for
+  MeasureIA differing, with a hard-coded `(n_pos - 1)/n_pos`. Those tests encoded the `-1`
+  rather than confirming it. The real defect was never one wrong branch: it was that `w_g+`
+  and `xi_g+,2` from one catalogue differed by `N/(N-1)` for no stated reason.*
 
-  **Why it is not that simple.** Both branches are currently pinned by cross-code
-  validations that fail if changed, on that same mock:
+  *The overlap is now **measured** from the coordinates, mirroring how the lightcone
+  determines `num_samples["D_S"]`, so box and lightcone agree on what "the same object in
+  both samples" means and partial overlap is handled too. Threaded through two choke points
+  (`prepare_box_samples`, `_get_jackknife_region_indices`) rather than 48 call sites, with
+  the jackknife subtracting only the overlap each region removes.*
 
-  - Adding `-1` to `get_random_pairs` cross → **6 failures**:
-    `TestGetRandomPairs::test_formula_cross` (hard-codes the current formula, expected),
-    `TestBoxAgainstHalotools::{test_w_g_plus_matches_halotools_up_to_2R, test_w_gg_matches_halotools}`,
-    `TestBoxCovarianceBridge::test_box_covariance_regression`,
-    `TestBoxJackknifeAgainstCorrPC::{test_full_sample_w_signal, test_delete_one_realisations}`.
-  - Removing `-1` from `get_random_pairs_r_mur` cross → **4 different failures**:
-    `TestBoxMultipolesAgainstCorrPC::{test_xi_grids_match_corrpc, test_multipoles_match_corrpc}`,
-    `TestBoxJackknifeAgainstCorrPC::{test_full_sample_multipole_signal, test_delete_one_realisations}`.
+  *`MeasureIABox` gained a `num_overlap` argument to override the measurement.
+  `num_overlap=0` states the reference codes' convention explicitly, and all five box
+  validation runs now pass it — which let the corr_pc comparison **drop** its compensation
+  factor and its delete-one mapping term, so the validations now compare like for like
+  instead of correcting afterwards.*
 
-  So each convention is validated *as written* against an external code, on the same
-  catalogue. They cannot both be describing the same normalisation correctly. The likely
-  explanation is that at least one comparison is matching how that reference code normalises
-  its own counts rather than testing the normalisation — which would make that validation
-  self-fulfilling on this point.
+  *Box `w_gg`/`w_g+` shift by `N/(N-1)` when the samples overlap; `xi_gg`/`xi_g+,2` are
+  unchanged (the new formula reproduces the old (r, mu_r) value exactly). Documented in
+  `docs/estimator_definitions.md` and the changelog; 579 tests pass, including a new
+  `TestSampleOverlap` covering the two limits, the auto case, the measurement, the override
+  and its validation.*
 
-  **Where to look.** How the reference counts are set up in
-  `validation/run_box_halotools.py` and `validation/run_box_multipoles_corrpc.py` (and the
-  `corr_pc` jackknife bridge), specifically whether the reference is given
-  `N_position * N_shape` or `(N_position - 1) * N_shape` pairs, and whether the shape sample
-  is passed as a distinct catalogue or as a subset flag.
-
-  **Impact — small but real.** The two differ by a uniform factor `N/(N-1)`: ~4.8e-4 on the
-  mock (`N_position = 2100`), ~1e-5 to 1e-6 at simulation sample sizes. Note the corr_pc
-  delete-one comparison runs at a 5e-4 tolerance, so on the mock the effect sits *just* under
-  the threshold — the current tests cannot distinguish the two conventions at that size. A
-  discriminating test would need a deliberately small sample, where `1/N` is large enough to
-  exceed the tolerance.
-
-  **Already insulated.** `measure_galaxy_box._galaxy_rr_ratio` derives the jackknife `RR`
-  amplitude ratio by calling these functions twice and dividing, rather than restating the
-  normalisation, so per-galaxy contributions stay consistent under either convention and
-  will not need changing when this is settled. Any fix does need to update
-  `TestGetRandomPairs::test_formula_cross`, which hard-codes the current formula.
+  *The suite can now discriminate the conventions, which it previously could not: the
+  cross-code comparisons run on a 200-object mock where the difference is 5e-3 against a
+  5e-4 tolerance -- close enough to the threshold that the two functions disagreeing went
+  unnoticed. `TestOverlapConventionIsDiscriminated` replaces that with an exact check on a
+  12-object catalogue confined to a clump, with the binning window containing every pair
+  separation. `sum(DD)` is then an integer -- the pairs the loop actually found -- and
+  `sum(RR)` divided by the binned volume over the box volume recovers the pair count the
+  normalisation assumed; the two must agree, with no tolerance beyond floating point. At
+  N = 12 the conventions differ by 9%. Verified to fail under each old convention in the
+  regime where that convention is wrong (disjoint-everywhere fails the overlapping case,
+  (N-1)-everywhere fails the disjoint case), so neither could pass it.*
 
 - [x] **NEW (found during P0 work): lightcone backend weight-mask fallback misalignment.**
   *Investigated and resolved. Verdict: NOT reachable through the public API — `_merged_masks`

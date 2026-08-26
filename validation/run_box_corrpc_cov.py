@@ -203,12 +203,13 @@ def map_corrpc_to_jk(pc):
 	jackknife-realisation convention via the exact affine relations
 	(module docstring); covariances then compare directly."""
 	total_pi = 2.0 * PI_MAX
-	rr_norm = (pc["n_pos"] - 1.0) / pc["n_pos"]  # r-mu mode only
+	# No RR-normalisation term: measureia is constructed with num_overlap=0 above, so both
+	# codes normalise the analytic RR by N_pos * N_shape in r-mu mode as well as rp-pi.
 	return {
 		"w_gp": pc["w_gp"] / VOLUME_FACTOR,
 		"w_gg": (pc["w_gg"] + total_pi) / VOLUME_FACTOR - total_pi,
-		"mult_gp": pc["mult_gp"] / (rr_norm[:, None] * VOLUME_FACTOR),
-		"mult_gg": (pc["mult_gg"] + 1.0) / (rr_norm[:, None] * VOLUME_FACTOR) - 1.0,
+		"mult_gp": pc["mult_gp"] / VOLUME_FACTOR,
+		"mult_gg": (pc["mult_gg"] + 1.0) / VOLUME_FACTOR - 1.0,
 	}
 
 
@@ -223,7 +224,11 @@ def run_measureia_jk(mock, output_file, temp_path):
 	ia = MeasureIABox(data, output_file, simulation=None, snapshot=None,
 					  separation_limits=SEP_LIMS, num_bins_r=NUM_BINS_R,
 					  num_bins_pi=NUM_BINS_PI, pi_max=PI_MAX,
-					  boxsize=mock["boxsize"], num_nodes=1)
+					  boxsize=mock["boxsize"], num_nodes=1,
+					  # corr_pc treats the two samples as independent; state that same
+					  # convention explicitly so the comparison is like for like
+					  # (see run_box_halotools.py).
+					  num_overlap=0)
 	ia.measure_xi_w(DATASET, "both", num_jk=NUM_JK, temp_file_path=temp_path,
 					responsivity=False)
 	with h5py.File(output_file, "r") as f:
@@ -239,7 +244,11 @@ def run_measureia_jk(mock, output_file, temp_path):
 	ia = MeasureIABox(data, output_file, simulation=None, snapshot=None,
 					  separation_limits=SEP_LIMS, num_bins_r=NUM_BINS_R,
 					  num_bins_pi=NUM_BINS_MU, pi_max=SEP_LIMS[1],
-					  boxsize=mock["boxsize"], num_nodes=1)
+					  boxsize=mock["boxsize"], num_nodes=1,
+					  # corr_pc treats the two samples as independent; state that same
+					  # convention explicitly so the comparison is like for like
+					  # (see run_box_halotools.py).
+					  num_overlap=0)
 	ia.measure_xi_multipoles(DATASET, "both", num_jk=NUM_JK,
 							 temp_file_path=temp_path, responsivity=False)
 	with h5py.File(output_file, "r") as f:

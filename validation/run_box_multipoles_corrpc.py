@@ -17,9 +17,11 @@ Known convention differences (documented in the README):
 
 - Responsivity: measureia divides S+ terms by 2R (box default); corr_pc
   does not. Compared as xi_g+^measureia * 2R == xi_g+^corr_pc.
-- Analytic RR normalisation: measureia's get_random_pairs_r_mur uses
-  (N_pos - 1) * N_shape; corr_pc uses N_pos * N_shape. Deterministic
-  factor (N_pos - 1)/N_pos applied to the measureia side.
+- Analytic RR normalisation: both use N_pos * N_shape here. corr_pc treats the
+  two samples as independent, and measureia is constructed with num_overlap=0 to
+  state that same convention explicitly (by default it would measure the overlap
+  and subtract the self-pairs, since this mock's shape sample is drawn from its
+  position sample). No correction factor is needed on either side.
 - Ellipticity components: corr_pc rotates with
   e+ = cos(2 theta) e1 - sin(2 theta) e2, so its input convention is
   e1 = e cos(2 phi_axis), e2 = -e sin(2 phi_axis) (opposite chirality to
@@ -70,6 +72,12 @@ def run_measureia(mock, output_file):
 		pi_max=R_LIMS[1],
 		boxsize=mock["boxsize"],
 		num_nodes=1,
+		# halotools and corr_pc both normalise a cross count by N_1 * N_2, i.e. they
+		# treat the two samples as independent. The mock's shape sample is drawn from
+		# its position sample, so MeasureIA would otherwise measure an overlap and
+		# subtract the self-pairs; num_overlap=0 states the reference codes' convention
+		# explicitly so the comparison comes out like for like.
+		num_overlap=0,
 	)
 	ia.measure_xi_multipoles(DATASET, "both", 0, temp_file_path=False)
 	out = {}
@@ -182,8 +190,6 @@ def main():
 	mock = radial_alignment_box_mock()
 	R = responsivity(mock)
 	# measureia's analytic RR uses (N_pos - 1) * N_shape; corr_pc N_pos * N_shape
-	n_pos = len(mock["Position"])
-	rr_norm = (n_pos - 1.0) / n_pos
 
 	here = os.path.dirname(os.path.abspath(__file__))
 	scratch = os.path.join(here, f"{DATASET}_tmp.hdf5")
@@ -228,8 +234,8 @@ def main():
 
 	print("\n--- xi(r, mu) grid comparison (measureia adjusted to corr_pc "
 		  "conventions) ---")
-	xi_gp_adj = mia["xi_gp"] * 2 * R * rr_norm
-	xi_gg_adj = (mia["xi_gg"] + 1) * rr_norm - 1
+	xi_gp_adj = mia["xi_gp"] * 2 * R
+	xi_gg_adj = mia["xi_gg"]
 	with np.errstate(invalid="ignore", divide="ignore"):
 		print(f"xi_g+ ratio range: "
 			  f"{np.nanmin(xi_gp_adj / pc['xi_gp']):.6f} .. "
@@ -239,12 +245,12 @@ def main():
 			  f"{np.nanmax((xi_gg_adj + 1) / (pc['xi_gg'] + 1)):.6f}")
 
 	print("\n--- multipole comparison ---")
-	mp_gp_adj = mia["multipole_gp"] * 2 * R * rr_norm
+	mp_gp_adj = mia["multipole_gp"] * 2 * R
 	print(f"xi_g+,2 corr_pc   : {pc['multipole_gp']}")
 	print(f"xi_g+,2 ratio     : {mp_gp_adj / pc['multipole_gp']}")
 	# the (N-1)/N RR factor shifts xi_gg by a constant; l=0 integration of a
 	# constant is the constant, so adjust the monopole accordingly
-	mp_gg_adj = (mia["multipole_gg"] + 1) * rr_norm - 1
+	mp_gg_adj = mia["multipole_gg"]
 	print(f"xi_gg,0 corr_pc   : {pc['multipole_gg']}")
 	print(f"xi_gg,0 ratio     : {mp_gg_adj / pc['multipole_gg']}")
 

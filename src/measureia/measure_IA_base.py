@@ -7,6 +7,88 @@ from .write_data import write_dataset_hdf5, create_group_hdf5
 from .Sim_info import SimInfo
 
 
+
+def available_pairs(Num_position, Num_shape, num_overlap=0, corrtype="cross"):
+	r"""Number of object pairs available to an estimator, given how far the two samples
+	overlap.
+
+	The analytic ``RR`` terms are this count times the bin volume over the box volume, so
+	getting it right matters at the ``1/N`` level.
+
+	Of the ``Num_position * Num_shape`` ordered pairs, those where the position object *is*
+	the shape object contribute a zero separation and are dropped by the pair loop, whose
+	window starts at ``r_min > 0``. There is exactly one such pair per object present in
+	both samples, hence
+
+	.. math:: N_\mathrm{pairs} = N_\mathrm{position} N_\mathrm{shape} - N_\mathrm{overlap}
+
+	which reduces to the two familiar special cases: ``N_position * N_shape`` for disjoint
+	samples (``num_overlap = 0``), and ``N_shape (N_position - 1)`` when the shape sample is
+	drawn from the position sample (``num_overlap = Num_shape``) -- the usual IA setup. An
+	``"auto"`` correlation is the same count halved, since each unordered pair is counted
+	twice.
+
+	This is the box counterpart of the normalisation the lightcone estimator already
+	applies through ``num_samples["D_S"]`` (see ``MeasureIABase._obs_estimator``).
+
+	Parameters
+	----------
+	Num_position, Num_shape : int
+		Sizes of the position (density) and shape samples.
+	num_overlap : int, optional
+		Number of objects appearing in both samples. Default 0 (disjoint).
+	corrtype : str, optional
+		``"cross"`` (default) or ``"auto"``; the auto count is halved.
+
+	Returns
+	-------
+	float
+		Number of available pairs.
+	"""
+	if corrtype not in ("auto", "cross"):
+		raise ValueError("Unknown input for corrtype, choose from auto or cross.")
+	num_pairs = float(Num_position) * float(Num_shape) - float(num_overlap)
+	return num_pairs / 2.0 if corrtype == "auto" else num_pairs
+
+
+def count_overlap(positions_a, positions_b):
+	"""Number of rows present in both coordinate arrays, matched exactly.
+
+	Mirrors how the lightcone determines ``D_S`` (``MeasureIALightcone``, via
+	``np.intersect1d`` on a structured view), so the box and lightcone agree on what
+	"the same object in both samples" means.
+	"""
+	a = np.ascontiguousarray(positions_a)
+	b = np.ascontiguousarray(positions_b)
+	if a.size == 0 or b.size == 0:
+		return 0
+	if a.shape[1] != b.shape[1]:
+		raise ValueError("count_overlap: coordinate arrays have different widths.")
+	if a.dtype != b.dtype:
+		b = b.astype(a.dtype)
+	view = [('', a.dtype)] * a.shape[1]
+	return int(len(np.intersect1d(a.view(view), b.view(view))))
+
+
+def overlap_indices(positions_a, positions_b):
+	"""Indices into ``positions_b`` of the rows that also appear in ``positions_a``.
+
+	The counting counterpart of :func:`count_overlap`, used by the jackknife to find which
+	sub-box each shared object falls in.
+	"""
+	a = np.ascontiguousarray(positions_a)
+	b = np.ascontiguousarray(positions_b)
+	if a.size == 0 or b.size == 0:
+		return np.zeros(0, dtype=int)
+	if a.shape[1] != b.shape[1]:
+		raise ValueError("overlap_indices: coordinate arrays have different widths.")
+	if a.dtype != b.dtype:
+		b = b.astype(a.dtype)
+	view = [('', a.dtype)] * a.shape[1]
+	_, _, ind_b = np.intersect1d(a.view(view), b.view(view), return_indices=True)
+	return ind_b
+
+
 class MeasureIABase(SimInfo):
 	"""Base class for MeasureIA package that includes some general methods used throughout the package.
 
@@ -249,7 +331,8 @@ class MeasureIABase(SimInfo):
 		return e_plus, e_cross
 
 	@staticmethod
-	def get_random_pairs(rp_max, rp_min, pi_max, pi_min, L3, corrtype, Num_position, Num_shape):
+	def get_random_pairs(rp_max, rp_min, pi_max, pi_min, L3, corrtype, Num_position, Num_shape,
+						 num_overlap=0):
 		"""Returns analytical value of the number of pairs expected in an r_p, pi bin for a random uniform distribution.
 		(Singh et al. 2023)
 
@@ -271,6 +354,14 @@ class MeasureIABase(SimInfo):
 			Number of objects in the position sample.
 		Num_shape : int
 			Number of objects in the shape sample.
+		num_overlap : int, optional
+			Number of objects present in *both* samples. A shape galaxy cannot pair with
+			itself, and the pair loop drops that self-pair automatically because the
+			separation window starts at ``r_min > 0``, so the available pair count is
+			``Num_position * Num_shape - num_overlap`` rather than the plain product. Pass 0
+			(the default) for genuinely disjoint samples; pass ``Num_shape`` when the shape
+			sample is drawn from the position sample, which is the usual IA configuration.
+			See :func:`available_pairs`.
 
 
 		Returns
@@ -279,21 +370,12 @@ class MeasureIABase(SimInfo):
 			number of pairs in r_p, pi bin
 
 		"""
-		if corrtype == "auto":
-			RR = (
-					(Num_position - 1.0) * Num_shape / 2.0
-					* np.pi
-					* (rp_max ** 2 - rp_min ** 2)
-					* abs(pi_max - pi_min)
-					/ L3
-			)  # volume is cylindrical pi*dr^2 * height
-		elif corrtype == "cross":
-			RR = Num_position * Num_shape * np.pi * (rp_max ** 2 - rp_min ** 2) * abs(pi_max - pi_min) / L3
-		else:
-			raise ValueError("Unknown input for corrtype, choose from auto or cross.")
-		return RR
+		num_pairs = available_pairs(Num_position, Num_shape, num_overlap, corrtype)
+		# volume is cylindrical pi*dr^2 * height
+		return num_pairs * np.pi * (rp_max ** 2 - rp_min ** 2) * abs(pi_max - pi_min) / L3
 
-	def get_random_pairs_r_mur(self, r_max, r_min, mur_max, mur_min, L3, corrtype, Num_position, Num_shape):
+	def get_random_pairs_r_mur(self, r_max, r_min, mur_max, mur_min, L3, corrtype, Num_position,
+							   Num_shape, num_overlap=0):
 		"""Returns analytical value of the number of pairs expected in an r, mu_r bin for a random uniform distribution.
 
 		Parameters
@@ -314,6 +396,14 @@ class MeasureIABase(SimInfo):
 			Number of objects in the position sample.
 		Num_shape : int
 			Number of objects in the shape sample.
+		num_overlap : int, optional
+			Number of objects present in *both* samples. A shape galaxy cannot pair with
+			itself, and the pair loop drops that self-pair automatically because the
+			separation window starts at ``r_min > 0``, so the available pair count is
+			``Num_position * Num_shape - num_overlap`` rather than the plain product. Pass 0
+			(the default) for genuinely disjoint samples; pass ``Num_shape`` when the shape
+			sample is drawn from the position sample, which is the usual IA configuration.
+			See :func:`available_pairs`.
 
 
 		Returns
@@ -323,25 +413,10 @@ class MeasureIABase(SimInfo):
 
 		"""
 
-		if corrtype == "auto":
-			RR = (
-					(Num_position - 1.0)
-					/ 2.0
-					* Num_shape
-					* 2. * np.pi / 3. * (r_max ** 3 - r_min ** 3) * (mur_max - mur_min)
-					/ L3
-			)
+		num_pairs = available_pairs(Num_position, Num_shape, num_overlap, corrtype)
 		# volume is big cap - small cap for large - small radius
-		elif corrtype == "cross":
-			RR = (
-					(Num_position - 1.0)
-					* Num_shape
-					* 2. * np.pi / 3. * (r_max ** 3 - r_min ** 3) * (mur_max - mur_min)
-					/ L3
-			)
-		else:
-			raise ValueError("Unknown input for corrtype, choose from auto or cross.")
-		return abs(RR)
+		return abs(num_pairs * 2. * np.pi / 3. * (r_max ** 3 - r_min ** 3)
+				   * (mur_max - mur_min) / L3)
 
 	def _measure_w_g_i(self, dataset_name, corr_type="both", return_output=False, jk_group_name=""):
 		"""Measures w_gg or w_g+ for a given xi_gi dataset that has been calculated with the _measure_xi_rp_pi_sims

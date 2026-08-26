@@ -125,9 +125,11 @@ class MeasureGalaxyContributionsBox:
         r"""Analytic $RR_{g+}$ grid for the requested statistic.
 
         Delegates to the same ``get_random_pairs`` / ``get_random_pairs_r_mur`` the
-        estimators use, so the normalisation conventions match exactly — including the
-        fact that the two differ: the (r, mu_r) form carries a ``(Num_position - 1)``
-        while the (rp, pi) form carries a plain ``Num_position``.
+        estimators use, so the normalisation conventions match exactly — including
+        ``num_overlap``, the count of objects present in both samples. Passing it is not
+        optional: it defaults to 0 (independent samples), and leaving it out here while the
+        estimators measure it would put the per-galaxy sums a factor ``N/(N-1)`` away from
+        the ordinary measurement they are supposed to reproduce.
         """
         RR = np.zeros((self.num_bins_r, self.num_bins_pi))
         second_bins = self.mu_r_bins if statistic == "multipoles" else self.pi_bins
@@ -137,11 +139,12 @@ class MeasureGalaxyContributionsBox:
             for p in np.arange(0, self.num_bins_pi):
                 RR[i, p] = get_pairs(self.r_bins[i + 1], self.r_bins[i],
                                      second_bins[p + 1], second_bins[p],
-                                     volume, "cross", Num_position, Num_shape)
+                                     volume, "cross", Num_position, Num_shape,
+                                     self.num_overlap)
         return RR
 
     def _galaxy_rr_ratio(self, statistic, volume_jk, n_pos_jk, n_shape_jk,
-                         volume, Num_position, Num_shape):
+                         volume, Num_position, Num_shape, overlap_jk=0):
         """``RR_jk / RR``, the scalar amplitude ratio between a delete-one realisation and
         the full sample.
 
@@ -149,15 +152,19 @@ class MeasureGalaxyContributionsBox:
         amplitude changes — so the ratio taken from any single bin is the ratio for the
         whole grid. Deriving it by calling the estimator's own ``RR`` function, rather than
         restating the normalisation here, means this cannot drift from the convention the
-        estimator actually uses (the two ``get_random_pairs*`` functions do not currently
-        agree on whether the cross count carries ``Num_position - 1``).
+        estimator actually uses.
+
+        The delete-one realisation drops the overlapping objects that live in the removed
+        region, so it carries ``num_overlap`` less ``overlap_jk_counts[n]`` — the same
+        per-region bookkeeping the jackknife backends use.
         """
         get_pairs = (self.get_random_pairs_r_mur if statistic == "multipoles"
                      else self.get_random_pairs)
         second_bins = self.mu_r_bins if statistic == "multipoles" else self.pi_bins
         bin_args = (self.r_bins[1], self.r_bins[0], second_bins[1], second_bins[0])
-        full = get_pairs(*bin_args, volume, "cross", Num_position, Num_shape)
-        jk = get_pairs(*bin_args, volume_jk, "cross", n_pos_jk, n_shape_jk)
+        full = get_pairs(*bin_args, volume, "cross", Num_position, Num_shape,
+                         self.num_overlap)
+        jk = get_pairs(*bin_args, volume_jk, "cross", n_pos_jk, n_shape_jk, overlap_jk)
         return jk / full
 
     def _galaxy_projection_kernel(self, statistic, RR_g_plus, ell):
@@ -340,8 +347,9 @@ class MeasureGalaxyContributionsBox:
             for n in np.arange(num_jk):
                 n_pos_jk = int(np.count_nonzero(jk_pos != n))
                 n_shape_jk = int(np.count_nonzero(jk_shape != n))
+                overlap_jk = int(self.num_overlap - self.overlap_jk_counts[n])
                 rr_ratio[n] = self._galaxy_rr_ratio(statistic, volume_jk, n_pos_jk, n_shape_jk,
-                                                    L3, Num_position, Num_shape)
+                                                    L3, Num_position, Num_shape, overlap_jk)
             out.update({"Y_jk_values": Y_jk, "P_jk_values": P_jk, "jk_patches": jk_patches,
                         "jk_shape": jk_shape, "R_jk": R_jk, "rr_ratio": rr_ratio, "R": R})
 

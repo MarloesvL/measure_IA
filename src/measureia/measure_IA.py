@@ -52,6 +52,7 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			line_of_sight_index_name="LOS",
 			weight_density_sample_name="weight",
 			weight_shape_sample_name="weight_shape_sample",
+			num_overlap=None,
 	):
 		"""
 		The __init__ method of the MeasureIABox class.
@@ -75,6 +76,17 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			Name of the key in the data dictionary that contains the weights of the density sample.
 		weight_shape_sample_name : str, optional
 			Name of the key in the data dictionary that contains the weights of the shape sample.
+		num_overlap : int or NoneType, optional
+			Number of objects present in *both* the position and the shape sample. The analytic
+			RR is normalised by ``Num_position * Num_shape - num_overlap``, because a shape
+			galaxy cannot pair with itself and the pair loop already drops that self-pair (the
+			separation window starts at ``r_min > 0``). Default None, which measures the overlap
+			from the coordinates and is what you want for real data, where the shape sample is
+			normally drawn from the position sample. Pass an integer to override it -- most
+			usefully ``0``, which reproduces the convention external codes such as halotools
+			and corr_pc use, where the two samples are treated as independent. An override is
+			applied uniformly, so the per-jackknife-region adjustment is only made in the
+			default (measured) mode.
 
 		Notes
 		-----
@@ -109,6 +121,10 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 		if not (isinstance(num_nodes, (int, np.integer)) and not isinstance(num_nodes, bool) and num_nodes >= 1):
 			raise ValueError(f"num_nodes must be an integer >= 1, got {num_nodes!r}.")
 		self.num_nodes = num_nodes
+		if num_overlap is not None and not (isinstance(num_overlap, (int, np.integer))
+											and not isinstance(num_overlap, bool) and num_overlap >= 0):
+			raise ValueError(f"num_overlap must be None or an integer >= 0, got {num_overlap!r}.")
+		self._num_overlap_override = num_overlap
 		self.randoms_data = None
 		self.data_dir = None
 		self.num_samples = None

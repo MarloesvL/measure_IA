@@ -749,7 +749,7 @@ class TestIntermediateOutputsW:
         total_rr_analytical = MeasureIABase.get_random_pairs(
             obj.r_bins[-1], obj.r_bins[0],
             obj.pi_bins[-1], obj.pi_bins[0],
-            L3, "cross", N, N)
+            L3, "cross", N, N, obj.num_overlap)
         assert np.sum(rr) == pytest.approx(total_rr_analytical, rel=1e-10)
 
     def test_xi_gg_rp_pi_grids_match_xi_g_plus(self, IA_mock_TNG300_n1):
