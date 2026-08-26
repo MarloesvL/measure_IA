@@ -342,3 +342,67 @@ def test_slopes_are_invariant_to_the_centring_choice(mock_data, tmp_path):
         x_pair = (raw - np.average(raw, axis=0, weights=P[:, b])) / scale
         assert np.allclose(_fit_bin(Y, P, x_global, b)[1:],
                            _fit_bin(Y, P, x_pair, b)[1:], rtol=1e-8)
+
+
+def test_per_galaxy_rows_match_the_input_galaxy_order(mock_data, tmp_path):
+    """Row j of the per-galaxy output must be galaxy j of the *input* catalogue.
+
+    This is deliberately permutation-sensitive. Every other test in this file
+    checks a sum over the galaxy axis, which is invariant under reordering, so a
+    bug that permuted the rows would pass all of them while silently attributing
+    each galaxy's alignment signal to a different galaxy.
+
+    It guards the spatial chunk ordering introduced for benchmarks/FINDINGS.md
+    F5: the kernel now visits shape galaxies in spatial rather than array order
+    so its KDTree queries can prune, and it must map the results back.
+
+    The reference is computed here by brute force, independently of the kernel.
+    """
+    out = _box(mock_data, tmp_path / "order.hdf5").measure_galaxy_contributions(
+        "ord", num_jk=NUM_JK, return_output=True)
+    P = np.asarray(out["P"])
+
+    pos = mock_data["Position"]
+    shape = mock_data["Position_shape_sample"]
+    r_min, r_max = SEP_LIMS
+    half = BOXSIZE / 2.0
+
+    # a spread of galaxies, including the ends, where an off-by-one or a
+    # chunk-boundary error would show first
+    probes = [0, 1, 7, 100, 271, len(shape) // 2, len(shape) - 1]
+    for j in probes:
+        sep = shape[j] - pos
+        sep[sep > half] -= BOXSIZE
+        sep[sep < -half] += BOXSIZE
+        r3d = np.sqrt(np.sum(sep ** 2, axis=1))
+        expected = int(np.sum((r3d >= r_min) & (r3d < r_max)))
+        assert P[j].sum() == pytest.approx(expected), (
+            f"galaxy {j}: per-galaxy pair count {P[j].sum()} does not match the "
+            f"{expected} pairs that galaxy actually has — rows are permuted")
+
+
+def test_per_galaxy_rows_track_a_permuted_input(mock_data, tmp_path):
+    """Permuting the input shape sample must permute the output rows the same way.
+
+    A second, independent angle on the same property: if the kernel reorders
+    internally and maps back correctly, then feeding it a shuffled catalogue must
+    give the same per-galaxy results, shuffled identically.
+    """
+    rng = np.random.default_rng(7)
+    perm = rng.permutation(len(mock_data["Position_shape_sample"]))
+    shuffled = dict(mock_data)
+    shuffled["Position_shape_sample"] = mock_data["Position_shape_sample"][perm]
+    shuffled["Axis_Direction"] = mock_data["Axis_Direction"][perm]
+    shuffled["q"] = mock_data["q"][perm]
+
+    a = _box(mock_data, tmp_path / "plain.hdf5").measure_galaxy_contributions(
+        "a", num_jk=0, return_output=True)
+    b = _box(shuffled, tmp_path / "perm.hdf5").measure_galaxy_contributions(
+        "b", num_jk=0, return_output=True)
+
+    np.testing.assert_allclose(np.asarray(a["P"])[perm], np.asarray(b["P"]),
+                               rtol=0, atol=0,
+                               err_msg="per-galaxy pair counts do not follow the input order")
+    np.testing.assert_allclose(np.asarray(a["Y"])[perm], np.asarray(b["Y"]),
+                               rtol=1e-10, atol=1e-14,
+                               err_msg="per-galaxy signal does not follow the input order")

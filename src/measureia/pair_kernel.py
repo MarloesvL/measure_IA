@@ -601,18 +601,28 @@ def _accumulate_lightcone(sample_set, binning, *, base, shapes, chunk_size_outer
 
     if backend == "brute":
         all_shapes = np.arange(Num_shape)
-    elif shape_tree is None:
-        shape_tree = KDTree(s_shape)
+        # no tree to prune, and keeping array order keeps brute bit-identical
+        order = np.arange(Num_position)
+    else:
+        if shape_tree is None:
+            shape_tree = KDTree(s_shape)
+        # Visit position galaxies in spatial order so each chunk's KDTree covers
+        # a small region and the dual-tree query can prune (FINDINGS.md F5).
+        # This path has no per-galaxy outputs, so nothing is indexed by galaxy
+        # and there is no mapping back to do -- the grids are summed over the
+        # whole sample either way.
+        order = spatial_order(s_pos)
 
     for i in np.arange(0, Num_position, chunk_size_outer):
         i2 = min(Num_position, i + chunk_size_outer)
-        s_pos_i = s_pos[i:i2]
-        weight_i = weight[i:i2]
+        sel = order[i:i2]
+        s_pos_i = s_pos[sel]
+        weight_i = weight[sel]
         if shapes:
-            east_i = sample_set.east[i:i2]
-            north_i = sample_set.north[i:i2]
+            east_i = sample_set.east[sel]
+            north_i = sample_set.north[sel]
         if jk:
-            jk_pos_i = sample_set.jk_pos[i:i2]
+            jk_pos_i = sample_set.jk_pos[sel]
         if backend == "brute":
             ind_rbin_i = [all_shapes] * len(s_pos_i)
         else:
@@ -666,6 +676,55 @@ def _accumulate_lightcone(sample_set, binning, *, base, shapes, chunk_size_outer
                               w_pairs[other_diff])
 
     return Grids(DD=DD, Splus_D=Splus_D, Scross_D=Scross_D, DD_jk=DD_jk, Splus_D_jk=Splus_D_jk)
+
+
+def spatial_order(coords):
+    """Visit order that makes consecutive chunks compact in space.
+
+    ``accumulate`` processes the chunked sample 100 at a time, builds a KDTree of
+    each chunk and queries it against the full tree of the other sample. A
+    dual-tree traversal can only prune when the chunk occupies a small region, and
+    nothing about a catalogue's storage order guarantees that: a sample stored
+    grouped by halo, or by id, or shuffled, gives chunks whose bounding box spans
+    essentially the whole volume, and the query degenerates towards brute force.
+
+    Measured on the package's own mock at 100,000 galaxies, the chunk extent was
+    619 Mpc inside a 711 Mpc box, the query took 6.20 s, and its cost scaled as
+    N^1.63. Visiting the same galaxies in the order returned here made the chunks
+    243 Mpc across, the query 0.34 s, and the scaling N^1.01 -- an 18x speed-up
+    from the identical set of pairs (benchmarks/FINDINGS.md F5).
+
+    The key is a Morton (Z-order) code on a 1024-per-axis grid spanning the
+    sample, which interleaves the bits of the per-axis cell indices so that points
+    close in space stay close in the ordering. Works for 2D coordinates (the
+    (rp, pi) box binning projects out the line of sight) as well as 3D.
+
+    Parameters
+    ----------
+    coords : (N, D) ndarray
+        Coordinates in the same metric the KDTree is built on, i.e. whatever
+        ``binning.tree_coords`` returns.
+
+    Returns
+    -------
+    (N,) ndarray of int
+        Indices into ``coords``, spatially ordered. A stable sort, so the order is
+        deterministic for a given input.
+
+    """
+    coords = np.asarray(coords, dtype=float)
+    n, dim = coords.shape
+    bits = 10
+    lo = coords.min(axis=0)
+    span = coords.max(axis=0) - lo
+    span[span <= 0] = 1.0
+    cell = np.clip(((coords - lo) / span * (1 << bits)).astype(np.int64),
+                   0, (1 << bits) - 1)
+    key = np.zeros(n, dtype=np.int64)
+    for b in range(bits):
+        for d in range(dim):
+            key |= ((cell[:, d] >> b) & 1) << (b * dim + d)
+    return np.argsort(key, kind="stable")
 
 
 def accumulate(sample_set, binning, *, base, R=None, shapes=True,
@@ -861,21 +920,33 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
 
     if backend == "brute":
         all_positions = np.arange(len(positions))
-    elif pos_tree is None:
-        pos_tree = KDTree(binning.tree_coords(positions, not_LOS), boxsize=base.boxsize)
+        # No tree, so nothing to prune and nothing to gain; keeping array order
+        # here also keeps the brute path bit-identical to previous releases.
+        order = np.arange(len(positions_shape_sample))
+    else:
+        if pos_tree is None:
+            pos_tree = KDTree(binning.tree_coords(positions, not_LOS), boxsize=base.boxsize)
+        # Visit shape galaxies in spatial order so each chunk's KDTree covers a
+        # small region and the dual-tree query can prune (FINDINGS.md F5). The
+        # order is computed on tree_coords, i.e. the same metric the trees use.
+        # Results are unchanged up to float summation order; the per-galaxy
+        # branches below index their outputs by the *original* galaxy id so that
+        # what the caller gets back is still in the caller's order.
+        order = spatial_order(binning.tree_coords(positions_shape_sample, not_LOS))
     for i in np.arange(0, len(positions_shape_sample), chunk_size_outer):
         i2 = min(len(positions_shape_sample), i + chunk_size_outer)
+        sel = order[i:i2]
         if sp_buffer_DD is not None:
             sp_buffer_DD[:i2 - i] = 0.0
             if sp_buffer_Splus is not None:
                 sp_buffer_Splus[:i2 - i] = 0.0
-        positions_shape_sample_i = positions_shape_sample[i:i2]
-        weight_shape_i = weight_shape[i:i2]
+        positions_shape_sample_i = positions_shape_sample[sel]
+        weight_shape_i = weight_shape[sel]
         if shapes:
-            axis_direction_i = sample_set.axis_direction[i:i2]
-            e_i = sample_set.e[i:i2]
+            axis_direction_i = sample_set.axis_direction[sel]
+            e_i = sample_set.e[sel]
         if jk:
-            jk_shape_i = sample_set.jk_shape[i:i2]
+            jk_shape_i = sample_set.jk_shape[sel]
         if backend == "brute":
             # every position is a candidate for every shape in the chunk
             ind_rbin_i = [all_positions] * len(positions_shape_sample_i)
@@ -943,7 +1014,10 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
                     # Same pairs, same weights, resolved on the shape-galaxy axis. Kept
                     # last and in its own branch so that nothing above changes when
                     # per_galaxy is off.
-                    gj = i + n
+                    # the caller's galaxy id, not the visit position: the loop
+                    # walks the sample in spatial order (see `order` above), so
+                    # i + n would attribute each galaxy's row to a different one
+                    gj = sel[n]
                     w_pairs_gal = weight[ind_rbin_i[n]][mask] * weight_shape_i[n]
                     if per_galaxy_proj is None:
                         np.add.at(DD_gal[gj], (ind_r, ind_pi), w_pairs_gal)
@@ -989,6 +1063,16 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
         DD_gal_jk_values = _pad_and_stack(sp_chunks_DD, fill=0.0)
         if sp_chunks_Splus:
             Splus_D_gal_jk_values = _pad_and_stack(sp_chunks_Splus, fill=0.0)
+        # The sparse arrays are built one chunk at a time and concatenated, so
+        # their galaxy axis follows the *visit* order rather than the caller's.
+        # The dense per-galaxy arrays do not need this because they are written
+        # at gj = sel[n] as they go; these cannot be, so map them back here.
+        # (order is the identity on the brute backend, where this is a no-op.)
+        gal_jk_patches = _restore_galaxy_order(gal_jk_patches, order, fill=-1)
+        DD_gal_jk_values = _restore_galaxy_order(DD_gal_jk_values, order, fill=0.0)
+        if Splus_D_gal_jk_values is not None:
+            Splus_D_gal_jk_values = _restore_galaxy_order(
+                Splus_D_gal_jk_values, order, fill=0.0)
 
     return Grids(DD=DD, Splus_D=Splus_D, Scross_D=Scross_D, DD_jk=DD_jk, Splus_D_jk=Splus_D_jk,
                  DD_gal=DD_gal, Splus_D_gal=Splus_D_gal,
@@ -996,6 +1080,25 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
                  gal_jk_patches=gal_jk_patches,
                  DD_gal_jk_values=DD_gal_jk_values,
                  Splus_D_gal_jk_values=Splus_D_gal_jk_values)
+
+
+def _restore_galaxy_order(stacked, order, *, fill):
+    """Put a visit-ordered galaxy axis back into the caller's order.
+
+    ``stacked`` has its galaxy axis in the order the kernel visited the sample
+    (``order``); the caller indexes galaxies by their position in the input
+    catalogue. ``out[order] = stacked`` is the inverse permutation.
+
+    The galaxy axis can be shorter than ``order`` when the final chunk was
+    partially filled, so the output is allocated at full length and padded --
+    which is why ``fill`` has to match the padding convention of the array being
+    restored (-1 for patch ids, 0 for values).
+    """
+    if stacked is None:
+        return None
+    out = np.full((len(order),) + stacked.shape[1:], fill, dtype=stacked.dtype)
+    out[order[:len(stacked)]] = stacked
+    return out
 
 
 def _compress_jk_chunk(buffer_DD, buffer_Splus, used):
