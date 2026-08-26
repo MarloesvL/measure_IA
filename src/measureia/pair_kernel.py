@@ -338,11 +338,58 @@ class BoxRpPi:
         self.num_bins_pi = base.num_bins_pi
         self.sub_box_len_logrp = (np.log10(base.r_max) - np.log10(base.r_min)) / base.num_bins_r
         self.sub_box_len_pi = (base.pi_bins[-1] - base.pi_bins[0]) / base.num_bins_pi
+        # Candidate region: either the 3D ball enclosing the (rp <= r_max,
+        # |pi| <= pi_max) cylinder this binning selects, or the 2D projection of
+        # that cylinder. Both are supersets of what bin_pairs keeps, so the pair
+        # set is identical either way and only the wasted work differs -- pick
+        # whichever is smaller:
+        #
+        #   ball      (4/3) q^3,  q = sqrt(r_max^2 + pi_max^2)
+        #   cylinder  r_max^2 * L    (the full box depth, because a 2D query
+        #                             cannot constrain the line of sight at all)
+        #
+        # The ball wins whenever the box is deep enough -- the usual case, and
+        # increasingly so as boxes grow, which is what removes the superlinear
+        # scaling. The cylinder wins when pi_max is large next to the box:
+        # measured at pi_max=60 in a 205 Mpc/h box, the ball would be 4.1x worse.
+        ball_r = np.sqrt(base.r_max ** 2 + base.pi_bins[-1] ** 2)
+        boxsize = getattr(base, "boxsize", None)
+        if boxsize:
+            self.tree_is_3d = bool((4.0 / 3.0) * ball_r ** 3 < base.r_max ** 2 * boxsize)
+        else:
+            # no box depth to compare against: the ball is bounded, the
+            # projected query is not, so prefer the ball
+            self.tree_is_3d = True
+        self.query_r_max = ball_r if self.tree_is_3d else base.r_max
 
     def tree_coords(self, coords, not_LOS):
-        """Coordinates the KDTree is built/queried on: the 2D projection, since the
-        (rp, pi) r-window is the projected separation."""
-        return coords[:, not_LOS]
+        """Coordinates the KDTree is built/queried on: the full 3D positions.
+
+        This binning selects a cylinder — projected separation within ``r_max``,
+        line-of-sight separation within ``pi_max`` — and the obvious tree for that
+        is a 2D one on the projection, which is what this used to build. The
+        trouble is that a 2D query cannot constrain the line of sight at all, so
+        it returns every neighbour in a cylinder through the *entire box depth*
+        and ``bin_pairs`` then discards the ones outside the pi window. The cost
+        of that grows with the box: candidates per galaxy went 88.8 -> 134.4 ->
+        210.4 across three decades at fixed number density, where the (r, mu_r)
+        binning stayed flat at ~19 (benchmarks/FINDINGS.md F2), and it left this
+        the only measurement path with a superlinear scaling exponent (1.12
+        against 1.00-1.03 elsewhere) after the spatial-ordering fix (F5).
+
+        Querying a 3D ball of radius ``sqrt(r_max^2 + pi_max^2)`` instead bounds
+        the cylinder exactly: every pair the binning keeps lies inside that ball,
+        so the surviving pair set is unchanged, and the ball no longer scales
+        with the box. SkyRpPi has always done this; the box was the outlier.
+
+        The ball is not universally better: it grows with ``pi_max`` while the
+        cylinder grows with the box depth, so a wide ``pi_max`` in a shallow box
+        is cheaper to query in projection. ``__init__`` compares the two volumes
+        and sets ``tree_is_3d``, which is what this returns on. Both regions are
+        supersets of the pairs ``bin_pairs`` keeps, so the choice cannot change
+        the result -- only how much work is discarded.
+        """
+        return coords if self.tree_is_3d else coords[:, not_LOS]
 
     def bin_pairs(self, separation, not_LOS, LOS_ind):
         """Bin one shape galaxy's separations to its candidate position neighbours.
@@ -411,6 +458,8 @@ class BoxRMuR:
         self.rp_cut = rp_cut
         self.sub_box_len_logr = (np.log10(base.r_max) - np.log10(base.r_min)) / base.num_bins_r
         self.sub_box_len_mu_r = 2.0 / base.num_bins_pi
+        # the r-window is the 3D separation, so the ball is just r_max
+        self.query_r_max = base.r_max
 
     def tree_coords(self, coords, not_LOS):
         """Coordinates the KDTree is built/queried on: the full 3D positions, since the
@@ -961,7 +1010,7 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
             # Worth ~30% of a box measurement -- see benchmarks/FINDINGS.md F1.
             # asarray keeps the downstream fancy-indexing off Python lists.
             ind_rbin_i = [np.asarray(c, dtype=np.intp)
-                          for c in shape_tree.query_ball_tree(pos_tree, binning.r_max)]
+                          for c in shape_tree.query_ball_tree(pos_tree, binning.query_r_max)]
 
         for n in np.arange(0, len(positions_shape_sample_i)):
             if len(ind_rbin_i[n]) > 0:
