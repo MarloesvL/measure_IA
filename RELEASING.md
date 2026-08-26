@@ -9,7 +9,7 @@ list rather than from memory.
 | Place | What it is | Updated by |
 |---|---|---|
 | `pyproject.toml` `version` | the source of truth | hand |
-| `uv.lock` | mirrors it | `uv sync` |
+| `uv.lock` | mirrors it | `uv lock` (**not** `uv sync` — see below) |
 | `measureia.__version__` | read from installed metadata | automatic |
 | `CITATION.cff` `version` + `date-released` | what people cite | hand |
 | `CITATION.cff` `identifiers` | the version DOI of the *previous* release | hand, after Zenodo mints the new one |
@@ -39,7 +39,15 @@ list rather than from memory.
 
 ## Releasing
 
-1. Bump `version` in `pyproject.toml`, then `uv sync` so `uv.lock` follows.
+1. Bump `version` in `pyproject.toml`, then `uv lock` so `uv.lock` follows.
+
+   Use `uv lock`, not `uv sync`. A bare `uv sync` installs only the default dependency set and
+   **removes everything else from the environment** — the `validation` extra (halotools, treecorr),
+   the `docs` group (mkdocs, mkdocstrings), and anything installed by hand such as `pytest-cov`. It
+   will also replace a locally built package with the published wheel, which matters if you have
+   built treecorr from source to get OpenMP. `uv lock` updates the lockfile, which is all this step
+   needs, and leaves the environment alone. If you do want to sync, `uv sync --all-extras
+   --all-groups` keeps the extras, but still reinstalls anything you built yourself.
 2. Update `CITATION.cff`: `version`, `date-released`, and the description of the versioned DOI identifier.
    Leave the concept DOI (`10.5281/zenodo.17252215`) alone — it always resolves to the latest release.
 3. Commit, open the PR from `dev` into `main`, and merge once CI passes on all five Python versions.
