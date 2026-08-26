@@ -8,6 +8,8 @@ public API mean a major version bump.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-08-26
+
 ### Added
 
 - `MeasureIABox.measure_galaxy_contributions`, which resolves the box estimators **per shape
@@ -248,7 +250,8 @@ moment estimator, and sub-box jackknife covariances.
   than kept at the time. Fill in the 0.2.x lines if the detail is worth having.
 -->
 
-[Unreleased]: https://github.com/MarloesvL/measure_IA/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/MarloesvL/measure_IA/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/MarloesvL/measure_IA/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/MarloesvL/measure_IA/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/MarloesvL/measure_IA/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/MarloesvL/measure_IA/compare/v0.2.0...v0.2.1
