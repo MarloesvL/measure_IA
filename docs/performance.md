@@ -81,6 +81,27 @@ Two things change the cost substantially, both through the number of neighbours 
 and **$r_\mathrm{max}$**. A sample twice as dense, or a maximum separation $2^{1/3}$ times larger, roughly
 doubles the pair count and so the runtime. Use `num_nodes` above ~40,000 galaxies for a further 2–4×.
 
+### Why $w$ costs about twice what the multipoles cost
+
+The projected statistics are consistently slower than the multipoles in the table above, and the reason is
+geometry rather than implementation. $w_{gg}$ and $w_{g+}$ are binned in $(r_p, \pi)$, which selects a
+*cylinder*, so the neighbour search has to cover a ball large enough to contain it — radius
+$\sqrt{r_\mathrm{max}^2 + \pi_\mathrm{max}^2}$. The multipoles are binned in $(r, \mu)$, which selects a
+*sphere*, so $r_\mathrm{max}$ is enough. The projected run therefore examines
+$\left(1 + (\pi_\mathrm{max}/r_\mathrm{max})^2\right)^{3/2}$ times as many candidate pairs, which makes
+**$\pi_\mathrm{max}$ a cost knob in its own right** — and a fairly sharp one:
+
+| $\pi_\mathrm{max}/r_\mathrm{max}$ | candidate pairs, relative to the multipoles |
+|---:|---:|
+| 0.5 | 1.4× |
+| 1 (the default, $\pi_\mathrm{max}=r_\mathrm{max}$) | 2.8× |
+| 2 | 11× |
+
+At the default this predicts 2.8× the candidates, and the measured ratio is 2.78×; it shows up as ~1.9× in wall
+time because the per-galaxy overhead is common to both. None of those extra pairs is wasted work — the $w$
+estimator integrates over $|\pi| \le \pi_\mathrm{max}$, so they carry signal. But if you do not need a large
+$\pi_\mathrm{max}$, lowering it is one of the cheapest speed-ups available.
+
 ## Running the benchmarks yourself
 
 ```bash
