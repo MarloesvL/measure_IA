@@ -470,3 +470,32 @@ and treecorr (lightcone), plus measureia-only profiling. Methodology in
   before the paper quotes those ratios. Suggested start: diff
   `profile_measureia.py` stage breakdowns at N=9,600 and N=300,000. See
   `benchmarks/FINDINGS.md` F3.)*
+
+- [ ] **Re-run the cross-package comparison at realistic number density.** Every
+  halotools and treecorr ratio recorded so far was measured on the reference mock, at
+  n = 3.1e-4 and ~11-19 candidates per galaxy. A real catalogue sits near n = 1e-2 with
+  ~345, and measureia's fixed per-galaxy cost (~33.8 us, F6) amortises as that rises,
+  so the ratios will move — plausibly in measureia's favour. **The numbers currently in
+  `FINDINGS.md` F3 and in the CHANGELOG are therefore density-specific and must not go
+  into the paper as-is.** `bench_lib.box_mock_for(..., density=)` now takes an absolute
+  density; the sweep needs a density axis to match. Note the absolute runtimes grow
+  ~20-30x with the pair count, so the size ceiling will need lowering.
+
+- [ ] **Settle the lightcone memory ceiling at 1e6-1e7 with 10x randoms.** The analytic
+  array model gives ~1.3 GB at 1e6 and ~13.3 GB at 1e7, but measured RSS at 100k shape /
+  5x randoms is 3.6x the model (156 MB against 44 MB) because of per-chunk transients,
+  HDF5 buffers and RSS being a high-water mark over four sequential pair-count runs. If
+  that ratio persists 1e7 needs ~48 GB; if it shrinks as arrays come to dominate, ~13 GB.
+  **The spread is too wide to plan against** — one run at ~1e6 total points, where arrays
+  dominate the overheads, would settle it. Needs a cluster node, not the laptop.
+
+  Reducible items, measured or derived (F6):
+  - **retained user input: 6.6 GB at 1e7, the largest single item.** `self.data` stays
+    resident alongside the derived arrays on the single-process path; the multiprocessing
+    path already offloads it to a temp HDF5 and clears it. Contained, no numerical effect.
+  - float32 for derived positions: 3.4 GB, but **risky** — `s = s_shape - s_pos` cancels
+    ~2500 Mpc down to ~1 Mpc, so float32 gives ~2.5e-4 Mpc absolute error on a 1 Mpc
+    separation. Must be tested against the smallest bin edge before being considered.
+  - computing the east/north/n_pos sky basis per chunk instead of storing it: 0.7 GB.
+  - **not** the KDTree: measured at 8 bytes/point (it stores an index permutation, not a
+    copy of the coordinates), so it is negligible at any of these scales.
