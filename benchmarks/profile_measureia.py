@@ -106,7 +106,10 @@ def print_report(task, stats, grouped, total, top):
 
 	print(f"\ntop {top} by internal time")
 	buf = io.StringIO()
-	pstats.Stats(stats, stream=buf).sort_stats("tottime").print_stats(top)
+	# `stats` is already a pstats.Stats; re-wrapping it raises, so point its
+	# stream at the buffer instead of constructing a new one
+	stats.stream = buf
+	stats.sort_stats("tottime").print_stats(top)
 	started = False
 	for line in buf.getvalue().splitlines():
 		if line.strip().startswith("ncalls"):
