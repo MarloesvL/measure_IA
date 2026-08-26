@@ -837,3 +837,110 @@ superlinear term rather than a constant.
 four configurations. Integer sums are order-independent, so equality proves the
 pair set is unchanged — the check that matters when the candidate order, and
 hence the float summation order, has moved. 593 tests pass.
+
+
+---
+
+## F8 — Two optimisations measured and deliberately NOT taken
+
+**Status:** measured 2026-08-26, **deferred**. No code change. Recorded so a
+later session does not re-derive the analysis, and — more importantly — does not
+implement either on the strength of a mock-density benchmark.
+
+Both target the per-galaxy inner loop of `pair_kernel.accumulate`. Both looked
+worthwhile on first estimate and did not survive being measured properly at the
+density real catalogues occupy (F6).
+
+### Option 1 — batch the inner loop across a chunk
+
+Concatenate a chunk's candidates into one flat array with a per-candidate galaxy
+id, so each NumPy call runs once per chunk rather than once per galaxy.
+Prototyped standalone (reproducing the real arithmetic: separation, periodic
+wrap, window, ellipticity projection, scatter), verified to give identical
+integer `DD` totals:
+
+| density | candidates/galaxy | chunk | per-galaxy | batched | speedup | peak separation array |
+|---|---:|---:|---:|---:|---:|---:|
+| mock | 39 | 100 | 0.249 s | 0.034 s | **7.36x** | 0.1 MB |
+| mock | 39 | 1600 | 0.249 s | 0.030 s | 8.19x | 1.5 MB |
+| **simulation** | **960** | **100** | 0.908 s | 0.729 s | **1.25x** | 2.3 MB |
+| simulation | 960 | 400 | 0.908 s | 0.746 s | 1.22x | 9.0 MB |
+| simulation | 960 | 1600 | 0.908 s | 0.763 s | 1.19x | 35.2 MB |
+
+**Deferred because 1.25x does not justify the risk.** The refactor would have to
+restructure the per-galaxy dense scatter, the sparse jackknife buffer
+(`sp_buffer_DD`, whose galaxy axis is chunk-local), the jackknife patch
+decomposition and both geometries, and would break bit-identity again. It is by
+some distance the most invasive change considered.
+
+The reason the payoff is small is exactly the cost model (F6): at 960 candidates
+the fixed ~33.8 µs per galaxy is already amortised to ~18% of the work, and
+batching can only attack that term. The prototype's 1.25x matches the model's
+prediction to about a percent, which is good evidence the model is sound.
+
+**The trap this analysis exists to prevent:** at the reference mock's density the
+same change measures **7.4x - 8.2x**. Implementing it and benchmarking on the
+default mock would produce a spectacular changelog number that no user at a
+realistic density would ever see.
+
+**What would change the verdict:** genuinely sparse samples (a low-density
+tracer, or a small `r_max`) sit in the regime where batching wins several-fold.
+But that is also the regime where runs are already fast, so the absolute saving
+is smallest where the relative one is largest.
+
+### Option 7 — tune `chunk_size_outer`
+
+**No upside; the hardcoded 100 is already optimal.** At simulation density larger
+chunks are slightly *worse* (1.25x at 100, 1.22x at 400, 1.19x at 1600) while
+costing 15x the peak memory. Only worth revisiting as the memory dial *if*
+option 1 is ever implemented, since batching's footprint is
+`chunk_size x candidates/galaxy x 24 bytes`.
+
+### Option 2 — `np.add.at` -> `np.bincount` for the grid scatter
+
+`np.add.at` takes an unbuffered element-by-element path and is well known to be
+slow. Replacing it with a flattened `bincount` looked like an easy win. It is
+not, and the way the estimate moved is worth recording:
+
+| benchmark | measured | what was wrong with it |
+|---|---:|---|
+| bulk arrays, 2e6 values | 3.1x | ignores that the real call sites see ~345 values, not 2e6 |
+| per-call, pre-made flat index | 4.61x | smuggles in the flat index for free; the real loop holds `ind_r` and `ind_pi` separately |
+| **per-call, index computed as `ind_r*NPI + ind_pi`** | **1.71x** | this is the arithmetic the loop would actually do |
+
+Against pairs per call, honestly measured:
+
+| pairs/call | `add.at` | `bincount` | speedup |
+|---:|---:|---:|---:|
+| 19 (mock density) | 0.0158 s | 0.0269 s | **0.59x — a regression** |
+| 345 (simulation density) | 0.0672 s | 0.0393 s | 1.71x |
+| 960 | 0.0846 s | 0.0327 s | 2.59x |
+
+`add_at` is 10.0% of runtime at simulation density, so 1.71x on it is **~1.05x
+overall** — and a 1.7x *regression* for sparse samples. The crossover is around
+200 pairs per galaxy.
+
+**A general helper is worse still.** Writing it as
+`np.bincount(np.ravel_multi_index(indices, grid.shape), ...)` to cover all the
+call sites at once loses outright on two of them:
+
+| call site | shape | speedup vs `add.at` |
+|---|---|---:|
+| main grids | (10, 20) | 1.30x |
+| jackknife grids | (27, 10, 20) | **0.73x** |
+| per-galaxy dense | (10,) | **0.40x** |
+| per-galaxy jackknife | (27, 10) | 1.32x |
+
+`ravel_multi_index` costs more than it saves, and the 3D jackknife grid loses
+because `minlength = 27*10*20 = 5400` allocates far more than the ~345 cells
+actually touched. Any implementation would have to be per-call-site and
+threshold-guarded, for ~1.05x.
+
+### The methodological point
+
+Three successive benchmarks of option 2 gave 3.1x, 4.61x and 1.71x, shrinking
+each time a flaw was removed from the benchmark rather than from the code. The
+same pattern appeared in F1 (a tracemalloc artifact reversed the conclusion) and
+in F5 (a mock-density profile inflated the expected gain by ~2x). **Measure the
+operation as the caller actually invokes it, at the density the data actually
+has** — every shortcut in this file's history flattered the change under test.

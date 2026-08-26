@@ -529,3 +529,39 @@ and treecorr (lightcone), plus measureia-only profiling. Methodology in
   - computing the east/north/n_pos sky basis per chunk instead of storing it: 0.7 GB.
   - **not** the KDTree: measured at 8 bytes/point (it stores an index permutation, not a
     copy of the coordinates), so it is negligible at any of these scales. -->
+
+- [ ] **OPTIONAL, deliberately deferred: batch the per-galaxy inner loop across a chunk**
+  (`benchmarks/FINDINGS.md` F8). Measured **1.25x** at simulation density and 7.4x on the
+  reference mock — the mock figure is the misleading one, and the gap is the whole reason
+  this is written down. **Do not implement it on the strength of a mock-density
+  benchmark.**
+
+  Why it was not taken: 1.25x does not justify what is by some distance the most invasive
+  change considered. It would have to restructure the per-galaxy dense scatter, the sparse
+  jackknife buffer (whose galaxy axis is chunk-local), the patch decomposition and both
+  geometries, and would break bit-identity again. The payoff is small for a principled
+  reason — at ~960 candidates per galaxy the fixed ~33.8 us per galaxy is already
+  amortised to ~18% of the work (F6), and batching can only attack that term.
+
+  **What would change the verdict:** genuinely sparse samples (low-density tracer, or a
+  small `r_max`) sit in the regime where batching wins several-fold. Note that is also
+  where runs are already fast, so the absolute saving is smallest where the relative one
+  is largest. If implemented, `chunk_size_outer` becomes the memory dial — peak footprint
+  is `chunk_size x candidates/galaxy x 24 bytes` — and would need exposing rather than
+  staying hardcoded at 100.
+
+- [ ] **OPTIONAL, deliberately deferred: `np.add.at` -> `np.bincount` for the grid
+  scatter** (`benchmarks/FINDINGS.md` F8). Worth **~1.05x** overall at simulation density
+  (1.71x on a stage that is 10% of runtime) and a **1.7x regression** below ~200 pairs per
+  galaxy, so it would need a threshold guard. A general helper via `ravel_multi_index` is
+  worse than doing nothing on two of the four call sites (0.73x on the jackknife grid,
+  0.40x on the per-galaxy dense grid), so any implementation must be per-call-site.
+
+  Recorded mainly for the measurement history: three successive benchmarks gave 3.1x,
+  4.61x and 1.71x, shrinking each time a flaw was removed from the benchmark rather than
+  the code. Re-measure before believing any of them.
+
+- [x] **RESOLVED: `chunk_size_outer` needs no tuning.** At simulation density the
+  hardcoded 100 is already optimal; 400 and 1600 are slightly *slower* (1.22x, 1.19x
+  against 1.25x) while costing up to 15x the peak memory. Only worth revisiting if the
+  batching refactor above is ever taken.
