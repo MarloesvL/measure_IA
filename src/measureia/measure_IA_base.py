@@ -39,11 +39,6 @@ class MeasureIABase(SimInfo):
 		Volume of an (r,mu_r) bin.
 	get_random_pairs_r_mur()
 		Analytical RR for a (r,mu_r) bin.
-	setdiff2D()
-		Compares each row of a1 and a2 and returns the elements that do not overlap.
-	setdiff_omit()
-		For rows in nested list a1, whose index is included in incl_ind, returns elements that do not overlap between
-		the row in a1 and a2.
 	_measure_w_g_i()
 		Measure wgg or wg+ from xi grid provided by MeasureWBox or MeasureWLightcone class methods.
 	_measure_multipoles()
@@ -347,57 +342,6 @@ class MeasureIABase(SimInfo):
 		else:
 			raise ValueError("Unknown input for corrtype, choose from auto or cross.")
 		return abs(RR)
-
-	@staticmethod
-	def setdiff2D(a1, a2):
-		"""Compares each row of a1 and a2 and returns the elements that do not overlap
-
-		Parameters
-		----------
-		a1 : nested list
-			List containing lists of elements to compare to a2
-		a2 : nested list
-			List containing lists of elements to compare to a1
-
-		Returns
-		-------
-		nested list
-			For each row, the not-overlapping elements between a1 and a2
-		"""
-		assert len(a1) == len(a2), "Lengths of lists where each row is to be compared, are not the same."
-		diff = []
-		for i in np.arange(0, len(a1)):
-			setdiff = np.setdiff1d(a1[i], a2[i])
-			diff.append(setdiff)
-			del setdiff
-		return diff
-
-	@staticmethod
-	def setdiff_omit(a1, a2, incl_ind):
-		"""For rows in nested list a1, whose index is included in incl_ind, returns elements that do not overlap between
-		the row in a1 and a2.
-
-		Parameters
-		----------
-		a1 : nested list
-			List of lists or arrays where indicated rows need to be compared to a2
-		a2 : list or array
-			Elements to be compared to the row in a1 [and not included in return values].
-		incl_ind : list or array
-			Indices of rows in a1 to be compared to a2.
-
-		Returns
-		-------
-		nested list
-			For each included row in a1, the not-overlapping elements between a1 and a2
-		"""
-		diff = []
-		for i in np.arange(0, len(a1)):
-			if np.isin(i, incl_ind):
-				setdiff = np.setdiff1d(a1[i], a2)
-				diff.append(setdiff)
-				del setdiff
-		return diff
 
 	def _measure_w_g_i(self, dataset_name, corr_type="both", return_output=False, jk_group_name=""):
 		"""Measures w_gg or w_g+ for a given xi_gi dataset that has been calculated with the _measure_xi_rp_pi_sims

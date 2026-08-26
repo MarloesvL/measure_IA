@@ -12,7 +12,6 @@ Covers
     - get_ellipticity (1-D and 2-D modes)
     - get_random_pairs (both corr_types, volume scaling, formula verification)
     - get_random_pairs_r_mur
-    - setdiff2D / setdiff_omit
 
   SimInfo / MeasureIABox initialisation
     - All known simulations (boxsize, h, L_0p5, snap_group)
@@ -372,71 +371,6 @@ class TestGetRandomPairsRMur:
 
 
 # ---------------------------------------------------------------------------
-# setdiff2D
-# ---------------------------------------------------------------------------
-
-class TestSetdiff2D:
-
-    def test_basic_difference(self):
-        a1 = [[1, 2, 3], [4, 5, 6]]
-        a2 = [[2, 3],    [5, 6, 7]]
-        diff = MeasureIABase.setdiff2D(a1, a2)
-        assert list(diff[0]) == [1]
-        assert list(diff[1]) == [4]
-
-    def test_no_overlap(self):
-        a1 = [[1, 2], [3, 4]]
-        a2 = [[5, 6], [7, 8]]
-        diff = MeasureIABase.setdiff2D(a1, a2)
-        np.testing.assert_array_equal(diff[0], [1, 2])
-        np.testing.assert_array_equal(diff[1], [3, 4])
-
-    def test_complete_overlap(self):
-        a1 = [[1, 2], [3, 4]]
-        a2 = [[1, 2], [3, 4]]
-        diff = MeasureIABase.setdiff2D(a1, a2)
-        assert len(diff[0]) == 0
-        assert len(diff[1]) == 0
-
-    def test_length_mismatch_raises(self):
-        with pytest.raises(AssertionError):
-            MeasureIABase.setdiff2D([[1, 2]], [[1], [2]])
-
-    def test_returns_sorted(self):
-        """np.setdiff1d returns sorted results."""
-        a1 = [[3, 1, 2]]
-        a2 = [[2]]
-        diff = MeasureIABase.setdiff2D(a1, a2)
-        assert list(diff[0]) == [1, 3]
-
-
-# ---------------------------------------------------------------------------
-# setdiff_omit
-# ---------------------------------------------------------------------------
-
-class TestSetdiffOmit:
-
-    def test_basic(self):
-        a1 = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
-        a2 = [2, 5]
-        incl_ind = [0, 1]
-        diff = MeasureIABase.setdiff_omit(a1, a2, incl_ind)
-        assert len(diff) == 2
-        np.testing.assert_array_equal(diff[0], [1, 3])
-        np.testing.assert_array_equal(diff[1], [4, 6])
-
-    def test_no_included_indices(self):
-        a1 = [[1, 2], [3, 4]]
-        a2 = [1]
-        diff = MeasureIABase.setdiff_omit(a1, a2, incl_ind=[])
-        assert diff == []
-
-    def test_all_indices_included(self):
-        a1 = [[1, 2, 3], [4, 5, 6]]
-        a2 = [1, 4]
-        diff = MeasureIABase.setdiff_omit(a1, a2, incl_ind=[0, 1])
-        np.testing.assert_array_equal(diff[0], [2, 3])
-        np.testing.assert_array_equal(diff[1], [5, 6])
 # Parameterised happy-path table
 # ---------------------------------------------------------------------------
 

@@ -15,8 +15,8 @@ Structure:
     - ``accumulate`` — the pair loop. ``chunk_axis="shape"`` runs the box order (outer loop
       over shape chunks, positions queried per chunk); ``chunk_axis="position"`` runs the
       lightcone order (outer loop over position chunks, shapes queried). Backends ``"tree"``
-      (KDTree annulus, bit-identical to the legacy) and ``"brute"`` (full cross-join, same
-      pairs → ``allclose``). ``shapes=False`` is the DD-only count_pairs path.
+      (KDTree ball query at the outer radius, bit-identical to the legacy) and ``"brute"``
+      (full cross-join, same pairs → ``allclose``). ``shapes=False`` is the DD-only count_pairs path.
     - jackknife (``jk=True``): union-deletion per-realisation grids ``DD_jk`` /
       ``Splus_D_jk``. Box divides S+ by ``2R`` inline and applies per-realisation
       responsivity via ``compute_R_jk``; the lightcone bakes 1/(2R) into ``e`` and reduces by
@@ -462,7 +462,8 @@ class SkyRpPi:
     line-of-sight separation (``pi`` runs over ``[-pi_max, pi_max]``) and the projected
     separation length is ``sqrt(|s|^2 - LOS^2)``. Query radius is
     ``sqrt(r_max^2 + pi_bins[-1]^2)`` (the position tree is queried against the shape tree
-    over the annulus ``[r_min, query_r_max]``). Clamping convention (lightcone family, see
+    out to ``query_r_max``; there is no inner cut, because ``bin_pairs`` already drops
+    anything below ``r_bins[0]``). Clamping convention (lightcone family, see
     REFACTOR_PLAN.md section 3.2): an index landing exactly on the upper edge
     (``== num_bins``) is set to the last bin (``num_bins - 1``).
     """
@@ -476,7 +477,9 @@ class SkyRpPi:
         self.num_bins_pi = base.num_bins_pi
         self.sub_box_len_logrp = (np.log10(base.r_max) - np.log10(base.r_min)) / base.num_bins_r
         self.sub_box_len_pi = (base.pi_bins[-1] - base.pi_bins[0]) / base.num_bins_pi
-        # KDTree query annulus for candidate selection (REFACTOR_PLAN.md section 3.2).
+        # KDTree query radius for candidate selection (REFACTOR_PLAN.md section 3.2).
+        # query_r_min is retained for reference only: the inner query it used to drive was
+        # removed as redundant with bin_pairs' own lower bound (benchmarks/FINDINGS.md F1).
         self.query_r_min = base.r_min
         self.query_r_max = np.sqrt(base.r_max ** 2 + base.pi_bins[-1] ** 2)
 
@@ -514,7 +517,7 @@ class SkyRMuR:
 
     Like ``SkyRpPi`` but the separation bin ``r`` is the full 3D separation length,
     ``mu_r = LOS / r`` (with the same midpoint ``n_LOS``), and there is no ``pi`` window.
-    Query radius is the annulus ``[r_min, r_max]``. Same lightcone clamp convention as
+    Query radius is ``r_max`` (no inner cut). Same lightcone clamp convention as
     ``SkyRpPi``. ``mu_r`` sub-bin length is ``2.0 / num_bins_pi``.
     """
 
@@ -562,8 +565,8 @@ def _accumulate_lightcone(sample_set, binning, *, base, shapes, chunk_size_outer
 
     Mirrors the legacy lightcone tree/brute counting order exactly (REFACTOR_PLAN.md
     section 4): outer loop over **position** chunks of ``chunk_size_outer``; per chunk build
-    ``KDTree(s_pos_chunk)`` and query it against the single full ``KDTree(s_shape)`` over the
-    binning's ``[query_r_min, query_r_max]`` annulus (tree backend) or take every shape as a
+    ``KDTree(s_pos_chunk)`` and query it against the single full ``KDTree(s_shape)`` out to
+    the binning's ``query_r_max`` (tree backend) or take every shape as a
     candidate (brute backend); inner loop over the chunk, vectorised ``np.add.at`` per
     position. Ellipticity is per *shape* candidate here (``e`` is (M,2) = e1,e2 already
     scaled by 1/(2R)), and S+ grids are **not** divided by ``2R`` (baked into ``e``).
@@ -614,9 +617,13 @@ def _accumulate_lightcone(sample_set, binning, *, base, shapes, chunk_size_outer
             ind_rbin_i = [all_shapes] * len(s_pos_i)
         else:
             pos_tree = KDTree(s_pos_i)
-            ind_min_i = pos_tree.query_ball_tree(shape_tree, binning.query_r_min)
-            ind_max_i = pos_tree.query_ball_tree(shape_tree, binning.query_r_max)
-            ind_rbin_i = base.setdiff2D(ind_max_i, ind_min_i)
+            # One query, at the outer radius only -- see the matching comment in
+            # the box branch below and benchmarks/FINDINGS.md F1. Here the inner
+            # query is even more clearly redundant: it cuts on the 3D separation
+            # while bin_pairs cuts on the projected one, and projected <= 3D, so
+            # anything the query removed the mask removes too.
+            ind_rbin_i = [np.asarray(c, dtype=np.intp)
+                          for c in pos_tree.query_ball_tree(shape_tree, binning.query_r_max)]
 
         for n in np.arange(0, len(s_pos_i)):
             cand = ind_rbin_i[n]
@@ -687,8 +694,12 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
     change without re-deriving bit-identity against the legacy tree/mp paths.
 
     ``backend`` selects how each shape galaxy's candidate positions are chosen:
-      - ``"tree"``: KDTree annulus query ``[r_min, r_max]`` against the position
-        tree (the legacy tree/mp order — bit-identical).
+      - ``"tree"``: KDTree ball query at ``r_max`` against the position tree (the
+        legacy tree/mp order — bit-identical). There is no inner ``r_min`` query:
+        the binning mask already drops everything below ``r_bins[0]``, so the extra
+        query and the set difference it fed were removed as redundant
+        (benchmarks/FINDINGS.md F1). Candidates below ``r_min`` are therefore passed
+        to ``bin_pairs`` and masked out there.
       - ``"brute"``: every position is a candidate (full cross-join per chunk);
         the ``[r_min, r_max)`` window is applied by the binning mask. This runs on
         the *same* shape-chunk order as the tree backend rather than the legacy
@@ -870,9 +881,16 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
             ind_rbin_i = [all_positions] * len(positions_shape_sample_i)
         else:
             shape_tree = KDTree(binning.tree_coords(positions_shape_sample_i, not_LOS), boxsize=base.boxsize)
-            ind_min_i = shape_tree.query_ball_tree(pos_tree, binning.r_min)
-            ind_max_i = shape_tree.query_ball_tree(pos_tree, binning.r_max)
-            ind_rbin_i = base.setdiff2D(ind_max_i, ind_min_i)
+            # One query, at the outer radius only. The inner r_min query and the
+            # set difference it fed were redundant: binning.bin_pairs already
+            # drops every pair with separation < r_bins[0], and r_bins[0] == r_min
+            # exactly, on the same metric this tree is built on. The extra
+            # candidates are masked out in the same (sorted) order, so the
+            # surviving pairs and their float summation order are unchanged.
+            # Worth ~30% of a box measurement -- see benchmarks/FINDINGS.md F1.
+            # asarray keeps the downstream fancy-indexing off Python lists.
+            ind_rbin_i = [np.asarray(c, dtype=np.intp)
+                          for c in shape_tree.query_ball_tree(pos_tree, binning.r_max)]
 
         for n in np.arange(0, len(positions_shape_sample_i)):
             if len(ind_rbin_i[n]) > 0:
