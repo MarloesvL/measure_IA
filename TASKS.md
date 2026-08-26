@@ -400,14 +400,24 @@ and treecorr (lightcone), plus measureia-only profiling. Methodology in
   before and is counted now. A first reading suggested the gain shrank at large
   `r_min`; that was a `tracemalloc` artifact — re-measured untraced, it is larger.*
 
-- [ ] **Not yet reproduced: the large `measure_xi_w` vs `measure_xi_multipoles`
-  timing gap** reported on a run with jackknife + multiprocessing enabled. On
+- [x] **EXPLAINED (2026-08-26). The `measure_xi_w` vs `measure_xi_multipoles` gap is
+  geometry, and shows up only at realistic density.** The (rp, pi) binning selects a
+  cylinder, so its neighbour search must cover a ball of radius
+  `sqrt(r_max^2 + pi_max^2)`, where (r, mu) needs only `r_max` — a factor
+  `(1 + (pi_max/r_max)^2)^(3/2)` more candidate pairs: 2.8x at the default
+  `pi_max = r_max`, measured 2.78x, ~1.9x in wall time. F2 originally found no gap
+  because it measured on the sparse mock, where fixed per-galaxy overhead is 92% of
+  the runtime and buries the difference. Now in `docs/performance.md`.
+  *(original report: the gap was reported on a run with jackknife + multiprocessing.* On
   the full-sample single-threaded box path the two are within ~10% at every size
   measured (see `FINDINGS.md` §F2, which also confirms and then *rules out* the
   2D-projected-tree candidate-count asymmetry as the cause). A sweep crossing
   `num_jk` with `num_nodes` is implemented (`run_sweep.py --sweeps jackknife`).
 
-- [ ] **Lightcone `num_nodes` is silently ignored on the full-sample path.** Measured
+- [x] **DONE (2026-08-26). Lightcone `num_nodes` was silently ignored on the full-sample
+  path** — fixed by adding the missing `_multiprocessing` backends to both
+  `measure_w_lightcone.py` and `measure_m_lightcone.py` and dispatching on `num_nodes`
+  (`20911ec`). It now parallelises 3.95x at 8 nodes. *(original report:* Measured
   speedup at 2/4/8 nodes for `MeasureIALightcone.measure_xi_w` with `num_jk=0`:
   exactly 1.00x. `measure_IA_lightcone.py:662-676` dispatches that case only to
   `_count_pairs_xi_rp_pi_lightcone_tree` / `..._brute`, and none of those four
@@ -478,7 +488,10 @@ and treecorr (lightcone), plus measureia-only profiling. Methodology in
   `profile_measureia.py` stage breakdowns at N=9,600 and N=300,000. See
   `benchmarks/FINDINGS.md` F3.)*
 
-- [ ] **Re-run the cross-package comparison at realistic number density.** Every
+- [x] **DONE (2026-08-26). Cross-package comparison re-run at realistic number density**
+  (`benchmarks/results/laptop_simdensity.jsonl`, FINDINGS.md F9): box a flat 3.6x against
+  halotools, lightcone 2.6x against treecorr, exponents matched. Published in
+  `docs/performance.md`. *(original note:* Every
   halotools and treecorr ratio recorded so far was measured on the reference mock, at
   n = 3.1e-4 and ~11-19 candidates per galaxy. A real catalogue sits near n = 1e-2 with
   ~345, and measureia's fixed per-galaxy cost (~33.8 us, F6) amortises as that rises,
@@ -500,7 +513,10 @@ and treecorr (lightcone), plus measureia-only profiling. Methodology in
   parallel peak is higher (~30 GB at 1e7) and should be measured before a production run.
   Earlier estimates of 55-77 GB and then 13-48 GB were both wrong; superseded.
 
-- [ ] **The multi-core cross-package comparison, which is the unfavourable one.** The
+- [x] **DONE (2026-08-26). Multi-core comparison completed**, after rebuilding treecorr
+  against libomp — the wheel had none and silently ran single-threaded. At each code's
+  best setting: 1.45x behind halotools on the box, 4.7x behind treecorr on the
+  lightcone. FINDINGS.md F9. *(original note:* The
   ratios recorded so far are single-thread. All three codes parallelise but not
   comparably: halotools and treecorr use OpenMP threads with negligible startup, while
   measureia uses processes via 'spawn' with ~0.9 s pool startup and a best-measured
@@ -566,7 +582,8 @@ and treecorr (lightcone), plus measureia-only profiling. Methodology in
   against 1.25x) while costing up to 15x the peak memory. Only worth revisiting if the
   batching refactor above is ever taken.
 
-- [ ] **`docs/performance.md`, mirroring `docs/validation.md`.** Same shape and length
+- [x] **DONE (2026-08-26). `docs/performance.md` written** and added to the nav.
+  *(original spec:* Same shape and length
   (~70-90 lines, four sections, table with footnotes, ends pointing at
   `benchmarks/README.md` for the detail). Content:
   - **how it is measured** — briefly: identical seeded mocks, binning imported from
