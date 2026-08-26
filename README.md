@@ -151,7 +151,8 @@ information for different numbers of jackknife realisations (num_jk) for the sam
 
 Recently completed: the lightcone methods and their cross-code validation (against halotools, treecorr and corr_pc);
 multiprocessing support for the lightcone version; an optional responsivity factor for the shape calibration; NumPy 2
-support and testing across Python 3.10 - 3.14; a documentation website; and more exhaustive docstrings.
+support and testing across Python 3.10 - 3.14; a documentation website; more exhaustive docstrings; and a 1.4x - 1.7x
+speed-up of the pair-counting kernel alongside a benchmark suite comparing MeasureIA against halotools and treecorr.
 
 Planned developments include non-periodic versions of the box methods, e1/e2 input for the box methods, and further
 speed-up options. See the [roadmap](https://marloesvl.github.io/measure_IA/#roadmap) in the documentation for the

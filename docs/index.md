@@ -32,12 +32,15 @@ Recently completed:
 - Optional responsivity factor for the shape calibration
 - NumPy 2 support and testing across Python 3.10 – 3.14
 - More exhaustive docstrings and internal method docs
+- A 1.4x - 1.7x speed-up of the pair-counting kernel, and a benchmark suite (`benchmarks/`)
+  measuring MeasureIA against halotools and treecorr
 
 Planned developments include:
 
 - Non-periodic versions of box methods
 - e1,e2 input for box methods
-- look into extra speed up options
+- Further speed-up options: the pair loop is still pure Python/NumPy, and the benchmarks show
+  the remaining time is dominated by the KDTree queries and the per-galaxy Python loop
 
 The issues on [GitHub](https://github.com/MarloesvL/measure_IA) are also used as To Do's. Feel free to request
 features or comment on those already there to let me know you would like them to have a higher priority.

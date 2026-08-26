@@ -337,3 +337,136 @@ P1 = features, P2 = input validation, P3 = test suite, P4 = cleanup & docs.
     corr_pc build recipe left in the repo README, linked). Added a **Binning** section to `conventions.md`
     (log r/r_p over separation_limits, linear signed pi over ±pi_max, linear mu_r over [-1,1], midpoint bin
     coordinates, units). Nav gained a top-level Validation entry. Verified mkdocs build --strict clean.*
+
+## P6 — Performance (opened 2026-08-21)
+
+New `benchmarks/` directory: cross-package speed comparison against halotools (box)
+and treecorr (lightcone), plus measureia-only profiling. Methodology in
+`benchmarks/README.md`; **all measured results and conclusions in
+`benchmarks/FINDINGS.md`**, written to be picked up cold in a later session.
+
+- [x] **DONE (2026-08-25). The annulus set-difference costs 20–30% of a box measurement
+  to discard 0.6–5% of the candidates** — the single clearest optimisation target found.
+  `pair_kernel.accumulate` makes two `query_ball_tree` calls (at `r_min` and
+  `r_max`) and `setdiff2D`s them (`pair_kernel.py:872-875` box,
+  `:616-619` lightcone). `setdiff2D` calls `np.setdiff1d` per galaxy with the
+  default `assume_unique=False`, which sorts *both* full candidate lists — two
+  sorts per galaxy, 76,802 sort calls for 38,400 galaxies. Profiled at 38,400
+  shape galaxies: `setdiff1d` cumulative **1.524 s of 4.953 s (30.8%)** for
+  `measure_xi_w` and **0.982 s of 4.838 s (20.3%)** for `measure_xi_multipoles`,
+  while `np.add.at` — the actual accumulation — is 2%.
+
+  It looks redundant: `r_bins[0] == r_min` exactly (`measure_IA_base.py:168,172`)
+  and every `bin_pairs` already masks `separation_len >= r_bins[0]` on the same
+  metric its tree is built on, so the mask removes a superset of what the
+  set-difference removes. `r_min = 0` is **not** reachable
+  (`measure_IA_base.py:138` enforces `0 < r_min < r_max`), so the inner query is
+  not removing self-pairs either.
+
+  Two remedies, measured with `benchmarks/micro_candidate_selection.py`. They are
+  **alternatives, not cumulative**. Memory cost of both is negligible (peak
+  allocation per chunk never above 0.92 MB; B allocates less than today).
+
+  - **(A) `np.setdiff1d(..., assume_unique=True)`** — saves ~13% of
+    `measure_xi_w` and ~4% of `measure_xi_multipoles`. **Measured
+    output-identical**: zero of 38,400 candidate lists differed, in both
+    binnings. Risk is that it rests on *undocumented* scipy behaviour
+    (`query_ball_tree` promises no ordering); assert the precondition or
+    `np.sort` explicitly. Failure mode if duplicates ever appeared is silently
+    double-counted pairs.
+  - **(B) drop the inner query and the set-difference**, letting the existing
+    mask do the work — saves **~31% of both**. The inner query alone costs
+    0.39 s / 0.74 s (31% / 58% of the outer query), which is why B wins. Extra
+    rows through `bin_pairs` are only +0.01 s / +0.08 s. Changes behaviour at
+    exactly `d == r_min` (currently dropped, would be kept) and must be run
+    against the bit-identity tests — the superset-in-same-order argument says it
+    should be identical, but that is reasoning, not a test result.
+
+  Both are constrained by `accumulate`'s frozen iteration and float-summation
+  order (`plans/REFACTOR_PLAN.md` §4). Full write-up, including what is *not*
+  established and one corrected earlier estimate, in `benchmarks/FINDINGS.md` §F1.
+
+  *Applied remedy (B) on 2026-08-25: one `query_ball_tree` at the outer radius in
+  both the box and lightcone branches of `pair_kernel.accumulate`; the inner
+  `r_min` query and `setdiff2D` are gone, and `MeasureIABase.setdiff2D` /
+  `setdiff_omit` were removed with them (no remaining caller). Result: **1.42x–1.72x
+  faster** (up to 1.97x on the benchmark config at 100k), peak memory flat or 12–19%
+  lower, and **2,697 arrays across 45 configurations bit-identical** — including
+  `rp_cut`, masks, `measure_galaxy_contributions`, the lightcone `clusters`
+  estimator, and `separation_limits=[5,20]` where the removed query used to discard
+  up to 32.5% of candidates. Suite green (589 after the 8 setdiff tests went with
+  the methods); halotools and TreeCorr validations reproduce exactly. One
+  behavioural change, in the changelog: a pair at exactly `d == r_min` was dropped
+  before and is counted now. A first reading suggested the gain shrank at large
+  `r_min`; that was a `tracemalloc` artifact — re-measured untraced, it is larger.*
+
+- [ ] **Not yet reproduced: the large `measure_xi_w` vs `measure_xi_multipoles`
+  timing gap** reported on a run with jackknife + multiprocessing enabled. On
+  the full-sample single-threaded box path the two are within ~10% at every size
+  measured (see `FINDINGS.md` §F2, which also confirms and then *rules out* the
+  2D-projected-tree candidate-count asymmetry as the cause). A sweep crossing
+  `num_jk` with `num_nodes` is implemented (`run_sweep.py --sweeps jackknife`).
+
+- [ ] **Lightcone `num_nodes` is silently ignored on the full-sample path.** Measured
+  speedup at 2/4/8 nodes for `MeasureIALightcone.measure_xi_w` with `num_jk=0`:
+  exactly 1.00x. `measure_IA_lightcone.py:662-676` dispatches that case only to
+  `_count_pairs_xi_rp_pi_lightcone_tree` / `..._brute`, and none of those four
+  methods uses `num_nodes` in its body — the `_multiprocessing` variant is reachable
+  only from the jackknife branch (`:629`). A user setting `num_nodes=8` gets
+  single-process execution with no warning. Either wire the mp path in or raise/warn
+  when the request cannot be honoured. `measure_xi_multipoles` (`:818`) has the same
+  dispatch shape and was not audited. See `benchmarks/FINDINGS.md` F4.
+
+- [ ] **Multiprocessing is a net loss below ~40k galaxies, and always on the lightcone
+  jackknife path.** Box at 8 nodes: 0.51x at N=9,600 (i.e. 2x *slower* than one node),
+  2.06x at 38,400 — a best-case parallel efficiency of 26%. Lightcone `w` + jackknife
+  at 8 nodes: 0.19x at 9,600 and 0.85x at 38,400, i.e. slower than single-process at
+  both sizes despite having four pair-count runs and 5x randoms to distribute. Needs
+  profiling of the spawn/`SharedMemory` setup cost, a finer measurement of the box
+  crossover, and user-facing guidance in the docs. See `benchmarks/FINDINGS.md` F4.
+
+- [x] **DONE (2026-08-25). The superlinear scaling was the KDTree
+  query, caused by spatially incoherent chunks.** `accumulate` chunks the shape sample
+  by array order and queries each chunk's tree against the full position tree; nothing
+  makes those chunks spatially compact, so the dual-tree traversal cannot prune. Measured
+  chunk extent at N=100,000 is 619 Mpc inside a 711 Mpc box — essentially the whole
+  volume. Per-stage slopes show `tree_query` at **1.52 and 59% of runtime** while every
+  other stage is sublinear (~0.85). Spatially sorting the sample first: **slope 1.63 →
+  1.01, query 18x faster at 100k, identical candidate counts.** Estimated ~2.2x
+  end-to-end on top of F1, growing with N. Blocked on the same bit-identity constraint
+  as F1, and unlike F1 the summation order genuinely changes (~1e-14). Note the
+  per-galaxy outputs are indexed by shape-sample position, so a reorder must be undone
+  before returning or per-galaxy results are silently permuted — that is the risky part.
+  *Fixed by visiting the chunked sample in Morton spatial order
+  (`pair_kernel.spatial_order`), in both `accumulate` and `_accumulate_lightcone`.
+  Scaling exponent now **1.00** (box multipoles), **1.02** (lightcone multipoles) and
+  **1.03** (lightcone w), against an ideal of 1.0. End-to-end vs 0.4.0 at 100k galaxies:
+  **4.3x** box multipoles, **6.2x** lightcone multipoles, **2.6x** box w. The per-galaxy
+  hazard was handled by writing dense rows at the caller's galaxy id and applying an
+  inverse permutation to the sparse arrays, guarded by two order-sensitive tests written
+  before the change (the pre-existing tests sum over the galaxy axis and are
+  permutation-invariant, so they could not have caught it). 593 tests pass. Four
+  brute-vs-tree assertions loosened from exact to allclose after verifying the floats
+  differ by ~1e-14 while integer pair counts stay exactly equal.*
+
+  Full write-up in `benchmarks/FINDINGS.md` F5.
+
+- [ ] **Box `w` still has a scaling exponent of 1.12** — the only path that does. Its
+  KDTree is built on the 2D projection (`BoxRpPi.tree_coords`), so `query_ball_tree`
+  returns a cylinder through the full box depth and candidates per galaxy genuinely grow
+  as `L ∝ N^(1/3)` (measured 88.8 → 134.4 → 210.4 at fixed density). That is real pair
+  work, so spatial ordering cannot remove it. The lightcone equivalent `SkyRpPi` already
+  queries a 3D ball of radius `sqrt(r_max^2 + pi_max^2)` and is linear (1.03), which is
+  the evidence for this diagnosis. Making `BoxRpPi` do the same is the remaining lead;
+  the surviving pair set would be unchanged (the mask already applies the rp and pi
+  windows), but the candidate list and hence summation order would change. See
+  `benchmarks/FINDINGS.md` F2 and F5.
+
+  *(superseded description: slopes 1.25-1.46
+  where the pair count is linear and halotools measures 1.00). Partly explained for
+  `box_w` by the full-depth cylinder query (F2 predicts 4/3), but `box_multipoles` has
+  flat candidates-per-galaxy and still shows 1.28. Cause unknown; it is why the
+  cross-package ratios widen with N rather than holding flat, so it should be found
+  before the paper quotes those ratios. Suggested start: diff
+  `profile_measureia.py` stage breakdowns at N=9,600 and N=300,000. See
+  `benchmarks/FINDINGS.md` F3.)*
