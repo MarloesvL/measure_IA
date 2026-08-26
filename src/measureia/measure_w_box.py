@@ -369,7 +369,16 @@ class MeasureWBox(MeasureIABase, ReadData):
 		# self.R = 1 - np.mean(self.e ** 2) / 2.0  # responsitivity factor
 		L3 = self.boxsize ** 3  # box volume
 
-		self.pos_tree = KDTree(positions[:, self.not_LOS], boxsize=self.boxsize)
+		# Build the shared position tree on whatever coordinates the binning
+		# queries -- do not hardcode the projection here. BoxRpPi chooses between
+		# the 3D positions and their 2D projection depending on the configuration
+		# (benchmarks/FINDINGS.md F7), and the workers build their chunk trees with
+		# binning.tree_coords, so a hardcoded convention here silently disagrees
+		# with them -- scipy then raises "Trees passed to query_ball_tree have
+		# different dimensionality".
+		_binning = pair_kernel.BoxRpPi(self)
+		self.pos_tree = KDTree(_binning.tree_coords(positions, self.not_LOS),
+							   boxsize=self.boxsize)
 		indices = np.arange(0, len(positions_shape_sample), chunk_size)
 		self.chunk_size = chunk_size
 
@@ -717,7 +726,16 @@ class MeasureWBox(MeasureIABase, ReadData):
 		self.not_LOS = sample_set.not_LOS  # eg 0,1 for x&y
 		L3 = self.boxsize ** 3  # box volume
 
-		self.pos_tree = KDTree(positions[:, self.not_LOS], boxsize=self.boxsize)
+		# Build the shared position tree on whatever coordinates the binning
+		# queries -- do not hardcode the projection here. BoxRpPi chooses between
+		# the 3D positions and their 2D projection depending on the configuration
+		# (benchmarks/FINDINGS.md F7), and the workers build their chunk trees with
+		# binning.tree_coords, so a hardcoded convention here silently disagrees
+		# with them -- scipy then raises "Trees passed to query_ball_tree have
+		# different dimensionality".
+		_binning = pair_kernel.BoxRpPi(self)
+		self.pos_tree = KDTree(_binning.tree_coords(positions, self.not_LOS),
+							   boxsize=self.boxsize)
 		indices = np.arange(0, len(positions_shape_sample), chunk_size)
 		self.chunk_size = chunk_size
 

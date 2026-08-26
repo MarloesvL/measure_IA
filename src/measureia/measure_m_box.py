@@ -353,7 +353,16 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 		self.R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape) \
 			if getattr(self, "responsivity_correction", True) and sum(weight_shape) > 0 else 0.5
 		L3 = self.boxsize ** 3  # box volume
-		self.pos_tree = KDTree(positions, boxsize=self.boxsize)
+		# Build the shared position tree on whatever coordinates the binning
+		# queries -- do not hardcode the projection here. BoxRpPi chooses between
+		# the 3D positions and their 2D projection depending on the configuration
+		# (benchmarks/FINDINGS.md F7), and the workers build their chunk trees with
+		# binning.tree_coords, so a hardcoded convention here silently disagrees
+		# with them -- scipy then raises "Trees passed to query_ball_tree have
+		# different dimensionality".
+		_binning = pair_kernel.BoxRMuR(self, rp_cut)
+		self.pos_tree = KDTree(_binning.tree_coords(positions, self.not_LOS),
+							   boxsize=self.boxsize)
 		indices = np.arange(0, len(positions_shape_sample), chunk_size)
 		self.chunk_size = chunk_size
 
@@ -709,7 +718,16 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 		self.LOS_ind = sample_set.LOS_ind
 		self.not_LOS = sample_set.not_LOS
 		L3 = self.boxsize ** 3  # box volume
-		self.pos_tree = KDTree(positions, boxsize=self.boxsize)
+		# Build the shared position tree on whatever coordinates the binning
+		# queries -- do not hardcode the projection here. BoxRpPi chooses between
+		# the 3D positions and their 2D projection depending on the configuration
+		# (benchmarks/FINDINGS.md F7), and the workers build their chunk trees with
+		# binning.tree_coords, so a hardcoded convention here silently disagrees
+		# with them -- scipy then raises "Trees passed to query_ball_tree have
+		# different dimensionality".
+		_binning = pair_kernel.BoxRMuR(self, rp_cut)
+		self.pos_tree = KDTree(_binning.tree_coords(positions, self.not_LOS),
+							   boxsize=self.boxsize)
 		indices = np.arange(0, len(positions_shape_sample), chunk_size)
 		self.chunk_size = chunk_size
 
