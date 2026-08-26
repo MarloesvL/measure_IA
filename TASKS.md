@@ -451,7 +451,15 @@ and treecorr (lightcone), plus measureia-only profiling. Methodology in
 
   Full write-up in `benchmarks/FINDINGS.md` F5.
 
-- [ ] **Box `w` still has a scaling exponent of 1.12** — the only path that does. Its
+- [x] **DONE (2026-08-26). Box `w` scaling exponent 1.14 -> 1.00**, by querying the 3D
+  ball that bounds the (rp, pi) cylinder instead of the cylinder's 2D projection, which
+  a 2D query could not constrain along the line of sight. 1.85x faster at 300k, gain
+  growing with N. All four measurement paths are now linear at fixed number density.
+  Note the ball is not universally better — always using it would have been 4.1x *worse*
+  for a wide `pi_max` in a shallow box — so the binning compares the two volumes and
+  picks the smaller. See `benchmarks/FINDINGS.md` F7.
+
+  *(superseded: box `w` still has a scaling exponent of 1.12 — the only path that does.* Its
   KDTree is built on the 2D projection (`BoxRpPi.tree_coords`), so `query_ball_tree`
   returns a cylinder through the full box depth and candidates per galaxy genuinely grow
   as `L ∝ N^(1/3)` (measured 88.8 → 134.4 → 210.4 at fixed density). That is real pair
@@ -459,8 +467,7 @@ and treecorr (lightcone), plus measureia-only profiling. Methodology in
   queries a 3D ball of radius `sqrt(r_max^2 + pi_max^2)` and is linear (1.03), which is
   the evidence for this diagnosis. Making `BoxRpPi` do the same is the remaining lead;
   the surviving pair set would be unchanged (the mask already applies the rp and pi
-  windows), but the candidate list and hence summation order would change. See
-  `benchmarks/FINDINGS.md` F2 and F5.
+  windows), but the candidate list and hence summation order would change.)*
 
   *(superseded description: slopes 1.25-1.46
   where the pair count is linear and halotools measures 1.00). Partly explained for

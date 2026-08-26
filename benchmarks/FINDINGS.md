@@ -787,3 +787,53 @@ Directions worth measuring, in memory rather than speed terms: float32 for
 positions where precision allows (halves the largest arrays), tiling the RR
 computation so both randoms catalogues need not be fully resident, and avoiding
 the transient copy in the shared-memory setup.
+
+
+---
+
+## F7 — The box (rp, pi) query was a full-depth cylinder; now it is a bounded ball
+
+**Status: APPLIED (2026-08-26).** Closes the lead left open by F2 and F5. All
+four measurement paths are now linear at fixed number density.
+
+`BoxRpPi` selects a cylinder and built its KDTree on the 2D projection. A 2D
+query cannot constrain the line of sight, so it returned every neighbour within
+`r_max` in projection at *any* line-of-sight separation — a cylinder through the
+whole box — and `bin_pairs` threw the rest away. Querying the 3D ball of radius
+`sqrt(r_max^2 + pi_max^2)` bounds the cylinder exactly, so the pair set is
+unchanged while the candidate region stops scaling with the box.
+
+**But the ball is not universally better, and this is the part worth
+remembering.** It grows with `pi_max`; the cylinder grows with box depth. For a
+wide `pi_max` in a shallow box the projection is cheaper, and always using the
+ball would have been a *regression*:
+
+| configuration | before | after (always-3D) | after (adaptive) |
+|---|---:|---:|---:|
+| default, r_max=20, pi_max=20, L=205 | 329.7 | 129.0 | **129.0** |
+| large box, L=800 | 30.2 | 11.2 | **11.2** |
+| narrow r [5, 20] | 329.7 | 129.0 | **129.0** |
+| **wide pi_max=60, L=205** | 329.7 | **1341.5** | **329.7** |
+
+(candidates per galaxy). The always-3D version was 4.1x *worse* on the last row.
+`__init__` now compares `(4/3) q^3` against `r_max^2 * L` and picks the smaller;
+both regions are supersets of what `bin_pairs` keeps, so the choice cannot change
+the result. This was caught only because the check swept `pi_max` and boxsize
+rather than testing the default configuration alone.
+
+**Result** — `box_w`, fixed number density, single thread:
+
+| N | before | after | gain |
+|---:|---:|---:|---:|
+| 9,600 | 0.431 s | 0.367 s | 1.17x |
+| 38,400 | 2.011 s | 1.468 s | 1.37x |
+| 100,000 | 5.955 s | 3.858 s | 1.54x |
+| 300,000 | 21.566 s | 11.656 s | **1.85x** |
+
+**Scaling exponent 1.14 -> 1.00.** The gain grows with N because this removes a
+superlinear term rather than a constant.
+
+**Correctness.** Integer `DD` totals are *exactly* equal before and after in all
+four configurations. Integer sums are order-independent, so equality proves the
+pair set is unchanged — the check that matters when the candidate order, and
+hence the float summation order, has moved. 593 tests pass.
