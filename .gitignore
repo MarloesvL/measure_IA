@@ -225,3 +225,8 @@ site/
 # output written by the example scripts/notebooks when run in place
 examples/*.hdf5
 examples/*.png
+
+# benchmark scratch and generated figures; results/*.jsonl are committed
+benchmarks/_scratch/
+benchmarks/*.hdf5
+benchmarks/results/*.png
