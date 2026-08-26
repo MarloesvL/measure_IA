@@ -161,6 +161,59 @@ class TestBackendsNoCovM:
         np.testing.assert_allclose(_read(obj, "multipoles_gg", "lc_m_bvt_brute"),
                                    _read(obj, "multipoles_gg", "lc_m_bvt_tree"))
 
+    def test_tree_vs_multiproc(self, IA_mock_lc_n1, IA_mock_lc_n8, tmp_path):
+        """The full-sample multiprocessing backend (num_nodes>1, no jackknife)
+        must reproduce the tree backend.
+
+        New in 0.5.0: before then the lightcone had no full-sample mp
+        implementation at all, so num_nodes was accepted and silently ignored on
+        this path and a test like this passed without exercising anything. The
+        tolerance is allclose rather than exact because the mp path sums partial
+        grids from separate position chunks, so the float summation order
+        differs (measured: ~1e-14 relative).
+        """
+        IA_mock_lc_n1.measure_xi_multipoles(
+            "galaxies", "lc_m_mp_tree", "both",
+            tree=True,
+            temp_file_path=str(tmp_path) + "/")
+        IA_mock_lc_n8.measure_xi_multipoles(
+            "galaxies", "lc_m_mp_multi", "both",
+            tree=True,
+            temp_file_path=str(tmp_path) + "/",
+            chunk_size=50)
+
+        for grp in ("multipoles_g_plus", "multipoles_gg"):
+            np.testing.assert_allclose(
+                _read(IA_mock_lc_n1, grp, "lc_m_mp_tree"),
+                _read(IA_mock_lc_n8, grp, "lc_m_mp_multi"),
+                rtol=1e-8, atol=1e-12,
+                err_msg=f"{grp}: full-sample mp does not reproduce tree")
+        np.testing.assert_array_equal(
+            _read(IA_mock_lc_n1, "multipoles_g_plus", "lc_m_mp_tree_r"),
+            _read(IA_mock_lc_n8, "multipoles_g_plus", "lc_m_mp_multi_r"))
+
+    def test_multiproc_honours_num_nodes(self, IA_mock_lc_n1, IA_mock_lc_n8, tmp_path):
+        """num_nodes>1 must actually reach the multiprocessing backend.
+
+        Guards the specific defect this path was added for: the dispatch used to
+        fall through to the tree backend, so num_nodes was accepted and then had
+        no effect (benchmarks/FINDINGS.md F4).
+
+        The assertion is on a side effect rather than a spy, because under the
+        'spawn' start method ``self`` is pickled to every worker -- so attaching
+        a test double to the instance makes the run fail to pickle. Only the
+        multiprocessing backends set ``shm_infos`` (the shared-memory block
+        descriptors); the tree and brute backends never touch it.
+        """
+        for obj, name in ((IA_mock_lc_n1, "lc_m_disp_n1"), (IA_mock_lc_n8, "lc_m_disp_n8")):
+            obj.measure_xi_multipoles("galaxies", name, "g+", tree=True,
+                                      temp_file_path=str(tmp_path) + "/")
+
+        assert not hasattr(IA_mock_lc_n1, "shm_infos"), \
+            "num_nodes=1 unexpectedly used the multiprocessing backend"
+        assert getattr(IA_mock_lc_n8, "shm_infos", None), \
+            "num_nodes>1 did not reach the multiprocessing backend"
+
     def test_r_bins_same_across_backends(self, IA_mock_lc_n1, tmp_path):
         obj = IA_mock_lc_n1
         obj.measure_xi_multipoles("galaxies", "lc_m_bvt_brute", "both",
