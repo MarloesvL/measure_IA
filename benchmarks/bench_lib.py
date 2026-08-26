@@ -189,7 +189,32 @@ def environment(scratch_dir=None):
 # size-scaled mocks
 # ----------------------------------------------------------------------------
 
-def box_mock_for(n_shape, density_mode, boxsize=None, seed=42, margin=0.0):
+# Number density of the reference mock, and of a realistic simulation catalogue.
+# The mock's own density is ~30x lower than a typical simulation, which matters a
+# great deal for optimisation decisions: at the mock's density each galaxy has
+# ~11-19 candidate partners within r_max, so NumPy per-call overhead dominates,
+# while at simulation density it has ~300-400 and the actual pair arithmetic does.
+# Anything measured only at REF_DENSITY should be treated as describing the mock.
+REF_BOX_DENSITY = 2700 / 205.0 ** 3          # ~3.1e-4 per (Mpc/h)^3
+SIM_BOX_DENSITY = 1.0e-2                     # TNG300-like, ~389 candidates/galaxy
+
+
+def boxsize_for_density(n_total, density):
+    """Box side that puts ``n_total`` objects at the given number density."""
+    return float((n_total / density) ** (1.0 / 3.0))
+
+
+def candidates_per_galaxy(density, r_max):
+    """Expected neighbours within ``r_max`` at a given number density (3D ball).
+
+    The single most useful number when reasoning about where time goes: it sets
+    the length of the arrays every per-galaxy NumPy call operates on.
+    """
+    return density * (4.0 / 3.0) * np.pi * r_max ** 3
+
+
+def box_mock_for(n_shape, density_mode, boxsize=None, seed=42, margin=0.0,
+                 density=None):
 	"""Radial-alignment box mock scaled to ``n_shape`` shape-sample galaxies.
 
 	Parameters
@@ -217,6 +242,10 @@ def box_mock_for(n_shape, density_mode, boxsize=None, seed=42, margin=0.0):
 
 	n_centrals = max(1, int(round(n_shape / N_SAT)))
 	n_shape_actual = n_centrals * N_SAT
+	if boxsize is None and density is not None:
+		# absolute number density, for measuring in the regime real catalogues
+		# occupy rather than the one the reference mock happens to sit in
+		boxsize = boxsize_for_density(n_shape_actual * (1.0 + 1.0 / N_SAT), density)
 	if boxsize is None:
 		if density_mode == "fixed_density":
 			boxsize = REF_BOX_BOXSIZE * (n_shape_actual / REF_BOX_N_SHAPE) ** (1.0 / 3.0)

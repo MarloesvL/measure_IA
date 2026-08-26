@@ -695,3 +695,95 @@ by ~1e-14 while the integer pair counts `DD` and `SR` remain *exactly* equal, so
 the pair sets are identical and only the summation order moved.
 `plans/REFACTOR_PLAN.md` §4 already specifies `allclose` for brute-vs-tree; those
 four were stricter than the contract and had passed by coincidence.
+
+
+---
+
+## F6 — The cost model, and why the benchmark's density misleads
+
+**Status:** measured 2026-08-26, gating the next round of optimisation. No code
+change.
+
+### The reference mock is ~30x less dense than real data
+
+Candidates per galaxy within `r_max` is `n * (4/3) pi r_max^3`, and it sets the
+length of the arrays every per-galaxy NumPy call operates on. It is therefore
+the single number that decides where time goes:
+
+| configuration | n [/(Mpc/h)^3] | candidates/galaxy |
+|---|---:|---:|
+| the benchmark mock | 3.1e-4 | **11-19** |
+| TNG300-like (1e5 in 205 Mpc/h) | 1.2e-2 | **389** |
+| 1e6 in 500 Mpc/h | 8.0e-3 | 268 |
+| 1e7 in 1000 Mpc/h | 1.0e-2 | 335 |
+
+**Any profile taken only at mock density describes the mock.** `bench_lib` now
+takes an absolute `density=` so the same code can be measured in the regime real
+catalogues occupy (`SIM_BOX_DENSITY`).
+
+### The cost model
+
+Box multipoles, `r` in [0.5, 20], single thread, tracemalloc off:
+
+| regime | cand/gal | N=9,600 | N=38,400 | µs per candidate |
+|---|---:|---:|---:|---:|
+| mock | 19-20 | 0.34 s | 1.42 s | **1.84 / 1.89** |
+| simulation | 344-346 | 0.88 s | 3.37 s | **0.264 / 0.255** |
+
+Fitting `cost = A + B * candidates` to the two regimes:
+
+> **A ≈ 33.8 µs fixed per galaxy, B ≈ 0.157 µs per candidate.**
+
+which splits the runtime as:
+
+| regime | cand/gal | fixed overhead | per-pair work |
+|---|---:|---:|---:|
+| mock | 19 | **92%** | 8% |
+| **simulation** | **345** | **38%** | **62%** |
+| dense or large r_max | 1000 | 18% | 82% |
+
+The fixed 33.8 µs is per-galaxy Python and NumPy call overhead: ~10 NumPy calls
+each on a short array, 100,000 calls apiece to `bin_pairs` and `get_ellipticity`,
+405k ufunc `reduce`, 200k `errstate.__enter__`. Batching the inner loop across a
+chunk attacks that term and nothing else, so **its payoff is ~1.6x at simulation
+density, not the ~3x a mock-density profile suggests**. The other 62% is genuine
+per-pair arithmetic, which only cheaper per-pair operations (or compiled code)
+can reduce.
+
+### Memory
+
+Box, simulation density, above a 156 MB interpreter baseline: 8 / 18 / 42 / 100
+MB at 9,600 / 38,400 / 100,000 / 300,000 shape galaxies — linear at **~330 bytes
+per galaxy**. Extrapolated: 1e6 → ~330 MB, 1e7 → ~3.3 GB. Comfortable.
+
+Lightcone is the constraint, because the randoms dominate the point count:
+
+| N_shape | randoms | total points | RSS above baseline | bytes/point |
+|---:|---:|---:|---:|---:|
+| 9,600 | 5x | 64,800 | 15 MB | 242 |
+| 38,400 | 5x | 259,200 | 58 MB | 236 |
+| 100,000 | 5x | 675,000 | 156 MB | 243 |
+| 38,400 | **10x** | 475,200 | 162 MB | **357** |
+
+Projected at 10x randoms (shape + position, data + randoms):
+
+| sample | total points | projected RSS |
+|---:|---:|---:|
+| 1e6 shape | 2.2e7 | **~7 GB** |
+| 1e7 shape | 2.2e8 | **~55-77 GB** |
+
+**At 1e7 with 10x randoms the lightcone is memory-bound, not compute-bound.**
+All four catalogues and their KDTrees are resident at once, and the
+multiprocessing path transiently doubles the peak while copying arrays into
+shared memory (the originals are freed afterwards, so it is a spike rather than
+a permanent doubling). Making the pair loop faster does not help a run that
+cannot allocate.
+
+Analytic or subsampled randoms are not available as an escape: lightcones are
+not periodic, the randoms encode the survey mask and must be user-supplied, and
+at 10x density subsampling them would degrade the estimator.
+
+Directions worth measuring, in memory rather than speed terms: float32 for
+positions where precision allows (halves the largest arrays), tiling the RR
+computation so both randoms catalogues need not be fully resident, and avoiding
+the transient copy in the shared-memory setup.
