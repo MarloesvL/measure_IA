@@ -913,6 +913,31 @@ class TestIntermediatePairCountEqualityW:
             rtol=1e-10)
 
 
+class TestBruteOnThe3DBranchWithJackknife:
+    """The one cell the axis audit found empty: brute backend, 3D tree branch,
+    jackknife on.
+
+    Low risk on its own — the brute backend takes every position as a candidate
+    and never builds a tree, so the 2D/3D choice barely reaches it — but an empty
+    cell is an empty cell, and `benchmarks/axis_audit.py` reports it as such.
+    Closing it keeps that report clean so a genuinely worrying gap stands out.
+    """
+
+    def test_brute_matches_tree_on_the_3d_branch_with_jk(self, tmp_path):
+        objs = [TestTreeCoordsAgreeAcrossProcesses._obj(tmp_path, f"b3d{i}", 1)
+                for i in range(2)]
+        assert pair_kernel.BoxRpPi(objs[0]).tree_is_3d
+        tp = str(tmp_path) + "/"
+        objs[0].measure_xi_w("b3d_tree", "both", 8, temp_file_path=tp)
+        objs[1].measure_xi_w("b3d_brute", "both", 8, temp_file_path=False)
+        np.testing.assert_allclose(
+            _read(objs[0], "w_g_plus", "b3d_tree"),
+            _read(objs[1], "w_g_plus", "b3d_brute"), rtol=1e-8, atol=1e-12)
+        np.testing.assert_array_equal(
+            _read(objs[0], "w/xi_gg", "b3d_tree_DD"),
+            _read(objs[1], "w/xi_gg", "b3d_brute_DD"))
+
+
 class TestTreeCoordsAgreeAcrossProcesses:
     """The parent's shared tree and the workers' chunk trees must be built on the
     same coordinates.

@@ -592,3 +592,18 @@ and treecorr (lightcone), plus measureia-only profiling. Methodology in
   Numbers come from `benchmarks/results/laptop_simdensity.jsonl`; regenerate the tables
   with `plot_results.py`. Note the CPU model in the caption, as `validation.md` does for
   package versions.
+
+- [ ] **Test tooling does not see worker processes, which is where the last real bug
+  hid.** Both `benchmarks/axis_audit.py` and `pytest --cov` measure only the parent, so
+  the `_batch` methods and any combination reached solely through multiprocessing appear
+  untested. Concretely: the F7 tree-dimensionality regression sat in a cell that was
+  covered single-process and broken under mp, and neither tool would have flagged it.
+
+  Coverage understates by roughly the mp method bodies — `measure_w_lightcone.py` and
+  `measure_m_lightcone.py` report 85% largely because their new mp code runs in workers.
+  Fix: `COVERAGE_PROCESS_START` plus a `sitecustomize` hook so coverage follows
+  subprocesses; for the axis audit, have workers append their axis tuple to a file in the
+  scratch directory and have the parent read it back at session end.
+
+  Current state for reference: **90% line coverage** (5,994 statements, 580 missed) and
+  every backend x geometry x statistic x jk cell occupied.

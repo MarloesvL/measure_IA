@@ -980,42 +980,61 @@ code — it is that measureia's fixed ~33.8 us per galaxy amortises over 345
 candidates instead of 19. Quoting the mock figures would have understated the
 package by a factor of six and implied a scalability defect that does not exist.
 
-### The multi-core result, and why it must be discarded
+### The multi-core result: first invalid, then measured properly
 
-At N = 38,400, `num_nodes` / `num_threads` = 8 against 1:
+The first attempt produced measureia parallelising 2.5-3.9x while treecorr showed
+0.99x and halotools 0.43x. That contradicted the expected mechanism *and*
+flattered the package under test, which is the combination to distrust. On
+inspection the installed treecorr wheel was **built without OpenMP**: it accepts
+`num_threads`, prints `Unable to use multiple threads, since OpenMP is not
+enabled` to stderr, and runs single-threaded. Verified directly — a single
+`NNCorrelation` over 200,000 points gave 1.908 / 1.857 / 1.859 / 1.858 s at
+1 / 2 / 4 / 8 threads. macOS wheels commonly ship this way, because Apple clang
+does not include libomp.
 
-| task | code | 1 | 8 | speedup |
-|---|---|---:|---:|---:|
-| box | measureia | 6.383 s | 2.581 s | 2.47x |
-| box | halotools | 1.782 s | 4.270 s | **0.42x** |
-| lightcone | measureia | 19.067 s | 4.835 s | 3.94x |
-| lightcone | treecorr | 7.485 s | 7.532 s | **0.99x** |
+Rebuilt from source against homebrew libomp (which was already present from the
+corr_pc work), the same probe gives 1.914 / 0.966 / 0.502 / 0.264 s — **7.26x,
+91% efficiency**. All 52 validation reference tests still pass on the new build.
 
-This was predicted to go the *other* way — measureia uses processes with ~0.9 s
-of pool start-up, the reference codes were assumed to use OpenMP threads with
-almost none. A result that contradicts the mechanism *and* flatters the package
-under test is the one to distrust, and on inspection:
+`bench_lib.parallel_capabilities()` now probes this by asking for two threads and
+checking what comes back, and `run_sweep.py` warns before a thread sweep against
+a build that cannot thread. (The first version of that probe was itself wrong —
+it reported `False` on a working OpenMP build, a false negative that would have
+discarded valid results.)
 
-- **treecorr: invalid.** The installed wheel is built without OpenMP. It accepts
-  `num_threads`, prints `Unable to use multiple threads, since OpenMP is not
-  enabled` to stderr, and runs single-threaded. Verified directly: a single
-  `NNCorrelation` over 200,000 points gives 1.908 / 1.857 / 1.859 / 1.858 s at
-  1 / 2 / 4 / 8 threads. **The 0.99x is a property of this build, not of
-  treecorr**, and "measureia parallelises where treecorr does not" would have
-  been a badly wrong claim. macOS wheels commonly ship without OpenMP because
-  Apple clang does not include libomp.
-- **halotools: valid, and a genuine finding.** Its `num_threads` drives
-  `multiprocessing.Pool`, *not* OpenMP — so it pays process start-up much as
-  measureia does, and at 1.78 s of work eight workers cost more than they save.
-  This also corrects an earlier claim in these notes that halotools threads with
-  negligible start-up; it does not.
+**The valid comparison**, N = 38,400, realistic density:
 
-`bench_lib.parallel_capabilities()` now probes for this and records it on every
-result, and `run_sweep.py` prints a warning before running a thread sweep against
-a treecorr without OpenMP. The check exists because the failure is silent, only
-visible on stderr, and biased in one direction.
+| task | code | 1 | 2 | 4 | 8 | speedup | efficiency |
+|---|---|---:|---:|---:|---:|---:|---:|
+| lightcone `w` | treecorr | 7.48 s | 3.94 s | 2.01 s | **1.03 s** | **7.25x** | **91%** |
+| lightcone `w` | measureia | 19.07 s | 12.04 s | 7.09 s | 4.83 s | 3.95x | 49% |
+| box `w` | measureia | 6.38 s | 5.70 s | 3.75 s | 2.59 s | 2.46x | 31% |
+| box `w` | halotools | 1.78 s | 4.38 s | 4.14 s | 4.17 s | **0.43x** | 5% |
+| box multipoles | measureia | 3.44 s | 3.73 s | 2.58 s | 1.97 s | 1.75x | 22% |
+| lightcone multipoles | measureia | 8.78 s | 6.30 s | 4.05 s | 3.03 s | 2.90x | 36% |
 
-**To get a real multi-core comparison:** rebuild treecorr against libomp
-(`brew install libomp`, then build from source), or run the thread sweep on Linux
-where the wheels normally have OpenMP. Until then only the single-thread table
-above should be quoted.
+**Parallel efficiency is measureia's weakest axis.** treecorr's 91% is genuinely
+better than measureia's 31-49%; the process-based design pays ~0.9 s of pool
+start-up (F4) and cannot reach OpenMP's efficiency without a different
+architecture.
+
+**halotools degrades with more workers**, and this is real rather than an
+artifact: its `num_threads` drives `multiprocessing.Pool`, not OpenMP, so on a
+1.78 s problem eight workers cost more than they save. (This corrects an earlier
+claim in these notes that halotools threads with negligible start-up.)
+
+### Which numbers to quote
+
+An 8-vs-8 comparison would show measureia *beating* halotools, 2.59 s against
+4.17 s — but only because halotools got slower, and no user would run it that
+way. **Compare each code at its own best setting:**
+
+| | measureia best | reference best | ratio |
+|---|---|---|---:|
+| box vs halotools | 2.59 s (8 workers) | 1.78 s (**1 thread**) | **1.45x** |
+| lightcone vs treecorr | 4.83 s (8 workers) | 1.03 s (8 threads) | **4.7x** |
+
+So measureia is within ~1.5x of halotools on the box and ~4.7x behind treecorr on
+the lightcone, each at its best configuration, at N = 38,400 and realistic
+density. Those are the honest headline numbers — not the flattering 0.6x from
+8-vs-8, and not the 22x from the mock-density sweep.

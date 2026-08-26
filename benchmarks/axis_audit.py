@@ -112,5 +112,11 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
     else:
         w("    none -- every backend x geometry x statistic x jk cell is entered")
     w("")
-    w("  note: multiprocessing runs the kernel in worker processes, whose counts")
-    w("  are not visible here. A cell reached only via mp shows as unoccupied.")
+    w("  LIMITATION: multiprocessing runs the kernel in worker processes, whose")
+    w("  counters this parent never sees, so a cell reached only via mp shows as")
+    w("  unoccupied above. That is exactly where the F7 regression hid -- the 3D")
+    w("  branch was covered single-process and broken under mp -- so treat the mp")
+    w("  cells as unmeasured rather than absent. Closing this properly means having")
+    w("  the workers append their axes to a file the parent reads back; the same")
+    w("  applies to line coverage, which needs COVERAGE_PROCESS_START to follow")
+    w("  subprocesses and otherwise under-reports the _batch methods.")

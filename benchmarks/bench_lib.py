@@ -171,20 +171,16 @@ def parallel_capabilities():
 	caps = {}
 	try:
 		import treecorr
-		# treecorr warns rather than raising; the flag is what to trust
-		caps["treecorr_openmp"] = bool(getattr(treecorr, "_ffi", None) and
-									   treecorr.config.get_omp_num_threads() > 1) \
-			if hasattr(treecorr, "config") else None
+
+		# The only reliable probe is to ask for threads and see what you get:
+		# without OpenMP treecorr accepts the request, warns on stderr, and
+		# returns 1. Restore whatever was set afterwards so this is side-effect
+		# free.
+		before = treecorr.get_omp_threads()
+		caps["treecorr_openmp"] = bool(treecorr.set_omp_threads(2) > 1)
+		treecorr.set_omp_threads(before)
 	except Exception:
 		caps["treecorr_openmp"] = None
-	if caps.get("treecorr_openmp") is None:
-		# fall back to the direct probe: ask for 2 threads and see what we get
-		try:
-			import treecorr
-			caps["treecorr_openmp"] = treecorr.set_omp_threads(2) > 1
-			treecorr.set_omp_threads(1)
-		except Exception:
-			caps["treecorr_openmp"] = None
 	caps["halotools_parallel"] = "multiprocessing"   # not OpenMP; see docstring
 	return caps
 
