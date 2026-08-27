@@ -873,17 +873,29 @@ class TestIntermediatePairCountEqualityLCW:
         obj = IA_mock_lc_n1
         self._run(obj, "be_brute", tree=False, tmp_path=tmp_path)
         self._run(obj, "be_tree",  tree=True,  tmp_path=tmp_path)
-        np.testing.assert_array_equal(
+        # Float grids: brute and tree visit the sample in different orders since
+        # the spatial chunk ordering (FINDINGS.md F5), so the sums differ in the
+        # last few ulp. The pair *sets* are identical -- the integer DD/SR counts
+        # above still compare exactly -- and REFACTOR_PLAN.md section 4 specifies
+        # allclose for brute-vs-tree anyway.
+        np.testing.assert_allclose(
             _read(obj, "w/xi_g_plus", "be_brute_SplusD"),
-            _read(obj, "w/xi_g_plus", "be_tree_SplusD"))
+            _read(obj, "w/xi_g_plus", "be_tree_SplusD"),
+            rtol=1e-10, atol=1e-12)
 
     def test_splusr_brute_equals_tree(self, IA_mock_lc_n1, tmp_path):
         obj = IA_mock_lc_n1
         self._run(obj, "be_brute", tree=False, tmp_path=tmp_path)
         self._run(obj, "be_tree",  tree=True,  tmp_path=tmp_path)
-        np.testing.assert_array_equal(
+        # Float grids: brute and tree visit the sample in different orders since
+        # the spatial chunk ordering (FINDINGS.md F5), so the sums differ in the
+        # last few ulp. The pair *sets* are identical -- the integer DD/SR counts
+        # above still compare exactly -- and REFACTOR_PLAN.md section 4 specifies
+        # allclose for brute-vs-tree anyway.
+        np.testing.assert_allclose(
             _read(obj, "w/xi_g_plus", "be_brute_SplusR"),
-            _read(obj, "w/xi_g_plus", "be_tree_SplusR"))
+            _read(obj, "w/xi_g_plus", "be_tree_SplusR"),
+            rtol=1e-10, atol=1e-12)
 
     def test_scrossd_brute_equals_tree(self, IA_mock_lc_n1, tmp_path):
         obj = IA_mock_lc_n1

@@ -78,7 +78,7 @@ def _make_box(data, output_file, mock):
 	return MeasureIABox(data, output_file, simulation=None, snapshot=None,
 						separation_limits=pp.RP_LIMS, num_bins_r=pp.NUM_BINS_RP,
 						num_bins_pi=pp.NUM_BINS_PI, pi_max=pp.PI_MAX,
-						boxsize=mock["boxsize"], num_nodes=1)
+						boxsize=mock["boxsize"], num_nodes=1, num_overlap=0)
 
 
 def _read_cov(fname):

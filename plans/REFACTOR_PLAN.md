@@ -126,6 +126,18 @@ from these paths). That fixes the kernel's iteration order:
 - Lightcone tree/mp: outer loop over **position** chunks (mp: `chunk_size` slabs then inner
   100s), per-chunk `KDTree(s_pos_chunk).query_ball_tree(shape_tree, ...)`.
 
+> **Note added 2026-08-25.** This section, and the mention of "the r-window setdiff" below,
+> describe candidate selection as it was during the refactor: two KDTree queries (at `r_min`
+> and `r_max`) with a per-galaxy `setdiff1d` between them. That inner query and the set
+> difference were removed as redundant — `bin_pairs` already applies the same lower bound —
+> which made pair counting 1.4x-1.7x faster with every output bit-identical across 45
+> configurations. See `benchmarks/FINDINGS.md` F1. The iteration and float-summation order
+> this section fixes is unchanged and still binding; only the *size* of each galaxy's
+> candidate list changed, and the extra entries are masked out in the same order. Interesting
+> in hindsight: the observation below that the r-window "changes which pairs enter the
+> log10/binning arithmetic — NaN-safe but different masks" is exactly why the removal turned
+> out to be safe.
+
 The **brute** paths iterate in a different order (box brute loops positions, vectorizing
 over all shapes). Decision for the implementer: implement brute as `tree` behavior minus the
 KDTree radius pre-filter is NOT equivalent (the r-window setdiff changes which pairs enter

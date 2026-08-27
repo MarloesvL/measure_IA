@@ -5,11 +5,13 @@ from .measure_m_box_jk import MeasureMBoxJackknife
 from .measure_w_box import MeasureWBox
 from .measure_m_box import MeasureMultipolesBox
 from .measure_jackknife import MeasureJackknife
+from .measure_galaxy_box import MeasureGalaxyContributionsBox
 from .check_input import CheckInput
+from . import worker_pool
 
 
 class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, MeasureMBoxJackknife, MeasureJackknife,
-				   CheckInput):
+				   MeasureGalaxyContributionsBox, CheckInput):
 	r"""Manages the IA correlation function measurement methods used in the MeasureIA package based on speed and input.
 	This class is used to call the methods that measure $w_{gg}$, $w_{g+}$ and multipoles for simulations in cartesian
 	coordinates. Depending on the input parameters, various correlations incl covariance estimates are measured for
@@ -50,6 +52,7 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			line_of_sight_index_name="LOS",
 			weight_density_sample_name="weight",
 			weight_shape_sample_name="weight_shape_sample",
+			num_overlap=None,
 	):
 		"""
 		The __init__ method of the MeasureIABox class.
@@ -73,6 +76,17 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			Name of the key in the data dictionary that contains the weights of the density sample.
 		weight_shape_sample_name : str, optional
 			Name of the key in the data dictionary that contains the weights of the shape sample.
+		num_overlap : int or NoneType, optional
+			Number of objects present in *both* the position and the shape sample. The analytic
+			RR is normalised by ``Num_position * Num_shape - num_overlap``, because a shape
+			galaxy cannot pair with itself and the pair loop already drops that self-pair (the
+			separation window starts at ``r_min > 0``). Default None, which measures the overlap
+			from the coordinates and is what you want for real data, where the shape sample is
+			normally drawn from the position sample. Pass an integer to override it -- most
+			usefully ``0``, which reproduces the convention external codes such as halotools
+			and corr_pc use, where the two samples are treated as independent. An override is
+			applied uniformly, so the per-jackknife-region adjustment is only made in the
+			default (measured) mode.
 
 		Notes
 		-----
@@ -107,6 +121,10 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 		if not (isinstance(num_nodes, (int, np.integer)) and not isinstance(num_nodes, bool) and num_nodes >= 1):
 			raise ValueError(f"num_nodes must be an integer >= 1, got {num_nodes!r}.")
 		self.num_nodes = num_nodes
+		if num_overlap is not None and not (isinstance(num_overlap, (int, np.integer))
+											and not isinstance(num_overlap, bool) and num_overlap >= 0):
+			raise ValueError(f"num_overlap must be None or an integer >= 0, got {num_overlap!r}.")
+		self._num_overlap_override = num_overlap
 		self.randoms_data = None
 		self.data_dir = None
 		self.num_samples = None
@@ -127,6 +145,7 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 		if not (isinstance(num_jk, (int, np.integer)) and not isinstance(num_jk, bool) and num_jk >= 0):
 			raise ValueError(f"num_jk must be an integer >= 0, got {num_jk!r}.")
 
+	@worker_pool.pooled
 	def measure_xi_w(self, dataset_name, corr_type, num_jk=0, temp_file_path=None, masks=None,
 					 ellipticity='distortion', chunk_size=1000, responsivity=True):
 		r"""Measures $\xi_{gg}$, $\xi_{g+}$ and $w_{gg}$, $w_{g+}$ including jackknife covariance if desired.
@@ -256,6 +275,7 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 
 		return
 
+	@worker_pool.pooled
 	def measure_xi_multipoles(self, dataset_name, corr_type, num_jk=0, temp_file_path=None, masks=None, rp_cut=None,
 							  ellipticity='distortion', chunk_size=1000, responsivity=True):
 		r"""Measures $\xi_{gg}$, $\xi_{g+}$ and $\tilde{\xi}_{gg,0}$, $\tilde{\xi}_{g+,2}$ including jackknife covariance

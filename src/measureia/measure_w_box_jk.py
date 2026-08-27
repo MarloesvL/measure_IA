@@ -4,6 +4,8 @@ import os
 import sys
 from multiprocessing import Pool, shared_memory
 import multiprocessing as mp
+
+from . import worker_pool
 from scipy.spatial import KDTree
 from .write_data import write_dataset_hdf5, create_group_hdf5
 from .measure_IA_base import MeasureIABase
@@ -126,10 +128,10 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_g_plus[i, p] = self.get_random_pairs(
 					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "cross",
-					Num_position, Num_shape)
+					Num_position, Num_shape, self.num_overlap)
 				RR_gg[i, p] = self.get_random_pairs(
 					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, corrtype,
-					Num_position, Num_shape)
+					Num_position, Num_shape, self.num_overlap)
 
 		RR_jk = np.zeros((num_box, self.num_bins_r, self.num_bins_pi))
 		volume_jk = L3 * (num_box - 1) / (num_box)
@@ -140,7 +142,8 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 				for p in np.arange(0, self.num_bins_pi):
 					RR_jk[jk, i, p] = self.get_random_pairs(
 						self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], volume_jk, "cross",
-						Num_position_jk, Num_shape_jk)
+						Num_position_jk, Num_shape_jk,
+						self.num_overlap - self.overlap_jk_counts[jk])
 
 		RR_g_plus_denom = RR_g_plus.copy()  # guard against empty samples/bins in the divisions; raw RR grids are written to file
 		RR_g_plus_denom[RR_g_plus_denom == 0] = 1
@@ -264,10 +267,10 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_g_plus[i, p] = self.get_random_pairs(
 					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "cross",
-					Num_position, Num_shape)
+					Num_position, Num_shape, self.num_overlap)
 				RR_gg[i, p] = self.get_random_pairs(
 					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, corrtype,
-					Num_position, Num_shape)
+					Num_position, Num_shape, self.num_overlap)
 
 		RR_jk = np.zeros((num_box, self.num_bins_r, self.num_bins_pi))
 		volume_jk = L3 * (num_box - 1) / num_box
@@ -278,7 +281,8 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 				for p in np.arange(0, self.num_bins_pi):
 					RR_jk[jk, i, p] = self.get_random_pairs(
 						self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], volume_jk, "cross",
-						Num_position_jk, Num_shape_jk)
+						Num_position_jk, Num_shape_jk,
+						self.num_overlap - self.overlap_jk_counts[jk])
 
 		RR_g_plus_denom = RR_g_plus.copy()  # guard against empty samples/bins in the divisions; raw RR grids are written to file
 		RR_g_plus_denom[RR_g_plus_denom == 0] = 1
@@ -441,7 +445,16 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 			masks,
 			L_subboxes)
 
-		self.pos_tree = KDTree(positions[:, self.not_LOS], boxsize=self.boxsize)
+		# Build the shared position tree on whatever coordinates the binning
+		# queries -- do not hardcode the projection here. BoxRpPi chooses between
+		# the 3D positions and their 2D projection depending on the configuration
+		# (benchmarks/FINDINGS.md F7), and the workers build their chunk trees with
+		# binning.tree_coords, so a hardcoded convention here silently disagrees
+		# with them -- scipy then raises "Trees passed to query_ball_tree have
+		# different dimensionality".
+		_binning = pair_kernel.BoxRpPi(self)
+		self.pos_tree = KDTree(_binning.tree_coords(positions, self.not_LOS),
+							   boxsize=self.boxsize)
 		indices = np.arange(0, len(positions_shape_sample), chunk_size)
 		self.chunk_size = chunk_size
 
@@ -492,8 +505,7 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 				masks = {}
 			del shared_data, shared_arr
 			del positions, positions_shape_sample, axis_direction, weight, weight_shape, jackknife_region_indices_pos, jackknife_region_indices_shape
-			mp.set_start_method("spawn", force=True)
-			with Pool(num_nodes) as p:
+			with worker_pool.active_pool(num_nodes) as p:
 				result = p.map(self._measure_xi_rp_pi_box_jk_batch, indices)
 
 		finally:
@@ -541,10 +553,10 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_g_plus[i, p] = self.get_random_pairs(
 					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "cross",
-					self.Num_position_masked, self.Num_shape_masked)
+					self.Num_position_masked, self.Num_shape_masked, self.num_overlap)
 				RR_gg[i, p] = self.get_random_pairs(
 					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, corrtype,
-					self.Num_position_masked, self.Num_shape_masked)
+					self.Num_position_masked, self.Num_shape_masked, self.num_overlap)
 
 		RR_jk = np.zeros((self.num_box, self.num_bins_r, self.num_bins_pi))
 		volume_jk = L3 * (self.num_box - 1) / self.num_box
@@ -555,7 +567,8 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 				for p in np.arange(0, self.num_bins_pi):
 					RR_jk[jk, i, p] = self.get_random_pairs(
 						self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], volume_jk, "cross",
-						Num_position_jk, Num_shape_jk)
+						Num_position_jk, Num_shape_jk,
+						self.num_overlap - self.overlap_jk_counts[jk])
 
 		RR_g_plus_denom = RR_g_plus.copy()  # guard against empty samples/bins in the divisions; raw RR grids are written to file
 		RR_g_plus_denom[RR_g_plus_denom == 0] = 1
@@ -666,7 +679,7 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_gg[i, p] = self.get_random_pairs(
 					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, corrtype,
-					Num_position, Num_shape)
+					Num_position, Num_shape, self.num_overlap)
 
 		RR_jk = np.zeros((num_box, self.num_bins_r, self.num_bins_pi))
 		volume_jk = L3 * (num_box - 1) / (num_box)
@@ -677,7 +690,8 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 				for p in np.arange(0, self.num_bins_pi):
 					RR_jk[jk, i, p] = self.get_random_pairs(
 						self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], volume_jk, "cross",
-						Num_position_jk, Num_shape_jk)
+						Num_position_jk, Num_shape_jk,
+						self.num_overlap - self.overlap_jk_counts[jk])
 
 		RR_gg_denom = RR_gg.copy()  # guard against empty samples/bins in the division; raw RR grid is written to file
 		RR_gg_denom[RR_gg_denom == 0] = 1
@@ -761,7 +775,7 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_gg[i, p] = self.get_random_pairs(
 					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, corrtype,
-					Num_position, Num_shape)
+					Num_position, Num_shape, self.num_overlap)
 
 		RR_jk = np.zeros((num_box, self.num_bins_r, self.num_bins_pi))
 		volume_jk = L3 * (num_box - 1) / num_box
@@ -772,7 +786,8 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 				for p in np.arange(0, self.num_bins_pi):
 					RR_jk[jk, i, p] = self.get_random_pairs(
 						self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], volume_jk, "cross",
-						Num_position_jk, Num_shape_jk)
+						Num_position_jk, Num_shape_jk,
+						self.num_overlap - self.overlap_jk_counts[jk])
 
 		RR_gg_denom = RR_gg.copy()  # guard against empty samples/bins in the division; raw RR grid is written to file
 		RR_gg_denom[RR_gg_denom == 0] = 1
@@ -897,7 +912,16 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 			masks,
 			L_subboxes)
 
-		self.pos_tree = KDTree(positions[:, self.not_LOS], boxsize=self.boxsize)
+		# Build the shared position tree on whatever coordinates the binning
+		# queries -- do not hardcode the projection here. BoxRpPi chooses between
+		# the 3D positions and their 2D projection depending on the configuration
+		# (benchmarks/FINDINGS.md F7), and the workers build their chunk trees with
+		# binning.tree_coords, so a hardcoded convention here silently disagrees
+		# with them -- scipy then raises "Trees passed to query_ball_tree have
+		# different dimensionality".
+		_binning = pair_kernel.BoxRpPi(self)
+		self.pos_tree = KDTree(_binning.tree_coords(positions, self.not_LOS),
+							   boxsize=self.boxsize)
 		indices = np.arange(0, len(positions_shape_sample), chunk_size)
 		self.chunk_size = chunk_size
 
@@ -946,8 +970,7 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 				masks = {}
 			del shared_data, shared_arr
 			del positions, positions_shape_sample, weight, weight_shape, jackknife_region_indices_pos, jackknife_region_indices_shape
-			mp.set_start_method("spawn", force=True)
-			with Pool(num_nodes) as p:
+			with worker_pool.active_pool(num_nodes) as p:
 				result = p.map(self._count_pairs_xi_rp_pi_box_jk_batch, indices)
 
 		finally:
@@ -982,7 +1005,7 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_gg[i, p] = self.get_random_pairs(
 					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, corrtype,
-					self.Num_position_masked, self.Num_shape_masked)
+					self.Num_position_masked, self.Num_shape_masked, self.num_overlap)
 
 		RR_jk = np.zeros((self.num_box, self.num_bins_r, self.num_bins_pi))
 		volume_jk = L3 * (self.num_box - 1) / self.num_box
@@ -993,7 +1016,8 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 				for p in np.arange(0, self.num_bins_pi):
 					RR_jk[jk, i, p] = self.get_random_pairs(
 						self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], volume_jk, "cross",
-						Num_position_jk, Num_shape_jk)
+						Num_position_jk, Num_shape_jk,
+						self.num_overlap - self.overlap_jk_counts[jk])
 
 		RR_gg_denom = RR_gg.copy()  # guard against empty samples/bins in the division; raw RR grid is written to file
 		RR_gg_denom[RR_gg_denom == 0] = 1

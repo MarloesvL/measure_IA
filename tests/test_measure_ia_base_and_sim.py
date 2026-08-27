@@ -12,7 +12,6 @@ Covers
     - get_ellipticity (1-D and 2-D modes)
     - get_random_pairs (both corr_types, volume scaling, formula verification)
     - get_random_pairs_r_mur
-    - setdiff2D / setdiff_omit
 
   SimInfo / MeasureIABox initialisation
     - All known simulations (boxsize, h, L_0p5, snap_group)
@@ -28,6 +27,8 @@ Covers
 """
 
 import math
+
+import h5py
 import numpy as np
 import pytest
 from measureia import MeasureIABase, MeasureIABox, SimInfo
@@ -325,11 +326,27 @@ class TestGetRandomPairs:
         rp_max, rp_min = 3.0, 1.0
         pi_max, pi_min = 2.0, 0.0
         L3 = 50.0 ** 3
-        expected = ((Np - 1.0) * Ns / 2.0
-                    * np.pi * (rp_max**2 - rp_min**2) * abs(pi_max - pi_min) / L3)
-        result   = MeasureIABase.get_random_pairs(rp_max, rp_min, pi_max, pi_min,
-                                                  L3, "auto", Np, Ns)
-        assert result == pytest.approx(expected)
+        geometry = np.pi * (rp_max**2 - rp_min**2) * abs(pi_max - pi_min) / L3
+        # auto is the cross count halved; with no overlap declared the count is Np * Ns
+        result = MeasureIABase.get_random_pairs(rp_max, rp_min, pi_max, pi_min,
+                                               L3, "auto", Np, Ns)
+        assert result == pytest.approx(Np * Ns / 2.0 * geometry)
+        # a true auto-correlation is one sample against itself: every object overlaps,
+        # which recovers the familiar N (N - 1) / 2
+        result = MeasureIABase.get_random_pairs(rp_max, rp_min, pi_max, pi_min,
+                                               L3, "auto", Np, Np, Np)
+        assert result == pytest.approx(Np * (Np - 1) / 2.0 * geometry)
+
+    def test_overlap_term_interpolates_between_conventions(self):
+        """num_overlap moves the count between the two limits it subsumes: disjoint
+        samples (Np * Ns) and a shape sample drawn from the position sample
+        (Ns * (Np - 1))."""
+        Np, Ns = 10, 20
+        args = (3.0, 1.0, 2.0, 0.0, 50.0 ** 3, "cross", Np, Ns)
+        disjoint = MeasureIABase.get_random_pairs(*args, 0)
+        subset = MeasureIABase.get_random_pairs(*args, Ns)
+        assert subset == pytest.approx(disjoint * (Np * Ns - Ns) / (Np * Ns))
+        assert subset < disjoint
 
 
 # ---------------------------------------------------------------------------
@@ -363,80 +380,18 @@ class TestGetRandomPairsRMur:
         r_max, r_min = 3.0, 1.0
         mur_max, mur_min = 0.5, 0.0
         L3 = 100.0 ** 3
-        expected = abs((Np - 1.0) * Ns
-                       * 2. * np.pi / 3. * (r_max**3 - r_min**3)
-                       * (mur_max - mur_min) / L3)
-        result   = obj.get_random_pairs_r_mur(r_max, r_min, mur_max, mur_min,
-                                              L3, "cross", Np, Ns)
-        assert result == pytest.approx(expected)
+        geometry = abs(2. * np.pi / 3. * (r_max**3 - r_min**3) * (mur_max - mur_min) / L3)
+        # no overlap declared: the samples are treated as independent
+        result = obj.get_random_pairs_r_mur(r_max, r_min, mur_max, mur_min,
+                                            L3, "cross", Np, Ns)
+        assert result == pytest.approx(Np * Ns * geometry)
+        # shape sample drawn from the position sample: one self-pair per shape object
+        result = obj.get_random_pairs_r_mur(r_max, r_min, mur_max, mur_min,
+                                            L3, "cross", Np, Ns, Ns)
+        assert result == pytest.approx(Ns * (Np - 1) * geometry)
 
 
 # ---------------------------------------------------------------------------
-# setdiff2D
-# ---------------------------------------------------------------------------
-
-class TestSetdiff2D:
-
-    def test_basic_difference(self):
-        a1 = [[1, 2, 3], [4, 5, 6]]
-        a2 = [[2, 3],    [5, 6, 7]]
-        diff = MeasureIABase.setdiff2D(a1, a2)
-        assert list(diff[0]) == [1]
-        assert list(diff[1]) == [4]
-
-    def test_no_overlap(self):
-        a1 = [[1, 2], [3, 4]]
-        a2 = [[5, 6], [7, 8]]
-        diff = MeasureIABase.setdiff2D(a1, a2)
-        np.testing.assert_array_equal(diff[0], [1, 2])
-        np.testing.assert_array_equal(diff[1], [3, 4])
-
-    def test_complete_overlap(self):
-        a1 = [[1, 2], [3, 4]]
-        a2 = [[1, 2], [3, 4]]
-        diff = MeasureIABase.setdiff2D(a1, a2)
-        assert len(diff[0]) == 0
-        assert len(diff[1]) == 0
-
-    def test_length_mismatch_raises(self):
-        with pytest.raises(AssertionError):
-            MeasureIABase.setdiff2D([[1, 2]], [[1], [2]])
-
-    def test_returns_sorted(self):
-        """np.setdiff1d returns sorted results."""
-        a1 = [[3, 1, 2]]
-        a2 = [[2]]
-        diff = MeasureIABase.setdiff2D(a1, a2)
-        assert list(diff[0]) == [1, 3]
-
-
-# ---------------------------------------------------------------------------
-# setdiff_omit
-# ---------------------------------------------------------------------------
-
-class TestSetdiffOmit:
-
-    def test_basic(self):
-        a1 = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]
-        a2 = [2, 5]
-        incl_ind = [0, 1]
-        diff = MeasureIABase.setdiff_omit(a1, a2, incl_ind)
-        assert len(diff) == 2
-        np.testing.assert_array_equal(diff[0], [1, 3])
-        np.testing.assert_array_equal(diff[1], [4, 6])
-
-    def test_no_included_indices(self):
-        a1 = [[1, 2], [3, 4]]
-        a2 = [1]
-        diff = MeasureIABase.setdiff_omit(a1, a2, incl_ind=[])
-        assert diff == []
-
-    def test_all_indices_included(self):
-        a1 = [[1, 2, 3], [4, 5, 6]]
-        a2 = [1, 4]
-        diff = MeasureIABase.setdiff_omit(a1, a2, incl_ind=[0, 1])
-        np.testing.assert_array_equal(diff[0], [2, 3])
-        np.testing.assert_array_equal(diff[1], [5, 6])
 # Parameterised happy-path table
 # ---------------------------------------------------------------------------
 
@@ -674,3 +629,148 @@ class TestMeasureMultipoles:
         with pytest.raises(KeyError):
             IA_mock_TNG300_n1._measure_multipoles("x", corr_type="bad",
                                                    return_output=True)
+
+
+# ---------------------------------------------------------------------------
+# sample overlap: available_pairs / count_overlap / the num_overlap override
+# ---------------------------------------------------------------------------
+
+class TestSampleOverlap:
+    """The analytic RR is normalised by the number of *available* pairs,
+    Num_position * Num_shape - num_overlap, which subsumes both conventions in use."""
+
+    def test_available_pairs_limits(self):
+        from measureia.measure_IA_base import available_pairs
+        Np, Ns = 10, 4
+        assert available_pairs(Np, Ns, 0) == Np * Ns                  # independent samples
+        assert available_pairs(Np, Ns, Ns) == Ns * (Np - 1)           # shapes drawn from positions
+        assert available_pairs(Np, Np, Np, "auto") == Np * (Np - 1) / 2
+
+    def test_available_pairs_rejects_unknown_corrtype(self):
+        from measureia.measure_IA_base import available_pairs
+        with pytest.raises(ValueError, match="Unknown input"):
+            available_pairs(10, 10, 0, "bad")
+
+    def test_count_overlap_matches_rows_exactly(self):
+        from measureia.measure_IA_base import count_overlap, overlap_indices
+        a = np.arange(30, dtype=float).reshape(10, 3)
+        assert count_overlap(a, a) == 10
+        assert count_overlap(a[:4], a[6:]) == 0
+        assert count_overlap(a, a[3:7]) == 4
+        np.testing.assert_array_equal(np.sort(overlap_indices(a[3:7], a)), [3, 4, 5, 6])
+
+    def test_overlap_measured_from_the_catalogue(self, _box_catalog):
+        """The usual IA setup: the shape sample is drawn from the position sample, so the
+        overlap is found without the user declaring anything."""
+        from measureia import MeasureIABox, pair_kernel
+        obj = MeasureIABox(_box_catalog, "dummy_output.hdf5", boxsize=205.0)
+        pair_kernel.prepare_box_samples(obj.data, None, obj.Num_position, obj.Num_shape,
+                                        shapes=True, ellipticity="distortion", base=obj)
+        assert obj.num_overlap == obj.Num_shape
+
+    def test_num_overlap_override_is_respected(self, _box_catalog):
+        from measureia import MeasureIABox, pair_kernel
+        for override in (0, 3):
+            obj = MeasureIABox(_box_catalog, "dummy_output.hdf5", boxsize=205.0,
+                               num_overlap=override)
+            pair_kernel.prepare_box_samples(obj.data, None, obj.Num_position, obj.Num_shape,
+                                            shapes=True, ellipticity="distortion", base=obj)
+            assert obj.num_overlap == override
+
+    @pytest.mark.parametrize("bad", [-1, 1.5, True, "5"])
+    def test_num_overlap_validated(self, _box_catalog, bad):
+        from measureia import MeasureIABox
+        with pytest.raises(ValueError, match="num_overlap"):
+            MeasureIABox(_box_catalog, "dummy_output.hdf5", boxsize=205.0, num_overlap=bad)
+
+
+class TestOverlapConventionIsDiscriminated:
+    r"""End-to-end check that the analytic RR is normalised by the pairs the loop
+    actually counts.
+
+    This is the test the cross-code validations cannot provide. Those compare against
+    halotools and corr_pc on a 200-object mock, where the difference between the two
+    conventions is ``1/(N-1) = 5e-3`` against a 5e-4 tolerance -- close enough to the
+    threshold that the suite could not tell them apart, which is how the two
+    ``get_random_pairs*`` functions came to disagree with each other unnoticed.
+
+    The trick here is to make the check *exact* rather than statistical. The catalogue is
+    tiny and confined to a small clump, and the binning window is chosen to contain every
+    pair separation present. Then:
+
+    - ``sum(DD)`` is an integer: the number of ordered pairs the counting loop found, which
+      is ``N_position * N_shape`` minus one self-pair per shared object;
+    - ``sum(RR)`` is analytic, and dividing it by the total binned volume over the box
+      volume recovers whatever pair count the normalisation assumed.
+
+    Those two numbers must agree. No random catalogue, no convergence, no tolerance beyond
+    floating point -- and with ``N = 12`` the two conventions differ by 9%, far outside any
+    plausible slack.
+    """
+
+    BOX = 100.0
+    R_MIN, R_MAX, PI_MAX = 0.01, 25.0, 25.0
+    N_POS, N_SHAPE = 12, 5
+
+    def _catalogue(self, overlapping):
+        """Twelve positions in a clump, and a shape sample either drawn from them
+        (overlapping) or made of five separate objects (disjoint)."""
+        rng = np.random.default_rng(20260814)
+        pos = rng.uniform(45.0, 55.0, size=(self.N_POS, 3))
+        if overlapping:
+            shape_pos = pos[:self.N_SHAPE].copy()
+        else:
+            shape_pos = rng.uniform(45.0, 55.0, size=(self.N_SHAPE, 3))
+            assert not np.any(np.all(shape_pos[:, None, :] == pos[None, :, :], axis=-1))
+        n = len(shape_pos)
+        return {
+            "Position": pos,
+            "Position_shape_sample": shape_pos,
+            "Axis_Direction": np.tile([1.0, 0.0], (n, 1)),
+            "q": np.full(n, 0.5),
+            "LOS": 2,
+        }
+
+    def _measure(self, tmp_path, overlapping, statistic):
+        from measureia import MeasureIABox
+        data = self._catalogue(overlapping)
+        out = str(tmp_path / f"overlap_{statistic}_{overlapping}.hdf5")
+        obj = MeasureIABox(data, out, boxsize=self.BOX,
+                           separation_limits=[self.R_MIN, self.R_MAX],
+                           num_bins_r=4, num_bins_pi=4, pi_max=self.PI_MAX)
+        if statistic == "w":
+            obj.measure_xi_w("cv", "gg", 0, temp_file_path=False)
+            group = "w/xi_gg"
+            # cylinder of radius r_max and full height 2 pi_max, less the r < r_min core
+            volume = (np.pi * (self.R_MAX ** 2 - self.R_MIN ** 2) * 2 * self.PI_MAX)
+        else:
+            obj.measure_xi_multipoles("cv", "gg", 0, temp_file_path=False)
+            group = "multipoles/xi_gg"
+            # spherical shell between r_min and r_max, over the full mu_r range
+            volume = 4.0 * np.pi / 3.0 * (self.R_MAX ** 3 - self.R_MIN ** 3)
+        with h5py.File(out, "r") as f:
+            dd = f[obj.snap_group + group]["cv_DD"][:]
+            rr = f[obj.snap_group + group]["cv_RR_gg"][:]
+        return obj, dd.sum(), rr.sum() * self.BOX ** 3 / volume
+
+    @pytest.mark.parametrize("statistic", ["w", "multipoles"])
+    @pytest.mark.parametrize("overlapping", [True, False])
+    def test_rr_normalisation_matches_the_pairs_counted(self, tmp_path, statistic,
+                                                        overlapping):
+        obj, counted, implied = self._measure(tmp_path, overlapping, statistic)
+
+        expected_overlap = self.N_SHAPE if overlapping else 0
+        assert obj.num_overlap == expected_overlap
+        # every pair sits inside the window, so the loop finds all of them
+        assert counted == pytest.approx(self.N_POS * self.N_SHAPE - expected_overlap)
+        # ... and RR must be normalised by that same number
+        assert implied == pytest.approx(counted, rel=1e-12)
+
+    @pytest.mark.parametrize("statistic", ["w", "multipoles"])
+    def test_the_two_conventions_are_far_apart_here(self, tmp_path, statistic):
+        """Guard on the guard: the sample is small enough that getting the convention
+        wrong is a 9% error, so this test cannot be passed by accident the way the 200-object
+        cross-code comparisons could."""
+        _, counted, _ = self._measure(tmp_path, True, statistic)
+        wrong = self.N_POS * self.N_SHAPE          # the disjoint-sample convention
+        assert abs(wrong - counted) / counted > 0.05

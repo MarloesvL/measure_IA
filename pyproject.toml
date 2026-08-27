@@ -1,6 +1,6 @@
 [project]
 name = "measureia"
-version = "0.4.0"
+version = "0.5.0"
 description = "Measurement tool for intrinsic alignment correlation functions in simulation boxes and lightcones."
 authors = [{ name = "Marloes van Heukelum", email = "m.l.vanheukelum@uu.nl" }]
 readme = "README.md"
@@ -84,6 +84,7 @@ filterwarnings = [
     "ignore:.*maximum separation exceeds.*:UserWarning",
     "ignore:.*too many r.*:UserWarning",
     "ignore:.*jackknife patches holding fewer than.*:UserWarning",
+    "ignore:.*K-means on the sphere did not converge.*:UserWarning",
 ]
 
 [build-system]

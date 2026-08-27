@@ -29,7 +29,7 @@ Covers
 import numpy as np
 import pytest
 import h5py
-from measureia import MeasureIABox, ReadData
+from measureia import MeasureIABox, ReadData, pair_kernel
 
 
 NUM_JK = 8
@@ -749,7 +749,7 @@ class TestIntermediateOutputsW:
         total_rr_analytical = MeasureIABase.get_random_pairs(
             obj.r_bins[-1], obj.r_bins[0],
             obj.pi_bins[-1], obj.pi_bins[0],
-            L3, "cross", N, N)
+            L3, "cross", N, N, obj.num_overlap)
         assert np.sum(rr) == pytest.approx(total_rr_analytical, rel=1e-10)
 
     def test_xi_gg_rp_pi_grids_match_xi_g_plus(self, IA_mock_TNG300_n1):
@@ -911,3 +911,84 @@ class TestIntermediatePairCountEqualityW:
             _read(IA_mock_TNG300_n1, "w/xi_gg", "pce_mp1_DD"),
             _read(IA_mock_TNG300_n8, "w/xi_gg", "pce_mp8_DD"),
             rtol=1e-10)
+
+
+class TestBruteOnThe3DBranchWithJackknife:
+    """The one cell the axis audit found empty: brute backend, 3D tree branch,
+    jackknife on.
+
+    Low risk on its own — the brute backend takes every position as a candidate
+    and never builds a tree, so the 2D/3D choice barely reaches it — but an empty
+    cell is an empty cell, and `benchmarks/axis_audit.py` reports it as such.
+    Closing it keeps that report clean so a genuinely worrying gap stands out.
+    """
+
+    def test_brute_matches_tree_on_the_3d_branch_with_jk(self, tmp_path):
+        objs = [TestTreeCoordsAgreeAcrossProcesses._obj(tmp_path, f"b3d{i}", 1)
+                for i in range(2)]
+        assert pair_kernel.BoxRpPi(objs[0]).tree_is_3d
+        tp = str(tmp_path) + "/"
+        objs[0].measure_xi_w("b3d_tree", "both", 8, temp_file_path=tp)
+        objs[1].measure_xi_w("b3d_brute", "both", 8, temp_file_path=False)
+        np.testing.assert_allclose(
+            _read(objs[0], "w_g_plus", "b3d_tree"),
+            _read(objs[1], "w_g_plus", "b3d_brute"), rtol=1e-8, atol=1e-12)
+        np.testing.assert_array_equal(
+            _read(objs[0], "w/xi_gg", "b3d_tree_DD"),
+            _read(objs[1], "w/xi_gg", "b3d_brute_DD"))
+
+
+class TestTreeCoordsAgreeAcrossProcesses:
+    """The parent's shared tree and the workers' chunk trees must be built on the
+    same coordinates.
+
+    The multiprocessing backends build one position tree in the parent and hand
+    it to the workers, which build their own chunk trees via
+    ``binning.tree_coords``. If the parent hardcodes a different convention the
+    two disagree and scipy raises "Trees passed to query_ball_tree have
+    different dimensionality" — which is exactly what happened when BoxRpPi
+    gained the 3D-ball query (benchmarks/FINDINGS.md F7) while four backend
+    files still hardcoded the 2D projection.
+
+    The default fixtures do not catch it: they leave ``pi_max=None``, which
+    defaults to half the boxsize, and BoxRpPi then chooses the 2D projection —
+    the same convention the hardcoded parents used. Covering this needs a
+    configuration that selects the *3D* branch, which is what these tests pin.
+    """
+
+    @staticmethod
+    def _obj(tmp_path, name, num_nodes):
+        rng = np.random.default_rng(20260826)
+        N = 600
+        L = 205.0
+        pos = rng.uniform(0.0, L, (N, 3))
+        data = {"Position": pos, "Position_shape_sample": pos,
+                "Axis_Direction": np.column_stack([np.ones(N), np.zeros(N)]),
+                "LOS": 2, "q": np.full(N, 0.6)}
+        # pi_max well below the box depth, so the enclosing ball is smaller than
+        # the full-depth cylinder and BoxRpPi selects the 3D tree
+        return MeasureIABox(data, str(tmp_path / f"{name}.hdf5"),
+                            simulation=None, snapshot=None,
+                            separation_limits=[0.5, 20.0], num_bins_r=6,
+                            num_bins_pi=8, pi_max=20.0, boxsize=L,
+                            num_nodes=num_nodes)
+
+    def test_configuration_really_selects_the_3d_branch(self, tmp_path):
+        """Guard the guard: if this stops being 3D the tests below stop covering
+        the case they exist for."""
+        obj = self._obj(tmp_path, "branch", 1)
+        assert pair_kernel.BoxRpPi(obj).tree_is_3d, \
+            "this configuration no longer selects the 3D tree; the mp test below " \
+            "would silently stop covering the parent/worker agreement"
+
+    def test_multiproc_matches_single_process_on_the_3d_branch(self, tmp_path):
+        one = self._obj(tmp_path, "n1", 1)
+        many = self._obj(tmp_path, "n2", 2)
+        tp = str(tmp_path) + "/"
+        one.measure_xi_w("t3d_n1", "both", 0, temp_file_path=tp)
+        many.measure_xi_w("t3d_n2", "both", 0, temp_file_path=tp, chunk_size=200)
+        np.testing.assert_allclose(
+            _read(one, "w_g_plus", "t3d_n1"), _read(many, "w_g_plus", "t3d_n2"),
+            rtol=1e-8, atol=1e-12)
+        np.testing.assert_array_equal(
+            _read(one, "w/xi_gg", "t3d_n1_DD"), _read(many, "w/xi_gg", "t3d_n2_DD"))

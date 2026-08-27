@@ -15,8 +15,8 @@ Structure:
     - ``accumulate`` — the pair loop. ``chunk_axis="shape"`` runs the box order (outer loop
       over shape chunks, positions queried per chunk); ``chunk_axis="position"`` runs the
       lightcone order (outer loop over position chunks, shapes queried). Backends ``"tree"``
-      (KDTree annulus, bit-identical to the legacy) and ``"brute"`` (full cross-join, same
-      pairs → ``allclose``). ``shapes=False`` is the DD-only count_pairs path.
+      (KDTree ball query at the outer radius, bit-identical to the legacy) and ``"brute"``
+      (full cross-join, same pairs → ``allclose``). ``shapes=False`` is the DD-only count_pairs path.
     - jackknife (``jk=True``): union-deletion per-realisation grids ``DD_jk`` /
       ``Splus_D_jk``. Box divides S+ by ``2R`` inline and applies per-realisation
       responsivity via ``compute_R_jk``; the lightcone bakes 1/(2R) into ``e`` and reduces by
@@ -74,12 +74,25 @@ class Grids:
     per-realisation jackknife grids ``DD_jk``/``Splus_D_jk`` are None unless
     ``jk=True`` (and ``Splus_D_jk`` also requires ``shapes=True``). ``Splus_D_jk``
     stores the *raw* (un-responsivity-divided) S+ contribution — responsivity is
-    applied later in the reduction, matching the legacy jk grids."""
+    applied later in the reduction, matching the legacy jk grids.
+
+    The ``*_gal`` fields carry the same sums resolved *per shape galaxy* and are
+    None unless ``per_galaxy=True``; see ``accumulate`` for their axes and for the
+    ``*_gal_jk`` position-patch decomposition."""
     DD: np.ndarray
     Splus_D: Optional[np.ndarray] = None
     Scross_D: Optional[np.ndarray] = None
     DD_jk: Optional[np.ndarray] = None
     Splus_D_jk: Optional[np.ndarray] = None
+    DD_gal: Optional[np.ndarray] = None
+    Splus_D_gal: Optional[np.ndarray] = None
+    DD_gal_jk: Optional[np.ndarray] = None
+    Splus_D_gal_jk: Optional[np.ndarray] = None
+    # sparse (per_galaxy_jk_sparse) form of the two arrays above: values for only the
+    # patches a galaxy actually has pairs in, with the shared patch index array.
+    gal_jk_patches: Optional[np.ndarray] = None
+    DD_gal_jk_values: Optional[np.ndarray] = None
+    Splus_D_gal_jk_values: Optional[np.ndarray] = None
 
 
 def prepare_box_samples(data, masks, Num_position, Num_shape, *, shapes, ellipticity, base,
@@ -172,6 +185,16 @@ def prepare_box_samples(data, masks, Num_position, Num_shape, *, shapes, ellipti
 
     LOS_ind = data["LOS"]
     not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], LOS_ind, invert=True)]
+
+    # How many objects sit in both samples, after masking. The analytic RR needs this:
+    # a shape galaxy cannot pair with itself, and the pair loop already drops that
+    # self-pair because the separation window starts at r_min > 0. Recorded on the
+    # caller so every RR call in the backends can use one consistent value.
+    # Imported here rather than at module scope to keep the import graph acyclic.
+    from .measure_IA_base import count_overlap
+    override = getattr(base, "_num_overlap_override", None)
+    base.num_overlap = (int(override) if override is not None
+                        else count_overlap(positions, positions_shape_sample))
 
     return SampleSet(
         pos=positions, pos_shape=positions_shape_sample,
@@ -325,11 +348,58 @@ class BoxRpPi:
         self.num_bins_pi = base.num_bins_pi
         self.sub_box_len_logrp = (np.log10(base.r_max) - np.log10(base.r_min)) / base.num_bins_r
         self.sub_box_len_pi = (base.pi_bins[-1] - base.pi_bins[0]) / base.num_bins_pi
+        # Candidate region: either the 3D ball enclosing the (rp <= r_max,
+        # |pi| <= pi_max) cylinder this binning selects, or the 2D projection of
+        # that cylinder. Both are supersets of what bin_pairs keeps, so the pair
+        # set is identical either way and only the wasted work differs -- pick
+        # whichever is smaller:
+        #
+        #   ball      (4/3) q^3,  q = sqrt(r_max^2 + pi_max^2)
+        #   cylinder  r_max^2 * L    (the full box depth, because a 2D query
+        #                             cannot constrain the line of sight at all)
+        #
+        # The ball wins whenever the box is deep enough -- the usual case, and
+        # increasingly so as boxes grow, which is what removes the superlinear
+        # scaling. The cylinder wins when pi_max is large next to the box:
+        # measured at pi_max=60 in a 205 Mpc/h box, the ball would be 4.1x worse.
+        ball_r = np.sqrt(base.r_max ** 2 + base.pi_bins[-1] ** 2)
+        boxsize = getattr(base, "boxsize", None)
+        if boxsize:
+            self.tree_is_3d = bool((4.0 / 3.0) * ball_r ** 3 < base.r_max ** 2 * boxsize)
+        else:
+            # no box depth to compare against: the ball is bounded, the
+            # projected query is not, so prefer the ball
+            self.tree_is_3d = True
+        self.query_r_max = ball_r if self.tree_is_3d else base.r_max
 
     def tree_coords(self, coords, not_LOS):
-        """Coordinates the KDTree is built/queried on: the 2D projection, since the
-        (rp, pi) r-window is the projected separation."""
-        return coords[:, not_LOS]
+        """Coordinates the KDTree is built/queried on: the full 3D positions.
+
+        This binning selects a cylinder — projected separation within ``r_max``,
+        line-of-sight separation within ``pi_max`` — and the obvious tree for that
+        is a 2D one on the projection, which is what this used to build. The
+        trouble is that a 2D query cannot constrain the line of sight at all, so
+        it returns every neighbour in a cylinder through the *entire box depth*
+        and ``bin_pairs`` then discards the ones outside the pi window. The cost
+        of that grows with the box: candidates per galaxy went 88.8 -> 134.4 ->
+        210.4 across three decades at fixed number density, where the (r, mu_r)
+        binning stayed flat at ~19 (benchmarks/FINDINGS.md F2), and it left this
+        the only measurement path with a superlinear scaling exponent (1.12
+        against 1.00-1.03 elsewhere) after the spatial-ordering fix (F5).
+
+        Querying a 3D ball of radius ``sqrt(r_max^2 + pi_max^2)`` instead bounds
+        the cylinder exactly: every pair the binning keeps lies inside that ball,
+        so the surviving pair set is unchanged, and the ball no longer scales
+        with the box. SkyRpPi has always done this; the box was the outlier.
+
+        The ball is not universally better: it grows with ``pi_max`` while the
+        cylinder grows with the box depth, so a wide ``pi_max`` in a shallow box
+        is cheaper to query in projection. ``__init__`` compares the two volumes
+        and sets ``tree_is_3d``, which is what this returns on. Both regions are
+        supersets of the pairs ``bin_pairs`` keeps, so the choice cannot change
+        the result -- only how much work is discarded.
+        """
+        return coords if self.tree_is_3d else coords[:, not_LOS]
 
     def bin_pairs(self, separation, not_LOS, LOS_ind):
         """Bin one shape galaxy's separations to its candidate position neighbours.
@@ -398,6 +468,8 @@ class BoxRMuR:
         self.rp_cut = rp_cut
         self.sub_box_len_logr = (np.log10(base.r_max) - np.log10(base.r_min)) / base.num_bins_r
         self.sub_box_len_mu_r = 2.0 / base.num_bins_pi
+        # the r-window is the 3D separation, so the ball is just r_max
+        self.query_r_max = base.r_max
 
     def tree_coords(self, coords, not_LOS):
         """Coordinates the KDTree is built/queried on: the full 3D positions, since the
@@ -449,7 +521,8 @@ class SkyRpPi:
     line-of-sight separation (``pi`` runs over ``[-pi_max, pi_max]``) and the projected
     separation length is ``sqrt(|s|^2 - LOS^2)``. Query radius is
     ``sqrt(r_max^2 + pi_bins[-1]^2)`` (the position tree is queried against the shape tree
-    over the annulus ``[r_min, query_r_max]``). Clamping convention (lightcone family, see
+    out to ``query_r_max``; there is no inner cut, because ``bin_pairs`` already drops
+    anything below ``r_bins[0]``). Clamping convention (lightcone family, see
     REFACTOR_PLAN.md section 3.2): an index landing exactly on the upper edge
     (``== num_bins``) is set to the last bin (``num_bins - 1``).
     """
@@ -463,7 +536,9 @@ class SkyRpPi:
         self.num_bins_pi = base.num_bins_pi
         self.sub_box_len_logrp = (np.log10(base.r_max) - np.log10(base.r_min)) / base.num_bins_r
         self.sub_box_len_pi = (base.pi_bins[-1] - base.pi_bins[0]) / base.num_bins_pi
-        # KDTree query annulus for candidate selection (REFACTOR_PLAN.md section 3.2).
+        # KDTree query radius for candidate selection (REFACTOR_PLAN.md section 3.2).
+        # query_r_min is retained for reference only: the inner query it used to drive was
+        # removed as redundant with bin_pairs' own lower bound (benchmarks/FINDINGS.md F1).
         self.query_r_min = base.r_min
         self.query_r_max = np.sqrt(base.r_max ** 2 + base.pi_bins[-1] ** 2)
 
@@ -501,7 +576,7 @@ class SkyRMuR:
 
     Like ``SkyRpPi`` but the separation bin ``r`` is the full 3D separation length,
     ``mu_r = LOS / r`` (with the same midpoint ``n_LOS``), and there is no ``pi`` window.
-    Query radius is the annulus ``[r_min, r_max]``. Same lightcone clamp convention as
+    Query radius is ``r_max`` (no inner cut). Same lightcone clamp convention as
     ``SkyRpPi``. ``mu_r`` sub-bin length is ``2.0 / num_bins_pi``.
     """
 
@@ -549,8 +624,8 @@ def _accumulate_lightcone(sample_set, binning, *, base, shapes, chunk_size_outer
 
     Mirrors the legacy lightcone tree/brute counting order exactly (REFACTOR_PLAN.md
     section 4): outer loop over **position** chunks of ``chunk_size_outer``; per chunk build
-    ``KDTree(s_pos_chunk)`` and query it against the single full ``KDTree(s_shape)`` over the
-    binning's ``[query_r_min, query_r_max]`` annulus (tree backend) or take every shape as a
+    ``KDTree(s_pos_chunk)`` and query it against the single full ``KDTree(s_shape)`` out to
+    the binning's ``query_r_max`` (tree backend) or take every shape as a
     candidate (brute backend); inner loop over the chunk, vectorised ``np.add.at`` per
     position. Ellipticity is per *shape* candidate here (``e`` is (M,2) = e1,e2 already
     scaled by 1/(2R)), and S+ grids are **not** divided by ``2R`` (baked into ``e``).
@@ -585,25 +660,39 @@ def _accumulate_lightcone(sample_set, binning, *, base, shapes, chunk_size_outer
 
     if backend == "brute":
         all_shapes = np.arange(Num_shape)
-    elif shape_tree is None:
-        shape_tree = KDTree(s_shape)
+        # no tree to prune, and keeping array order keeps brute bit-identical
+        order = np.arange(Num_position)
+    else:
+        if shape_tree is None:
+            shape_tree = KDTree(s_shape)
+        # Visit position galaxies in spatial order so each chunk's KDTree covers
+        # a small region and the dual-tree query can prune (FINDINGS.md F5).
+        # This path has no per-galaxy outputs, so nothing is indexed by galaxy
+        # and there is no mapping back to do -- the grids are summed over the
+        # whole sample either way.
+        order = spatial_order(s_pos)
 
     for i in np.arange(0, Num_position, chunk_size_outer):
         i2 = min(Num_position, i + chunk_size_outer)
-        s_pos_i = s_pos[i:i2]
-        weight_i = weight[i:i2]
+        sel = order[i:i2]
+        s_pos_i = s_pos[sel]
+        weight_i = weight[sel]
         if shapes:
-            east_i = sample_set.east[i:i2]
-            north_i = sample_set.north[i:i2]
+            east_i = sample_set.east[sel]
+            north_i = sample_set.north[sel]
         if jk:
-            jk_pos_i = sample_set.jk_pos[i:i2]
+            jk_pos_i = sample_set.jk_pos[sel]
         if backend == "brute":
             ind_rbin_i = [all_shapes] * len(s_pos_i)
         else:
             pos_tree = KDTree(s_pos_i)
-            ind_min_i = pos_tree.query_ball_tree(shape_tree, binning.query_r_min)
-            ind_max_i = pos_tree.query_ball_tree(shape_tree, binning.query_r_max)
-            ind_rbin_i = base.setdiff2D(ind_max_i, ind_min_i)
+            # One query, at the outer radius only -- see the matching comment in
+            # the box branch below and benchmarks/FINDINGS.md F1. Here the inner
+            # query is even more clearly redundant: it cuts on the 3D separation
+            # while bin_pairs cuts on the projected one, and projected <= 3D, so
+            # anything the query removed the mask removes too.
+            ind_rbin_i = [np.asarray(c, dtype=np.intp)
+                          for c in pos_tree.query_ball_tree(shape_tree, binning.query_r_max)]
 
         for n in np.arange(0, len(s_pos_i)):
             cand = ind_rbin_i[n]
@@ -648,9 +737,60 @@ def _accumulate_lightcone(sample_set, binning, *, base, shapes, chunk_size_outer
     return Grids(DD=DD, Splus_D=Splus_D, Scross_D=Scross_D, DD_jk=DD_jk, Splus_D_jk=Splus_D_jk)
 
 
+def spatial_order(coords):
+    """Visit order that makes consecutive chunks compact in space.
+
+    ``accumulate`` processes the chunked sample 100 at a time, builds a KDTree of
+    each chunk and queries it against the full tree of the other sample. A
+    dual-tree traversal can only prune when the chunk occupies a small region, and
+    nothing about a catalogue's storage order guarantees that: a sample stored
+    grouped by halo, or by id, or shuffled, gives chunks whose bounding box spans
+    essentially the whole volume, and the query degenerates towards brute force.
+
+    Measured on the package's own mock at 100,000 galaxies, the chunk extent was
+    619 Mpc inside a 711 Mpc box, the query took 6.20 s, and its cost scaled as
+    N^1.63. Visiting the same galaxies in the order returned here made the chunks
+    243 Mpc across, the query 0.34 s, and the scaling N^1.01 -- an 18x speed-up
+    from the identical set of pairs (benchmarks/FINDINGS.md F5).
+
+    The key is a Morton (Z-order) code on a 1024-per-axis grid spanning the
+    sample, which interleaves the bits of the per-axis cell indices so that points
+    close in space stay close in the ordering. Works for 2D coordinates (the
+    (rp, pi) box binning projects out the line of sight) as well as 3D.
+
+    Parameters
+    ----------
+    coords : (N, D) ndarray
+        Coordinates in the same metric the KDTree is built on, i.e. whatever
+        ``binning.tree_coords`` returns.
+
+    Returns
+    -------
+    (N,) ndarray of int
+        Indices into ``coords``, spatially ordered. A stable sort, so the order is
+        deterministic for a given input.
+
+    """
+    coords = np.asarray(coords, dtype=float)
+    n, dim = coords.shape
+    bits = 10
+    lo = coords.min(axis=0)
+    span = coords.max(axis=0) - lo
+    span[span <= 0] = 1.0
+    cell = np.clip(((coords - lo) / span * (1 << bits)).astype(np.int64),
+                   0, (1 << bits) - 1)
+    key = np.zeros(n, dtype=np.int64)
+    for b in range(bits):
+        for d in range(dim):
+            key |= ((cell[:, d] >> b) & 1) << (b * dim + d)
+    return np.argsort(key, kind="stable")
+
+
 def accumulate(sample_set, binning, *, base, R=None, shapes=True,
                chunk_axis="shape", chunk_size_outer=100, jk=False, num_box=None,
-               pos_tree=None, shape_tree=None, backend="tree"):
+               pos_tree=None, shape_tree=None, backend="tree",
+               per_galaxy=False, per_galaxy_proj=None, per_galaxy_jk=False,
+               per_galaxy_jk_sparse=False):
     """Run the pair-accumulation loop and return the resulting grids.
 
     Implemented so far: box geometry, ``BoxRpPi`` / ``BoxRMuR`` binnings,
@@ -672,8 +812,12 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
     change without re-deriving bit-identity against the legacy tree/mp paths.
 
     ``backend`` selects how each shape galaxy's candidate positions are chosen:
-      - ``"tree"``: KDTree annulus query ``[r_min, r_max]`` against the position
-        tree (the legacy tree/mp order — bit-identical).
+      - ``"tree"``: KDTree ball query at ``r_max`` against the position tree (the
+        legacy tree/mp order — bit-identical). There is no inner ``r_min`` query:
+        the binning mask already drops everything below ``r_bins[0]``, so the extra
+        query and the set difference it fed were removed as redundant
+        (benchmarks/FINDINGS.md F1). Candidates below ``r_min`` are therefore passed
+        to ``bin_pairs`` and masked out there.
       - ``"brute"``: every position is a candidate (full cross-join per chunk);
         the ``[r_min, r_max)`` window is applied by the binning mask. This runs on
         the *same* shape-chunk order as the tree backend rather than the legacy
@@ -682,6 +826,46 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
         deliberate consolidation choice (REFACTOR_PLAN.md section 4). It counts
         exactly the same pairs the legacy brute did (same window mask), so integer
         (unit-weight) DD grids still match exactly.
+
+    ``per_galaxy=True`` (box path only) additionally resolves the same sums **per shape
+    galaxy**, i.e. without summing over the shape sample. It changes nothing about the
+    grids above: the per-galaxy arrays are accumulated in their own branch and satisfy
+    ``per_galaxy_arrays.sum(axis=0) == the corresponding grid`` by construction. The
+    galaxy axis is indexed as in ``sample_set.pos_shape`` (so, in the multiprocessing
+    path, local to the batch — the caller concatenates batches in order).
+
+      - ``per_galaxy_proj=None``: ``DD_gal``/``Splus_D_gal`` have shape
+        ``(M, num_bins_r, num_bins_pi)``, the same axes as the grids.
+      - ``per_galaxy_proj=W`` with ``W`` of shape ``(num_bins_r, num_bins_pi)``: the
+        second bin axis is contracted with ``W`` as it is accumulated, giving
+        ``Splus_D_gal`` of shape ``(M, num_bins_r)``. This is how the multipole kernel
+        (Legendre weight / RR, both analytic in the box) is folded in without ever
+        materialising the ``mu_r`` axis per galaxy. ``DD_gal`` is *not* contracted with
+        ``W`` — it is the plain pair count per radial bin, which is what a per-galaxy
+        regression design matrix needs — so it has shape ``(M, num_bins_r)`` too.
+
+    ``per_galaxy_jk_sparse=True`` stores that decomposition only for the patches each
+    galaxy actually has pairs in. A galaxy's neighbours span a ball of radius ``r_max``, so
+    it reaches at most a handful of sub-boxes however many there are in total, and the rest
+    of the patch axis is *structurally* zero. The dense ``(M, num_box, num_bins_r)`` form
+    becomes ``gal_jk_patches`` ``(M, K)`` plus ``*_gal_jk_values`` ``(M, K, num_bins_r)``,
+    with ``K`` the largest number of patches any one galaxy touches and unused slots padded
+    with patch ``-1`` and zero values. ``DD`` and ``S+D`` share one patch array, since a
+    pair contributes to both. This is a pure change of representation: the stored floats
+    are the same values, so results are bit-identical (asserted by a test).
+
+    ``per_galaxy_jk=True`` further decomposes the per-galaxy arrays by the jackknife
+    patch of the *position-sample* partner, giving ``(M, num_box, num_bins_r)``. Combined
+    with the patch of the shape galaxy itself this reproduces the union-deletion of
+    ``DD_jk``/``Splus_D_jk`` exactly: realisation ``n`` drops every shape galaxy with
+    ``jk_shape == n`` and subtracts column ``n`` from the rest. It requires
+    ``per_galaxy_proj`` (and ``sample_set.jk_pos``/``jk_shape``), since the undecomposed
+    ``mu_r`` axis would multiply the footprint by ``num_bins_pi``.
+
+    All of this is inert when ``per_galaxy=False`` (the default): the pair loop, its
+    iteration order and its float summation order are untouched, so the bit-identity
+    guarantee of REFACTOR_PLAN.md section 4 still holds and normal measurements pay
+    nothing beyond one branch test per shape galaxy.
 
     ``pos_tree`` may be a prebuilt ``KDTree`` over ``sample_set.pos[:, not_LOS]``
     (tree backend only). The multiprocessing path passes the tree it built once in
@@ -727,12 +911,63 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
         )
     if jk and num_box is None:
         raise ValueError("pair_kernel.accumulate: jk=True requires num_box.")
+    if per_galaxy_jk and not per_galaxy:
+        raise ValueError(
+            "pair_kernel.accumulate: per_galaxy_jk=True requires per_galaxy=True."
+        )
+    if per_galaxy_jk and per_galaxy_proj is None:
+        raise ValueError(
+            "pair_kernel.accumulate: per_galaxy_jk=True requires per_galaxy_proj, so that "
+            "the mu_r/pi axis is contracted before the per-patch decomposition (an "
+            "undecomposed axis would multiply the per-galaxy footprint by num_bins_pi)."
+        )
+    if per_galaxy_jk and num_box is None:
+        raise ValueError("pair_kernel.accumulate: per_galaxy_jk=True requires num_box.")
+    if per_galaxy_jk_sparse and not per_galaxy_jk:
+        raise ValueError(
+            "pair_kernel.accumulate: per_galaxy_jk_sparse=True requires per_galaxy_jk=True."
+        )
+    if per_galaxy_jk and (sample_set.jk_pos is None or sample_set.jk_shape is None):
+        raise ValueError(
+            "pair_kernel.accumulate: per_galaxy_jk=True requires sample_set.jk_pos and "
+            "sample_set.jk_shape."
+        )
+    if per_galaxy_proj is not None:
+        per_galaxy_proj = np.asarray(per_galaxy_proj, dtype=float)
+        expected = (binning.num_bins_r, binning.num_bins_pi)
+        if per_galaxy_proj.shape != expected:
+            raise ValueError(
+                f"pair_kernel.accumulate: per_galaxy_proj has shape {per_galaxy_proj.shape}, "
+                f"expected {expected} (num_bins_r, num_bins_pi)."
+            )
 
     DD = np.array([[0.0] * binning.num_bins_pi] * binning.num_bins_r)
     Splus_D = np.array([[0.0] * binning.num_bins_pi] * binning.num_bins_r) if shapes else None
     Scross_D = np.array([[0.0] * binning.num_bins_pi] * binning.num_bins_r) if shapes else None
     DD_jk = np.zeros((num_box, binning.num_bins_r, binning.num_bins_pi)) if jk else None
     Splus_D_jk = np.zeros((num_box, binning.num_bins_r, binning.num_bins_pi)) if (jk and shapes) else None
+
+    DD_gal = Splus_D_gal = DD_gal_jk = Splus_D_gal_jk = None
+    if per_galaxy:
+        num_gal = len(sample_set.pos_shape)
+        if per_galaxy_proj is None:
+            gal_shape = (num_gal, binning.num_bins_r, binning.num_bins_pi)
+        else:
+            gal_shape = (num_gal, binning.num_bins_r)
+        DD_gal = np.zeros(gal_shape)
+        Splus_D_gal = np.zeros(gal_shape) if shapes else None
+        if per_galaxy_jk and not per_galaxy_jk_sparse:
+            jk_gal_shape = (num_gal, num_box, binning.num_bins_r)
+            DD_gal_jk = np.zeros(jk_gal_shape)
+            Splus_D_gal_jk = np.zeros(jk_gal_shape) if shapes else None
+    # Sparse jackknife decomposition: accumulate one outer chunk at a time into a small
+    # dense buffer, then keep only the patches that chunk actually touched. The buffer is
+    # (chunk_size_outer, num_box, num_bins_r), which stays small however large num_box is.
+    sp_buffer_DD = sp_buffer_Splus = None
+    sp_chunks_patches, sp_chunks_DD, sp_chunks_Splus = [], [], []
+    if per_galaxy and per_galaxy_jk_sparse:
+        sp_buffer_DD = np.zeros((chunk_size_outer, num_box, binning.num_bins_r))
+        sp_buffer_Splus = np.zeros((chunk_size_outer, num_box, binning.num_bins_r)) if shapes else None
 
     positions = sample_set.pos
     positions_shape_sample = sample_set.pos_shape
@@ -744,25 +979,48 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
 
     if backend == "brute":
         all_positions = np.arange(len(positions))
-    elif pos_tree is None:
-        pos_tree = KDTree(binning.tree_coords(positions, not_LOS), boxsize=base.boxsize)
+        # No tree, so nothing to prune and nothing to gain; keeping array order
+        # here also keeps the brute path bit-identical to previous releases.
+        order = np.arange(len(positions_shape_sample))
+    else:
+        if pos_tree is None:
+            pos_tree = KDTree(binning.tree_coords(positions, not_LOS), boxsize=base.boxsize)
+        # Visit shape galaxies in spatial order so each chunk's KDTree covers a
+        # small region and the dual-tree query can prune (FINDINGS.md F5). The
+        # order is computed on tree_coords, i.e. the same metric the trees use.
+        # Results are unchanged up to float summation order; the per-galaxy
+        # branches below index their outputs by the *original* galaxy id so that
+        # what the caller gets back is still in the caller's order.
+        order = spatial_order(binning.tree_coords(positions_shape_sample, not_LOS))
     for i in np.arange(0, len(positions_shape_sample), chunk_size_outer):
         i2 = min(len(positions_shape_sample), i + chunk_size_outer)
-        positions_shape_sample_i = positions_shape_sample[i:i2]
-        weight_shape_i = weight_shape[i:i2]
+        sel = order[i:i2]
+        if sp_buffer_DD is not None:
+            sp_buffer_DD[:i2 - i] = 0.0
+            if sp_buffer_Splus is not None:
+                sp_buffer_Splus[:i2 - i] = 0.0
+        positions_shape_sample_i = positions_shape_sample[sel]
+        weight_shape_i = weight_shape[sel]
         if shapes:
-            axis_direction_i = sample_set.axis_direction[i:i2]
-            e_i = sample_set.e[i:i2]
+            axis_direction_i = sample_set.axis_direction[sel]
+            e_i = sample_set.e[sel]
         if jk:
-            jk_shape_i = sample_set.jk_shape[i:i2]
+            jk_shape_i = sample_set.jk_shape[sel]
         if backend == "brute":
             # every position is a candidate for every shape in the chunk
             ind_rbin_i = [all_positions] * len(positions_shape_sample_i)
         else:
             shape_tree = KDTree(binning.tree_coords(positions_shape_sample_i, not_LOS), boxsize=base.boxsize)
-            ind_min_i = shape_tree.query_ball_tree(pos_tree, binning.r_min)
-            ind_max_i = shape_tree.query_ball_tree(pos_tree, binning.r_max)
-            ind_rbin_i = base.setdiff2D(ind_max_i, ind_min_i)
+            # One query, at the outer radius only. The inner r_min query and the
+            # set difference it fed were redundant: binning.bin_pairs already
+            # drops every pair with separation < r_bins[0], and r_bins[0] == r_min
+            # exactly, on the same metric this tree is built on. The extra
+            # candidates are masked out in the same (sorted) order, so the
+            # surviving pairs and their float summation order are unchanged.
+            # Worth ~30% of a box measurement -- see benchmarks/FINDINGS.md F1.
+            # asarray keeps the downstream fancy-indexing off Python lists.
+            ind_rbin_i = [np.asarray(c, dtype=np.intp)
+                          for c in shape_tree.query_ball_tree(pos_tree, binning.query_r_max)]
 
         for n in np.arange(0, len(positions_shape_sample_i)):
             if len(ind_rbin_i[n]) > 0:
@@ -811,7 +1069,143 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
                               (pos_patches[pos_diff], ind_r[pos_diff], ind_pi[pos_diff]),
                               w_pairs[pos_diff])
 
-    return Grids(DD=DD, Splus_D=Splus_D, Scross_D=Scross_D, DD_jk=DD_jk, Splus_D_jk=Splus_D_jk)
+                if per_galaxy:
+                    # Same pairs, same weights, resolved on the shape-galaxy axis. Kept
+                    # last and in its own branch so that nothing above changes when
+                    # per_galaxy is off.
+                    # the caller's galaxy id, not the visit position: the loop
+                    # walks the sample in spatial order (see `order` above), so
+                    # i + n would attribute each galaxy's row to a different one
+                    gj = sel[n]
+                    w_pairs_gal = weight[ind_rbin_i[n]][mask] * weight_shape_i[n]
+                    if per_galaxy_proj is None:
+                        np.add.at(DD_gal[gj], (ind_r, ind_pi), w_pairs_gal)
+                        if shapes:
+                            np.add.at(Splus_D_gal[gj], (ind_r, ind_pi),
+                                      w_pairs_gal * e_plus[mask] / (2 * R))
+                    else:
+                        proj_gal = per_galaxy_proj[ind_r, ind_pi]
+                        # DD_gal stays the plain pair count per radial bin: the projection
+                        # belongs to the estimator (S+D), not to the design matrix.
+                        np.add.at(DD_gal[gj], ind_r, w_pairs_gal)
+                        if shapes:
+                            np.add.at(Splus_D_gal[gj], ind_r,
+                                      proj_gal * w_pairs_gal * e_plus[mask] / (2 * R))
+                    if per_galaxy_jk:
+                        # Decompose by the position partner's patch only: the shape
+                        # galaxy's own patch is known from jk_shape, and delete-one drops
+                        # such a galaxy wholesale. Reconstructing realisation n as
+                        #   sum_{j: jk_shape[j] != n} (total_j - column_n_j)
+                        # therefore reproduces the union deletion of DD_jk / Splus_D_jk.
+                        # Splus_D_gal_jk is raw (not divided by 2R), matching Splus_D_jk.
+                        pos_patches_gal = jk_pos[ind_rbin_i[n]][mask]
+                        # dense target, or this chunk's buffer row when storing sparsely
+                        target_DD = sp_buffer_DD[n] if per_galaxy_jk_sparse else DD_gal_jk[gj]
+                        np.add.at(target_DD, (pos_patches_gal, ind_r), w_pairs_gal)
+                        if shapes:
+                            target_S = (sp_buffer_Splus[n] if per_galaxy_jk_sparse
+                                        else Splus_D_gal_jk[gj])
+                            np.add.at(target_S, (pos_patches_gal, ind_r),
+                                      proj_gal * w_pairs_gal * e_plus[mask])
+
+        if sp_buffer_DD is not None:
+            patches_c, DD_c, Splus_c = _compress_jk_chunk(
+                sp_buffer_DD, sp_buffer_Splus, i2 - i)
+            sp_chunks_patches.append(patches_c)
+            sp_chunks_DD.append(DD_c)
+            if Splus_c is not None:
+                sp_chunks_Splus.append(Splus_c)
+
+    gal_jk_patches = DD_gal_jk_values = Splus_D_gal_jk_values = None
+    if sp_buffer_DD is not None:
+        gal_jk_patches = _pad_and_stack(sp_chunks_patches, fill=-1, dtype=np.int32)
+        DD_gal_jk_values = _pad_and_stack(sp_chunks_DD, fill=0.0)
+        if sp_chunks_Splus:
+            Splus_D_gal_jk_values = _pad_and_stack(sp_chunks_Splus, fill=0.0)
+        # The sparse arrays are built one chunk at a time and concatenated, so
+        # their galaxy axis follows the *visit* order rather than the caller's.
+        # The dense per-galaxy arrays do not need this because they are written
+        # at gj = sel[n] as they go; these cannot be, so map them back here.
+        # (order is the identity on the brute backend, where this is a no-op.)
+        gal_jk_patches = _restore_galaxy_order(gal_jk_patches, order, fill=-1)
+        DD_gal_jk_values = _restore_galaxy_order(DD_gal_jk_values, order, fill=0.0)
+        if Splus_D_gal_jk_values is not None:
+            Splus_D_gal_jk_values = _restore_galaxy_order(
+                Splus_D_gal_jk_values, order, fill=0.0)
+
+    return Grids(DD=DD, Splus_D=Splus_D, Scross_D=Scross_D, DD_jk=DD_jk, Splus_D_jk=Splus_D_jk,
+                 DD_gal=DD_gal, Splus_D_gal=Splus_D_gal,
+                 DD_gal_jk=DD_gal_jk, Splus_D_gal_jk=Splus_D_gal_jk,
+                 gal_jk_patches=gal_jk_patches,
+                 DD_gal_jk_values=DD_gal_jk_values,
+                 Splus_D_gal_jk_values=Splus_D_gal_jk_values)
+
+
+def _restore_galaxy_order(stacked, order, *, fill):
+    """Put a visit-ordered galaxy axis back into the caller's order.
+
+    ``stacked`` has its galaxy axis in the order the kernel visited the sample
+    (``order``); the caller indexes galaxies by their position in the input
+    catalogue. ``out[order] = stacked`` is the inverse permutation.
+
+    The galaxy axis can be shorter than ``order`` when the final chunk was
+    partially filled, so the output is allocated at full length and padded --
+    which is why ``fill`` has to match the padding convention of the array being
+    restored (-1 for patch ids, 0 for values).
+    """
+    if stacked is None:
+        return None
+    out = np.full((len(order),) + stacked.shape[1:], fill, dtype=stacked.dtype)
+    out[order[:len(stacked)]] = stacked
+    return out
+
+
+def _compress_jk_chunk(buffer_DD, buffer_Splus, used):
+    """Keep only the patches this chunk of galaxies actually has pairs in.
+
+    A patch counts as occupied when its ``DD`` row is nonzero — ``DD`` is a pair count, so
+    it is nonzero whenever the galaxy has any pair in that patch, whereas ``S+D`` can
+    legitimately cancel to zero. Using ``DD`` as the occupancy mask therefore never drops a
+    nonzero ``S+D`` entry.
+
+    Returns ``(patches, DD_values, Splus_values)`` for this chunk, each with the chunk's own
+    ``K`` (padded to a common ``K`` later).
+    """
+    occupied = buffer_DD[:used].any(axis=2)             # (used, num_box)
+    counts = occupied.sum(axis=1)
+    K = int(counts.max()) if used and counts.size else 0
+    K = max(K, 1)
+    num_bins_r = buffer_DD.shape[2]
+
+    patches = np.full((used, K), -1, dtype=np.int32)
+    DD_values = np.zeros((used, K, num_bins_r))
+    Splus_values = np.zeros((used, K, num_bins_r)) if buffer_Splus is not None else None
+
+    rows, cols = np.nonzero(occupied)                   # row-major, so rows are grouped
+    if rows.size:
+        # rank of each entry within its own row, to fill left-packed slots
+        starts = np.concatenate([[0], np.cumsum(counts)[:-1]])
+        slots = np.arange(rows.size) - np.repeat(starts, counts)
+        patches[rows, slots] = cols
+        DD_values[rows, slots] = buffer_DD[:used][rows, cols]
+        if Splus_values is not None:
+            Splus_values[rows, slots] = buffer_Splus[:used][rows, cols]
+    return patches, DD_values, Splus_values
+
+
+def _pad_and_stack(chunks, *, fill, dtype=None):
+    """Concatenate per-chunk sparse arrays along the galaxy axis, padding each chunk's
+    patch axis out to the largest ``K`` seen across chunks."""
+    K = max(c.shape[1] for c in chunks)
+    padded = []
+    for c in chunks:
+        if c.shape[1] == K:
+            padded.append(c)
+            continue
+        pad_width = [(0, 0), (0, K - c.shape[1])] + [(0, 0)] * (c.ndim - 2)
+        padded.append(np.pad(c, pad_width, constant_values=fill))
+    out = np.concatenate(padded, axis=0)
+    return out.astype(dtype) if dtype is not None else out
 
 
 def compute_R_jk(e, weight_shape, jk_shape, num_box, responsivity_correction):

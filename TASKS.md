@@ -5,6 +5,57 @@ P1 = features, P2 = input validation, P3 = test suite, P4 = cleanup & docs.
 
 ## P0 — Confirmed bugs (fix before release)
 
+- [x] **The two analytic `RR` functions assumed different things about sample overlap.**
+  *Resolved 2026-08-14. The four ad-hoc branches are replaced by one count in
+  `available_pairs()`:*
+
+      N_pairs = Num_position * Num_shape - num_overlap        (halved for "auto")
+
+  *`num_overlap` is the number of objects in **both** samples. A shape galaxy cannot pair
+  with itself, that pair has zero separation and is dropped by the loop (the window starts
+  at `r_min > 0`), and there is exactly one such pair per shared object. This subsumes both
+  previous conventions: `Num_position * Num_shape` when the samples are independent, and
+  `Num_shape * (Num_position - 1)` when the shape sample is drawn from the position sample.*
+
+  *The earlier reading of the evidence was wrong twice over, and both errors are worth
+  recording. First, the branch count was treated as the argument ("three of four carry the
+  `-1`"), which counts branches instead of asking what each is for. Second, the validations
+  were read as contradictory when in fact both reference codes (halotools, corr_pc) use the
+  independent-sample convention, and the corr_pc comparison merely **compensated** for
+  MeasureIA differing, with a hard-coded `(n_pos - 1)/n_pos`. Those tests encoded the `-1`
+  rather than confirming it. The real defect was never one wrong branch: it was that `w_g+`
+  and `xi_g+,2` from one catalogue differed by `N/(N-1)` for no stated reason.*
+
+  *The overlap is now **measured** from the coordinates, mirroring how the lightcone
+  determines `num_samples["D_S"]`, so box and lightcone agree on what "the same object in
+  both samples" means and partial overlap is handled too. Threaded through two choke points
+  (`prepare_box_samples`, `_get_jackknife_region_indices`) rather than 48 call sites, with
+  the jackknife subtracting only the overlap each region removes.*
+
+  *`MeasureIABox` gained a `num_overlap` argument to override the measurement.
+  `num_overlap=0` states the reference codes' convention explicitly, and all five box
+  validation runs now pass it — which let the corr_pc comparison **drop** its compensation
+  factor and its delete-one mapping term, so the validations now compare like for like
+  instead of correcting afterwards.*
+
+  *Box `w_gg`/`w_g+` shift by `N/(N-1)` when the samples overlap; `xi_gg`/`xi_g+,2` are
+  unchanged (the new formula reproduces the old (r, mu_r) value exactly). Documented in
+  `docs/estimator_definitions.md` and the changelog; 579 tests pass, including a new
+  `TestSampleOverlap` covering the two limits, the auto case, the measurement, the override
+  and its validation.*
+
+  *The suite can now discriminate the conventions, which it previously could not: the
+  cross-code comparisons run on a 200-object mock where the difference is 5e-3 against a
+  5e-4 tolerance -- close enough to the threshold that the two functions disagreeing went
+  unnoticed. `TestOverlapConventionIsDiscriminated` replaces that with an exact check on a
+  12-object catalogue confined to a clump, with the binning window containing every pair
+  separation. `sum(DD)` is then an integer -- the pairs the loop actually found -- and
+  `sum(RR)` divided by the binned volume over the box volume recovers the pair count the
+  normalisation assumed; the two must agree, with no tolerance beyond floating point. At
+  N = 12 the conventions differ by 9%. Verified to fail under each old convention in the
+  regime where that convention is wrong (disjoint-everywhere fails the overlapping case,
+  (N-1)-everywhere fails the disjoint case), so neither could pass it.*
+
 - [x] **NEW (found during P0 work): lightcone backend weight-mask fallback misalignment.**
   *Investigated and resolved. Verdict: NOT reachable through the public API — `_merged_masks`
   always injects `weight`/`weight_shape_sample` keys defaulting to the slot's coordinate mask,
@@ -280,3 +331,290 @@ P1 = features, P2 = input validation, P3 = test suite, P4 = cleanup & docs.
     corr_pc build recipe left in the repo README, linked). Added a **Binning** section to `conventions.md`
     (log r/r_p over separation_limits, linear signed pi over ±pi_max, linear mu_r over [-1,1], midpoint bin
     coordinates, units). Nav gained a top-level Validation entry. Verified mkdocs build --strict clean.*
+
+## P6 — Performance (opened 2026-08-21)
+
+New `benchmarks/` directory: cross-package speed comparison against halotools (box)
+and treecorr (lightcone), plus measureia-only profiling. Methodology in
+`benchmarks/README.md`; **all measured results and conclusions in
+`benchmarks/FINDINGS.md`**, written to be picked up cold in a later session.
+
+- [x] **DONE (2026-08-25). The annulus set-difference costs 20–30% of a box measurement
+  to discard 0.6–5% of the candidates** — the single clearest optimisation target found.
+  `pair_kernel.accumulate` makes two `query_ball_tree` calls (at `r_min` and
+  `r_max`) and `setdiff2D`s them (`pair_kernel.py:872-875` box,
+  `:616-619` lightcone). `setdiff2D` calls `np.setdiff1d` per galaxy with the
+  default `assume_unique=False`, which sorts *both* full candidate lists — two
+  sorts per galaxy, 76,802 sort calls for 38,400 galaxies. Profiled at 38,400
+  shape galaxies: `setdiff1d` cumulative **1.524 s of 4.953 s (30.8%)** for
+  `measure_xi_w` and **0.982 s of 4.838 s (20.3%)** for `measure_xi_multipoles`,
+  while `np.add.at` — the actual accumulation — is 2%.
+
+  It looks redundant: `r_bins[0] == r_min` exactly (`measure_IA_base.py:168,172`)
+  and every `bin_pairs` already masks `separation_len >= r_bins[0]` on the same
+  metric its tree is built on, so the mask removes a superset of what the
+  set-difference removes. `r_min = 0` is **not** reachable
+  (`measure_IA_base.py:138` enforces `0 < r_min < r_max`), so the inner query is
+  not removing self-pairs either.
+
+  Two remedies, measured with `benchmarks/micro_candidate_selection.py`. They are
+  **alternatives, not cumulative**. Memory cost of both is negligible (peak
+  allocation per chunk never above 0.92 MB; B allocates less than today).
+
+  - **(A) `np.setdiff1d(..., assume_unique=True)`** — saves ~13% of
+    `measure_xi_w` and ~4% of `measure_xi_multipoles`. **Measured
+    output-identical**: zero of 38,400 candidate lists differed, in both
+    binnings. Risk is that it rests on *undocumented* scipy behaviour
+    (`query_ball_tree` promises no ordering); assert the precondition or
+    `np.sort` explicitly. Failure mode if duplicates ever appeared is silently
+    double-counted pairs.
+  - **(B) drop the inner query and the set-difference**, letting the existing
+    mask do the work — saves **~31% of both**. The inner query alone costs
+    0.39 s / 0.74 s (31% / 58% of the outer query), which is why B wins. Extra
+    rows through `bin_pairs` are only +0.01 s / +0.08 s. Changes behaviour at
+    exactly `d == r_min` (currently dropped, would be kept) and must be run
+    against the bit-identity tests — the superset-in-same-order argument says it
+    should be identical, but that is reasoning, not a test result.
+
+  Both are constrained by `accumulate`'s frozen iteration and float-summation
+  order (`plans/REFACTOR_PLAN.md` §4). Full write-up, including what is *not*
+  established and one corrected earlier estimate, in `benchmarks/FINDINGS.md` §F1.
+
+  *Applied remedy (B) on 2026-08-25: one `query_ball_tree` at the outer radius in
+  both the box and lightcone branches of `pair_kernel.accumulate`; the inner
+  `r_min` query and `setdiff2D` are gone, and `MeasureIABase.setdiff2D` /
+  `setdiff_omit` were removed with them (no remaining caller). Result: **1.42x–1.72x
+  faster** (up to 1.97x on the benchmark config at 100k), peak memory flat or 12–19%
+  lower, and **2,697 arrays across 45 configurations bit-identical** — including
+  `rp_cut`, masks, `measure_galaxy_contributions`, the lightcone `clusters`
+  estimator, and `separation_limits=[5,20]` where the removed query used to discard
+  up to 32.5% of candidates. Suite green (589 after the 8 setdiff tests went with
+  the methods); halotools and TreeCorr validations reproduce exactly. One
+  behavioural change, in the changelog: a pair at exactly `d == r_min` was dropped
+  before and is counted now. A first reading suggested the gain shrank at large
+  `r_min`; that was a `tracemalloc` artifact — re-measured untraced, it is larger.*
+
+- [x] **EXPLAINED (2026-08-26). The `measure_xi_w` vs `measure_xi_multipoles` gap is
+  geometry, and shows up only at realistic density.** The (rp, pi) binning selects a
+  cylinder, so its neighbour search must cover a ball of radius
+  `sqrt(r_max^2 + pi_max^2)`, where (r, mu) needs only `r_max` — a factor
+  `(1 + (pi_max/r_max)^2)^(3/2)` more candidate pairs: 2.8x at the default
+  `pi_max = r_max`, measured 2.78x, ~1.9x in wall time. F2 originally found no gap
+  because it measured on the sparse mock, where fixed per-galaxy overhead is 92% of
+  the runtime and buries the difference. Now in `docs/performance.md`.
+  *(original report: the gap was reported on a run with jackknife + multiprocessing.* On
+  the full-sample single-threaded box path the two are within ~10% at every size
+  measured (see `FINDINGS.md` §F2, which also confirms and then *rules out* the
+  2D-projected-tree candidate-count asymmetry as the cause). A sweep crossing
+  `num_jk` with `num_nodes` is implemented (`run_sweep.py --sweeps jackknife`).
+
+- [x] **DONE (2026-08-26). Lightcone `num_nodes` was silently ignored on the full-sample
+  path** — fixed by adding the missing `_multiprocessing` backends to both
+  `measure_w_lightcone.py` and `measure_m_lightcone.py` and dispatching on `num_nodes`
+  (`20911ec`). It now parallelises 3.95x at 8 nodes. *(original report:* Measured
+  speedup at 2/4/8 nodes for `MeasureIALightcone.measure_xi_w` with `num_jk=0`:
+  exactly 1.00x. `measure_IA_lightcone.py:662-676` dispatches that case only to
+  `_count_pairs_xi_rp_pi_lightcone_tree` / `..._brute`, and none of those four
+  methods uses `num_nodes` in its body — the `_multiprocessing` variant is reachable
+  only from the jackknife branch (`:629`). A user setting `num_nodes=8` gets
+  single-process execution with no warning. Either wire the mp path in or raise/warn
+  when the request cannot be honoured. `measure_xi_multipoles` (`:818`) has the same
+  dispatch shape and was not audited. See `benchmarks/FINDINGS.md` F4.
+
+- [ ] **Multiprocessing is a net loss below ~40k galaxies, and always on the lightcone
+  jackknife path.** Box at 8 nodes: 0.51x at N=9,600 (i.e. 2x *slower* than one node),
+  2.06x at 38,400 — a best-case parallel efficiency of 26%. Lightcone `w` + jackknife
+  at 8 nodes: 0.19x at 9,600 and 0.85x at 38,400, i.e. slower than single-process at
+  both sizes despite having four pair-count runs and 5x randoms to distribute. Needs
+  profiling of the spawn/`SharedMemory` setup cost, a finer measurement of the box
+  crossover, and user-facing guidance in the docs. See `benchmarks/FINDINGS.md` F4.
+
+- [x] **DONE (2026-08-25). The superlinear scaling was the KDTree
+  query, caused by spatially incoherent chunks.** `accumulate` chunks the shape sample
+  by array order and queries each chunk's tree against the full position tree; nothing
+  makes those chunks spatially compact, so the dual-tree traversal cannot prune. Measured
+  chunk extent at N=100,000 is 619 Mpc inside a 711 Mpc box — essentially the whole
+  volume. Per-stage slopes show `tree_query` at **1.52 and 59% of runtime** while every
+  other stage is sublinear (~0.85). Spatially sorting the sample first: **slope 1.63 →
+  1.01, query 18x faster at 100k, identical candidate counts.** Estimated ~2.2x
+  end-to-end on top of F1, growing with N. Blocked on the same bit-identity constraint
+  as F1, and unlike F1 the summation order genuinely changes (~1e-14). Note the
+  per-galaxy outputs are indexed by shape-sample position, so a reorder must be undone
+  before returning or per-galaxy results are silently permuted — that is the risky part.
+  *Fixed by visiting the chunked sample in Morton spatial order
+  (`pair_kernel.spatial_order`), in both `accumulate` and `_accumulate_lightcone`.
+  Scaling exponent now **1.00** (box multipoles), **1.02** (lightcone multipoles) and
+  **1.03** (lightcone w), against an ideal of 1.0. End-to-end vs 0.4.0 at 100k galaxies:
+  **4.3x** box multipoles, **6.2x** lightcone multipoles, **2.6x** box w. The per-galaxy
+  hazard was handled by writing dense rows at the caller's galaxy id and applying an
+  inverse permutation to the sparse arrays, guarded by two order-sensitive tests written
+  before the change (the pre-existing tests sum over the galaxy axis and are
+  permutation-invariant, so they could not have caught it). 593 tests pass. Four
+  brute-vs-tree assertions loosened from exact to allclose after verifying the floats
+  differ by ~1e-14 while integer pair counts stay exactly equal.*
+
+  Full write-up in `benchmarks/FINDINGS.md` F5.
+
+- [x] **DONE (2026-08-26). Box `w` scaling exponent 1.14 -> 1.00**, by querying the 3D
+  ball that bounds the (rp, pi) cylinder instead of the cylinder's 2D projection, which
+  a 2D query could not constrain along the line of sight. 1.85x faster at 300k, gain
+  growing with N. All four measurement paths are now linear at fixed number density.
+  Note the ball is not universally better — always using it would have been 4.1x *worse*
+  for a wide `pi_max` in a shallow box — so the binning compares the two volumes and
+  picks the smaller. See `benchmarks/FINDINGS.md` F7.
+
+  *(superseded: box `w` still has a scaling exponent of 1.12 — the only path that does.* Its
+  KDTree is built on the 2D projection (`BoxRpPi.tree_coords`), so `query_ball_tree`
+  returns a cylinder through the full box depth and candidates per galaxy genuinely grow
+  as `L ∝ N^(1/3)` (measured 88.8 → 134.4 → 210.4 at fixed density). That is real pair
+  work, so spatial ordering cannot remove it. The lightcone equivalent `SkyRpPi` already
+  queries a 3D ball of radius `sqrt(r_max^2 + pi_max^2)` and is linear (1.03), which is
+  the evidence for this diagnosis. Making `BoxRpPi` do the same is the remaining lead;
+  the surviving pair set would be unchanged (the mask already applies the rp and pi
+  windows), but the candidate list and hence summation order would change.)*
+
+  *(superseded description: slopes 1.25-1.46
+  where the pair count is linear and halotools measures 1.00). Partly explained for
+  `box_w` by the full-depth cylinder query (F2 predicts 4/3), but `box_multipoles` has
+  flat candidates-per-galaxy and still shows 1.28. Cause unknown; it is why the
+  cross-package ratios widen with N rather than holding flat, so it should be found
+  before the paper quotes those ratios. Suggested start: diff
+  `profile_measureia.py` stage breakdowns at N=9,600 and N=300,000. See
+  `benchmarks/FINDINGS.md` F3.)*
+
+- [x] **DONE (2026-08-26). Cross-package comparison re-run at realistic number density**
+  (`benchmarks/results/laptop_simdensity.jsonl`, FINDINGS.md F9): box a flat 3.6x against
+  halotools, lightcone 2.6x against treecorr, exponents matched. Published in
+  `docs/performance.md`. *(original note:* Every
+  halotools and treecorr ratio recorded so far was measured on the reference mock, at
+  n = 3.1e-4 and ~11-19 candidates per galaxy. A real catalogue sits near n = 1e-2 with
+  ~345, and measureia's fixed per-galaxy cost (~33.8 us, F6) amortises as that rises,
+  so the ratios will move — plausibly in measureia's favour. **The numbers currently in
+  `FINDINGS.md` F3 and in the CHANGELOG are therefore density-specific and must not go
+  into the paper as-is.** `bench_lib.box_mock_for(..., density=)` now takes an absolute
+  density; the sweep needs a density axis to match. Note the absolute runtimes grow
+  ~20-30x with the pair count, so the size ceiling will need lowering.
+
+- [x] **RESOLVED (2026-08-26): the lightcone memory ceiling is ~23 GB at 1e7 with 10x
+  randoms, so 64 GB of RAM is sufficient and no cluster is needed.** Measured RSS at
+  constant density: 216 MB / 722 MB / 2.34 GB at 100k / 300k / 1e6 shape galaxies with
+  10x randoms. The overhead over the analytic array model is a stable **~2.9x** across a
+  decade (2.71, 3.02, 2.94) rather than shrinking, i.e. it is proportional to the arrays
+  (per-chunk transients and intermediates in prepare_lightcone_samples) rather than a
+  fixed cost -- which makes the extrapolation to 1e7 (~23 GB) trustworthy. Memory
+  optimisation is therefore a nice-to-have, not a blocker for the 1e7 target. Caveat:
+  num_nodes>1 transiently doubles the derived arrays during shared-memory setup, so the
+  parallel peak is higher (~30 GB at 1e7) and should be measured before a production run.
+  Earlier estimates of 55-77 GB and then 13-48 GB were both wrong; superseded.
+
+- [x] **DONE (2026-08-26). Multi-core comparison completed**, after rebuilding treecorr
+  against libomp — the wheel had none and silently ran single-threaded. At each code's
+  best setting: 1.45x behind halotools on the box, 4.7x behind treecorr on the
+  lightcone. FINDINGS.md F9. *(original note:* The
+  ratios recorded so far are single-thread. All three codes parallelise but not
+  comparably: halotools and treecorr use OpenMP threads with negligible startup, while
+  measureia uses processes via 'spawn' with ~0.9 s pool startup and a best-measured
+  parallel efficiency of 26% (2.06x from 8 workers), and is a net loss below ~40k
+  galaxies. So single-thread numbers flatter measureia, and the multi-core comparison
+  must be run rather than omitted. Roughly doubles the sweep (~40 min to 100k, ~2 h with
+  300k). This is also the strongest argument for the forkserver work, since cluster runs
+  are multi-core.
+
+  (superseded item: settle the lightcone memory ceiling at 1e6-1e7 with 10x randoms.)
+  <!-- The analytic
+  array model gives ~1.3 GB at 1e6 and ~13.3 GB at 1e7, but measured RSS at 100k shape /
+  5x randoms is 3.6x the model (156 MB against 44 MB) because of per-chunk transients,
+  HDF5 buffers and RSS being a high-water mark over four sequential pair-count runs. If
+  that ratio persists 1e7 needs ~48 GB; if it shrinks as arrays come to dominate, ~13 GB.
+  **The spread is too wide to plan against** — one run at ~1e6 total points, where arrays
+  dominate the overheads, would settle it. Needs a cluster node, not the laptop.
+
+  Reducible items, measured or derived (F6):
+  - **retained user input: 6.6 GB at 1e7, the largest single item.** `self.data` stays
+    resident alongside the derived arrays on the single-process path; the multiprocessing
+    path already offloads it to a temp HDF5 and clears it. Contained, no numerical effect.
+  - float32 for derived positions: 3.4 GB, but **risky** — `s = s_shape - s_pos` cancels
+    ~2500 Mpc down to ~1 Mpc, so float32 gives ~2.5e-4 Mpc absolute error on a 1 Mpc
+    separation. Must be tested against the smallest bin edge before being considered.
+  - computing the east/north/n_pos sky basis per chunk instead of storing it: 0.7 GB.
+  - **not** the KDTree: measured at 8 bytes/point (it stores an index permutation, not a
+    copy of the coordinates), so it is negligible at any of these scales. -->
+
+- [ ] **OPTIONAL, deliberately deferred: batch the per-galaxy inner loop across a chunk**
+  (`benchmarks/FINDINGS.md` F8). Measured **1.25x** at simulation density and 7.4x on the
+  reference mock — the mock figure is the misleading one, and the gap is the whole reason
+  this is written down. **Do not implement it on the strength of a mock-density
+  benchmark.**
+
+  Why it was not taken: 1.25x does not justify what is by some distance the most invasive
+  change considered. It would have to restructure the per-galaxy dense scatter, the sparse
+  jackknife buffer (whose galaxy axis is chunk-local), the patch decomposition and both
+  geometries, and would break bit-identity again. The payoff is small for a principled
+  reason — at ~960 candidates per galaxy the fixed ~33.8 us per galaxy is already
+  amortised to ~18% of the work (F6), and batching can only attack that term.
+
+  **What would change the verdict:** genuinely sparse samples (low-density tracer, or a
+  small `r_max`) sit in the regime where batching wins several-fold. Note that is also
+  where runs are already fast, so the absolute saving is smallest where the relative one
+  is largest. If implemented, `chunk_size_outer` becomes the memory dial — peak footprint
+  is `chunk_size x candidates/galaxy x 24 bytes` — and would need exposing rather than
+  staying hardcoded at 100.
+
+- [ ] **OPTIONAL, deliberately deferred: `np.add.at` -> `np.bincount` for the grid
+  scatter** (`benchmarks/FINDINGS.md` F8). Worth **~1.05x** overall at simulation density
+  (1.71x on a stage that is 10% of runtime) and a **1.7x regression** below ~200 pairs per
+  galaxy, so it would need a threshold guard. A general helper via `ravel_multi_index` is
+  worse than doing nothing on two of the four call sites (0.73x on the jackknife grid,
+  0.40x on the per-galaxy dense grid), so any implementation must be per-call-site.
+
+  Recorded mainly for the measurement history: three successive benchmarks gave 3.1x,
+  4.61x and 1.71x, shrinking each time a flaw was removed from the benchmark rather than
+  the code. Re-measure before believing any of them.
+
+- [x] **RESOLVED: `chunk_size_outer` needs no tuning.** At simulation density the
+  hardcoded 100 is already optimal; 400 and 1600 are slightly *slower* (1.22x, 1.19x
+  against 1.25x) while costing up to 15x the peak memory. Only worth revisiting if the
+  batching refactor above is ever taken.
+
+- [x] **DONE (2026-08-26). `docs/performance.md` written** and added to the nav.
+  *(original spec:* Same shape and length
+  (~70-90 lines, four sections, table with footnotes, ends pointing at
+  `benchmarks/README.md` for the detail). Content:
+  - **how it is measured** — briefly: identical seeded mocks, binning imported from
+    `validation/`, every timing gated on reproducing the reference result, threads pinned
+    on both sides, best-of-N. Say that the numbers are quoted at a *realistic* number
+    density (~1e-2 per (Mpc/h)^3, ~345 candidates per galaxy), because the reference mock
+    is ~30x sparser and the ratios differ substantially there (FINDINGS.md F6).
+  - **comparison table** — time and memory against halotools (box) and treecorr
+    (lightcone), single- and multi-core, with the scaling exponents.
+  - **trade-offs, honestly both ways** — pure Python/NumPy so `pip install` needs no
+    compiler and no build step, against a constant factor versus Cython/OpenMP codes;
+    substantially lower memory than treecorr on the lightcone; one call returns w_gg,
+    w_g+, the responsivity and the jackknife covariance where the reference codes need
+    the estimator assembled from raw counts; multiprocessing is a net loss below ~40k
+    galaxies and should be left off there.
+  - **"roughly how long will my measurement take"** — the practical bit. A short table of
+    wall time against sample size for the four measurement types at realistic density, so
+    a user can size a run before starting it. Mention the ~330 bytes/galaxy (box) and
+    ~240-357 bytes/point (lightcone) memory scaling so they can size RAM too.
+  - **how to run it yourself** — `pip install measureia[validation]`, then
+    `python benchmarks/run_sweep.py`.
+
+  Numbers come from `benchmarks/results/laptop_simdensity.jsonl`; regenerate the tables
+  with `plot_results.py`. Note the CPU model in the caption, as `validation.md` does for
+  package versions.
+
+- [ ] **Test tooling does not see worker processes, which is where the last real bug
+  hid.** Both `benchmarks/axis_audit.py` and `pytest --cov` measure only the parent, so
+  the `_batch` methods and any combination reached solely through multiprocessing appear
+  untested. Concretely: the F7 tree-dimensionality regression sat in a cell that was
+  covered single-process and broken under mp, and neither tool would have flagged it.
+
+  Coverage understates by roughly the mp method bodies — `measure_w_lightcone.py` and
+  `measure_m_lightcone.py` report 85% largely because their new mp code runs in workers.
+  Fix: `COVERAGE_PROCESS_START` plus a `sitecustomize` hook so coverage follows
+  subprocesses; for the axis audit, have workers append their axis tuple to a file in the
+  scratch directory and have the parent read it back at session end.
+
+  Current state for reference: **90% line coverage** (5,994 statements, 580 missed) and
+  every backend x geometry x statistic x jk cell occupied.

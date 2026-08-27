@@ -14,6 +14,7 @@ nav:
       - Conventions: conventions.md
       - Estimator definitions: estimator_definitions.md
   - Validation: validation.md
+  - Performance: performance.md
   - API Reference:
       - MeasureIABox: api/measureIABox.md
       - MeasureIALightcone: api/measureIALightcone.md
@@ -50,5 +51,4 @@ markdown_extensions:
       generic: true
 
 extra_javascript:
-  - https://polyfill.io/v3/polyfill.min.js?features=es6
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js

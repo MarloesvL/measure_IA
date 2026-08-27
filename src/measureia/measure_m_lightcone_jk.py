@@ -3,6 +3,8 @@ import numpy as np
 import h5py
 import pyccl as ccl
 import multiprocessing as mp
+
+from . import worker_pool
 from multiprocessing import Pool, shared_memory
 from scipy.spatial import KDTree
 from .write_data import write_dataset_hdf5, create_group_hdf5
@@ -556,8 +558,7 @@ class MeasureMultipolesLightconeJackknife(MeasureIABase):
 				masks = {}
 			del shared_data, shared_arr
 			del weight, weight_shape, jackknife_region_indices_pos, jackknife_region_indices_shape, s_pos, e, s_shape, east, north
-			mp.set_start_method("spawn", force=True)
-			with Pool(num_nodes) as p:
+			with worker_pool.active_pool(num_nodes) as p:
 				result = p.map(self._measure_xi_r_mur_lightcone_jk_batch, indices)
 
 		finally:
@@ -764,8 +765,7 @@ class MeasureMultipolesLightconeJackknife(MeasureIABase):
 				masks = {}
 			del shared_data, shared_arr
 			del weight, weight_shape, jackknife_region_indices_pos, jackknife_region_indices_shape, s_pos, s_shape
-			mp.set_start_method("spawn", force=True)
-			with Pool(num_nodes) as p:
+			with worker_pool.active_pool(num_nodes) as p:
 				result = p.map(self._count_pairs_xi_r_mur_lightcone_jk_batch, indices)
 
 		finally:

@@ -691,7 +691,7 @@ class TestIntermediateOutputsM:
         total_rr_analytical = obj.get_random_pairs_r_mur(
             obj.r_bins[-1], obj.r_bins[0],
             obj.mu_r_bins[-1], obj.mu_r_bins[0],
-            L3, "cross", N, N)
+            L3, "cross", N, N, obj.num_overlap)
         assert np.sum(rr) == pytest.approx(total_rr_analytical, rel=1e-10)
 
     def test_xi_gg_r_mu_r_grids_match_xi_g_plus(self, IA_mock_TNG300_n1):

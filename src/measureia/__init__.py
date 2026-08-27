@@ -23,6 +23,7 @@ from .measure_w_box import MeasureWBox
 from .measure_m_box import MeasureMultipolesBox
 from .measure_w_box_jk import MeasureWBoxJackknife
 from .measure_m_box_jk import MeasureMBoxJackknife
+from .measure_galaxy_box import MeasureGalaxyContributionsBox
 from .measure_w_lightcone import MeasureWLightcone
 from .measure_m_lightcone import MeasureMultipolesLightcone
 from .measure_w_lightcone_jk import MeasureWLightconeJackknife

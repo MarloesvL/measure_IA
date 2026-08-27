@@ -5,6 +5,7 @@ from .measure_m_lightcone_jk import MeasureMultipolesLightconeJackknife
 from .measure_m_lightcone import MeasureMultipolesLightcone
 from .measure_jackknife import MeasureJackknife
 from .check_input import CheckInput
+from . import worker_pool
 
 
 class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureWLightconeJackknife,
@@ -475,6 +476,7 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 
 		return
 
+	@worker_pool.pooled
 	def measure_xi_w(self, IA_estimator, dataset_name, corr_type, jk_patches=None, num_jk=None,
 					 masks=None, masks_randoms=None, cosmology=None, over_h=False, tree=True,
 					 chunk_size=1000, temp_file_path=None, seed=None, responsivity=False):
@@ -660,7 +662,19 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			self._combine_jackknife_information(dataset_name=dataset_name, jk_group_name=f"{dataset_name}_jk{num_jk}",
 												corr_group=corr_group, num_box=num_jk)
 		else:
-			if tree:
+			if self.num_nodes > 1:
+				# Full-sample multiprocessing. This branch did not exist before
+				# 0.5.0: num_nodes was accepted, passed down, and then ignored,
+				# because only the jackknife path had an mp implementation
+				# (benchmarks/FINDINGS.md F4). tree/brute is not consulted here
+				# because the mp backend is the tree algorithm by construction.
+				self.measure_xi_helper(self._count_pairs_xi_rp_pi_lightcone_multiprocessing,
+									   self._measure_xi_rp_pi_lightcone_multiprocessing,
+									   IA_estimator, dataset_name, corr_type, masks=masks,
+									   masks_randoms=masks_randoms, cosmology=cosmology, over_h=over_h,
+									   chunk_size=chunk_size, num_nodes=self.num_nodes,
+									   temp_file_path=temp_file_path)
+			elif tree:
 				self.measure_xi_helper(self._count_pairs_xi_rp_pi_lightcone_tree,
 									   self._measure_xi_rp_pi_lightcone_tree,
 									   IA_estimator, dataset_name, corr_type, masks=masks,
@@ -680,6 +694,7 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 		self.data = data
 		return
 
+	@worker_pool.pooled
 	def measure_xi_multipoles(self, IA_estimator, dataset_name, corr_type, jk_patches=None, num_jk=None,
 							  masks=None, masks_randoms=None, cosmology=None, over_h=False,
 							  tree=True, chunk_size=1000, temp_file_path=None, seed=None, responsivity=False):
@@ -864,7 +879,16 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			self._combine_jackknife_information(dataset_name=dataset_name, jk_group_name=f"{dataset_name}_jk{num_jk}",
 												corr_group=corr_group, num_box=num_jk)
 		else:
-			if tree:
+			if self.num_nodes > 1:
+				# See the matching comment in measure_xi_w: full-sample
+				# multiprocessing for the lightcone is new in 0.5.0.
+				self.measure_xi_helper(self._count_pairs_xi_r_mur_lightcone_multiprocessing,
+									   self._measure_xi_r_mur_lightcone_multiprocessing,
+									   IA_estimator, dataset_name, corr_type, masks=masks,
+									   temp_file_path=temp_file_path,
+									   chunk_size=chunk_size, num_nodes=self.num_nodes,
+									   masks_randoms=masks_randoms, cosmology=cosmology, over_h=over_h)
+			elif tree:
 				self.measure_xi_helper(self._count_pairs_xi_r_mur_lightcone_tree,
 									   self._measure_xi_r_mur_lightcone_tree,
 									   IA_estimator, dataset_name, corr_type, masks=masks,
