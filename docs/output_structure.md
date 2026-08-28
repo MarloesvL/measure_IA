@@ -68,3 +68,82 @@ The structure above applies to both `MeasureIABox` and `MeasureIALightcone`. Two
   the additional density–random and shape–random pair-count terms of the Landy–Szalay estimators are stored
   alongside them. Bins with zero empirical random–random pairs are left as `NaN` (the estimator is undefined
   there) and trigger a warning advising more randoms — see the [Estimator definitions](estimator_definitions.md).
+
+## Reading the output file
+
+The output file is a plain HDF5 file, so it can be read with `h5py` using the paths above. The package also
+ships a [`ReadData`](api/ReadData.md) class that knows this structure and takes care of the optional
+`Snapshot_[snapshot]` group for you:
+
+```python
+from measureia import ReadData
+
+reader = ReadData(
+    simulation=None,            # simulation tag used at measurement time (None if the boxsize was given directly)
+    catalogue="example_IA_box",  # output file name *without* the .hdf5 extension
+    snapshot=None,              # snapshot label; 99 would select the "Snapshot_99" group
+    data_path="./",             # folder holding <catalogue>.hdf5
+)
+```
+
+The file that is read is `data_path + catalogue + ".hdf5"`, and every dataset path is taken relative to
+`Snapshot_[snapshot]/` when a `snapshot` is given (and relative to the file root when it is not).
+
+### `read_MeasureIA_output(dataset_name, num_jk)`
+
+The convenience route: it looks for all four correlation functions of one dataset and fills the corresponding
+attributes on the object, leaving whatever is not in the file at `None`.
+
+```python
+reader.read_MeasureIA_output("mock", 27)   # dataset_name and num_jk of the run that wrote the file
+
+plt.errorbar(reader.rp, reader.w_gp, yerr=reader.errors_w_gp)
+```
+
+| attribute | contents |
+| --- | --- |
+| `rp`, `r` | mean bin values of the projected (`w`) and 3D (`multipoles`) statistics |
+| `w_gg`, `w_gp` | `w_gg` and `w_g+` per `r_p` bin |
+| `multipoles_gg`, `multipoles_gp` | the monopole of `xi_gg` and the quadrupole of `xi_g+` per `r` bin |
+| `cov_w_gg`, `cov_w_gp`, `cov_multipoles_gg`, `cov_multipoles_gp` | jackknife covariance matrices |
+| `errors_w_gg`, `errors_w_gp`, `errors_multipoles_gg`, `errors_multipoles_gp` | sqrt of the diagonal of those covariances, i.e. the error bars |
+
+Notes:
+
+- `num_jk` must match the number of jackknife regions of the run that wrote the file, since it is part of the
+  dataset names. Pass `num_jk=None` to read only the measurements and skip the covariance.
+- Statistics that were never measured (e.g. the multipoles, if only `measure_xi_w` was called) stay `None`,
+  and so do the covariance attributes when the run used `num_jk=0`. All attributes are reset at the start of
+  every call, so the same object can be reused for several datasets.
+- The method reads the final correlation functions only. The pair-count grids under `w`/`multipoles` and the
+  individual jackknife realisations are not touched; use `read_cat` for those.
+
+### `read_cat(dataset_name, cut=None, indices=None)`
+
+The direct route: it returns one dataset as an array, by name. The group it sits in is given with `sub_group`
+at initialisation, which lets you reach anything in the file, including the terms of the estimators and the
+individual jackknife realisations:
+
+```python
+reader = ReadData(None, "example_IA_box", None, sub_group="w_g_plus/", data_path="./")
+wgp = reader.read_cat("mock")                      # w_g+ values
+rp = reader.read_cat("mock_rp")                    # r_p bin values
+wgp_error = reader.read_cat("mock_jackknife_27")   # error bars
+
+grids = ReadData(None, "example_IA_box", None, sub_group="w/xi_g_plus/", data_path="./")
+splusd = grids.read_cat("mock_SplusD")             # S+D pair counts on the (r_p, pi) grid
+realisation_0 = grids.read_cat("mock_jk27/mock_0")  # first jackknife realisation
+```
+
+Pass `cut=[start, stop]` to read a slice, or `indices` to read a selection of elements, instead of the whole
+dataset.
+
+### `read_modelling_outputs(catalogue)`
+
+A helper for the results of a subsequent modelling step: it reads `A_IA`/`b_g` amplitudes and their errors
+that were stored as HDF5 attributes on the `w` and/or `multipoles` groups of `catalogue`, into
+`w_A_IA`, `w_A_IA_err`, `w_b_g`, `w_b_g_err` and their `multipoles_` counterparts. These attributes are not
+written by the measurement code itself.
+
+A worked example of both reading routes is in `examples/example_read_and_plot.py` and in the example
+notebooks — see [Usage](usage.md).
