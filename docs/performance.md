@@ -104,10 +104,17 @@ $\pi_\mathrm{max}$, lowering it is one of the cheapest speed-ups available.
 
 ## Running the benchmarks yourself
 
+The benchmark harness lives in `benchmarks/` in the repository rather than in the installed package, so it is
+run from a clone (see [Installation](installation.md#installing-an-unreleased-version)). It needs the same
+external codes as the validation scripts:
+
 ```bash
-pip install measureia[validation]           # halotools + treecorr
-python benchmarks/run_sweep.py --density 1e-2
-python benchmarks/plot_results.py benchmarks/results/laptop_local.jsonl
+git clone https://github.com/MarloesvL/measure_IA.git
+cd measure_IA
+uv sync --extra validation            # or: pip install -e ".[validation]"  -- halotools + treecorr
+
+uv run python benchmarks/run_sweep.py --density 1e-2
+uv run python benchmarks/plot_results.py benchmarks/results/laptop_local.jsonl
 ```
 
 The methodology, the full result records and the reasoning behind each optimisation — including analyses that

@@ -18,47 +18,52 @@ yourself.
 You can find the documentation site [here](https://marloesvl.github.io/measure_IA/).
 
 ## Installation
- 
-This package can be installed via pip or uv.
+
+MeasureIA supports Python 3.10 - 3.14 and is tested on all of them.
+Full details, including how to install an unreleased version, are on the
+[installation page](https://marloesvl.github.io/measure_IA/installation/).
 
 ### Installation via pip
 
-```angular2html
+```bash
 pip install measureia
 ```
+
 That is the whole installation: every dependency is on PyPI.
 
 ### Installation via uv
 
-The easiest way to install MeasureIA and its dependencies is using uv.
+If you manage your project with [uv](https://docs.astral.sh/uv/getting-started/installation/):
 
-First, install uv (see https://docs.astral.sh/uv/getting-started/installation/).
-Then clone the repository using either option:
-
-```angular2html
-git clone git@github.com:MarloesvL/measure_IA.git
-git clone https://github.com/MarloesvL/measure_IA.git
+```bash
+uv add measureia
+uv run my_script.py
 ```
 
-Next, navigate into the directory in your terminal and create the virtual environment:
+Use `uv pip install measureia` to install into an existing environment instead of a uv project.
 
-```angular2html
+### Installing a development version
+
+Released versions are on PyPI; work in progress lives on the `dev` branch. To install a branch
+directly, without cloning:
+
+```bash
+pip install "git+https://github.com/MarloesvL/measure_IA.git@dev"
+```
+
+Clone the repository if you want to edit the code, run the test suite, or contribute:
+
+```bash
+git clone https://github.com/MarloesvL/measure_IA.git   # or git@github.com:MarloesvL/measure_IA.git
 cd measure_IA
-uv sync
+uv sync              # creates .venv with the locked dependencies, and a compatible Python
+uv run pytest        # optional: check the suite passes
+uv run my_script.py
 ```
 
-This will create a virtual environment with all the dependencies needed for this package.
-Either activate the virtual environment created by uv, or run scripts directly using:
-
-```angular2html
-uv run [script_name].py
-```
-
-#### Installing manually without uv
-
-If you do not want to use uv, you can also install dependencies the provided requirements.txt document.
-Also, make sure your Python version is compatible. This package supports Python 3.10 - 3.14 and is tested on all of them.
-The python version is handled by uv automatically, so please consider using this for easy installation.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full development workflow.
+If you use neither uv nor pip, the dependencies are listed in `requirements.txt`; in that case,
+make sure your Python version is compatible (uv handles this for you).
 
 ## Usage
 
@@ -71,7 +76,7 @@ and classes).
 Given the data dictionary in the correct format, the methods (with all optional parameters as their default)
 can be called as follows:
 
-```angular2html
+```python
 MeasureIA_test = MeasureIABox(data=data_dict, output_file_name="./outfile_name.hdf5", boxsize=205.)
 # measure wgg, wg+
 MeasureIA_test.measure_xi_w(dataset_name=dataset_name, corr_type="both", num_jk=27)
