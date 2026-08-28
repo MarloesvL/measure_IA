@@ -43,24 +43,28 @@ The lightcone comparisons also confirm the **`e1`/`e2` shear convention** and ch
 
 ## Running the validations yourself
 
-Install the pip-available external packages:
+The comparison scripts live in `validation/` in the repository rather than in the installed package, so start
+from a clone (see [Installation](installation.md#installing-an-unreleased-version)) and install the
+pip-available external packages with it:
 
 ```bash
-pip install measureia[validation]   # halotools + treecorr
+git clone https://github.com/MarloesvL/measure_IA.git
+cd measure_IA
+uv sync --extra validation            # or: pip install -e ".[validation]"  -- halotools + treecorr
 ```
 
 Then run the enforced cross-package checks (these use the committed reference outputs):
 
 ```bash
-pytest tests/test_validation_references.py
+uv run pytest tests/test_validation_references.py
 ```
 
 Or run an individual comparison script, which will use the external package if it is installed and otherwise
 compare against the committed reference:
 
 ```bash
-python validation/run_box_halotools.py
-python validation/run_lightcone_treecorr.py
+uv run python validation/run_box_halotools.py
+uv run python validation/run_lightcone_treecorr.py
 ```
 
 The **corr_pc** comparisons ([Singh 2021](https://ui.adsabs.harvard.edu/abs/2021MNRAS.508.1632S/abstract),
