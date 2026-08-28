@@ -86,8 +86,10 @@ vector in the internal (east, north) sky frame. As in the box case, the output $
 
 ## Ellipticity definitions
 
-The shape magnitude $\epsilon$ can use either of two definitions, selected with the `ellipticity` argument of the
-measurement methods:
+The shape magnitude $\epsilon$ is derived from the axis ratio $q$, so this choice applies to the **box** only;
+it is selected with the `ellipticity` argument of `MeasureIABox.measure_xi_w` and
+`MeasureIABox.measure_xi_multipoles`. The lightcone takes `e1`/`e2` directly and has no such argument. The two
+definitions are:
 
 - `'distortion'` (default): $\epsilon = \dfrac{1 - q^2}{1 + q^2}$
 - `'ellipticity'`: $\epsilon = \dfrac{1 - q}{1 + q}$

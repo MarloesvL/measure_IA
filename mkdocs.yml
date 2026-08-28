@@ -9,6 +9,7 @@ nav:
       - Input: input.md
       - Usage: usage.md
       - Output: output_structure.md
+      - Per-galaxy contributions: galaxy_contributions.md
       - Included simulations: simulations.md
   - Concepts:
       - Conventions: conventions.md
@@ -16,8 +17,11 @@ nav:
   - Examples:
       - Simulation box: examples/example_MeasureIA_box.ipynb
       - Lightcone: examples/example_MeasureIA_lightcone.ipynb
-  - Validation: validation.md
-  - Performance: performance.md
+  # Grouped under a caption of their own: the readthedocs theme renders a section as a
+  # flat heading, so a bare top-level page here would read as part of Examples above.
+  - Validation & performance:
+      - Validation: validation.md
+      - Performance: performance.md
   - API Reference:
       - MeasureIABox: api/measureIABox.md
       - MeasureIALightcone: api/measureIALightcone.md

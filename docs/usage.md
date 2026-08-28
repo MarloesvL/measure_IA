@@ -50,6 +50,10 @@ mi.measure_xi_w(dataset_name="ds1", corr_type="both", num_jk=27, temp_file_path=
 mi.measure_xi_multipoles(dataset_name="ds1", corr_type="both", num_jk=27, temp_file_path='./')
 ```
 
+Beyond `measure_xi_w` and `measure_xi_multipoles`, the box also offers
+`measure_galaxy_contributions`, which resolves the same estimator per shape galaxy in one pair traversal —
+see [Per-galaxy contributions](galaxy_contributions.md).
+
 ## Lightcone
 
 For lightcone data, use `MeasureIALightcone`, which takes a `data` and a `randoms_data` dictionary of sky

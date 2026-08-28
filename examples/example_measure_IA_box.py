@@ -19,7 +19,8 @@ from measureia.mocks import radial_alignment_box_mock
 
 # parameters for MeasureIA object
 simulation = None  # Indicator of simulation.
-# Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, FLAMINGO_L2p8] for now, which sets the
+# Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, FLAMINGO_L2p8,
+# COLIBRE_L400, COLIBRE_L200] for now, which sets the
 # boxsize automatically. If your simulation is not included (as for this mock): input None and make sure to add the
 # boxsize input parameter in the object creation.
 # If this is used, the boxsize is in Mpc/h so the positions and r/rp limits must also be in these units.

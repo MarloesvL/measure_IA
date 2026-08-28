@@ -59,3 +59,5 @@ mi.measure_xi_w("galaxies", dataset_name="ds1", corr_type="both", num_jk=27, tem
 - **[Conventions](conventions.md)** — the shape/sign conventions (especially the `e1`/`e2` convention).
 - **[Estimator definitions](estimator_definitions.md)** — the mathematics of the estimators.
 - **[Output structure](output_structure.md)** — how results are stored in the HDF5 output file.
+- **[Per-galaxy contributions](galaxy_contributions.md)** — resolving the box signal per shape galaxy, the
+  input for regressing alignment on galaxy properties.

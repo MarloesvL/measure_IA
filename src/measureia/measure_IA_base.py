@@ -174,7 +174,8 @@ class MeasureIABase(SimInfo):
 			Name and filepath of the file where the output should be stored. Needs to be hdf5-type.
 		simulation : str or NoneType, optional
 			Indicator of simulation, obtaining correct boxsize in cMpc/h automatically. 
-			Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, FLAMINGO_L2p8].
+			Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, FLAMINGO_L2p8, COLIBRE_L400,
+			COLIBRE_L200].
 			Default is None, in which case boxsize needs to be added manually; or in the case of observational data, 
 			the pi_max.
 		snapshot : int or str or NoneType, optional

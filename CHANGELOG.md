@@ -8,6 +8,28 @@ public API mean a major version bump.
 
 ## [Unreleased]
 
+### Added
+
+- `COLIBRE_L400` and `COLIBRE_L200` presets in `SimInfo`, so the box size and $h$ of the COLIBRE
+  runs are filled in from the `simulation` tag like the other simulations.
+- A documentation page for `measure_galaxy_contributions`, and the method is now shown on the
+  `MeasureIABox` API page (it comes from a mixin, so it needed `inherited_members`); the same for
+  `assign_jackknife_patches` on both class pages.
+
+### Fixed
+
+- The box **parity null test** $\xi_{g\times}$ is written where the documentation says it is. With
+  `num_jk > 0` the full-sample `xi_g_cross` datasets inherited the jackknife group name of the
+  realisation loop above them, so they ended up in `xi_g_cross/[dataset]_jk[num_jk]/` instead of
+  next to the full-sample `xi_g_plus` and `xi_gg` products. Affected `measure_xi_w` and
+  `measure_xi_multipoles` on all three box backends (brute, tree, multiprocessing); the values were
+  correct, only their location was wrong. Regression tests now pin the placement.
+- The output-structure page named the box pair-count datasets as if they were universal; the
+  lightcone's `RR`, `RD`, `SR`, `SplusR` and `ScrossR` datasets are now listed too.
+- Stale simulation lists in the `ReadData` and `MeasureIABase` docstrings and in the box examples,
+  which stopped at `FLAMINGO_L2p8` and omitted the COLIBRE presets.
+- `PackageNotFoundError` is no longer re-exported from the `measureia` namespace.
+
 ## [0.5.0] - 2026-08-27
 
 ### Added

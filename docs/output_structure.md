@@ -52,6 +52,11 @@ Your output file with your own input of [output_file_name, snapshot, dataset_nam
 				└── [dataset_name]_[i]_[x]				with x in [rp, pi, RR_g_cross, ScrossD] as above
 
 ```
+The pair-count dataset names above (`RR_gg`, `RR_g_plus`, `RR_g_cross`, `DD`, `SplusD`, `ScrossD`) are the
+**box** ones; the lightcone writes a different set, listed under [Box vs lightcone](#box-vs-lightcone) below.
+The `xi_g_cross` group holds the parity null test $\xi_{g\times}$ and, unlike `xi_gg` and `xi_g_plus`, is
+written for the full sample only - there are no per-realisation jackknife entries for it in either geometry.
+
 If you choose to measure multipoles instead of wg+, all 'w' will be replaced by 'multipoles' - or both will appear, if you have measured both.
 For the multipoles, all xi_g+, DD (etc) grids are in (r, mu_r), not in (r_p, pi) and the suffixes of the bin values are also replaced by '_r' and '_mu_r' accordingly.
 In one file, multiple redshift (snapshot) measurements can be saved without being overwritten, as well as the jackknife
@@ -63,11 +68,48 @@ The structure above applies to both `MeasureIABox` and `MeasureIALightcone`. Two
 
 - The `Snapshot_[snapshot]` group only appears for the box, when a `snapshot` label is given at initialisation;
   the lightcone has no snapshot grouping and this level is omitted.
-- The `RR` grids (`RR_gg`, `RR_g_plus`, `RR_g_cross`) are computed **analytically** from the sample sizes and
-  volume for the box, and counted from the **explicit random catalogues** for the lightcone. For the lightcone,
-  the additional density–random and shape–random pair-count terms of the Landy–Szalay estimators are stored
-  alongside them. Bins with zero empirical random–random pairs are left as `NaN` (the estimator is undefined
-  there) and trigger a warning advising more randoms — see the [Estimator definitions](estimator_definitions.md).
+- The random–random grids are computed **analytically** from the sample sizes and volume for the box, and
+  counted from the **explicit random catalogues** for the lightcone. Bins with zero empirical random–random
+  pairs are left as `NaN` (the estimator is undefined there) and trigger a warning advising more randoms —
+  see the [Estimator definitions](estimator_definitions.md).
+- **The pair-count datasets therefore differ by geometry.** The box stores one analytic grid per group, named
+  after that group; the lightcone stores a single `RR` grid plus the density–random and shape–random terms of
+  the Landy–Szalay estimators:
+
+| group | box | lightcone |
+|---|---|---|
+| `xi_gg` | `[dataset_name]_DD`, `[dataset_name]_RR_gg` | `[dataset_name]_DD`, `[dataset_name]_RR`, `[dataset_name]_RD`, `[dataset_name]_SR` |
+| `xi_g_plus` | `[dataset_name]_SplusD`, `[dataset_name]_RR_g_plus` | `[dataset_name]_SplusD`, `[dataset_name]_SplusR` |
+| `xi_g_cross` | `[dataset_name]_ScrossD`, `[dataset_name]_RR_g_cross` | `[dataset_name]_ScrossD`, `[dataset_name]_ScrossR` |
+
+## Per-galaxy contributions
+
+`measure_galaxy_contributions` (box only, see [Per-galaxy contributions](galaxy_contributions.md)) writes to a
+separate top-level `galaxy_contributions` group, under `w` or `multipoles` according to its `statistic`
+argument. With `M` shape galaxies and `K` the largest number of jackknife patches any single galaxy has pairs
+in:
+
+```
+galaxy_contributions
+└── multipoles                                          'w' when statistic="w"
+	├── [dataset_name]_Y							(M, num_bins_r)   per-galaxy contribution; sums over
+	│												  galaxies to the ordinary estimator
+	├── [dataset_name]_P							(M, num_bins_r)   pairs each galaxy contributed through
+	├── [dataset_name]_r							(num_bins_r,)     r (or r_p) mean bin values
+	└── [dataset_name]_jk[num_jk]					only when num_jk > 0
+		├── Y_jk_values							(M, K, num_bins_r)  Y decomposed by the position partner's
+		│											  patch, stored raw (no 2R, no RR amplitude)
+		├── P_jk_values							(M, K, num_bins_r)  the same decomposition of P
+		├── jk_patches							(M, K)              which patch each stored column is
+		├── jk_shape							(M,)                the patch of each shape galaxy
+		├── R_jk								(num_jk,)           delete-one responsivities
+		├── rr_ratio							(num_jk,)           RR_jk / RR amplitude ratios
+		└── attribute 'R'						full-sample responsivity
+```
+
+The jackknife arrays are sparse along the patch axis: only the patches a galaxy actually has pairs in are
+stored, which is what `jk_patches` records. Use `delete_one_estimator` / `jk_columns` to read them rather
+than indexing the patch axis directly.
 
 ## Reading the output file
 

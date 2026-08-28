@@ -13,12 +13,22 @@ Please feel free to contact me (m.l.vanheukelum@uu.nl) if you have any questions
     - [Input](input.md) — the data dictionaries expected on initialisation
     - [Usage](usage.md) — worked examples for the box and lightcone
     - [Output](output_structure.md) — the structure of the output file
+    - [Per-galaxy contributions](galaxy_contributions.md) — resolving the box signal per shape galaxy
     - [Included simulations](simulations.md) — box sizes and cosmologies known to `SimInfo`
 - **Concepts**
     - [Conventions](conventions.md) — the shape and sign conventions (incl. the `e1`/`e2` convention) and binning
     - [Estimator definitions](estimator_definitions.md) — the mathematics of the estimators
-- [Validation](validation.md) — cross-package validation and how to run it yourself
+- **Examples**
+    - [Simulation box](examples/example_MeasureIA_box.ipynb) — a full measurement on a mock box, with its output
+    - [Lightcone](examples/example_MeasureIA_lightcone.ipynb) — the same for a mock lightcone with randoms
+- **Validation & performance**
+    - [Validation](validation.md) — cross-package validation and how to run it yourself
+    - [Performance](performance.md) — what a run costs, benchmarked against the same external codes
 - [Roadmap](#roadmap) — recently completed and planned developments
+
+The example pages are the two notebooks from `examples/`, executed when this site is built, so they show a
+real measurement and its plots. Each one can be downloaded from the link at the top of its page or opened in
+Google Colab (badges on the [Usage](usage.md) page) to run without installing anything.
 
 The **API Reference** (see the navigation sidebar) documents `MeasureIABox`, `MeasureIALightcone` and the
 supporting classes.
