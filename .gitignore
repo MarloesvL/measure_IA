@@ -225,6 +225,11 @@ site/
 # output written by the example scripts/notebooks when run in place
 examples/*.hdf5
 examples/*.png
+# Build artefacts of the docs site: the notebook copies made by
+# docs/hooks/copy_notebooks.py, the outputs they write when executed, and the
+# mkdocs-jupyter execution cache.
+docs/examples/
+.cache/
 
 # benchmark scratch and generated figures; results/*.jsonl are committed
 benchmarks/_scratch/

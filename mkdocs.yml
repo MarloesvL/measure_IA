@@ -13,6 +13,9 @@ nav:
   - Concepts:
       - Conventions: conventions.md
       - Estimator definitions: estimator_definitions.md
+  - Examples:
+      - Simulation box: examples/example_MeasureIA_box.ipynb
+      - Lightcone: examples/example_MeasureIA_lightcone.ipynb
   - Validation: validation.md
   - Performance: performance.md
   - API Reference:
@@ -35,8 +38,21 @@ nav:
       - ReadData: api/ReadData.md
       - mocks: api/mocks.md
 theme: readthedocs
+hooks:
+  # Copies examples/*.ipynb into docs/examples/ so mkdocs-jupyter can pick them up.
+  - mkdocs_hooks/copy_notebooks.py
+
 plugins:
   - search
+  # The example notebooks are executed at build time, so the site shows the real
+  # measurement and its plots, and a broken notebook fails the build (--strict).
+  - mkdocs-jupyter:
+      # Only the example notebooks; without this the plugin also grabs any .py in docs/.
+      include: ["examples/*.ipynb"]
+      execute: true
+      allow_errors: false
+      include_source: true
+      ignore_h1_titles: true
   - mkdocstrings:
       handlers:
         python:

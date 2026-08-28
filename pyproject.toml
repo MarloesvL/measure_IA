@@ -63,7 +63,10 @@ dev = ["pytest~=8.3.1"]
 # Documentation toolchain (mkdocs + mkdocstrings). The readthedocs theme is built into
 # mkdocs, so no separate theme package is needed. Used by .github/workflows/docs.yml and
 # for local builds: `uv run --group docs mkdocs serve`.
-docs = ["mkdocs>=1.6", "mkdocstrings[python]>=0.26"]
+# mkdocs-jupyter renders examples/*.ipynb as pages; it executes them at build time,
+# which needs ipykernel for the python3 kernel the notebooks declare, and the project
+# itself (uv run installs it) for the measureia and pyccl imports.
+docs = ["mkdocs>=1.6", "mkdocstrings[python]>=0.26", "mkdocs-jupyter>=0.25", "ipykernel>=6.29"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
