@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - 'docs/**'
+      - 'examples/**.ipynb'  # rendered as pages by mkdocs-jupyter
+      - 'mkdocs_hooks/**'    # the hook that copies them into docs/
       - 'mkdocs.yml'
       - 'src/**'          # docstrings feed the mkdocstrings API reference
       - 'pyproject.toml'  # the docs dependency group

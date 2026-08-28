@@ -1,6 +1,16 @@
 # Usage & Examples
 
-You can see full, runnable examples in the repository under `examples/`:
+The two example notebooks are rendered with their output on this site - [simulation
+box](examples/example_MeasureIA_box.ipynb) and [lightcone](examples/example_MeasureIA_lightcone.ipynb) - and
+each page has a download link at the top. To run one without installing anything, open it in Google Colab:
+
+[![Box example in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/MarloesvL/measure_IA/blob/main/examples/example_MeasureIA_box.ipynb) simulation box &nbsp;
+[![Lightcone example in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/MarloesvL/measure_IA/blob/main/examples/example_MeasureIA_lightcone.ipynb) lightcone
+
+Their first cell installs MeasureIA if it is missing, so nothing else is needed: the mock catalogues come with
+the package, and cloning this repository is never required.
+
+You can see the same examples, plus the plain scripts, in the repository under `examples/`:
 
 - `example_measure_IA_box.py` / `example_MeasureIA_box.ipynb` — periodic simulation box
 - `example_measure_IA_lightcone.py` / `example_MeasureIA_lightcone.ipynb` — lightcone

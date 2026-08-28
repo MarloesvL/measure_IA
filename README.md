@@ -2,6 +2,13 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17252215.svg)](https://doi.org/10.5281/zenodo.17252215)
 
+Try it without installing anything: the example notebooks run on a seeded mock catalogue that ships with the
+package, so they need no simulation data and no clone of this repository.
+[![Box example in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/MarloesvL/measure_IA/blob/main/examples/example_MeasureIA_box.ipynb) simulation box &nbsp;
+[![Lightcone example in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/MarloesvL/measure_IA/blob/main/examples/example_MeasureIA_lightcone.ipynb) lightcone &nbsp;
+They are also rendered, with their output, on the
+[examples pages](https://marloesvl.github.io/measure_IA/examples/example_MeasureIA_box/) of the documentation.
+
 MeasureIA is a tool that can be used to easily measure intrinsic alignment correlation functions and clustering.
 It includes measurement of wg+, wgg and the multipole moment estimator introduced in Singh et al (2024).
 Two kinds of data are supported: simulation boxes in cartesian coordinates with periodic boundary conditions
