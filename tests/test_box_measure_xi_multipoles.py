@@ -649,6 +649,23 @@ class TestIntermediateOutputsM:
         xi_cross = _read(obj, "multipoles/xi_g_cross", "int_nojk")
         assert xi_cross.shape == (obj.num_bins_r, obj.num_bins_pi)
 
+    def test_xi_g_cross_full_sample_at_top_level_with_jk(self, IA_mock_TNG300_n1, tmp_path):
+        """The full-sample g_cross belongs next to xi_g_plus/xi_gg, not inside the JK group.
+
+        Regression: with num_jk > 0 the g_cross block used to inherit the jackknife
+        group name of the realisation loop above it, so the full-sample parity null
+        test was filed under xi_g_cross/<dataset>_jk<N>/ and was missing from where
+        every other full-sample product is written.
+        """
+        obj = IA_mock_TNG300_n1
+        self._run_jk(obj, tmp_path)
+        with h5py.File(obj.output_file_name, "r") as f:
+            group = f[obj.snap_group + "multipoles/xi_g_cross"]
+            assert "int_jk" in group
+            assert group["int_jk"][:].shape == (obj.num_bins_r, obj.num_bins_pi)
+            assert "int_jk_ScrossD" in group
+            assert f"int_jk_jk{NUM_JK}" not in group
+
     def test_xi_g_cross_rr_positive(self, IA_mock_TNG300_n1):
         obj = IA_mock_TNG300_n1
         self._run_no_jk(obj)

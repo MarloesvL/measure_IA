@@ -13,6 +13,7 @@ Please feel free to contact me (m.l.vanheukelum@uu.nl) if you have any questions
     - [Input](input.md) — the data dictionaries expected on initialisation
     - [Usage](usage.md) — worked examples for the box and lightcone
     - [Output](output_structure.md) — the structure of the output file
+    - [Per-galaxy contributions](galaxy_contributions.md) — resolving the box signal per shape galaxy
     - [Included simulations](simulations.md) — box sizes and cosmologies known to `SimInfo`
 - **Concepts**
     - [Conventions](conventions.md) — the shape and sign conventions (incl. the `e1`/`e2` convention) and binning

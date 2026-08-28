@@ -49,7 +49,8 @@ class ReadData(SimInfo):
 		----------
 		simulation : str
 			Identifier of the simulation, allowing for correct information to be obtained.
-			Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, FLAMINGO_L2p8].
+			Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, FLAMINGO_L2p8, COLIBRE_L400,
+			COLIBRE_L200].
 		catalogue : str
 			Catalogue name that contains the data. If groupcat file: 'Subhalo' (then use read_subhalo).
 			If snapshot file: enter 'PartTypeX' where X is the particle type number (then use read_snapshot).

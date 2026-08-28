@@ -9,6 +9,7 @@ nav:
       - Input: input.md
       - Usage: usage.md
       - Output: output_structure.md
+      - Per-galaxy contributions: galaxy_contributions.md
       - Included simulations: simulations.md
   - Concepts:
       - Conventions: conventions.md
