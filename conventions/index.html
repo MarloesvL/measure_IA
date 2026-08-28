@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="author" content="Marloes van Heukelum" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Conventions - MeasureIA Documentation</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../assets/_mkdocstrings.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Conventions";
+        var mkdocs_page_input_path = "conventions.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> MeasureIA Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../getting_started/">Getting started</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../installation/">Installation</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../input/">Input</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../usage/">Usage</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../output_structure/">Output</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../galaxy_contributions/">Per-galaxy contributions</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../simulations/">Included simulations</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Concepts</span></p>
+              <ul class="current">
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Conventions</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#separation-vector">Separation vector</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#binning">Binning</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#radial-and-cross-times-shape-components">Radial (\(+\)) and cross (\(\times\)) shape components</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#shape-input-box-vs-lightcone">Shape input: box vs lightcone</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#box-measureiabox">Box (MeasureIABox)</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#lightcone-measureialightcone">Lightcone (MeasureIALightcone)</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#ellipticity-definitions">Ellipticity definitions</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#responsivity">Responsivity</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../estimator_definitions/">Estimator definitions</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Examples</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../examples/example_MeasureIA_box/">Simulation box</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../examples/example_MeasureIA_lightcone/">Lightcone</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Validation & performance</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../validation/">Validation</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../performance/">Performance</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">API Reference</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/measureIABox/">MeasureIABox</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/measureIALightcone/">MeasureIALightcone</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/MeasureIABase/">MeasureIABase</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/MeasureJackknife/">MeasureJackknife</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Box backends</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWBox/">MeasureWBox</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMBox/">MeasureMultipolesBox</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWBoxJackknife/">MeasureWBoxJackknife</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMBoxJackknife/">MeasureMBoxJackknife</a>
+                </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Lightcone backends</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWLightcone/">MeasureWLightcone</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMLightcone/">MeasureMultipolesLightcone</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWLightconeJackknife/">MeasureWLightconeJackknife</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMLightconeJackknife/">MeasureMultipolesLightconeJackknife</a>
+                </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/pair_kernel/">pair_kernel</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/SimInfo/">SimInfo</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/ReadData/">ReadData</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/mocks/">mocks</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">MeasureIA Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Concepts</li>
+      <li class="breadcrumb-item active">Conventions</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="conventions">Conventions</h1>
+<p>This page collects the geometric and shape conventions used throughout MeasureIA, for both the box and
+the lightcone. The mathematical estimators that use these quantities are defined on the
+<a href="../estimator_definitions/">Estimator definitions</a> page.</p>
+<h2 id="separation-vector">Separation vector</h2>
+<p>For every position–shape pair the separation vector is defined as</p>
+<div class="arithmatex">\[\mathbf{s} = \mathbf{x}_\mathrm{shape} - \mathbf{x}_\mathrm{position}\,,\]</div>
+<p>i.e. pointing <em>from</em> the position (density) object <em>to</em> the shape object. This ordering is used consistently
+across all backends (box and lightcone, brute-force and tree). The line-of-sight separation <span class="arithmatex">\(\Pi\)</span> is the
+component of <span class="arithmatex">\(\mathbf{s}\)</span> along the line of sight and is binned signed over <span class="arithmatex">\((-\Pi_\mathrm{max}, +\Pi_\mathrm{max})\)</span>;
+the projected separation <span class="arithmatex">\(r_p\)</span> is the perpendicular component.</p>
+<h2 id="binning">Binning</h2>
+<p>The separation bins are fixed at initialisation and shared by every measurement on the object:</p>
+<ul>
+<li><strong>Transverse / 3D separation</strong> (<span class="arithmatex">\(r_p\)</span> for <span class="arithmatex">\(w\)</span>, <span class="arithmatex">\(r\)</span> for the multipoles): <code>num_bins_r</code> <strong>logarithmic</strong> bins
+  between <code>separation_limits[0]</code> and <code>separation_limits[1]</code> (i.e. <span class="arithmatex">\(r_\mathrm{min}\)</span> and <span class="arithmatex">\(r_\mathrm{max}\)</span>).</li>
+<li><strong>Line of sight</strong> <span class="arithmatex">\(\Pi\)</span>: <code>num_bins_pi</code> <strong>linear</strong> bins spanning the <em>signed</em> range
+  <span class="arithmatex">\([-\Pi_\mathrm{max}, +\Pi_\mathrm{max}]\)</span>, with <span class="arithmatex">\(\Pi_\mathrm{max}\)</span> set by <code>pi_max</code>.</li>
+<li><strong><span class="arithmatex">\(\mu_r = \Pi/r\)</span></strong> (used for the multipoles): <code>num_bins_pi</code> <strong>linear</strong> bins over <span class="arithmatex">\([-1, 1]\)</span>.</li>
+</ul>
+<p>The bin coordinates written to the output (<code>*_rp</code>, <code>*_pi</code>, <code>*_r</code>, <code>*_mu_r</code>) are the bin <strong>midpoints</strong>.
+Separations are in the units of the input coordinates: for a box initialised with the internal <code>simulation</code>
+option these are Mpc/<span class="arithmatex">\(h\)</span>; for the lightcone the comoving distances are computed from the redshifts using the
+chosen cosmology and can be converted with the <code>over_h</code> argument.</p>
+<h2 id="radial-and-cross-times-shape-components">Radial (<span class="arithmatex">\(+\)</span>) and cross (<span class="arithmatex">\(\times\)</span>) shape components</h2>
+<p>The alignment signal is built from the shape components measured relative to the separation vector,</p>
+<div class="arithmatex">\[(e_+,\, e_\times) = \epsilon\,[\cos 2\phi,\ \sin 2\phi]\,,\]</div>
+<p>where <span class="arithmatex">\(\phi\)</span> is the orientation of the projected separation vector relative to the shape (see below) and
+<span class="arithmatex">\(\epsilon\)</span> is the shape magnitude (the <a href="#ellipticity-definitions">ellipticity</a> of the object).</p>
+<p><strong>Sign convention (intrinsic alignment).</strong> MeasureIA uses the intrinsic-alignment sign convention in which
+<span class="arithmatex">\(e_+ &gt; 0\)</span> means the major axis of the shape points <em>along</em> the separation vector (radial alignment). Radial
+alignment therefore produces <span class="arithmatex">\(w_{g+} &gt; 0\)</span>. Note that this is the opposite sign to the weak-lensing tangential
+shear: <span class="arithmatex">\(e_+ = -\gamma_t\)</span>.</p>
+<h2 id="shape-input-box-vs-lightcone">Shape input: box vs lightcone</h2>
+<p>The two entry points differ in <em>how</em> the shapes are supplied, but both end up as <span class="arithmatex">\((e_+, e_\times)\)</span> through the
+relation above.</p>
+<h3 id="box-measureiabox">Box (<code>MeasureIABox</code>)</h3>
+<p>Shapes are given as a projected <strong>axis direction</strong> and an <strong>axis ratio</strong>:</p>
+<ul>
+<li><code>Axis_Direction</code> — the unit vector of the projected semi-major axis of each shape object;</li>
+<li><code>q</code> — the projected axis ratio <span class="arithmatex">\(q = b/a\)</span> (with <span class="arithmatex">\(a &gt; b\)</span>).</li>
+</ul>
+<p>Here <span class="arithmatex">\(\phi\)</span> is the angle between the projected separation vector <span class="arithmatex">\(r_p\)</span> and the semi-major axis direction of the
+object, computed per position–shape pair. The magnitude <span class="arithmatex">\(\epsilon\)</span> follows from <span class="arithmatex">\(q\)</span> (see below). This branch is
+radial-positive by construction.</p>
+<h3 id="lightcone-measureialightcone">Lightcone (<code>MeasureIALightcone</code>)</h3>
+<p>Shapes are given directly as the two <strong>ellipticity/shear components</strong> <code>e1</code> and <code>e2</code>. These must follow the
+<strong>standard survey shear-catalogue convention</strong>: the components are defined on the local <span class="arithmatex">\((\mathrm{RA}, \mathrm{DEC})\)</span>
+axes, exactly as delivered by e.g. <em>lensfit</em>/<em>metacal</em>-style catalogues and as expected by
+<a href="https://rmjarvis.github.io/TreeCorr/">TreeCorr</a>. Internally the radial and cross components are then</p>
+<div class="arithmatex">\[
+e_+ = e_1 \cos 2\phi - e_2 \sin 2\phi\,, \qquad
+e_\times = e_1 \sin 2\phi + e_2 \cos 2\phi\,,
+\]</div>
+<p>where <span class="arithmatex">\(\phi = \operatorname{arctan2}(\text{north}, \text{east})\)</span> is the orientation of the projected separation
+vector in the internal (east, north) sky frame. As in the box case, the output <span class="arithmatex">\(w_{g+}\)</span> is radial-positive
+(<span class="arithmatex">\(e_+ &gt; 0\)</span> for radial alignment).</p>
+<div class="admonition note">
+<p class="admonition-title">Relation to TreeCorr</p>
+<p>TreeCorr reports the tangential shear <span class="arithmatex">\(\gamma_t\)</span>, so its <span class="arithmatex">\(g\)</span> has the opposite sign to the IA <span class="arithmatex">\(e_+\)</span>
+(<span class="arithmatex">\(e_+ = -\gamma_t\)</span>). Comparing a MeasureIA lightcone <span class="arithmatex">\(w_{g+}\)</span> against a TreeCorr <code>NG</code> measurement therefore
+needs only the standard IA flip <span class="arithmatex">\(g \to -g\)</span>; no per-component sign change is applied to <code>e1</code>/<code>e2</code>.
+Note also that a <em>wrong chirality</em> (swapping the handedness of <code>e2</code>) does not simply flip the sign of
+<span class="arithmatex">\(w_{g+}\)</span> — it replaces <span class="arithmatex">\(\cos 2(\phi_a - \phi_s)\)</span> with <span class="arithmatex">\(\cos 2(\phi_a + \phi_s)\)</span> and washes the signal out
+to noise, which is a common cause of a "vague, noisy mismatch" against other codes.</p>
+</div>
+<h2 id="ellipticity-definitions">Ellipticity definitions</h2>
+<p>The shape magnitude <span class="arithmatex">\(\epsilon\)</span> is derived from the axis ratio <span class="arithmatex">\(q\)</span>, so this choice applies to the <strong>box</strong> only;
+it is selected with the <code>ellipticity</code> argument of <code>MeasureIABox.measure_xi_w</code> and
+<code>MeasureIABox.measure_xi_multipoles</code>. The lightcone takes <code>e1</code>/<code>e2</code> directly and has no such argument. The two
+definitions are:</p>
+<ul>
+<li><code>'distortion'</code> (default): <span class="arithmatex">\(\epsilon = \dfrac{1 - q^2}{1 + q^2}\)</span></li>
+<li><code>'ellipticity'</code>: <span class="arithmatex">\(\epsilon = \dfrac{1 - q}{1 + q}\)</span></li>
+</ul>
+<h2 id="responsivity">Responsivity</h2>
+<p>When shapes are raw distortions/ellipticities (as in the box case, derived from axis ratios), the <span class="arithmatex">\(g+\)</span> signal is
+calibrated by the responsivity factor <span class="arithmatex">\(2\mathcal{R}\)</span>, with</p>
+<div class="arithmatex">\[\mathcal{R} = \frac{\sum_i w_i\left(1 - \epsilon_i^2/2\right)}{\sum_i w_i} = 1 - \langle \epsilon^2\rangle/2\,,\]</div>
+<p>so that <span class="arithmatex">\(S_+D = \sum w_i w_j\, e_+(j|i)/(2\mathcal{R})\)</span> (see <a href="../estimator_definitions/">Estimator definitions</a>).
+The correction is controlled by the <code>responsivity</code> argument: it defaults to <code>True</code> for the box (raw shapes) and
+<code>False</code> for the lightcone (where <code>e1</code>/<code>e2</code> are assumed to be already-calibrated shears). When switched off,
+<span class="arithmatex">\(\mathcal{R} = 0.5\)</span> so that <span class="arithmatex">\(2\mathcal{R} = 1\)</span> and no calibration is applied. Only the <span class="arithmatex">\(g+\)</span> correlations are
+affected; the clustering (<span class="arithmatex">\(gg\)</span>) signal is unchanged.</p>
+<p>The differing defaults are deliberate rather than an oversight: they match what each input format usually
+contains, so the common case needs no argument. Pass <code>responsivity</code> explicitly whenever your inputs do not
+follow that pattern — for example <code>responsivity=True</code> on the lightcone when your <code>e1</code>/<code>e2</code> are raw
+distortions rather than calibrated shears, or <code>responsivity=False</code> on the box when the shapes you supply
+have already been calibrated.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../simulations/" class="btn btn-neutral float-left" title="Included simulations"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../estimator_definitions/" class="btn btn-neutral float-right" title="Estimator definitions">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../simulations/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../estimator_definitions/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

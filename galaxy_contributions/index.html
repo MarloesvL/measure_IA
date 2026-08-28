@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="author" content="Marloes van Heukelum" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Per-galaxy contributions - MeasureIA Documentation</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../assets/_mkdocstrings.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Per-galaxy contributions";
+        var mkdocs_page_input_path = "galaxy_contributions.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> MeasureIA Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../getting_started/">Getting started</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../installation/">Installation</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../input/">Input</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../usage/">Usage</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../output_structure/">Output</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Per-galaxy contributions</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#running-it">Running it</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#jackknife-realisations-without-re-counting-pairs">Jackknife realisations without re-counting pairs</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#output">Output</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../simulations/">Included simulations</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Concepts</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../conventions/">Conventions</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../estimator_definitions/">Estimator definitions</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Examples</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../examples/example_MeasureIA_box/">Simulation box</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../examples/example_MeasureIA_lightcone/">Lightcone</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Validation & performance</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../validation/">Validation</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../performance/">Performance</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">API Reference</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/measureIABox/">MeasureIABox</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/measureIALightcone/">MeasureIALightcone</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/MeasureIABase/">MeasureIABase</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/MeasureJackknife/">MeasureJackknife</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Box backends</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWBox/">MeasureWBox</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMBox/">MeasureMultipolesBox</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWBoxJackknife/">MeasureWBoxJackknife</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMBoxJackknife/">MeasureMBoxJackknife</a>
+                </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Lightcone backends</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWLightcone/">MeasureWLightcone</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMLightcone/">MeasureMultipolesLightcone</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWLightconeJackknife/">MeasureWLightconeJackknife</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMLightconeJackknife/">MeasureMultipolesLightconeJackknife</a>
+                </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/pair_kernel/">pair_kernel</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/SimInfo/">SimInfo</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/ReadData/">ReadData</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/mocks/">mocks</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">MeasureIA Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Guides</li>
+      <li class="breadcrumb-item active">Per-galaxy contributions</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="per-galaxy-contributions">Per-galaxy contributions</h1>
+<p><code>MeasureIABox.measure_galaxy_contributions</code> resolves the box alignment estimator <strong>per shape galaxy</strong>: one
+pair traversal returns, for every shape galaxy <span class="arithmatex">\(j\)</span> and radial bin <span class="arithmatex">\(b\)</span>, its contribution <span class="arithmatex">\(Y_j(b)\)</span> to the
+signal and the number of pairs <span class="arithmatex">\(P_j(b)\)</span> it contributed through, such that</p>
+<div class="arithmatex">\[\sum_j Y_j(b) = \tilde\xi_{g+,\ell}(r_b) \qquad\text{(or } w_{g+}(r_{p,b})\text{)}\]</div>
+<p>is exactly the ordinary estimator. <span class="arithmatex">\(Y_j(b)/P_j(b)\)</span> is then the mean alignment contribution of that galaxy in
+that bin.</p>
+<p>This is the input needed to <strong>regress the alignment signal on per-galaxy properties</strong>. A per-bin
+least-squares fit of the pair contributions on standardised galaxy properties has normal equations</p>
+<div class="arithmatex">\[(X^\top X)_{kl}(b) = \sum_j x_{k,j}\, x_{l,j}\, P_j(b), \qquad (X^\top y)_k(b) = \sum_j x_{k,j}\, Y_j(b),\]</div>
+<p>so <em>any</em> number of properties can be fitted from a single pair traversal, instead of one correlation-function
+run per weighting. It is available for the box only.</p>
+<h2 id="running-it">Running it</h2>
+<pre><code class="language-python">from measureia import MeasureIABox
+
+mi = MeasureIABox(data_dict, output_file_name=&quot;./out.hdf5&quot;, boxsize=205.0)
+
+out = mi.measure_galaxy_contributions(
+    &quot;ds1&quot;,
+    num_jk=27,              # optional: also decompose by jackknife patch
+    statistic=&quot;multipoles&quot;,  # or &quot;w&quot; for w_g+(r_p)
+    ell=2,                   # multipole order (spin taken equal to it)
+    temp_file_path=False,    # a path is required when num_nodes &gt; 1
+    return_output=True,      # omit to write to the output file instead
+)
+
+out[&quot;Y&quot;].sum(axis=0)   # == the ordinary xi_g+,2(r) from measure_xi_multipoles
+out[&quot;Y&quot;] / out[&quot;P&quot;]    # mean contribution per galaxy per bin
+</code></pre>
+<p><code>statistic="multipoles"</code> projects onto <span class="arithmatex">\(\tilde\xi_{g+,\ell}(r)\)</span> in <span class="arithmatex">\((r, \mu_r)\)</span> bins, <code>statistic="w"</code> onto
+<span class="arithmatex">\(w_{g+}(r_p)\)</span> in <span class="arithmatex">\((r_p, \Pi)\)</span> bins. The <code>ellipticity</code>, <code>responsivity</code>, <code>masks</code> and <code>rp_cut</code> arguments behave
+exactly as in <code>measure_xi_multipoles</code>, so the per-galaxy decomposition matches the correlation function you
+would otherwise measure. With <code>num_nodes &gt; 1</code> the traversal runs on multiple cores and needs
+<code>temp_file_path</code> plus the usual <code>if __name__ == "__main__":</code> guard.</p>
+<h2 id="jackknife-realisations-without-re-counting-pairs">Jackknife realisations without re-counting pairs</h2>
+<p>With <code>num_jk &gt; 0</code>, both <span class="arithmatex">\(Y\)</span> and <span class="arithmatex">\(P\)</span> are additionally decomposed by the jackknife sub-box of the
+<em>position-sample</em> partner. That is enough to rebuild every delete-one realisation from the single traversal —
+dropping the shape galaxies in the omitted patch, subtracting the pairs whose position partner lies in it,
+and reapplying the two normalisations that change under delete-one (the responsivity <span class="arithmatex">\(2\mathcal{R}\)</span> and the
+<span class="arithmatex">\(RR\)</span> amplitude). The <code>delete_one_estimator</code> helper does all of that:</p>
+<pre><code class="language-python">from measureia.measure_galaxy_box import delete_one_estimator, jk_columns
+
+out = mi.measure_galaxy_contributions(&quot;ds1&quot;, num_jk=27, temp_file_path=False, return_output=True)
+
+est_5 = delete_one_estimator(out, 5)   # realisation 5, identical to the stored one
+Y_col, P_col = jk_columns(out, 5)      # what each galaxy contributes through patch 5
+</code></pre>
+<p><code>delete_one_estimator(out, n)</code> reproduces <code>multipoles_g_plus/ds1_jk27/ds1_n</code> to floating-point summation
+order. Use <code>jk_columns</code> when you need the per-galaxy columns themselves, for instance to jackknife a fitted
+regression coefficient rather than the signal.</p>
+<p>The jackknife arrays are stored <strong>sparsely</strong>: a galaxy's neighbours span a ball of <span class="arithmatex">\(r_\mathrm{max}\)</span>, so it
+reaches only a handful of sub-boxes however many there are, and the rest of the patch axis is structurally
+zero. Only the patches a galaxy actually has pairs in are kept, with <code>jk_patches</code> recording which column is
+which. Both helpers handle that indirection for you. The stored values are identical to the dense form — for
+a COLIBRE-L400-sized run (301k shape galaxies, 125 patches, 12 bins) it is 0.78 GB per array instead of
+3.6 GB.</p>
+<div class="admonition note">
+<p class="admonition-title">Y_jk_values is stored raw</p>
+<p><code>Y_jk_values</code> has neither the responsivity nor the per-realisation <span class="arithmatex">\(RR\)</span> amplitude applied, matching the
+convention of the package's own <code>Splus_D_jk</code> grids — <code>R_jk</code> and <code>rr_ratio</code> are stored alongside it so the
+normalisations can be applied per realisation. <code>Y</code> (full sample) <em>does</em> have both folded in, which is why
+it sums to the estimator directly. Use <code>delete_one_estimator</code> rather than combining the raw arrays
+by hand.</p>
+</div>
+<h2 id="output">Output</h2>
+<p>Written under a <code>galaxy_contributions</code> group; see
+<a href="../output_structure/#per-galaxy-contributions">Output file structure</a> for the datasets and their shapes. Pass
+<code>return_output=True</code> to get the same arrays as a dictionary instead.</p>
+<p>The method is documented in full on the <a href="../api/measureIABox/">MeasureIABox API page</a>.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../output_structure/" class="btn btn-neutral float-left" title="Output"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../simulations/" class="btn btn-neutral float-right" title="Included simulations">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../output_structure/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../simulations/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

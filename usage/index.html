@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="author" content="Marloes van Heukelum" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Usage - MeasureIA Documentation</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../assets/_mkdocstrings.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Usage";
+        var mkdocs_page_input_path = "usage.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> MeasureIA Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../getting_started/">Getting started</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../installation/">Installation</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../input/">Input</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Usage</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#box">Box</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#lightcone">Lightcone</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../output_structure/">Output</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../galaxy_contributions/">Per-galaxy contributions</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../simulations/">Included simulations</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Concepts</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../conventions/">Conventions</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../estimator_definitions/">Estimator definitions</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Examples</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../examples/example_MeasureIA_box/">Simulation box</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../examples/example_MeasureIA_lightcone/">Lightcone</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Validation & performance</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../validation/">Validation</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../performance/">Performance</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">API Reference</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/measureIABox/">MeasureIABox</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/measureIALightcone/">MeasureIALightcone</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/MeasureIABase/">MeasureIABase</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/MeasureJackknife/">MeasureJackknife</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Box backends</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWBox/">MeasureWBox</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMBox/">MeasureMultipolesBox</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWBoxJackknife/">MeasureWBoxJackknife</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMBoxJackknife/">MeasureMBoxJackknife</a>
+                </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Lightcone backends</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWLightcone/">MeasureWLightcone</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMLightcone/">MeasureMultipolesLightcone</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWLightconeJackknife/">MeasureWLightconeJackknife</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMLightconeJackknife/">MeasureMultipolesLightconeJackknife</a>
+                </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/pair_kernel/">pair_kernel</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/SimInfo/">SimInfo</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/ReadData/">ReadData</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/mocks/">mocks</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">MeasureIA Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Guides</li>
+      <li class="breadcrumb-item active">Usage</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="usage-examples">Usage &amp; Examples</h1>
+<p>The two example notebooks are rendered with their output on this site - <a href="../examples/example_MeasureIA_box/">simulation
+box</a> and <a href="../examples/example_MeasureIA_lightcone/">lightcone</a> - and
+each page has a download link at the top. To run one without installing anything, open it in Google Colab:</p>
+<p><a href="https://colab.research.google.com/github/MarloesvL/measure_IA/blob/main/examples/example_MeasureIA_box.ipynb"><img alt="Box example in Colab" src="https://colab.research.google.com/assets/colab-badge.svg" /></a> simulation box &nbsp;
+<a href="https://colab.research.google.com/github/MarloesvL/measure_IA/blob/main/examples/example_MeasureIA_lightcone.ipynb"><img alt="Lightcone example in Colab" src="https://colab.research.google.com/assets/colab-badge.svg" /></a> lightcone</p>
+<p>Their first cell installs MeasureIA if it is missing, so nothing else is needed: the mock catalogues come with
+the package, and cloning this repository is never required.</p>
+<p>You can see the same examples, plus the plain scripts, in the repository under <code>examples/</code>:</p>
+<ul>
+<li><code>example_measure_IA_box.py</code> / <code>example_MeasureIA_box.ipynb</code> — periodic simulation box</li>
+<li><code>example_measure_IA_lightcone.py</code> / <code>example_MeasureIA_lightcone.ipynb</code> — lightcone</li>
+<li><code>example_read_and_plot.py</code> — reading a result back with <code>ReadData</code> and plotting it with jackknife errors</li>
+</ul>
+<p>They run as-is, without any simulation or survey data: each one builds a seeded mock catalogue with a known
+radial-alignment signal from <code>measureia.mocks</code> (the same mocks the
+<a href="../validation/">validation</a> suite uses), so a full measurement takes about a second and produces a real,
+non-null signal. Run them from the <code>examples/</code> directory and swap the data dictionary entries for your own
+arrays to measure your own data.</p>
+<p>See the <a href="../input/">Input</a> page for a full description of the data dictionaries. Measurements run on multiple
+cores by passing <code>num_nodes &gt; 1</code> (see <code>num_nodes</code> in the box example); the <code>if __name__ == "__main__":</code> guard
+is required in that case.</p>
+<h2 id="box">Box</h2>
+<pre><code class="language-python">from measureia import MeasureIABox
+import numpy as np
+
+data_dict = {
+    &quot;Position&quot;: np.array([]),
+    &quot;Position_shape_sample&quot;: np.array([]),
+    &quot;Axis_Direction&quot;: np.array([]),
+    &quot;LOS&quot;: 2,
+    &quot;q&quot;: np.array([])
+}
+
+mi = MeasureIABox(
+    data=data_dict,
+    output_file_name=&quot;./outfile.hdf5&quot;,
+    boxsize=205.0,
+)
+
+mi.measure_xi_w(dataset_name=&quot;ds1&quot;, corr_type=&quot;both&quot;, num_jk=27, temp_file_path='./')
+mi.measure_xi_multipoles(dataset_name=&quot;ds1&quot;, corr_type=&quot;both&quot;, num_jk=27, temp_file_path='./')
+</code></pre>
+<p>Beyond <code>measure_xi_w</code> and <code>measure_xi_multipoles</code>, the box also offers
+<code>measure_galaxy_contributions</code>, which resolves the same estimator per shape galaxy in one pair traversal —
+see <a href="../galaxy_contributions/">Per-galaxy contributions</a>.</p>
+<h2 id="lightcone">Lightcone</h2>
+<p>For lightcone data, use <code>MeasureIALightcone</code>, which takes a <code>data</code> and a <code>randoms_data</code> dictionary of sky
+coordinates. The measurement methods take an additional <code>IA_estimator</code> argument (<code>"clusters"</code> or
+<code>"galaxies"</code>) and the jackknife regions are supplied through <code>jk_patches</code> (or generated internally with
+<code>num_jk</code>):</p>
+<pre><code class="language-python">from measureia import MeasureIALightcone
+import numpy as np
+
+data = {
+    &quot;RA&quot;: np.array([]), &quot;DEC&quot;: np.array([]), &quot;Redshift&quot;: np.array([]),
+    &quot;RA_shape_sample&quot;: np.array([]), &quot;DEC_shape_sample&quot;: np.array([]),
+    &quot;Redshift_shape_sample&quot;: np.array([]),
+    &quot;e1&quot;: np.array([]), &quot;e2&quot;: np.array([]),
+}
+randoms_data = {
+    &quot;RA&quot;: np.array([]), &quot;DEC&quot;: np.array([]), &quot;Redshift&quot;: np.array([]),
+}
+
+mi = MeasureIALightcone(data, randoms_data, output_file_name=&quot;./outfile.hdf5&quot;)
+
+mi.measure_xi_w(&quot;clusters&quot;, dataset_name=&quot;ds1&quot;, corr_type=&quot;both&quot;, num_jk=27, temp_file_path='./')
+mi.measure_xi_multipoles(&quot;clusters&quot;, dataset_name=&quot;ds1&quot;, corr_type=&quot;both&quot;, num_jk=27, temp_file_path='./')
+</code></pre>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../input/" class="btn btn-neutral float-left" title="Input"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../output_structure/" class="btn btn-neutral float-right" title="Output">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../input/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../output_structure/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

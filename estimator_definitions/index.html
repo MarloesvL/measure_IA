@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="author" content="Marloes van Heukelum" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Estimator definitions - MeasureIA Documentation</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../assets/_mkdocstrings.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Estimator definitions";
+        var mkdocs_page_input_path = "estimator_definitions.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> MeasureIA Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../getting_started/">Getting started</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../installation/">Installation</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../input/">Input</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../usage/">Usage</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../output_structure/">Output</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../galaxy_contributions/">Per-galaxy contributions</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../simulations/">Included simulations</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Concepts</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../conventions/">Conventions</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Estimator definitions</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#projected-correlation-functions">Projected correlation functions</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#lightcone-estimators">Lightcone estimators</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#multipoles">Multipoles</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#covariance">Covariance</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#how-many-patches">How many patches?</a>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Examples</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../examples/example_MeasureIA_box/">Simulation box</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../examples/example_MeasureIA_lightcone/">Lightcone</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Validation & performance</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../validation/">Validation</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../performance/">Performance</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">API Reference</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/measureIABox/">MeasureIABox</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/measureIALightcone/">MeasureIALightcone</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/MeasureIABase/">MeasureIABase</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/MeasureJackknife/">MeasureJackknife</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Box backends</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWBox/">MeasureWBox</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMBox/">MeasureMultipolesBox</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWBoxJackknife/">MeasureWBoxJackknife</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMBoxJackknife/">MeasureMBoxJackknife</a>
+                </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Lightcone backends</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWLightcone/">MeasureWLightcone</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMLightcone/">MeasureMultipolesLightcone</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWLightconeJackknife/">MeasureWLightconeJackknife</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMLightconeJackknife/">MeasureMultipolesLightconeJackknife</a>
+                </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/pair_kernel/">pair_kernel</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/SimInfo/">SimInfo</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/ReadData/">ReadData</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/mocks/">mocks</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">MeasureIA Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Concepts</li>
+      <li class="breadcrumb-item active">Estimator definitions</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="estimator-definitions">Estimator definitions</h1>
+<p>This page contains the mathematical definitions of the estimators used in MeasureIA to measure the correlation functions
+and the jackknife covariance.</p>
+<h2 id="projected-correlation-functions">Projected correlation functions</h2>
+<p>First of all, we define <span class="arithmatex">\(w_\mathrm{gg}\)</span> and <span class="arithmatex">\(w_{\mathrm{g}+}\)</span> as follows:
+\begin{align}
+w_\mathrm{gk}(r_p) &amp;= \int_{-\Pi_{\text{max}}}^{\Pi_{\text{max}}} \xi_\mathrm{gk}(r_p, \Pi) \text{d}\Pi \\
+\mathrm{with} \, \mathrm{k} &amp;\in [\mathrm{g},+]\,.
+\end{align}
+Here, <span class="arithmatex">\(\Pi_\mathrm{max}\)</span> is the line-of-sight limit you are integrating over, given by the 'pi_max' input value in
+the initialisation of a <code>MeasureIABox</code> or <code>MeasureIALightcone</code> object.</p>
+<p>The Landy-Szalay estimator <span class="arithmatex">\(\xi_\mathrm{gg}\)</span> is defined as follows:
+\begin{align}
+\xi_{gg} (r_p,\Pi) &amp;= \frac{DD-2DR+RR}{RR}
+\end{align}
+where <span class="arithmatex">\(DD\)</span>, <span class="arithmatex">\(RR\)</span> and <span class="arithmatex">\(DR\)</span> denote the number of object pairs found in an <span class="arithmatex">\((r_p,\Pi)\)</span> bin in the data (<span class="arithmatex">\(DD\)</span>),
+random data (<span class="arithmatex">\(RR\)</span>) or between the two (<span class="arithmatex">\(DR\)</span>) and are defined as
+\begin{align}
+DD &amp;= \sum_{{i,j}}^{(r_\mathrm{p},\Pi)} w_i w_j \,.
+\end{align}
+Both <span class="arithmatex">\(w_i\)</span> and <span class="arithmatex">\(w_j\)</span> denote the weights of objects in pair <span class="arithmatex">\({i,j}\)</span>, which are both set to <span class="arithmatex">\(1\)</span> if not provided.
+The weights can be provided using the 'weight' and 'weight_shape_sample' keys in the data dictionary upon
+initialisation.
+In the <strong>box</strong>, the <span class="arithmatex">\(RR\)</span> term is calculated analytically from the number of <em>available</em> pairs and the
+simulation volume. That count is</p>
+<div class="arithmatex">\[\begin{align}
+N_\mathrm{pairs} &amp;= N_\mathrm{position} N_\mathrm{shape} - N_\mathrm{overlap}
+\end{align}\]</div>
+<p>(halved for an auto-correlation), where <span class="arithmatex">\(N_\mathrm{overlap}\)</span> is the number of objects present in <strong>both</strong>
+samples. The subtraction is there because a shape galaxy cannot pair with itself: such a pair has zero
+separation and is dropped by the pair loop, whose window starts at <span class="arithmatex">\(r_\mathrm{min}&gt;0\)</span>. There is exactly one
+self-pair per shared object, hence the single subtraction.</p>
+<p>This subsumes the two conventions in common use. For genuinely independent samples
+<span class="arithmatex">\(N_\mathrm{overlap}=0\)</span> and the count is the plain product <span class="arithmatex">\(N_\mathrm{position}N_\mathrm{shape}\)</span>; when the
+shape sample is drawn <em>from</em> the position sample — the usual intrinsic-alignment setup — every shape object
+is shared, <span class="arithmatex">\(N_\mathrm{overlap}=N_\mathrm{shape}\)</span>, and the count becomes
+<span class="arithmatex">\(N_\mathrm{shape}(N_\mathrm{position}-1)\)</span>.</p>
+<p>MeasureIA <strong>measures</strong> the overlap from the coordinates rather than assuming it, so the right convention is
+used without the user having to declare anything, and partial overlap is handled correctly too. It can be
+overridden with the <code>num_overlap</code> argument of <code>MeasureIABox</code> when you need a specific convention: passing
+<code>0</code> reproduces what external codes such as halotools and corr_pc do, which is to treat the two samples as
+independent regardless of whether they overlap. The cross-code validation runs pass <code>num_overlap=0</code> for
+exactly that reason. The difference is a uniform factor <span class="arithmatex">\(N/(N-1)\)</span>, negligible for a measured signal but
+worth being explicit about.</p>
+<p>The lightcone applies the same rule through its <code>num_samples["D_S"]</code> term, so both geometries agree on what
+"the same object in both samples" means. As <span class="arithmatex">\(DR\)</span> is expected to be equal to <span class="arithmatex">\(RR\)</span> in simulations, the equation for <span class="arithmatex">\(\xi_\mathrm{gg}\)</span>
+reduces to <span class="arithmatex">\(\xi_\mathrm{gg}=DD/RR-1\)</span>. (For the <strong>lightcone</strong>, <span class="arithmatex">\(RR\)</span> and the <span class="arithmatex">\(DR\)</span> terms are counted from explicit
+random catalogues instead — see <a href="#lightcone-estimators">Lightcone estimators</a> below.)</p>
+<p>The Landy-Szalay estimator <span class="arithmatex">\(\xi_{\mathrm{g}+}\)</span> is defined as:
+\begin{align}
+\xi_{g,+}(r_\mathrm{p},\Pi) &amp;= \frac{S_+D - S_+R}{RR} \
+\end{align}
+For <span class="arithmatex">\(\xi_{g+}\)</span>, the <span class="arithmatex">\(S_+R\)</span> term is negligible in simulations, reducing the equation for <span class="arithmatex">\(\xi_{g+}\)</span> to <span class="arithmatex">\(\xi_{g+}=S_+D/RR\)</span>,
+where we define <span class="arithmatex">\(S_+D\)</span> as follows
+\begin{align}
+S_+D &amp;= \sum_{{i,j}}^{(r_\mathrm{p},\Pi)} w_i w_j \frac{e_{+}(j|i)}{2\mathcal{R}}
+\end{align}
+The responsivity factor, <span class="arithmatex">\(\mathcal{R}\)</span>, is the weighted average
+<span class="arithmatex">\(\mathcal{R}=\frac{\sum_i w_i\left(1-\epsilon_i^2/2\right)}{\sum_i w_i} = 1-\langle \epsilon^2 \rangle/2\)</span>,
+with <span class="arithmatex">\(\epsilon=\frac{1-q^2}{1+q^2}\)</span>, the distortion, by default.
+The responsivity correction can be switched off with the <code>responsivity</code> argument of the measurement methods, in
+which case <span class="arithmatex">\(\mathcal{R}=0.5\)</span> (so <span class="arithmatex">\(2\mathcal{R}=1\)</span> and no calibration is applied) — appropriate when the input
+shapes are already calibrated shears. See the <a href="../conventions/">Conventions</a> page for more on the shape definitions.
+The definition of <span class="arithmatex">\(\epsilon\)</span> can be changed between 'distortion' and 'ellipticity' (<span class="arithmatex">\(\epsilon=\frac{1-q}{1+q}\)</span>) using
+the 'ellipticity' input to 'distortion' or 'ellipticity' when calling the measure_xi_w or measure_xi_multipoles methods
+of the MeasureIABox class.
+Furthermore, the <span class="arithmatex">\(+\)</span> and <span class="arithmatex">\(\times\)</span> components of the ellipticities are measured using:
+\begin{align}
+(e_{+},e_{\times}) &amp;= \epsilon[\cos(2\phi),\sin(2\phi)]
+\end{align}
+where <span class="arithmatex">\(\phi\)</span> denotes the angle between the projected separation vector (<span class="arithmatex">\(r_\mathrm{p}\)</span>) and the semi-major axis
+direction of the object for each position-shape object pair.</p>
+<p>Once measured in <span class="arithmatex">\((r_\mathrm{p},\Pi)\)</span> bins, the estimators <span class="arithmatex">\(\xi_{gg}\)</span> and <span class="arithmatex">\(\xi_{g+}\)</span> are integrated over <span class="arithmatex">\(\Pi\)</span> to obtain
+the projected correlation functions following the equations at the top of this Section.
+This box case (analytic <span class="arithmatex">\(RR\)</span>) is the default; the lightcone estimators with explicit randoms are described next.
+Information on how the output is saved can be found on the <a href="../output_structure/">Output file structure</a> page.</p>
+<h2 id="lightcone-estimators">Lightcone estimators</h2>
+<p>For lightcone data (<code>MeasureIALightcone</code>) the same projected correlation functions and multipoles are measured,
+but the random terms are counted from explicit <strong>random catalogues</strong> rather than computed analytically. Comoving
+distances are obtained from the redshifts using the chosen cosmology (see the <code>cosmology</code> argument), and the pair
+counts <span class="arithmatex">\(DD\)</span>, <span class="arithmatex">\(S_+D\)</span>, <span class="arithmatex">\(S_+R\)</span>, <span class="arithmatex">\(RR\)</span>, <span class="arithmatex">\(RD\)</span>, <span class="arithmatex">\(SR\)</span> are each normalised by the number of possible pairs in the
+corresponding samples.</p>
+<p>Two estimator definitions are available through the <code>IA_estimator</code> argument, differing in how the <span class="arithmatex">\(g+\)</span> signal is
+normalised:</p>
+<p><strong><code>'galaxies'</code></strong> — the standard Landy–Szalay form, normalised by the random–random pairs:
+\begin{align}
+\xi_{gg}(r_p,\Pi) &amp;= \frac{DD - RD - SR}{RR} + 1\,, \\
+\xi_{g+}(r_p,\Pi) &amp;= \frac{S_+D - S_+R}{RR}\,.
+\end{align}</p>
+<p><strong><code>'clusters'</code></strong> — for cluster/halo shape samples, the <span class="arithmatex">\(g+\)</span> signal is instead normalised by the clustering pair
+counts:
+\begin{align}
+\xi_{gg}(r_p,\Pi) &amp;= \frac{DD - RD - SR}{RR} + 1\,, \\
+\xi_{g+}(r_p,\Pi) &amp;= \frac{S_+D}{DD} - \frac{S_+R}{SR}\,.
+\end{align}</p>
+<p>Here <span class="arithmatex">\(RD\)</span> and <span class="arithmatex">\(SR\)</span> are the density–random and shape–random cross pair counts, and <span class="arithmatex">\(S_+D\)</span>/<span class="arithmatex">\(S_+R\)</span> use the same
+<span class="arithmatex">\(e_+\)</span> (and responsivity) definition as above — note that for the lightcone the <code>responsivity</code> correction defaults
+to off, since <code>e1</code>/<code>e2</code> are assumed to be already-calibrated shears (see the <a href="../conventions/">Conventions</a> page).
+In both cases MeasureIA also outputs a <strong>parity null test</strong>, <span class="arithmatex">\(\xi_{g\times}\)</span>, built from the cross component
+<span class="arithmatex">\(e_\times\)</span> in place of <span class="arithmatex">\(e_+\)</span> (galaxies: <span class="arithmatex">\((S_\times D - S_\times R)/RR\)</span>; clusters: <span class="arithmatex">\(S_\times D/DD - S_\times R/SR\)</span>),
+which is expected to be consistent with zero. The <span class="arithmatex">\(\xi\)</span> grids are then integrated over <span class="arithmatex">\(\Pi\)</span> (or <span class="arithmatex">\(\mu_r\)</span> for the
+multipoles) exactly as in the box case.</p>
+<h2 id="multipoles">Multipoles</h2>
+<p>For the multipole moment expansion, first introduced in <a href="https://arxiv.org/abs/2307.02545">(Singh et al. 2024)</a>, the
+estimators <span class="arithmatex">\(\xi_\mathrm{gg}\)</span> and <span class="arithmatex">\(\xi_\mathrm{g+}\)</span>, described in the previous Section, are measured in <span class="arithmatex">\((r,\mu_r)\)</span> bins.
+Here, <span class="arithmatex">\(r\)</span> refers to the 3D separation length (not the projected as in the previous Section) and <span class="arithmatex">\(\mu_r\)</span> is defined as:
+$<span class="arithmatex">\(\mu_r = \frac{\Pi}{r}\)</span>$ with <span class="arithmatex">\(\Pi\)</span>, the line of sight component of the separation vector as above.
+As the <span class="arithmatex">\((r,\mu_r)\)</span> bins are spaced differently from the <span class="arithmatex">\((r_\mathrm{p},\Pi)\)</span> bins, the <span class="arithmatex">\(\xi_\mathrm{gg}\)</span>
+and <span class="arithmatex">\(\xi_\mathrm{g+}\)</span> are remeasured using the <code>measure_xi_multipoles</code> method (of either <code>MeasureIABox</code> or
+<code>MeasureIALightcone</code>) to ensure accuracy. The <span class="arithmatex">\(\xi_\mathrm{gg}\)</span> and <span class="arithmatex">\(\xi_\mathrm{g+}\)</span> estimators are integrated over <span class="arithmatex">\(\mu_r\)</span> using the associated
+Legendre polynomials <span class="arithmatex">\(L^{\ell,s_{ab}}\)</span> to obtain the correlation functions:</p>
+<div class="arithmatex">\[\tilde{\xi}_\mathrm{gk}^{\ell, s_{ab}} (r) = \frac{2\ell + 1}{2}\frac{(\ell - s_{ab})!}{(\ell + s_{ab})!}\int \text{d} \mu_
+{r}L^{\ell,s_{ab}}(\mu_r)\xi_\mathrm{gk}(r, \mu_{r})\]</div>
+<p>where we can obtain the correlation between position-position and position-shape samples by filling in the
+corresponding <span class="arithmatex">\(\ell\)</span> and <span class="arithmatex">\(s_{ab}\)</span> for the prefactors and associated Legendre polynomials <span class="arithmatex">\(L^{\ell,s_{ab}}\)</span>:</p>
+<div class="arithmatex">\[\tilde{\xi}_\mathrm{gg}^{0,0} (r) = \frac{1}{2}\int \text{d} \mu_{r}L^{0,0}(\mu_r)\xi_\mathrm{gg}(r, \mu_{r})\]</div>
+<div class="arithmatex">\[\tilde{\xi}_\mathrm{g+}^{2,2} (r) = \frac{5}{48}\int \text{d} \mu_{r}L^{2,2}(\mu_r)\xi_\mathrm{g+}(r, \mu_{r}) .\]</div>
+<h2 id="covariance">Covariance</h2>
+<p>The covariance is estimated using the jack-knife method. The covariance is measured by combining the measurements of
+<span class="arithmatex">\(N_\mathrm{jk}\)</span> jackknife realisations in the following way:</p>
+<div class="arithmatex">\[\begin{align}
+C_{ij} &amp;= \frac{N_{\mathrm{jk}}-1}{N_{\mathrm{jk}}} \sum_{n=1}^{N_{\mathrm{jk}}} (\psi^n_i - \bar{\psi_i})(\psi^n_j -
+\bar{\psi_j}) \\
+&amp;\mathrm{with} \ \bar{\psi_i} = \frac{1}{N_{\mathrm{jk}}} \sum_{n=1}^{N_{\mathrm{jk}}}\psi_i^n\\
+&amp;\mathrm{and} \ \psi \in [w_{gg},w_{g+},\tilde{\xi}_{gg,0},\tilde{\xi}_{g+,2}] \,.
+\end{align}\]</div>
+<p>For <strong>simulation boxes</strong>, <span class="arithmatex">\(N_\mathrm{jk}\)</span> is the number of sub-boxes, which is related to the box-length <span class="arithmatex">\(L\)</span>
+via <span class="arithmatex">\(N_\mathrm{jk}=x^3\)</span> with <span class="arithmatex">\(L_\mathrm{sub}=L/x\)</span> and <span class="arithmatex">\(x\)</span> an integer.
+The jack-knife realisations are created by omitting one sub-box from the full volume at a time. In practice, the code
+saves the information about each sub-box so that the correlations do not need to be remeasured <span class="arithmatex">\(N_\mathrm{jk}\)</span> times.</p>
+<p>For the <strong>lightcone</strong>, the jackknife regions are instead defined on the sky: the objects are grouped into
+<span class="arithmatex">\(N_\mathrm{jk}\)</span> patches by k-means clustering of the random catalogue on the sphere, and one patch is
+omitted at a time. The number of patches is set with the <code>num_jk</code> argument, or the patch assignment can be
+supplied directly through <code>jk_patches</code>; the same delete-one covariance formula above then applies.</p>
+<h3 id="how-many-patches">How many patches?</h3>
+<p>The covariance is estimated from how much the signal moves when each patch is removed, so patches need
+enough objects in them for that shift to be meaningful. <code>assign_jackknife_patches</code> warns when any of the
+four samples (position, shape, and the two randoms samples) ends up with a patch holding fewer than ten
+objects, since the resulting covariance is unreliable and individual delete-one realisations can contain
+empty separation bins. The fix depends on which sample is thin: sparse <em>randoms</em> patches mean the random
+catalogue is too small for this many patches, while sparse <em>data</em> patches mean the catalogue itself
+cannot support them, and <code>num_jk</code> should come down.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../conventions/" class="btn btn-neutral float-left" title="Conventions"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../examples/example_MeasureIA_box/" class="btn btn-neutral float-right" title="Simulation box">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../conventions/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../examples/example_MeasureIA_box/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

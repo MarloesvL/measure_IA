@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="author" content="Marloes van Heukelum" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Included simulations - MeasureIA Documentation</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../assets/_mkdocstrings.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Included simulations";
+        var mkdocs_page_input_path = "simulations.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> MeasureIA Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../getting_started/">Getting started</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../installation/">Installation</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../input/">Input</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../usage/">Usage</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../output_structure/">Output</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../galaxy_contributions/">Per-galaxy contributions</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Included simulations</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#references">References</a>
+    </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Concepts</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../conventions/">Conventions</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../estimator_definitions/">Estimator definitions</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Examples</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../examples/example_MeasureIA_box/">Simulation box</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../examples/example_MeasureIA_lightcone/">Lightcone</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Validation & performance</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../validation/">Validation</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../performance/">Performance</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">API Reference</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/measureIABox/">MeasureIABox</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/measureIALightcone/">MeasureIALightcone</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/MeasureIABase/">MeasureIABase</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/MeasureJackknife/">MeasureJackknife</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Box backends</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWBox/">MeasureWBox</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMBox/">MeasureMultipolesBox</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWBoxJackknife/">MeasureWBoxJackknife</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMBoxJackknife/">MeasureMBoxJackknife</a>
+                </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Lightcone backends</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWLightcone/">MeasureWLightcone</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMLightcone/">MeasureMultipolesLightcone</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWLightconeJackknife/">MeasureWLightconeJackknife</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMLightconeJackknife/">MeasureMultipolesLightconeJackknife</a>
+                </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/pair_kernel/">pair_kernel</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/SimInfo/">SimInfo</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/ReadData/">ReadData</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/mocks/">mocks</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">MeasureIA Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Guides</li>
+      <li class="breadcrumb-item active">Included simulations</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="included-simulations">Included simulations</h1>
+<p>MeasureIA can fill in the box size and cosmology of several simulations automatically through the <code>SimInfo</code>
+class. Pass the <strong>tag</strong> as the <code>simulation</code> argument of <code>MeasureIABox</code> (or <code>ReadData</code>) together with a
+<code>snapshot</code>, and the box size and <span class="arithmatex">\(h\)</span> are set for you. When a preset is used, positions and separation limits
+must be in the stored units, <strong>cMpc/<span class="arithmatex">\(h\)</span></strong>.</p>
+<p>For a simulation that is not listed here, pass <code>simulation=None</code> and provide <code>boxsize</code> (and optionally <code>h</code>)
+manually, in the same units as your coordinates.</p>
+<table>
+<thead>
+<tr>
+<th>Simulation</th>
+<th>Tag(s)</th>
+<th>Box size [cMpc/<span class="arithmatex">\(h\)</span>]</th>
+<th><span class="arithmatex">\(h\)</span></th>
+<th>Project</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>IllustrisTNG</td>
+<td><code>TNG100</code>, <code>TNG100_2</code></td>
+<td>75.0</td>
+<td>0.6774</td>
+<td><a href="https://www.tng-project.org/">tng-project.org</a></td>
+</tr>
+<tr>
+<td>IllustrisTNG</td>
+<td><code>TNG300</code></td>
+<td>205.0</td>
+<td>0.6774</td>
+<td><a href="https://www.tng-project.org/">tng-project.org</a></td>
+</tr>
+<tr>
+<td>EAGLE</td>
+<td><code>EAGLE</code></td>
+<td>67.77 (100 cMpc)</td>
+<td>0.6777</td>
+<td><a href="https://icc.dur.ac.uk/Eagle/">icc.dur.ac.uk/Eagle</a></td>
+</tr>
+<tr>
+<td>Horizon-AGN</td>
+<td><code>HorizonAGN</code></td>
+<td>100.0</td>
+<td>0.704</td>
+<td><a href="https://www.horizon-simulation.org/">horizon-simulation.org</a></td>
+</tr>
+<tr>
+<td>FLAMINGO</td>
+<td><code>FLAMINGO_L1</code></td>
+<td>681.0 (1000 cMpc)</td>
+<td>0.681</td>
+<td><a href="https://flamingo.strw.leidenuniv.nl/">flamingo.strw.leidenuniv.nl</a></td>
+</tr>
+<tr>
+<td>FLAMINGO</td>
+<td><code>FLAMINGO_L2p8</code></td>
+<td>1906.8 (2800 cMpc)</td>
+<td>0.681</td>
+<td><a href="https://flamingo.strw.leidenuniv.nl/">flamingo.strw.leidenuniv.nl</a></td>
+</tr>
+<tr>
+<td>COLIBRE</td>
+<td><code>COLIBRE_L400</code></td>
+<td>272.4 (400 cMpc)</td>
+<td>0.681</td>
+<td><a href="https://arxiv.org/abs/2508.21126">Schaye et al. 2025</a></td>
+</tr>
+<tr>
+<td>COLIBRE</td>
+<td><code>COLIBRE_L200</code></td>
+<td>136.2 (200 cMpc)</td>
+<td>0.681</td>
+<td><a href="https://arxiv.org/abs/2508.21126">Schaye et al. 2025</a></td>
+</tr>
+</tbody>
+</table>
+<p>Notes:</p>
+<ul>
+<li>The box size is stored in cMpc/<span class="arithmatex">\(h\)</span>. The IllustrisTNG boxes are natively defined in cMpc/<span class="arithmatex">\(h\)</span>; for EAGLE,
+  FLAMINGO and COLIBRE the commonly-cited comoving size (in cMpc, shown in parentheses) is multiplied by <span class="arithmatex">\(h\)</span>.</li>
+<li><code>TNG100_2</code> is the lower-resolution run of the same volume as <code>TNG100</code>.</li>
+<li>The <code>FLAMINGO</code> and <code>COLIBRE</code> tags require the box-length suffix (<code>_L1</code>/<code>_L2p8</code>, <code>_L400</code>/<code>_L200</code>) so that the
+  correct box size is selected.</li>
+</ul>
+<p>The stored specifications are hard-coded in <code>SimInfo</code> (see the <a href="../api/SimInfo/">API reference</a>) and are
+straightforward to extend for additional simulations.</p>
+<h2 id="references">References</h2>
+<ul>
+<li><strong>IllustrisTNG</strong> — <a href="https://arxiv.org/abs/1812.05609">Nelson et al. 2019, <em>The IllustrisTNG Simulations: Public Data Release</em></a>;
+  project site: <a href="https://www.tng-project.org/">https://www.tng-project.org/</a></li>
+<li><strong>EAGLE</strong> — <a href="https://ui.adsabs.harvard.edu/abs/2015MNRAS.446..521S/abstract">Schaye et al. 2015, <em>The EAGLE project</em></a>;
+  project site: <a href="https://icc.dur.ac.uk/Eagle/">https://icc.dur.ac.uk/Eagle/</a></li>
+<li><strong>Horizon-AGN</strong> — Dubois et al. 2014, <em>MNRAS</em> 444, 1453; project site: <a href="https://www.horizon-simulation.org/">https://www.horizon-simulation.org/</a></li>
+<li><strong>FLAMINGO</strong> — <a href="https://ui.adsabs.harvard.edu/abs/2023MNRAS.526.4978S/abstract">Schaye et al. 2023, <em>The FLAMINGO project</em></a>;
+  project site: <a href="https://flamingo.strw.leidenuniv.nl/">https://flamingo.strw.leidenuniv.nl/</a></li>
+<li><strong>COLIBRE</strong> — <a href="https://arxiv.org/abs/2508.21126">Schaye et al. 2025, <em>The COLIBRE project</em></a></li>
+</ul>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../galaxy_contributions/" class="btn btn-neutral float-left" title="Per-galaxy contributions"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../conventions/" class="btn btn-neutral float-right" title="Conventions">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../galaxy_contributions/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../conventions/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

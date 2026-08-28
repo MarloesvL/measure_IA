@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="author" content="Marloes van Heukelum" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Output - MeasureIA Documentation</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../assets/_mkdocstrings.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Output";
+        var mkdocs_page_input_path = "output_structure.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> MeasureIA Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../getting_started/">Getting started</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../installation/">Installation</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Guides</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../input/">Input</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../usage/">Usage</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Output</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#box-vs-lightcone">Box vs lightcone</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#per-galaxy-contributions">Per-galaxy contributions</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#reading-the-output-file">Reading the output file</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#read_measureia_outputdataset_name-num_jk">read_MeasureIA_output(dataset_name, num_jk)</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#read_catdataset_name-cutnone-indicesnone">read_cat(dataset_name, cut=None, indices=None)</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#read_modelling_outputscatalogue">read_modelling_outputs(catalogue)</a>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../galaxy_contributions/">Per-galaxy contributions</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../simulations/">Included simulations</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Concepts</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../conventions/">Conventions</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../estimator_definitions/">Estimator definitions</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Examples</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../examples/example_MeasureIA_box/">Simulation box</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../examples/example_MeasureIA_lightcone/">Lightcone</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Validation & performance</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../validation/">Validation</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../performance/">Performance</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">API Reference</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/measureIABox/">MeasureIABox</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/measureIALightcone/">MeasureIALightcone</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/MeasureIABase/">MeasureIABase</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/MeasureJackknife/">MeasureJackknife</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Box backends</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWBox/">MeasureWBox</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMBox/">MeasureMultipolesBox</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWBoxJackknife/">MeasureWBoxJackknife</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMBoxJackknife/">MeasureMBoxJackknife</a>
+                </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Lightcone backends</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWLightcone/">MeasureWLightcone</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMLightcone/">MeasureMultipolesLightcone</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWLightconeJackknife/">MeasureWLightconeJackknife</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMLightconeJackknife/">MeasureMultipolesLightconeJackknife</a>
+                </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/pair_kernel/">pair_kernel</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/SimInfo/">SimInfo</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/ReadData/">ReadData</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/mocks/">mocks</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">MeasureIA Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Guides</li>
+      <li class="breadcrumb-item active">Output</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="output-file-structure">Output file structure</h1>
+<p>Your output file with your own input of [output_file_name, snapshot, dataset_name, num_jk] will have the following structure:</p>
+<pre><code>[output_file_name]  
+└── Snapshot_[snapshot]                                 Optional. If input [snapshot] is None, this group is omitted.
+    ├── w_gg
+    │   ├── [dataset_name]                              w_gg values for each r_p bin
+    │   ├── [dataset_name]_rp                           r_p mean bin values
+    │   ├── [dataset_name]_mean_[num_jk]                mean w_gg value of all jackknife realisations
+    │   ├── [dataset_name]_jackknife_cov_[num_jk]       jackknife estimate of covariance matrix
+    │   ├── [dataset_name]_jackknife_[num_jk]           sqrt of diagonal of covariance matrix (size of errorbars)
+    │   └── [dataset_name]_jk[num_jk]                   group containing all jackknife realisations for this dataset
+    │       ├── [dataset_name]_[i]                      jackknife realisations with i running from 0 to num_jk - 1
+    │       └── [dataset_name]_[i]_rp                   r_p bin values of each jackknife realistation
+    ├── w_g_plus
+    │   ├── [dataset_name]                              w_g+ values for each r_p bin
+    │   ├── [dataset_name]_rp                           r_p mean bin values
+    │   ├── [dataset_name]_mean_[num_jk]                mean w_g+ value of all jackknife realisations
+    │   ├── [dataset_name]_jackknife_cov_[num_jk]       jackknife estimate of covariance matrix
+    │   ├── [dataset_name]_jackknife_[num_jk]           sqrt of diagonal of covariance matrix (size of errorbars)
+    │   └── [dataset_name]_jk[num_jk]                   group containing all jackknife realisations for this dataset
+    │       ├── [dataset_name]_[i]                      jackknife realisations with i running from 0 to num_jk - 1
+    │       └── [dataset_name]_[i]_rp                   r_p bin values of each jackknife realistation
+    └──  w
+        ├── xi_gg
+        │   ├── [dataset_name]                          xi_gg grid in (r_p,pi)
+        │   ├── [dataset_name]_rp                       r_p mean bin values
+        │   ├── [dataset_name]_pi                       pi mean bin values
+        │   ├── [dataset_name]_RR_gg                    RR grid in (r_p,pi)
+        │   ├── [dataset_name]_DD                       DD grid in (r_p,pi) (pair counts)
+        │   └── [dataset_name]_jk[num_jk]               group containing all jackknife realisations for this dataset
+        │       ├── [dataset_name]_[i]                  jackknife realisations with i running from 0 to num_jk - 1
+        │       └── [dataset_name]_[i]_[x]              with x in [rp, pi, RR_gg, DD] as above
+        ├── xi_g_plus
+        │   ├── [dataset_name]                          xi_g+ grid in (rp_,pi)
+        │   ├── [dataset_name]_rp                       r_p mean bin values
+        │   ├── [dataset_name]_pi                       pi mean bin values
+        │   ├── [dataset_name]_RR_g_plus                RR grid in (r_p,pi)
+        │   ├── [dataset_name]_SplusD                   S+D grid in (r_p,pi)
+        │   └── [dataset_name]_jk[num_jk]               group containing all jackknife realisations for this dataset
+        │       ├── [dataset_name]_[i]                  jackknife realisations with i running from 0 to num_jk - 1
+        │       └── [dataset_name]_[i]_[x]              with x in [rp, pi, RR_g_plus, SplusD] as above
+        └── xi_g_cross
+            ├── [dataset_name]                          xi_gx grid in (r_p,pi)
+            ├── [dataset_name]_rp                       r_p mean bin values
+            ├── [dataset_name]_pi                       pi mean bin values
+            ├── [dataset_name]_RR_g_cross               RR grid in (r_p,pi)
+            ├── [dataset_name]_ScrossD                  SxD grid in (r_p,pi) (pair counts)
+            └── [dataset_name]_jk[num_jk]               group containing all jackknife realisations for this dataset
+                ├── [dataset_name]_[i]                  jackknife realisations with i running from 0 to num_jk - 1
+                └── [dataset_name]_[i]_[x]              with x in [rp, pi, RR_g_cross, ScrossD] as above
+
+</code></pre>
+<p>The pair-count dataset names above (<code>RR_gg</code>, <code>RR_g_plus</code>, <code>RR_g_cross</code>, <code>DD</code>, <code>SplusD</code>, <code>ScrossD</code>) are the
+<strong>box</strong> ones; the lightcone writes a different set, listed under <a href="#box-vs-lightcone">Box vs lightcone</a> below.
+The <code>xi_g_cross</code> group holds the parity null test <span class="arithmatex">\(\xi_{g\times}\)</span> and, unlike <code>xi_gg</code> and <code>xi_g_plus</code>, is
+written for the full sample only - there are no per-realisation jackknife entries for it in either geometry.</p>
+<p>If you choose to measure multipoles instead of wg+, all 'w' will be replaced by 'multipoles' - or both will appear, if you have measured both.
+For the multipoles, all xi_g+, DD (etc) grids are in (r, mu_r), not in (r_p, pi) and the suffixes of the bin values are also replaced by '_r' and '_mu_r' accordingly.
+In one file, multiple redshift (snapshot) measurements can be saved without being overwritten, as well as the jackknife
+information for different numbers of jackknife realisations (num_jk) for the same dataset.</p>
+<h2 id="box-vs-lightcone">Box vs lightcone</h2>
+<p>The structure above applies to both <code>MeasureIABox</code> and <code>MeasureIALightcone</code>. Two things differ:</p>
+<ul>
+<li>The <code>Snapshot_[snapshot]</code> group only appears for the box, when a <code>snapshot</code> label is given at initialisation;
+  the lightcone has no snapshot grouping and this level is omitted.</li>
+<li>The random–random grids are computed <strong>analytically</strong> from the sample sizes and volume for the box, and
+  counted from the <strong>explicit random catalogues</strong> for the lightcone. Bins with zero empirical random–random
+  pairs are left as <code>NaN</code> (the estimator is undefined there) and trigger a warning advising more randoms —
+  see the <a href="../estimator_definitions/">Estimator definitions</a>.</li>
+<li><strong>The pair-count datasets therefore differ by geometry.</strong> The box stores one analytic grid per group, named
+  after that group; the lightcone stores a single <code>RR</code> grid plus the density–random and shape–random terms of
+  the Landy–Szalay estimators:</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>group</th>
+<th>box</th>
+<th>lightcone</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>xi_gg</code></td>
+<td><code>[dataset_name]_DD</code>, <code>[dataset_name]_RR_gg</code></td>
+<td><code>[dataset_name]_DD</code>, <code>[dataset_name]_RR</code>, <code>[dataset_name]_RD</code>, <code>[dataset_name]_SR</code></td>
+</tr>
+<tr>
+<td><code>xi_g_plus</code></td>
+<td><code>[dataset_name]_SplusD</code>, <code>[dataset_name]_RR_g_plus</code></td>
+<td><code>[dataset_name]_SplusD</code>, <code>[dataset_name]_SplusR</code></td>
+</tr>
+<tr>
+<td><code>xi_g_cross</code></td>
+<td><code>[dataset_name]_ScrossD</code>, <code>[dataset_name]_RR_g_cross</code></td>
+<td><code>[dataset_name]_ScrossD</code>, <code>[dataset_name]_ScrossR</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="per-galaxy-contributions">Per-galaxy contributions</h2>
+<p><code>measure_galaxy_contributions</code> (box only, see <a href="../galaxy_contributions/">Per-galaxy contributions</a>) writes to a
+separate top-level <code>galaxy_contributions</code> group, under <code>w</code> or <code>multipoles</code> according to its <code>statistic</code>
+argument. With <code>M</code> shape galaxies and <code>K</code> the largest number of jackknife patches any single galaxy has pairs
+in:</p>
+<pre><code>galaxy_contributions
+└── multipoles                                          'w' when statistic=&quot;w&quot;
+    ├── [dataset_name]_Y                            (M, num_bins_r)   per-galaxy contribution; sums over
+    │                                                 galaxies to the ordinary estimator
+    ├── [dataset_name]_P                            (M, num_bins_r)   pairs each galaxy contributed through
+    ├── [dataset_name]_r                            (num_bins_r,)     r (or r_p) mean bin values
+    └── [dataset_name]_jk[num_jk]                   only when num_jk &gt; 0
+        ├── Y_jk_values                         (M, K, num_bins_r)  Y decomposed by the position partner's
+        │                                             patch, stored raw (no 2R, no RR amplitude)
+        ├── P_jk_values                         (M, K, num_bins_r)  the same decomposition of P
+        ├── jk_patches                          (M, K)              which patch each stored column is
+        ├── jk_shape                            (M,)                the patch of each shape galaxy
+        ├── R_jk                                (num_jk,)           delete-one responsivities
+        ├── rr_ratio                            (num_jk,)           RR_jk / RR amplitude ratios
+        └── attribute 'R'                       full-sample responsivity
+</code></pre>
+<p>The jackknife arrays are sparse along the patch axis: only the patches a galaxy actually has pairs in are
+stored, which is what <code>jk_patches</code> records. Use <code>delete_one_estimator</code> / <code>jk_columns</code> to read them rather
+than indexing the patch axis directly.</p>
+<h2 id="reading-the-output-file">Reading the output file</h2>
+<p>The output file is a plain HDF5 file, so it can be read with <code>h5py</code> using the paths above. The package also
+ships a <a href="../api/ReadData/"><code>ReadData</code></a> class that knows this structure and takes care of the optional
+<code>Snapshot_[snapshot]</code> group for you:</p>
+<pre><code class="language-python">from measureia import ReadData
+
+reader = ReadData(
+    simulation=None,            # simulation tag used at measurement time (None if the boxsize was given directly)
+    catalogue=&quot;example_IA_box&quot;,  # output file name *without* the .hdf5 extension
+    snapshot=None,              # snapshot label; 99 would select the &quot;Snapshot_99&quot; group
+    data_path=&quot;./&quot;,             # folder holding &lt;catalogue&gt;.hdf5
+)
+</code></pre>
+<p>The file that is read is <code>data_path + catalogue + ".hdf5"</code>, and every dataset path is taken relative to
+<code>Snapshot_[snapshot]/</code> when a <code>snapshot</code> is given (and relative to the file root when it is not).</p>
+<h3 id="read_measureia_outputdataset_name-num_jk"><code>read_MeasureIA_output(dataset_name, num_jk)</code></h3>
+<p>The convenience route: it looks for all four correlation functions of one dataset and fills the corresponding
+attributes on the object, leaving whatever is not in the file at <code>None</code>.</p>
+<pre><code class="language-python">reader.read_MeasureIA_output(&quot;mock&quot;, 27)   # dataset_name and num_jk of the run that wrote the file
+
+plt.errorbar(reader.rp, reader.w_gp, yerr=reader.errors_w_gp)
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>attribute</th>
+<th>contents</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>rp</code>, <code>r</code></td>
+<td>mean bin values of the projected (<code>w</code>) and 3D (<code>multipoles</code>) statistics</td>
+</tr>
+<tr>
+<td><code>w_gg</code>, <code>w_gp</code></td>
+<td><code>w_gg</code> and <code>w_g+</code> per <code>r_p</code> bin</td>
+</tr>
+<tr>
+<td><code>multipoles_gg</code>, <code>multipoles_gp</code></td>
+<td>the monopole of <code>xi_gg</code> and the quadrupole of <code>xi_g+</code> per <code>r</code> bin</td>
+</tr>
+<tr>
+<td><code>cov_w_gg</code>, <code>cov_w_gp</code>, <code>cov_multipoles_gg</code>, <code>cov_multipoles_gp</code></td>
+<td>jackknife covariance matrices</td>
+</tr>
+<tr>
+<td><code>errors_w_gg</code>, <code>errors_w_gp</code>, <code>errors_multipoles_gg</code>, <code>errors_multipoles_gp</code></td>
+<td>sqrt of the diagonal of those covariances, i.e. the error bars</td>
+</tr>
+</tbody>
+</table>
+<p>Notes:</p>
+<ul>
+<li><code>num_jk</code> must match the number of jackknife regions of the run that wrote the file, since it is part of the
+  dataset names. Pass <code>num_jk=None</code> to read only the measurements and skip the covariance.</li>
+<li>Statistics that were never measured (e.g. the multipoles, if only <code>measure_xi_w</code> was called) stay <code>None</code>,
+  and so do the covariance attributes when the run used <code>num_jk=0</code>. All attributes are reset at the start of
+  every call, so the same object can be reused for several datasets.</li>
+<li>The method reads the final correlation functions only. The pair-count grids under <code>w</code>/<code>multipoles</code> and the
+  individual jackknife realisations are not touched; use <code>read_cat</code> for those.</li>
+</ul>
+<h3 id="read_catdataset_name-cutnone-indicesnone"><code>read_cat(dataset_name, cut=None, indices=None)</code></h3>
+<p>The direct route: it returns one dataset as an array, by name. The group it sits in is given with <code>sub_group</code>
+at initialisation, which lets you reach anything in the file, including the terms of the estimators and the
+individual jackknife realisations:</p>
+<pre><code class="language-python">reader = ReadData(None, &quot;example_IA_box&quot;, None, sub_group=&quot;w_g_plus/&quot;, data_path=&quot;./&quot;)
+wgp = reader.read_cat(&quot;mock&quot;)                      # w_g+ values
+rp = reader.read_cat(&quot;mock_rp&quot;)                    # r_p bin values
+wgp_error = reader.read_cat(&quot;mock_jackknife_27&quot;)   # error bars
+
+grids = ReadData(None, &quot;example_IA_box&quot;, None, sub_group=&quot;w/xi_g_plus/&quot;, data_path=&quot;./&quot;)
+splusd = grids.read_cat(&quot;mock_SplusD&quot;)             # S+D pair counts on the (r_p, pi) grid
+realisation_0 = grids.read_cat(&quot;mock_jk27/mock_0&quot;)  # first jackknife realisation
+</code></pre>
+<p>Pass <code>cut=[start, stop]</code> to read a slice, or <code>indices</code> to read a selection of elements, instead of the whole
+dataset.</p>
+<h3 id="read_modelling_outputscatalogue"><code>read_modelling_outputs(catalogue)</code></h3>
+<p>A helper for the results of a subsequent modelling step: it reads <code>A_IA</code>/<code>b_g</code> amplitudes and their errors
+that were stored as HDF5 attributes on the <code>w</code> and/or <code>multipoles</code> groups of <code>catalogue</code>, into
+<code>w_A_IA</code>, <code>w_A_IA_err</code>, <code>w_b_g</code>, <code>w_b_g_err</code> and their <code>multipoles_</code> counterparts. These attributes are not
+written by the measurement code itself.</p>
+<p>A worked example of both reading routes is in <code>examples/example_read_and_plot.py</code> and in the example
+notebooks — see <a href="../usage/">Usage</a>.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../usage/" class="btn btn-neutral float-left" title="Usage"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../galaxy_contributions/" class="btn btn-neutral float-right" title="Per-galaxy contributions">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../usage/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../galaxy_contributions/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

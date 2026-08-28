@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="author" content="Marloes van Heukelum" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Validation - MeasureIA Documentation</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../assets/_mkdocstrings.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Validation";
+        var mkdocs_page_input_path = "validation.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> MeasureIA Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../getting_started/">Getting started</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../installation/">Installation</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../input/">Input</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../usage/">Usage</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../output_structure/">Output</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../galaxy_contributions/">Per-galaxy contributions</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../simulations/">Included simulations</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Concepts</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../conventions/">Conventions</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../estimator_definitions/">Estimator definitions</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Examples</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../examples/example_MeasureIA_box/">Simulation box</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../examples/example_MeasureIA_lightcone/">Lightcone</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Validation & performance</span></p>
+              <ul class="current">
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Validation</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#approach">Approach</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#what-has-been-validated">What has been validated</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#running-the-validations-yourself">Running the validations yourself</a>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../performance/">Performance</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">API Reference</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/measureIABox/">MeasureIABox</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/measureIALightcone/">MeasureIALightcone</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/MeasureIABase/">MeasureIABase</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/MeasureJackknife/">MeasureJackknife</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Box backends</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWBox/">MeasureWBox</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMBox/">MeasureMultipolesBox</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWBoxJackknife/">MeasureWBoxJackknife</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMBoxJackknife/">MeasureMBoxJackknife</a>
+                </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Lightcone backends</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWLightcone/">MeasureWLightcone</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMLightcone/">MeasureMultipolesLightcone</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWLightconeJackknife/">MeasureWLightconeJackknife</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMLightconeJackknife/">MeasureMultipolesLightconeJackknife</a>
+                </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/pair_kernel/">pair_kernel</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/SimInfo/">SimInfo</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/ReadData/">ReadData</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/mocks/">mocks</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">MeasureIA Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Validation & performance</li>
+      <li class="breadcrumb-item active">Validation</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="validation">Validation</h1>
+<p>Beyond the internal unit and analytic tests, MeasureIA's estimators are cross-validated against several
+<strong>independent, publicly available</strong> correlation-function codes. This gives an end-to-end check that the full
+pipelines — pair counting, estimators, multipole integration and jackknife covariance — agree with established
+implementations, for both the box and the lightcone.</p>
+<h2 id="approach">Approach</h2>
+<ul>
+<li><strong>Mock catalogues</strong> (<code>measureia.mocks</code>): all comparisons run on a seeded synthetic catalogue
+  with a strong, known radial-alignment signal, so ratios are meaningful in every bin. Both codes read
+  byte-identical inputs.</li>
+<li><strong>Runnable scripts</strong> (<code>validation/run_*.py</code>): one per comparison. Each always computes the MeasureIA side; if
+  the external package is installed it also computes the external side and writes it to
+  <code>validation/reference_outputs/</code>, otherwise it compares against the committed reference file.</li>
+<li><strong>Enforced in CI</strong> (<code>tests/test_validation_references.py</code>): the committed reference outputs are compared against
+  MeasureIA at fixed tolerances, so the cross-package agreement is checked on every test run without needing the
+  external packages installed.</li>
+</ul>
+<h2 id="what-has-been-validated">What has been validated</h2>
+<table>
+<thead>
+<tr>
+<th>Comparison</th>
+<th>External code</th>
+<th>Quantities</th>
+<th>Agreement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Box <span class="arithmatex">\(w_{gg}\)</span>, <span class="arithmatex">\(w_{g+}\)</span></td>
+<td>halotools</td>
+<td>projected <span class="arithmatex">\(w\)</span></td>
+<td>machine precision (<span class="arithmatex">\(2\times10^{-13}\)</span> / <span class="arithmatex">\(4\times10^{-15}\)</span>)¹</td>
+</tr>
+<tr>
+<td>Box multipoles</td>
+<td>corr_pc</td>
+<td><span class="arithmatex">\(\xi(r,\mu)\)</span> grid + <span class="arithmatex">\(\tilde\xi_{gg,0}\)</span>, <span class="arithmatex">\(\tilde\xi_{g+,2}\)</span></td>
+<td><span class="arithmatex">\(\le5\times10^{-6}\)</span> grid, <span class="arithmatex">\(\sim10^{-6}\)</span> multipoles¹</td>
+</tr>
+<tr>
+<td>Lightcone <span class="arithmatex">\(w\)</span></td>
+<td>treecorr</td>
+<td><span class="arithmatex">\(w_{gg}\)</span>, <span class="arithmatex">\(w_{g+}\)</span></td>
+<td><span class="arithmatex">\(\sim10^{-5}\)</span> (<span class="arithmatex">\(g+\)</span>), <span class="arithmatex">\(\le0.4\%\)</span> (<span class="arithmatex">\(gg\)</span>)</td>
+</tr>
+<tr>
+<td>Lightcone <span class="arithmatex">\(w\)</span></td>
+<td>corr_pc</td>
+<td><span class="arithmatex">\(w_{gg}\)</span>, <span class="arithmatex">\(w_{g+}\)</span></td>
+<td><span class="arithmatex">\(\le0.15\%\)</span> (<span class="arithmatex">\(g+\)</span>), <span class="arithmatex">\(\le0.4\%\)</span> (<span class="arithmatex">\(gg\)</span>)</td>
+</tr>
+<tr>
+<td>Lightcone multipoles</td>
+<td>corr_pc</td>
+<td><span class="arithmatex">\(\tilde\xi_{gg,0}\)</span>, <span class="arithmatex">\(\tilde\xi_{g+,2}\)</span></td>
+<td><span class="arithmatex">\(\le0.2\%\)</span> / <span class="arithmatex">\(\le0.3\%\)</span></td>
+</tr>
+<tr>
+<td>Box ↔ lightcone (plane-parallel)</td>
+<td>— (self-consistency)</td>
+<td>pair counts, <span class="arithmatex">\(w\)</span></td>
+<td>DD <span class="arithmatex">\(&lt;1\%\)</span>; residuals fully attributed²</td>
+</tr>
+<tr>
+<td>Box jackknife (delete-one identity)</td>
+<td>— (self-consistency)</td>
+<td>realisations, cov</td>
+<td>machine precision (<span class="arithmatex">\(\le10^{-12}\)</span>)</td>
+</tr>
+<tr>
+<td>Box jackknife covariance</td>
+<td>corr_pc</td>
+<td><span class="arithmatex">\(w\)</span> + multipole cov</td>
+<td>realisations <span class="arithmatex">\(\le5\times10^{-5}\)</span>, std <span class="arithmatex">\(\le5\times10^{-7}\)</span></td>
+</tr>
+<tr>
+<td>Lightcone jackknife covariance</td>
+<td>treecorr</td>
+<td><span class="arithmatex">\(w\)</span> cov</td>
+<td>std <span class="arithmatex">\(\le5\times10^{-5}\)</span> (<span class="arithmatex">\(g+\)</span>), <span class="arithmatex">\(\le0.6\%\)</span> (<span class="arithmatex">\(gg\)</span>)</td>
+</tr>
+<tr>
+<td>Lightcone jackknife covariance</td>
+<td>corr_pc</td>
+<td><span class="arithmatex">\(w\)</span> + multipole cov</td>
+<td>realisations <span class="arithmatex">\(\le3\times10^{-4}\)</span></td>
+</tr>
+</tbody>
+</table>
+<p>¹ Agreement is exact up to floating point / the external code's output precision, once the responsivity
+<span class="arithmatex">\(2\mathcal{R}\)</span> factor is accounted for (MeasureIA divides <span class="arithmatex">\(S_+\)</span> terms by <span class="arithmatex">\(2\mathcal{R}\)</span>; halotools and corr_pc do
+not — see <a href="../conventions/">Conventions</a>).
+² The plane-parallel box↔lightcone difference is understood: analytic randoms (periodic box) versus empirical
+randoms (bounded window), plus the box/lightcone estimator and responsivity differences.</p>
+<p>The lightcone comparisons also confirm the <strong><code>e1</code>/<code>e2</code> shear convention</strong> and chirality documented on the
+<a href="../conventions/">Conventions</a> page (treecorr needs only the standard IA flip <span class="arithmatex">\(g \to -g\)</span>).</p>
+<h2 id="running-the-validations-yourself">Running the validations yourself</h2>
+<p>The comparison scripts live in <code>validation/</code> in the repository rather than in the installed package, so start
+from a clone (see <a href="../installation/#installing-an-unreleased-version">Installation</a>) and install the
+pip-available external packages with it:</p>
+<pre><code class="language-bash">git clone https://github.com/MarloesvL/measure_IA.git
+cd measure_IA
+uv sync --extra validation            # or: pip install -e &quot;.[validation]&quot;  -- halotools + treecorr
+</code></pre>
+<p>Then run the enforced cross-package checks (these use the committed reference outputs):</p>
+<pre><code class="language-bash">uv run pytest tests/test_validation_references.py
+</code></pre>
+<p>Or run an individual comparison script, which will use the external package if it is installed and otherwise
+compare against the committed reference:</p>
+<pre><code class="language-bash">uv run python validation/run_box_halotools.py
+uv run python validation/run_lightcone_treecorr.py
+</code></pre>
+<p>The <strong>corr_pc</strong> comparisons (<a href="https://ui.adsabs.harvard.edu/abs/2021MNRAS.508.1632S/abstract">Singh 2021</a>,
+<a href="https://github.com/sukhdeep2/corr_pc">corr_pc on GitHub</a>) require building the C++ code separately. The full
+build recipe (including a no-MPI stub and two small patches) and the detailed per-comparison convention notes are
+in <a href="https://github.com/MarloesvL/measure_IA/blob/main/validation/README.md"><code>validation/README.md</code></a> in the
+repository.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../examples/example_MeasureIA_lightcone/" class="btn btn-neutral float-left" title="Lightcone"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../performance/" class="btn btn-neutral float-right" title="Performance">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../examples/example_MeasureIA_lightcone/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../performance/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

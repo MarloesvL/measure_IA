@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="author" content="Marloes van Heukelum" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>mocks - MeasureIA Documentation</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../../assets/_mkdocstrings.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "mocks";
+        var mkdocs_page_input_path = "api/mocks.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> MeasureIA Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../getting_started/">Getting started</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../installation/">Installation</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../input/">Input</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../usage/">Usage</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../output_structure/">Output</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../galaxy_contributions/">Per-galaxy contributions</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../simulations/">Included simulations</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Concepts</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../conventions/">Conventions</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../estimator_definitions/">Estimator definitions</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Examples</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../examples/example_MeasureIA_box/">Simulation box</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../examples/example_MeasureIA_lightcone/">Lightcone</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Validation & performance</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../validation/">Validation</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../performance/">Performance</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">API Reference</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../measureIABox/">MeasureIABox</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../measureIALightcone/">MeasureIALightcone</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../MeasureIABase/">MeasureIABase</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../MeasureJackknife/">MeasureJackknife</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Box backends</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../MeasureWBox/">MeasureWBox</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../MeasureMBox/">MeasureMultipolesBox</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../MeasureWBoxJackknife/">MeasureWBoxJackknife</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../MeasureMBoxJackknife/">MeasureMBoxJackknife</a>
+                </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Lightcone backends</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../MeasureWLightcone/">MeasureWLightcone</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../MeasureMLightcone/">MeasureMultipolesLightcone</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../MeasureWLightconeJackknife/">MeasureWLightconeJackknife</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../MeasureMLightconeJackknife/">MeasureMultipolesLightconeJackknife</a>
+                </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../pair_kernel/">pair_kernel</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../SimInfo/">SimInfo</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../ReadData/">ReadData</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">mocks</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#measureia.mocks">mocks</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#measureia.mocks.radial_alignment_box_mock">radial_alignment_box_mock</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#measureia.mocks.halotools_inputs">halotools_inputs</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#measureia.mocks.responsivity">responsivity</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#measureia.mocks.radial_alignment_lightcone_mock">radial_alignment_lightcone_mock</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#measureia.mocks.embed_box_mock_on_lightcone">embed_box_mock_on_lightcone</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#measureia.mocks.subbox_labels">subbox_labels</a>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">MeasureIA Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">API Reference</li>
+      <li class="breadcrumb-item active">mocks</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="mocks">mocks</h1>
+<p>Seeded synthetic catalogues with a known, non-null intrinsic alignment signal. They need no
+simulation or survey data, which makes them the quickest way to try MeasureIA out, and they are
+what the <a href="../../validation/">validation</a> comparisons and the <code>examples/</code> scripts run on.</p>
+<pre><code class="language-python">from measureia import MeasureIABox
+from measureia.mocks import radial_alignment_box_mock
+
+mock = radial_alignment_box_mock(n_centrals=600, n_sat=8)
+data = {k: mock[k] for k in (&quot;Position&quot;, &quot;Position_shape_sample&quot;, &quot;Axis_Direction&quot;, &quot;q&quot;, &quot;LOS&quot;)}
+ia = MeasureIABox(data, &quot;./out.hdf5&quot;, boxsize=mock[&quot;boxsize&quot;], separation_limits=[0.3, 8.0])
+ia.measure_xi_w(&quot;mock&quot;, &quot;both&quot;, num_jk=27, temp_file_path=&quot;./&quot;)
+</code></pre>
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="measureia.mocks" class="doc doc-heading">
+            <code>measureia.mocks</code>
+
+
+</h2>
+
+    <div class="doc doc-contents first">
+
+        <p>Synthetic mock catalogues with a known, non-null intrinsic alignment signal.</p>
+<p>The radial-alignment mock places centrals uniformly in a periodic box and
+scatters satellites around them with a Gaussian profile. Satellite projected
+major axes point at their own central (plus Gaussian angle noise), giving a
+strong, deterministic w_g+ signal on scales up to a few times the satellite
+profile scale, and the central-satellite clumps give a non-null w_gg.</p>
+<p>All randomness is controlled by a single seed so that every caller sees
+byte-identical catalogues: the validation scripts, the test suite, the examples
+under <code>examples/</code>, and anyone who wants a catalogue to try MeasureIA on
+without having simulation or survey data to hand.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="measureia.mocks.radial_alignment_box_mock" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">radial_alignment_box_mock</span><span class="p">(</span><span class="n">n_centrals</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">n_sat</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">boxsize</span><span class="o">=</span><span class="mf">205.0</span><span class="p">,</span> <span class="n">sigma_sat</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">alignment_scatter</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">q_range</span><span class="o">=</span><span class="p">(</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">),</span> <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span> <span class="n">margin</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Generate a periodic-box mock with radially aligned satellites.</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>n_centrals</code></b>
+                  (<code><span title="int">int</span></code>, default:
+                      <code>300</code>
+)
+              –
+              <div class="doc-md-description">
+                <pre><code>Number of central galaxies (positions uniform in the box).
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>n_sat</code></b>
+                  (<code><span title="int">int</span></code>, default:
+                      <code>8</code>
+)
+              –
+              <div class="doc-md-description">
+                <pre><code>Number of satellites per central.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>boxsize</code></b>
+                  (<code><span title="float">float</span></code>, default:
+                      <code>205.0</code>
+)
+              –
+              <div class="doc-md-description">
+                <pre><code>Periodic box size in Mpc/h.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>sigma_sat</code></b>
+                  (<code><span title="float">float</span></code>, default:
+                      <code>2.0</code>
+)
+              –
+              <div class="doc-md-description">
+                <pre><code>Standard deviation (Mpc/h) of the Gaussian satellite offsets
+around their central.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>alignment_scatter</code></b>
+                  (<code><span title="float">float</span></code>, default:
+                      <code>0.2</code>
+)
+              –
+              <div class="doc-md-description">
+                <pre><code>Standard deviation (radians) of the Gaussian noise angle added to
+the projected radial orientation. 0 gives perfect radial alignment.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>q_range</code></b>
+                  (<code>tuple of float</code>, default:
+                      <code>(0.3, 0.9)</code>
+)
+              –
+              <div class="doc-md-description">
+                <pre><code>Uniform sampling range of the projected axis ratio q = b/a.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>seed</code></b>
+                  (<code><span title="int">int</span></code>, default:
+                      <code>42</code>
+)
+              –
+              <div class="doc-md-description">
+                <pre><code>Seed for the random generator; fixes the full catalogue.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>margin</code></b>
+                  (<code><span title="float">float</span></code>, default:
+                      <code>0.0</code>
+)
+              –
+              <div class="doc-md-description">
+                <pre><code>Keep centrals at least this far (Mpc/h) from every box face, so no
+periodically wrapped pair falls within the measured separation range.
+Needed when the same catalogue must also be measured without
+periodicity (e.g. the plane-parallel lightcone consistency check).
+Default 0 (fill the whole box).
+</code></pre>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code><span title="dict">dict</span></code>
+              –
+              <div class="doc-md-description">
+                <p>Data dictionary in the MeasureIABox input format with the keys
+"Position" (centrals + satellites, the density sample),
+"Position_shape_sample" (satellites), "Axis_Direction" (projected
+2D unit vectors), "q", "LOS" (2, i.e. the z-axis), plus extras
+"boxsize" and "seed" for bookkeeping.</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/measureia/mocks.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">18</span>
+<span class="normal">19</span>
+<span class="normal">20</span>
+<span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span>
+<span class="normal">24</span>
+<span class="normal">25</span>
+<span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span>
+<span class="normal">55</span>
+<span class="normal">56</span>
+<span class="normal">57</span>
+<span class="normal">58</span>
+<span class="normal">59</span>
+<span class="normal">60</span>
+<span class="normal">61</span>
+<span class="normal">62</span>
+<span class="normal">63</span>
+<span class="normal">64</span>
+<span class="normal">65</span>
+<span class="normal">66</span>
+<span class="normal">67</span>
+<span class="normal">68</span>
+<span class="normal">69</span>
+<span class="normal">70</span>
+<span class="normal">71</span>
+<span class="normal">72</span>
+<span class="normal">73</span>
+<span class="normal">74</span>
+<span class="normal">75</span>
+<span class="normal">76</span>
+<span class="normal">77</span>
+<span class="normal">78</span>
+<span class="normal">79</span>
+<span class="normal">80</span>
+<span class="normal">81</span>
+<span class="normal">82</span>
+<span class="normal">83</span>
+<span class="normal">84</span>
+<span class="normal">85</span>
+<span class="normal">86</span>
+<span class="normal">87</span>
+<span class="normal">88</span>
+<span class="normal">89</span>
+<span class="normal">90</span>
+<span class="normal">91</span>
+<span class="normal">92</span>
+<span class="normal">93</span>
+<span class="normal">94</span>
+<span class="normal">95</span>
+<span class="normal">96</span>
+<span class="normal">97</span>
+<span class="normal">98</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">radial_alignment_box_mock</span><span class="p">(</span>
+		<span class="n">n_centrals</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
+		<span class="n">n_sat</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+		<span class="n">boxsize</span><span class="o">=</span><span class="mf">205.0</span><span class="p">,</span>
+		<span class="n">sigma_sat</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span>
+		<span class="n">alignment_scatter</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span>
+		<span class="n">q_range</span><span class="o">=</span><span class="p">(</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">),</span>
+		<span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>
+		<span class="n">margin</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">	</span><span class="sd">"""Generate a periodic-box mock with radially aligned satellites.</span>
+
+<span class="sd">	Parameters</span>
+<span class="sd">	----------</span>
+<span class="sd">	n_centrals : int, optional</span>
+<span class="sd">		Number of central galaxies (positions uniform in the box).</span>
+<span class="sd">	n_sat : int, optional</span>
+<span class="sd">		Number of satellites per central.</span>
+<span class="sd">	boxsize : float, optional</span>
+<span class="sd">		Periodic box size in Mpc/h.</span>
+<span class="sd">	sigma_sat : float, optional</span>
+<span class="sd">		Standard deviation (Mpc/h) of the Gaussian satellite offsets</span>
+<span class="sd">		around their central.</span>
+<span class="sd">	alignment_scatter : float, optional</span>
+<span class="sd">		Standard deviation (radians) of the Gaussian noise angle added to</span>
+<span class="sd">		the projected radial orientation. 0 gives perfect radial alignment.</span>
+<span class="sd">	q_range : tuple of float, optional</span>
+<span class="sd">		Uniform sampling range of the projected axis ratio q = b/a.</span>
+<span class="sd">	seed : int, optional</span>
+<span class="sd">		Seed for the random generator; fixes the full catalogue.</span>
+<span class="sd">	margin : float, optional</span>
+<span class="sd">		Keep centrals at least this far (Mpc/h) from every box face, so no</span>
+<span class="sd">		periodically wrapped pair falls within the measured separation range.</span>
+<span class="sd">		Needed when the same catalogue must also be measured without</span>
+<span class="sd">		periodicity (e.g. the plane-parallel lightcone consistency check).</span>
+<span class="sd">		Default 0 (fill the whole box).</span>
+
+<span class="sd">	Returns</span>
+<span class="sd">	-------</span>
+<span class="sd">	dict</span>
+<span class="sd">		Data dictionary in the MeasureIABox input format with the keys</span>
+<span class="sd">		"Position" (centrals + satellites, the density sample),</span>
+<span class="sd">		"Position_shape_sample" (satellites), "Axis_Direction" (projected</span>
+<span class="sd">		2D unit vectors), "q", "LOS" (2, i.e. the z-axis), plus extras</span>
+<span class="sd">		"boxsize" and "seed" for bookkeeping.</span>
+
+<span class="sd">	"""</span>
+	<span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+	<span class="n">n_sats_total</span> <span class="o">=</span> <span class="n">n_centrals</span> <span class="o">*</span> <span class="n">n_sat</span>
+
+	<span class="n">centrals</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">margin</span><span class="p">,</span> <span class="n">boxsize</span> <span class="o">-</span> <span class="n">margin</span><span class="p">,</span> <span class="p">(</span><span class="n">n_centrals</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+	<span class="n">offsets</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">sigma_sat</span><span class="p">,</span> <span class="p">(</span><span class="n">n_sats_total</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+	<span class="n">satellites</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">centrals</span><span class="p">,</span> <span class="n">n_sat</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">offsets</span><span class="p">)</span> <span class="o">%</span> <span class="n">boxsize</span>
+
+	<span class="c1"># projected (LOS = z) radial direction from central to satellite;</span>
+	<span class="c1"># use the unwrapped offsets so periodic wrapping cannot flip directions</span>
+	<span class="n">radial</span> <span class="o">=</span> <span class="n">offsets</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">2</span><span class="p">]</span>
+	<span class="n">norm</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">radial</span> <span class="o">**</span> <span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+	<span class="n">norm</span><span class="p">[</span><span class="n">norm</span> <span class="o">&lt;</span> <span class="mf">1e-12</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1e-12</span>
+	<span class="n">direction</span> <span class="o">=</span> <span class="n">radial</span> <span class="o">/</span> <span class="n">norm</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span>
+
+	<span class="c1"># add alignment noise by rotating each direction by a Gaussian angle</span>
+	<span class="n">theta</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">alignment_scatter</span><span class="p">,</span> <span class="n">n_sats_total</span><span class="p">)</span>
+	<span class="n">cos_t</span><span class="p">,</span> <span class="n">sin_t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">theta</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">theta</span><span class="p">)</span>
+	<span class="n">direction</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">([</span>
+		<span class="n">cos_t</span> <span class="o">*</span> <span class="n">direction</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">sin_t</span> <span class="o">*</span> <span class="n">direction</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">],</span>
+		<span class="n">sin_t</span> <span class="o">*</span> <span class="n">direction</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">cos_t</span> <span class="o">*</span> <span class="n">direction</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">],</span>
+	<span class="p">])</span>
+
+	<span class="n">q</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">q_range</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">q_range</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">n_sats_total</span><span class="p">)</span>
+	<span class="n">positions</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="n">centrals</span><span class="p">,</span> <span class="n">satellites</span><span class="p">])</span>
+
+	<span class="k">return</span> <span class="p">{</span>
+		<span class="s2">"Position"</span><span class="p">:</span> <span class="n">positions</span><span class="p">,</span>
+		<span class="s2">"Position_shape_sample"</span><span class="p">:</span> <span class="n">satellites</span><span class="p">,</span>
+		<span class="s2">"Axis_Direction"</span><span class="p">:</span> <span class="n">direction</span><span class="p">,</span>
+		<span class="s2">"q"</span><span class="p">:</span> <span class="n">q</span><span class="p">,</span>
+		<span class="s2">"LOS"</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+		<span class="s2">"boxsize"</span><span class="p">:</span> <span class="n">boxsize</span><span class="p">,</span>
+		<span class="s2">"seed"</span><span class="p">:</span> <span class="n">seed</span><span class="p">,</span>
+	<span class="p">}</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="measureia.mocks.halotools_inputs" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">halotools_inputs</span><span class="p">(</span><span class="n">mock</span><span class="p">,</span> <span class="n">ellipticity</span><span class="o">=</span><span class="s1">'distortion'</span><span class="p">)</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Convert a radial-alignment mock to halotools ia_correlations inputs.</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>mock</code></b>
+                  (<code><span title="dict">dict</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>Output of radial_alignment_box_mock.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>ellipticity</code></b>
+                  (<code><span title="str">str</span></code>, default:
+                      <code>&#39;distortion&#39;</code>
+)
+              –
+              <div class="doc-md-description">
+                <pre><code>'distortion' for e = (1-q^2)/(1+q^2) or 'ellipticity' for
+e = (1-q)/(1+q), matching the measureia option.
+</code></pre>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code><span title="tuple">tuple</span></code>
+              –
+              <div class="doc-md-description">
+                <p>(shape_positions, orientations, ellipticities, density_positions,
+period) ready for halotools gi_plus_projected.</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/measureia/mocks.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">halotools_inputs</span><span class="p">(</span><span class="n">mock</span><span class="p">,</span> <span class="n">ellipticity</span><span class="o">=</span><span class="s2">"distortion"</span><span class="p">):</span>
+<span class="w">	</span><span class="sd">"""Convert a radial-alignment mock to halotools ia_correlations inputs.</span>
+
+<span class="sd">	Parameters</span>
+<span class="sd">	----------</span>
+<span class="sd">	mock : dict</span>
+<span class="sd">		Output of radial_alignment_box_mock.</span>
+<span class="sd">	ellipticity : str, optional</span>
+<span class="sd">		'distortion' for e = (1-q^2)/(1+q^2) or 'ellipticity' for</span>
+<span class="sd">		e = (1-q)/(1+q), matching the measureia option.</span>
+
+<span class="sd">	Returns</span>
+<span class="sd">	-------</span>
+<span class="sd">	tuple</span>
+<span class="sd">		(shape_positions, orientations, ellipticities, density_positions,</span>
+<span class="sd">		period) ready for halotools gi_plus_projected.</span>
+
+<span class="sd">	"""</span>
+	<span class="n">q</span> <span class="o">=</span> <span class="n">mock</span><span class="p">[</span><span class="s2">"q"</span><span class="p">]</span>
+	<span class="k">if</span> <span class="n">ellipticity</span> <span class="o">==</span> <span class="s2">"distortion"</span><span class="p">:</span>
+		<span class="n">e</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">q</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">q</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+	<span class="k">elif</span> <span class="n">ellipticity</span> <span class="o">==</span> <span class="s2">"ellipticity"</span><span class="p">:</span>
+		<span class="n">e</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">q</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">q</span><span class="p">)</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Unknown ellipticity definition: </span><span class="si">{</span><span class="n">ellipticity</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+	<span class="k">return</span> <span class="p">(</span>
+		<span class="n">mock</span><span class="p">[</span><span class="s2">"Position_shape_sample"</span><span class="p">],</span>
+		<span class="n">mock</span><span class="p">[</span><span class="s2">"Axis_Direction"</span><span class="p">],</span>
+		<span class="n">e</span><span class="p">,</span>
+		<span class="n">mock</span><span class="p">[</span><span class="s2">"Position"</span><span class="p">],</span>
+		<span class="n">mock</span><span class="p">[</span><span class="s2">"boxsize"</span><span class="p">],</span>
+	<span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="measureia.mocks.responsivity" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">responsivity</span><span class="p">(</span><span class="n">mock</span><span class="p">,</span> <span class="n">ellipticity</span><span class="o">=</span><span class="s1">'distortion'</span><span class="p">)</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Responsivity R = 1 - <e^2>/2 of the mock shape sample.</p>
+<p>measureia divides S+D by 2R; halotools does not, so
+w_g+^measureia * 2R = w_g+^halotools.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/measureia/mocks.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">responsivity</span><span class="p">(</span><span class="n">mock</span><span class="p">,</span> <span class="n">ellipticity</span><span class="o">=</span><span class="s2">"distortion"</span><span class="p">):</span>
+<span class="w">	</span><span class="sd">"""Responsivity R = 1 - &lt;e^2&gt;/2 of the mock shape sample.</span>
+
+<span class="sd">	measureia divides S+D by 2R; halotools does not, so</span>
+<span class="sd">	w_g+^measureia * 2R = w_g+^halotools.</span>
+<span class="sd">	"""</span>
+	<span class="n">q</span> <span class="o">=</span> <span class="n">mock</span><span class="p">[</span><span class="s2">"q"</span><span class="p">]</span>
+	<span class="k">if</span> <span class="n">ellipticity</span> <span class="o">==</span> <span class="s2">"distortion"</span><span class="p">:</span>
+		<span class="n">e</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">q</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">q</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="n">e</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">q</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">q</span><span class="p">)</span>
+	<span class="k">return</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">e</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="measureia.mocks.radial_alignment_lightcone_mock" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">radial_alignment_lightcone_mock</span><span class="p">(</span><span class="n">n_centrals</span><span class="o">=</span><span class="mi">400</span><span class="p">,</span> <span class="n">n_sat</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">ra_range</span><span class="o">=</span><span class="p">(</span><span class="mf">40.0</span><span class="p">,</span> <span class="mf">50.0</span><span class="p">),</span> <span class="n">dec_range</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mf">5.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">),</span> <span class="n">r_range</span><span class="o">=</span><span class="p">(</span><span class="mf">2450.0</span><span class="p">,</span> <span class="mf">2650.0</span><span class="p">),</span> <span class="n">sigma_sat</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">alignment_scatter</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">q_range</span><span class="o">=</span><span class="p">(</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">),</span> <span class="n">n_randoms_factor</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">4242</span><span class="p">)</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Generate a lightcone mock with radially aligned satellites.</p>
+<p>Centrals are uniform in comoving volume inside a cone section
+(RA/DEC window x comoving-distance shell); satellites get Gaussian 3D
+comoving offsets around their central. Satellite ellipticities e1/e2
+follow the standard survey shear-catalogue convention that measureia
+(and TreeCorr) expect, with the major axis pointing at the satellite's
+own central plus Gaussian angle noise — i.e. radial alignment, giving
+e+ &gt; 0 and w_g+ &gt; 0 in the IA sign convention.</p>
+<p>The position (density) sample is the centrals; the shape sample is the
+satellites, so the two samples are disjoint (no self-pair corrections).
+Distances are comoving; the caller converts r &lt;-&gt; redshift with their
+cosmology (see r_com entries).</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code>tuple of dict</code>
+              –
+              <div class="doc-md-description">
+                <p>(data, randoms_data, info): MeasureIALightcone-format data and
+randoms dictionaries (with Redshift left as comoving distance in
+"r_com*" keys for the caller to convert), and an info dict with
+q, the generator parameters and seed.</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/measureia/mocks.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">177</span>
+<span class="normal">178</span>
+<span class="normal">179</span>
+<span class="normal">180</span>
+<span class="normal">181</span>
+<span class="normal">182</span>
+<span class="normal">183</span>
+<span class="normal">184</span>
+<span class="normal">185</span>
+<span class="normal">186</span>
+<span class="normal">187</span>
+<span class="normal">188</span>
+<span class="normal">189</span>
+<span class="normal">190</span>
+<span class="normal">191</span>
+<span class="normal">192</span>
+<span class="normal">193</span>
+<span class="normal">194</span>
+<span class="normal">195</span>
+<span class="normal">196</span>
+<span class="normal">197</span>
+<span class="normal">198</span>
+<span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span>
+<span class="normal">209</span>
+<span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span>
+<span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span>
+<span class="normal">230</span>
+<span class="normal">231</span>
+<span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span>
+<span class="normal">249</span>
+<span class="normal">250</span>
+<span class="normal">251</span>
+<span class="normal">252</span>
+<span class="normal">253</span>
+<span class="normal">254</span>
+<span class="normal">255</span>
+<span class="normal">256</span>
+<span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span>
+<span class="normal">260</span>
+<span class="normal">261</span>
+<span class="normal">262</span>
+<span class="normal">263</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">radial_alignment_lightcone_mock</span><span class="p">(</span>
+		<span class="n">n_centrals</span><span class="o">=</span><span class="mi">400</span><span class="p">,</span>
+		<span class="n">n_sat</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+		<span class="n">ra_range</span><span class="o">=</span><span class="p">(</span><span class="mf">40.0</span><span class="p">,</span> <span class="mf">50.0</span><span class="p">),</span>
+		<span class="n">dec_range</span><span class="o">=</span><span class="p">(</span><span class="o">-</span><span class="mf">5.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">),</span>
+		<span class="n">r_range</span><span class="o">=</span><span class="p">(</span><span class="mf">2450.0</span><span class="p">,</span> <span class="mf">2650.0</span><span class="p">),</span>
+		<span class="n">sigma_sat</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span>
+		<span class="n">alignment_scatter</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span>
+		<span class="n">q_range</span><span class="o">=</span><span class="p">(</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">),</span>
+		<span class="n">n_randoms_factor</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+		<span class="n">seed</span><span class="o">=</span><span class="mi">4242</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">	</span><span class="sd">"""Generate a lightcone mock with radially aligned satellites.</span>
+
+<span class="sd">	Centrals are uniform in comoving volume inside a cone section</span>
+<span class="sd">	(RA/DEC window x comoving-distance shell); satellites get Gaussian 3D</span>
+<span class="sd">	comoving offsets around their central. Satellite ellipticities e1/e2</span>
+<span class="sd">	follow the standard survey shear-catalogue convention that measureia</span>
+<span class="sd">	(and TreeCorr) expect, with the major axis pointing at the satellite's</span>
+<span class="sd">	own central plus Gaussian angle noise — i.e. radial alignment, giving</span>
+<span class="sd">	e+ &gt; 0 and w_g+ &gt; 0 in the IA sign convention.</span>
+
+<span class="sd">	The position (density) sample is the centrals; the shape sample is the</span>
+<span class="sd">	satellites, so the two samples are disjoint (no self-pair corrections).</span>
+<span class="sd">	Distances are comoving; the caller converts r &lt;-&gt; redshift with their</span>
+<span class="sd">	cosmology (see r_com entries).</span>
+
+<span class="sd">	Returns</span>
+<span class="sd">	-------</span>
+<span class="sd">	tuple of dict</span>
+<span class="sd">		(data, randoms_data, info): MeasureIALightcone-format data and</span>
+<span class="sd">		randoms dictionaries (with Redshift left as comoving distance in</span>
+<span class="sd">		"r_com*" keys for the caller to convert), and an info dict with</span>
+<span class="sd">		q, the generator parameters and seed.</span>
+
+<span class="sd">	"""</span>
+	<span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+	<span class="n">n_sats_total</span> <span class="o">=</span> <span class="n">n_centrals</span> <span class="o">*</span> <span class="n">n_sat</span>
+
+	<span class="n">ra_c</span><span class="p">,</span> <span class="n">dec_c</span><span class="p">,</span> <span class="n">r_c</span> <span class="o">=</span> <span class="n">_uniform_cone</span><span class="p">(</span><span class="n">rng</span><span class="p">,</span> <span class="n">n_centrals</span><span class="p">,</span> <span class="n">ra_range</span><span class="p">,</span> <span class="n">dec_range</span><span class="p">,</span> <span class="n">r_range</span><span class="p">)</span>
+	<span class="n">pos_c</span> <span class="o">=</span> <span class="n">_radec_to_cartesian</span><span class="p">(</span><span class="n">ra_c</span><span class="p">,</span> <span class="n">dec_c</span><span class="p">,</span> <span class="n">r_c</span><span class="p">)</span>
+
+	<span class="n">offsets</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">sigma_sat</span><span class="p">,</span> <span class="p">(</span><span class="n">n_sats_total</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+	<span class="n">pos_s</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">pos_c</span><span class="p">,</span> <span class="n">n_sat</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="n">offsets</span>
+	<span class="n">ra_s</span><span class="p">,</span> <span class="n">dec_s</span><span class="p">,</span> <span class="n">r_s</span> <span class="o">=</span> <span class="n">_cartesian_to_radec</span><span class="p">(</span><span class="n">pos_s</span><span class="p">)</span>
+
+	<span class="c1"># local tangent basis at each satellite</span>
+	<span class="n">alpha</span><span class="p">,</span> <span class="n">delta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">ra_s</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">dec_s</span><span class="p">)</span>
+	<span class="n">east</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">([</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">alpha</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">alpha</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_sats_total</span><span class="p">)])</span>
+	<span class="n">north</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">([</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">delta</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">alpha</span><span class="p">),</span>
+							 <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">delta</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">alpha</span><span class="p">),</span>
+							 <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">delta</span><span class="p">)])</span>
+	<span class="n">n_hat</span> <span class="o">=</span> <span class="n">pos_s</span> <span class="o">/</span> <span class="n">r_s</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span>
+
+	<span class="c1"># projected direction from satellite to central in the tangent plane</span>
+	<span class="n">d</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">pos_c</span><span class="p">,</span> <span class="n">n_sat</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">-</span> <span class="n">pos_s</span>
+	<span class="n">d_perp</span> <span class="o">=</span> <span class="n">d</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">d</span> <span class="o">*</span> <span class="n">n_hat</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">*</span> <span class="n">n_hat</span>
+	<span class="n">phi_axis</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">d_perp</span> <span class="o">*</span> <span class="n">north</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+						  <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">d_perp</span> <span class="o">*</span> <span class="n">east</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+	<span class="n">phi_axis</span> <span class="o">+=</span> <span class="n">rng</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">alignment_scatter</span><span class="p">,</span> <span class="n">n_sats_total</span><span class="p">)</span>
+
+	<span class="n">q</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="n">q_range</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">q_range</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">n_sats_total</span><span class="p">)</span>
+	<span class="n">e</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">q</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">q</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+	<span class="c1"># survey-convention components: the internal (east, north) frame angle</span>
+	<span class="c1"># phi_axis maps to the survey frame as -phi_axis (opposite handedness)</span>
+	<span class="n">e1</span> <span class="o">=</span> <span class="n">e</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">phi_axis</span><span class="p">)</span>
+	<span class="n">e2</span> <span class="o">=</span> <span class="o">-</span><span class="n">e</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">phi_axis</span><span class="p">)</span>
+
+	<span class="n">n_rand_d</span> <span class="o">=</span> <span class="n">n_randoms_factor</span> <span class="o">*</span> <span class="n">n_centrals</span>
+	<span class="n">n_rand_s</span> <span class="o">=</span> <span class="n">n_randoms_factor</span> <span class="o">*</span> <span class="n">n_sats_total</span>
+	<span class="n">ra_rd</span><span class="p">,</span> <span class="n">dec_rd</span><span class="p">,</span> <span class="n">r_rd</span> <span class="o">=</span> <span class="n">_uniform_cone</span><span class="p">(</span><span class="n">rng</span><span class="p">,</span> <span class="n">n_rand_d</span><span class="p">,</span> <span class="n">ra_range</span><span class="p">,</span> <span class="n">dec_range</span><span class="p">,</span> <span class="n">r_range</span><span class="p">)</span>
+	<span class="n">ra_rs</span><span class="p">,</span> <span class="n">dec_rs</span><span class="p">,</span> <span class="n">r_rs</span> <span class="o">=</span> <span class="n">_uniform_cone</span><span class="p">(</span><span class="n">rng</span><span class="p">,</span> <span class="n">n_rand_s</span><span class="p">,</span> <span class="n">ra_range</span><span class="p">,</span> <span class="n">dec_range</span><span class="p">,</span> <span class="n">r_range</span><span class="p">)</span>
+
+	<span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
+		<span class="s2">"RA"</span><span class="p">:</span> <span class="n">ra_c</span><span class="p">,</span> <span class="s2">"DEC"</span><span class="p">:</span> <span class="n">dec_c</span><span class="p">,</span> <span class="s2">"r_com"</span><span class="p">:</span> <span class="n">r_c</span><span class="p">,</span>
+		<span class="s2">"RA_shape_sample"</span><span class="p">:</span> <span class="n">ra_s</span><span class="p">,</span> <span class="s2">"DEC_shape_sample"</span><span class="p">:</span> <span class="n">dec_s</span><span class="p">,</span> <span class="s2">"r_com_shape_sample"</span><span class="p">:</span> <span class="n">r_s</span><span class="p">,</span>
+		<span class="s2">"e1"</span><span class="p">:</span> <span class="n">e1</span><span class="p">,</span> <span class="s2">"e2"</span><span class="p">:</span> <span class="n">e2</span><span class="p">,</span>
+		<span class="s2">"weight"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n_centrals</span><span class="p">),</span> <span class="s2">"weight_shape_sample"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n_sats_total</span><span class="p">),</span>
+	<span class="p">}</span>
+	<span class="n">randoms_data</span> <span class="o">=</span> <span class="p">{</span>
+		<span class="s2">"RA"</span><span class="p">:</span> <span class="n">ra_rd</span><span class="p">,</span> <span class="s2">"DEC"</span><span class="p">:</span> <span class="n">dec_rd</span><span class="p">,</span> <span class="s2">"r_com"</span><span class="p">:</span> <span class="n">r_rd</span><span class="p">,</span>
+		<span class="s2">"RA_shape_sample"</span><span class="p">:</span> <span class="n">ra_rs</span><span class="p">,</span> <span class="s2">"DEC_shape_sample"</span><span class="p">:</span> <span class="n">dec_rs</span><span class="p">,</span> <span class="s2">"r_com_shape_sample"</span><span class="p">:</span> <span class="n">r_rs</span><span class="p">,</span>
+		<span class="s2">"weight"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n_rand_d</span><span class="p">),</span> <span class="s2">"weight_shape_sample"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n_rand_s</span><span class="p">),</span>
+	<span class="p">}</span>
+	<span class="n">info</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"q"</span><span class="p">:</span> <span class="n">q</span><span class="p">,</span> <span class="s2">"seed"</span><span class="p">:</span> <span class="n">seed</span><span class="p">,</span> <span class="s2">"sigma_sat"</span><span class="p">:</span> <span class="n">sigma_sat</span><span class="p">,</span>
+			<span class="s2">"alignment_scatter"</span><span class="p">:</span> <span class="n">alignment_scatter</span><span class="p">}</span>
+	<span class="k">return</span> <span class="n">data</span><span class="p">,</span> <span class="n">randoms_data</span><span class="p">,</span> <span class="n">info</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="measureia.mocks.embed_box_mock_on_lightcone" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">embed_box_mock_on_lightcone</span><span class="p">(</span><span class="n">mock</span><span class="p">,</span> <span class="n">distance</span><span class="o">=</span><span class="mf">3000.0</span><span class="p">,</span> <span class="n">alpha0</span><span class="o">=</span><span class="mf">45.0</span><span class="p">,</span> <span class="n">delta0</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">n_randoms_factor</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">777</span><span class="p">)</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Embed a box mock at a large comoving distance on a lightcone.</p>
+<p>The box is placed with its centre at comoving distance <code>distance</code> in the
+direction (alpha0, delta0), with the box axes mapped as
+x -&gt; east, y -&gt; north, z -&gt; line of sight (matching the box LOS = 2
+convention). Projected axis directions are converted to survey-convention
+e1/e2 exactly, using each galaxy's own local (east, north) tangent frame,
+so the only differences between MeasureIABox on <code>mock</code> and
+MeasureIALightcone on the embedding are the plane-parallel approximation
+itself and the randoms-based (rather than analytic) estimator.</p>
+<p>Randoms are drawn uniformly in the FULL box cube and embedded the same
+way, mirroring the analytic-RR assumption of the box estimator. Use a
+mock generated with a margin &gt;= the maximum measured separation so that
+no periodically wrapped pair contributes to the box measurement.</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Returns:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code>tuple of dict</code>
+              –
+              <div class="doc-md-description">
+                <p>(data, randoms_data) in MeasureIALightcone format, with comoving
+distances in "r_com*" keys for the caller to convert to redshift.</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/measureia/mocks.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">266</span>
+<span class="normal">267</span>
+<span class="normal">268</span>
+<span class="normal">269</span>
+<span class="normal">270</span>
+<span class="normal">271</span>
+<span class="normal">272</span>
+<span class="normal">273</span>
+<span class="normal">274</span>
+<span class="normal">275</span>
+<span class="normal">276</span>
+<span class="normal">277</span>
+<span class="normal">278</span>
+<span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span>
+<span class="normal">283</span>
+<span class="normal">284</span>
+<span class="normal">285</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span>
+<span class="normal">297</span>
+<span class="normal">298</span>
+<span class="normal">299</span>
+<span class="normal">300</span>
+<span class="normal">301</span>
+<span class="normal">302</span>
+<span class="normal">303</span>
+<span class="normal">304</span>
+<span class="normal">305</span>
+<span class="normal">306</span>
+<span class="normal">307</span>
+<span class="normal">308</span>
+<span class="normal">309</span>
+<span class="normal">310</span>
+<span class="normal">311</span>
+<span class="normal">312</span>
+<span class="normal">313</span>
+<span class="normal">314</span>
+<span class="normal">315</span>
+<span class="normal">316</span>
+<span class="normal">317</span>
+<span class="normal">318</span>
+<span class="normal">319</span>
+<span class="normal">320</span>
+<span class="normal">321</span>
+<span class="normal">322</span>
+<span class="normal">323</span>
+<span class="normal">324</span>
+<span class="normal">325</span>
+<span class="normal">326</span>
+<span class="normal">327</span>
+<span class="normal">328</span>
+<span class="normal">329</span>
+<span class="normal">330</span>
+<span class="normal">331</span>
+<span class="normal">332</span>
+<span class="normal">333</span>
+<span class="normal">334</span>
+<span class="normal">335</span>
+<span class="normal">336</span>
+<span class="normal">337</span>
+<span class="normal">338</span>
+<span class="normal">339</span>
+<span class="normal">340</span>
+<span class="normal">341</span>
+<span class="normal">342</span>
+<span class="normal">343</span>
+<span class="normal">344</span>
+<span class="normal">345</span>
+<span class="normal">346</span>
+<span class="normal">347</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">embed_box_mock_on_lightcone</span><span class="p">(</span><span class="n">mock</span><span class="p">,</span> <span class="n">distance</span><span class="o">=</span><span class="mf">3000.0</span><span class="p">,</span> <span class="n">alpha0</span><span class="o">=</span><span class="mf">45.0</span><span class="p">,</span> <span class="n">delta0</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+								<span class="n">n_randoms_factor</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">777</span><span class="p">):</span>
+<span class="w">	</span><span class="sd">"""Embed a box mock at a large comoving distance on a lightcone.</span>
+
+<span class="sd">	The box is placed with its centre at comoving distance `distance` in the</span>
+<span class="sd">	direction (alpha0, delta0), with the box axes mapped as</span>
+<span class="sd">	x -&gt; east, y -&gt; north, z -&gt; line of sight (matching the box LOS = 2</span>
+<span class="sd">	convention). Projected axis directions are converted to survey-convention</span>
+<span class="sd">	e1/e2 exactly, using each galaxy's own local (east, north) tangent frame,</span>
+<span class="sd">	so the only differences between MeasureIABox on `mock` and</span>
+<span class="sd">	MeasureIALightcone on the embedding are the plane-parallel approximation</span>
+<span class="sd">	itself and the randoms-based (rather than analytic) estimator.</span>
+
+<span class="sd">	Randoms are drawn uniformly in the FULL box cube and embedded the same</span>
+<span class="sd">	way, mirroring the analytic-RR assumption of the box estimator. Use a</span>
+<span class="sd">	mock generated with a margin &gt;= the maximum measured separation so that</span>
+<span class="sd">	no periodically wrapped pair contributes to the box measurement.</span>
+
+<span class="sd">	Returns</span>
+<span class="sd">	-------</span>
+<span class="sd">	tuple of dict</span>
+<span class="sd">		(data, randoms_data) in MeasureIALightcone format, with comoving</span>
+<span class="sd">		distances in "r_com*" keys for the caller to convert to redshift.</span>
+
+<span class="sd">	"""</span>
+	<span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+	<span class="n">L</span> <span class="o">=</span> <span class="n">mock</span><span class="p">[</span><span class="s2">"boxsize"</span><span class="p">]</span>
+
+	<span class="n">a0</span><span class="p">,</span> <span class="n">d0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">alpha0</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">delta0</span><span class="p">)</span>
+	<span class="n">n0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">d0</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">a0</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">d0</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">a0</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">d0</span><span class="p">)])</span>
+	<span class="n">east0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">a0</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">a0</span><span class="p">),</span> <span class="mf">0.0</span><span class="p">])</span>
+	<span class="n">north0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">d0</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">a0</span><span class="p">),</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">d0</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">a0</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">d0</span><span class="p">)])</span>
+
+	<span class="k">def</span><span class="w"> </span><span class="nf">embed</span><span class="p">(</span><span class="n">pos</span><span class="p">):</span>
+		<span class="n">rel</span> <span class="o">=</span> <span class="n">pos</span> <span class="o">-</span> <span class="n">L</span> <span class="o">/</span> <span class="mf">2.0</span>
+		<span class="k">return</span> <span class="p">(</span><span class="n">rel</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">east0</span> <span class="o">+</span> <span class="n">rel</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">north0</span>
+				<span class="o">+</span> <span class="p">(</span><span class="n">distance</span> <span class="o">+</span> <span class="n">rel</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">])[:,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">n0</span><span class="p">)</span>
+
+	<span class="n">pos_d</span> <span class="o">=</span> <span class="n">embed</span><span class="p">(</span><span class="n">mock</span><span class="p">[</span><span class="s2">"Position"</span><span class="p">])</span>
+	<span class="n">pos_s</span> <span class="o">=</span> <span class="n">embed</span><span class="p">(</span><span class="n">mock</span><span class="p">[</span><span class="s2">"Position_shape_sample"</span><span class="p">])</span>
+	<span class="n">ra_d</span><span class="p">,</span> <span class="n">dec_d</span><span class="p">,</span> <span class="n">r_d</span> <span class="o">=</span> <span class="n">_cartesian_to_radec</span><span class="p">(</span><span class="n">pos_d</span><span class="p">)</span>
+	<span class="n">ra_s</span><span class="p">,</span> <span class="n">dec_s</span><span class="p">,</span> <span class="n">r_s</span> <span class="o">=</span> <span class="n">_cartesian_to_radec</span><span class="p">(</span><span class="n">pos_s</span><span class="p">)</span>
+
+	<span class="c1"># exact per-galaxy conversion of the projected axis to survey e1/e2</span>
+	<span class="n">axis3d</span> <span class="o">=</span> <span class="p">(</span><span class="n">mock</span><span class="p">[</span><span class="s2">"Axis_Direction"</span><span class="p">][:,</span> <span class="mi">0</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">east0</span>
+			  <span class="o">+</span> <span class="n">mock</span><span class="p">[</span><span class="s2">"Axis_Direction"</span><span class="p">][:,</span> <span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">north0</span><span class="p">)</span>
+	<span class="n">alpha</span><span class="p">,</span> <span class="n">delta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">ra_s</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">radians</span><span class="p">(</span><span class="n">dec_s</span><span class="p">)</span>
+	<span class="n">east</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">([</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">alpha</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">alpha</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ra_s</span><span class="p">))])</span>
+	<span class="n">north</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">column_stack</span><span class="p">([</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">delta</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">alpha</span><span class="p">),</span>
+							 <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">delta</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">alpha</span><span class="p">),</span>
+							 <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">delta</span><span class="p">)])</span>
+	<span class="n">n_hat</span> <span class="o">=</span> <span class="n">pos_s</span> <span class="o">/</span> <span class="n">r_s</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">]</span>
+	<span class="n">axis_perp</span> <span class="o">=</span> <span class="n">axis3d</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis3d</span> <span class="o">*</span> <span class="n">n_hat</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">*</span> <span class="n">n_hat</span>
+	<span class="n">phi_axis</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis_perp</span> <span class="o">*</span> <span class="n">north</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+						  <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">axis_perp</span> <span class="o">*</span> <span class="n">east</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+	<span class="n">q</span> <span class="o">=</span> <span class="n">mock</span><span class="p">[</span><span class="s2">"q"</span><span class="p">]</span>
+	<span class="n">e</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">q</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">q</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+	<span class="n">e1</span> <span class="o">=</span> <span class="n">e</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">phi_axis</span><span class="p">)</span>
+	<span class="n">e2</span> <span class="o">=</span> <span class="o">-</span><span class="n">e</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">phi_axis</span><span class="p">)</span>
+
+	<span class="n">n_rand_d</span> <span class="o">=</span> <span class="n">n_randoms_factor</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">ra_d</span><span class="p">)</span>
+	<span class="n">n_rand_s</span> <span class="o">=</span> <span class="n">n_randoms_factor</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">ra_s</span><span class="p">)</span>
+	<span class="n">cube_rd</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="p">(</span><span class="n">n_rand_d</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+	<span class="n">cube_rs</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">L</span><span class="p">,</span> <span class="p">(</span><span class="n">n_rand_s</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+	<span class="n">pos_rd</span> <span class="o">=</span> <span class="n">embed</span><span class="p">(</span><span class="n">cube_rd</span><span class="p">)</span>
+	<span class="n">pos_rs</span> <span class="o">=</span> <span class="n">embed</span><span class="p">(</span><span class="n">cube_rs</span><span class="p">)</span>
+	<span class="n">ra_rd</span><span class="p">,</span> <span class="n">dec_rd</span><span class="p">,</span> <span class="n">r_rd</span> <span class="o">=</span> <span class="n">_cartesian_to_radec</span><span class="p">(</span><span class="n">pos_rd</span><span class="p">)</span>
+	<span class="n">ra_rs</span><span class="p">,</span> <span class="n">dec_rs</span><span class="p">,</span> <span class="n">r_rs</span> <span class="o">=</span> <span class="n">_cartesian_to_radec</span><span class="p">(</span><span class="n">pos_rs</span><span class="p">)</span>
+
+	<span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
+		<span class="s2">"RA"</span><span class="p">:</span> <span class="n">ra_d</span><span class="p">,</span> <span class="s2">"DEC"</span><span class="p">:</span> <span class="n">dec_d</span><span class="p">,</span> <span class="s2">"r_com"</span><span class="p">:</span> <span class="n">r_d</span><span class="p">,</span>
+		<span class="s2">"RA_shape_sample"</span><span class="p">:</span> <span class="n">ra_s</span><span class="p">,</span> <span class="s2">"DEC_shape_sample"</span><span class="p">:</span> <span class="n">dec_s</span><span class="p">,</span> <span class="s2">"r_com_shape_sample"</span><span class="p">:</span> <span class="n">r_s</span><span class="p">,</span>
+		<span class="s2">"e1"</span><span class="p">:</span> <span class="n">e1</span><span class="p">,</span> <span class="s2">"e2"</span><span class="p">:</span> <span class="n">e2</span><span class="p">,</span>
+		<span class="s2">"weight"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ra_d</span><span class="p">)),</span> <span class="s2">"weight_shape_sample"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ra_s</span><span class="p">)),</span>
+	<span class="p">}</span>
+	<span class="n">randoms_data</span> <span class="o">=</span> <span class="p">{</span>
+		<span class="s2">"RA"</span><span class="p">:</span> <span class="n">ra_rd</span><span class="p">,</span> <span class="s2">"DEC"</span><span class="p">:</span> <span class="n">dec_rd</span><span class="p">,</span> <span class="s2">"r_com"</span><span class="p">:</span> <span class="n">r_rd</span><span class="p">,</span>
+		<span class="s2">"RA_shape_sample"</span><span class="p">:</span> <span class="n">ra_rs</span><span class="p">,</span> <span class="s2">"DEC_shape_sample"</span><span class="p">:</span> <span class="n">dec_rs</span><span class="p">,</span> <span class="s2">"r_com_shape_sample"</span><span class="p">:</span> <span class="n">r_rs</span><span class="p">,</span>
+		<span class="s2">"weight"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n_rand_d</span><span class="p">),</span> <span class="s2">"weight_shape_sample"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">n_rand_s</span><span class="p">),</span>
+	<span class="p">}</span>
+	<span class="n">cube_coords</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"randoms_position"</span><span class="p">:</span> <span class="n">cube_rd</span><span class="p">,</span> <span class="s2">"randoms_shape"</span><span class="p">:</span> <span class="n">cube_rs</span><span class="p">}</span>
+	<span class="k">return</span> <span class="n">data</span><span class="p">,</span> <span class="n">randoms_data</span><span class="p">,</span> <span class="n">cube_coords</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="measureia.mocks.subbox_labels" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">subbox_labels</span><span class="p">(</span><span class="n">positions</span><span class="p">,</span> <span class="n">boxsize</span><span class="p">,</span> <span class="n">L</span><span class="p">)</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Subbox index (0..L^3-1) per position — the same partition the box
+jackknife uses, for supplying identical patches to the lightcone.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/measureia/mocks.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">350</span>
+<span class="normal">351</span>
+<span class="normal">352</span>
+<span class="normal">353</span>
+<span class="normal">354</span>
+<span class="normal">355</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">subbox_labels</span><span class="p">(</span><span class="n">positions</span><span class="p">,</span> <span class="n">boxsize</span><span class="p">,</span> <span class="n">L</span><span class="p">):</span>
+<span class="w">	</span><span class="sd">"""Subbox index (0..L^3-1) per position — the same partition the box</span>
+<span class="sd">	jackknife uses, for supplying identical patches to the lightcone."""</span>
+	<span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">positions</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">boxsize</span> <span class="o">/</span> <span class="n">L</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+	<span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">idx</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">L</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+	<span class="k">return</span> <span class="n">idx</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">L</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">idx</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">L</span> <span class="o">+</span> <span class="n">idx</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../ReadData/" class="btn btn-neutral float-left" title="ReadData"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../ReadData/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      <script src="../../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
