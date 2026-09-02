@@ -282,6 +282,181 @@ class TestAnalyticLimitsBox:
 
 
 # ===========================================================================
+# 1b. Axis-direction sign convention (box)
+# ===========================================================================
+
+class TestAxisDirectionSignConvention:
+    """
+    The semi-major axis direction has a physically meaningless sign: ``a`` and
+    ``-a`` describe the same shape. Every measured quantity must therefore be
+    invariant under flipping it, per galaxy, arbitrarily.
+
+    This was **not** true before the sign-invariant projection landed. The angle
+    was recovered with ``arccos``, which folds phi into [0, pi] and so maps the
+    flip to ``phi -> pi - phi``. ``cos 2phi`` survives that, but ``sin 2phi``
+    changes sign, so ``e_x`` — and hence ``xi_g_cross`` — depended on whichever
+    sign convention the user's shape code happened to emit. Real shape pipelines
+    canonicalise the sign (e.g. eigenvectors normalised to a positive first
+    component), which is exactly the case that broke.
+
+    These are the tests that lock the convention. Note that a *statistical* null
+    test on ``xi_g_cross`` does not discriminate the bug at mock sample sizes:
+    the spurious term is visible in individual (rp, Pi) cells but averages down
+    in the Pi integral. The locks below are exact instead.
+    """
+
+    _MOCK = dict(n_centrals=120, n_sat=6, boxsize=205.0, seed=42)
+
+    @staticmethod
+    def _measure(axis, mock, tmp_path, tag):
+        data = {
+            "Position":              mock["Position"],
+            "Position_shape_sample": mock["Position_shape_sample"],
+            "Axis_Direction":        axis.copy(),
+            "q":                     mock["q"],
+            "LOS": 2,
+        }
+        sub = tmp_path / tag
+        sub.mkdir(exist_ok=True)
+        obj = _box(data, sub)
+        obj.measure_xi_w(tag, "g+", 0, temp_file_path=False)
+        return (_read(obj, "w/xi_g_plus", tag),
+                _read(obj, "w/xi_g_cross", tag))
+
+    def test_axis_direction_sign_is_irrelevant(self, tmp_path):
+        """Canonicalising the axis sign must change nothing, bit for bit.
+
+        Regression: with the old ``arccos`` projection this failed on
+        ``xi_g_cross`` outright (the spurious signal grew to the size of the
+        g+ signal itself) and on ``xi_g_plus`` at the ulp level.
+        """
+        from measureia.mocks import radial_alignment_box_mock
+        mock = radial_alignment_box_mock(**self._MOCK)
+        raw = mock["Axis_Direction"]
+        # what a real shape pipeline emits: sign fixed to a positive first component
+        canonical = raw * np.where(raw[:, 0] < 0, -1.0, 1.0)[:, None]
+        assert not np.array_equal(raw, canonical), "mock axes already canonical; test is vacuous"
+
+        for a, b in ((raw, canonical),):
+            gp_a, gx_a = self._measure(a, mock, tmp_path, "raw")
+            gp_b, gx_b = self._measure(b, mock, tmp_path, "can")
+            np.testing.assert_array_equal(gp_a, gp_b)
+            np.testing.assert_array_equal(gx_a, gx_b)
+
+    def test_random_axis_sign_flip_is_irrelevant(self, tmp_path):
+        """The same, for an arbitrary per-galaxy flip rather than a canonical one."""
+        from measureia.mocks import radial_alignment_box_mock
+        mock = radial_alignment_box_mock(**self._MOCK)
+        raw = mock["Axis_Direction"]
+        rng = np.random.default_rng(_SEED)
+        signs = rng.choice([-1.0, 1.0], len(raw))
+        gp_a, gx_a = self._measure(raw, mock, tmp_path, "orig")
+        gp_b, gx_b = self._measure(raw * signs[:, None], mock, tmp_path, "flip")
+        np.testing.assert_array_equal(gp_a, gp_b)
+        np.testing.assert_array_equal(gx_a, gx_b)
+
+    def test_mirrored_axis_pairs_cancel_in_xi_g_cross(self, tmp_path):
+        """An exactly parity-symmetric catalogue gives xi_g_cross = 0 exactly.
+
+        Construction: one position galaxy at the centre, and shape galaxies in
+        twins that sit at the *same* location with axes mirrored about the
+        separation direction (+delta and -delta). Both twins therefore land in
+        the same (rp, Pi) bin, contribute the same e_+ = e cos 2delta, and
+        opposite e_x = +/- e sin 2delta, which must cancel to floating point.
+
+        With the old ``arccos`` projection both twins gave ``sin(2|delta|)``,
+        the same sign, so they added instead of cancelling and the result was
+        O(1) rather than zero. This is the sharp, deterministic version of the
+        parity null test.
+        """
+        rng = np.random.default_rng(_SEED)
+        n_twin = 150
+        centre = np.array([100.0, 100.0, 100.0])
+
+        direction = rng.standard_normal((n_twin, 3))
+        direction /= np.linalg.norm(direction, axis=1, keepdims=True)
+        radii = rng.uniform(1.0, 12.0, n_twin)
+        pos = centre + direction * radii[:, None]
+
+        # radial direction projected on the plane of the sky (LOS = z)
+        proj = pos[:, :2] - centre[:2]
+        proj /= np.linalg.norm(proj, axis=1, keepdims=True)
+        delta = rng.uniform(0.15, np.pi / 2 - 0.15, n_twin)   # keep away from 0 and pi/2
+        cd, sd = np.cos(delta), np.sin(delta)
+        # rotate the radial direction by +delta and by -delta
+        axis_p = np.column_stack([cd * proj[:, 0] - sd * proj[:, 1],
+                                  sd * proj[:, 0] + cd * proj[:, 1]])
+        axis_m = np.column_stack([cd * proj[:, 0] + sd * proj[:, 1],
+                                  -sd * proj[:, 0] + cd * proj[:, 1]])
+
+        q = rng.uniform(0.3, 0.9, n_twin)
+        data = {
+            "Position":              centre[None, :],
+            "Position_shape_sample": np.vstack([pos, pos]),
+            "Axis_Direction":        np.vstack([axis_p, axis_m]),
+            "q":                     np.concatenate([q, q]),
+            "LOS": 2,
+        }
+        obj = _box(data, tmp_path)
+        obj.measure_xi_w("mirror", "g+", 0, temp_file_path=False)
+        s_cross = _read(obj, "w/xi_g_cross", "mirror_ScrossD")
+        s_plus  = _read(obj, "w/xi_g_plus",  "mirror_SplusD")
+
+        scale = np.max(np.abs(s_plus))
+        assert scale > 0, "degenerate test: no S+D signal to compare against"
+        assert np.max(np.abs(s_cross)) < 1e-12 * scale, (
+            f"S_xD should cancel exactly for mirrored axis pairs; "
+            f"got max|S_xD| = {np.max(np.abs(s_cross)):.3e} against max|S_+D| = {scale:.3e}"
+        )
+
+    def test_box_projection_matches_bruteforce(self, tmp_path):
+        """S_+D and S_xD against an independent O(N^2) numpy reference."""
+        rng = np.random.default_rng(_SEED)
+        n_pos, n_shape, L = 60, 80, 205.0
+        pos = rng.uniform(0, L, (n_pos, 3))
+        pos_s = rng.uniform(0, L, (n_shape, 3))
+        theta = rng.uniform(0, 2 * np.pi, n_shape)
+        axis = np.column_stack([np.cos(theta), np.sin(theta)])
+        q = rng.uniform(0.3, 0.9, n_shape)
+
+        data = {"Position": pos, "Position_shape_sample": pos_s,
+                "Axis_Direction": axis, "q": q, "LOS": 2}
+        obj = _box(data, tmp_path)
+        obj.measure_xi_w("bf", "g+", 0, temp_file_path=False)
+        sp = _read(obj, "w/xi_g_plus", "bf_SplusD")
+        sx = _read(obj, "w/xi_g_cross", "bf_ScrossD")
+
+        # --- independent reference -------------------------------------
+        e = (1 - q ** 2) / (1 + q ** 2)
+        R = np.mean(1 - e ** 2 / 2.0)                     # unit weights
+        r_bins = np.logspace(np.log10(_SEP[0]), np.log10(_SEP[1]), _NR + 1)
+        pi_bins = np.linspace(-L / 2, L / 2, _NPI + 1)
+        ref_p = np.zeros((_NR, _NPI))
+        ref_x = np.zeros((_NR, _NPI))
+        for j in range(n_shape):
+            sep = pos_s[j] - pos                          # shape - position
+            sep -= L * np.round(sep / L)                  # minimum image
+            rp = np.hypot(sep[:, 0], sep[:, 1])
+            pi = sep[:, 2]
+            ok = (rp >= r_bins[0]) & (rp < r_bins[-1]) & (pi >= pi_bins[0]) & (pi < pi_bins[-1])
+            if not ok.any():
+                continue
+            d = sep[ok][:, :2] / rp[ok][:, None]
+            c = d[:, 0] * axis[j, 0] + d[:, 1] * axis[j, 1]
+            x = axis[j, 0] * d[:, 1] - axis[j, 1] * d[:, 0]
+            ep = e[j] * (2 * c * c - 1)
+            ex = e[j] * (2 * c * x)
+            ir = np.digitize(rp[ok], r_bins) - 1
+            ip = np.digitize(pi[ok], pi_bins) - 1
+            np.add.at(ref_p, (ir, ip), ep / (2 * R))
+            np.add.at(ref_x, (ir, ip), ex / (2 * R))
+
+        np.testing.assert_allclose(sp, ref_p, rtol=1e-12, atol=1e-12)
+        np.testing.assert_allclose(sx, ref_x, rtol=1e-12, atol=1e-12)
+
+
+
+# ===========================================================================
 # 2. Analytic limits — lightcone
 # ===========================================================================
 

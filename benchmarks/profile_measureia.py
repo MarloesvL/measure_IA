@@ -13,7 +13,7 @@ The grouping maps profiler entries onto the stages a reader can act on:
   binning      pair_kernel's bin_pairs — separations, windows, bin indices
   accumulate   the per-galaxy Python loop body in pair_kernel.accumulate
   add_at       np.add.at, the actual grid accumulation
-  shapes       ellipticity projection (get_ellipticity, arccos)
+  shapes       ellipticity projection (get_ellipticity*, arccos on the lightcone path)
   io           HDF5 reads and writes
   other            everything else
 
@@ -54,7 +54,7 @@ GROUPS = [
 	("_arraysetops_impl.py", "setdiff"),
 	("_unique_hash", "setdiff"),
 	("bin_pairs", "binning"),
-	("get_ellipticity", "shapes"),
+	("get_ellipticity", "shapes"),          # matches get_ellipticity_from_direction too
 	("arccos", "shapes"),
 	("method 'at' of 'numpy.ufunc'", "add_at"),
 	("pair_kernel.py", "accumulate"),
