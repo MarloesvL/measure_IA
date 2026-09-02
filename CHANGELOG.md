@@ -18,6 +18,30 @@ public API mean a major version bump.
 
 ### Fixed
 
+- **The box cross component $e_\times$ no longer depends on the arbitrary sign of `Axis_Direction`.**
+  The box pair loop recovered the projection angle with `arccos`, which folds $\phi$ into $[0,\pi]$
+  and so maps the physically meaningless axis flip $\hat a\to-\hat a$ to $\phi\to\pi-\phi$.
+  $\cos 2\phi$ survives that, but $\sin 2\phi$ changes sign, so the box parity null test
+  $\xi_{g\times}$ inherited whichever sign convention the user's shape code happened to emit. It was
+  null only when those signs were random; for a catalogue with canonicalised axes (the common case
+  — eigenvectors normalised to a positive first component) the spurious signal grew to the size of
+  the $g+$ signal itself. $\cos 2\phi$ and $\sin 2\phi$ are now built directly from the dot and 2D
+  cross products of the two unit vectors, which are invariant under the flip.
+
+    **This changes published `xi_g_cross` values from the box.** $w_{g+}$, $\xi_{g+}$ and $w_{gg}$ are
+    unaffected in exact arithmetic; in floating point the new trig-free form shifts them by at most
+    $3\times10^{-15}$ relative to the array scale (measured across the full 2697-array bit-identity
+    matrix; the largest movers are jackknife covariances, which are quadratic in the signal). Every
+    cross-code validation reference still passes at its existing tolerance. The lightcone path uses
+    `arctan2` on true `e1`/`e2` and was never affected — no lightcone output changes at all.
+
+    Locked by exact tests: canonicalising or randomly flipping the axis signs must leave every box
+    output bit-identical; a catalogue built from mirrored $\pm\delta$ axis twins must cancel to zero
+    in $S_\times D$; and $S_+D$/$S_\times D$ must match an independent $O(N^2)$ reference.
+    `MeasureIABase.get_ellipticity_from_direction` is the new helper; `get_ellipticity` is unchanged.
+    The new form is also trig-free, which makes a box `measure_xi_w` **~23% faster** (4.45 s vs
+    5.75 s for 9600 shapes against 10800 positions on the tree backend).
+
 - The box **parity null test** $\xi_{g\times}$ is written where the documentation says it is. With
   `num_jk > 0` the full-sample `xi_g_cross` datasets inherited the jackknife group name of the
   realisation loop above them, so they ended up in `xi_g_cross/[dataset]_jk[num_jk]/` instead of

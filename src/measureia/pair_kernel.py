@@ -1036,11 +1036,16 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
                 if shapes:
                     with np.errstate(invalid='ignore'):
                         separation_dir = (projected_sep.transpose() / proj_len).transpose()
-                        phi = np.arccos(
-                            separation_dir[:, 0] * axis_direction_i[n, 0]
-                            + separation_dir[:, 1] * axis_direction_i[n, 1]
-                        )
-                    e_plus, e_cross = base.get_ellipticity(e_i[n], phi)
+                        # Signed angle from the semi-major axis to the separation direction, as
+                        # (cos, sin) = (dot, 2D cross). Not arccos: the axis sign is arbitrary
+                        # (a and -a are the same shape), and folding phi into [0, pi] flips
+                        # sin 2phi with it, so e_x would inherit an arbitrary input convention.
+                        # See MeasureIABase.get_ellipticity_from_direction.
+                        cos_phi = (separation_dir[:, 0] * axis_direction_i[n, 0]
+                                   + separation_dir[:, 1] * axis_direction_i[n, 1])
+                        sin_phi = (axis_direction_i[n, 0] * separation_dir[:, 1]
+                                   - axis_direction_i[n, 1] * separation_dir[:, 0])
+                    e_plus, e_cross = base.get_ellipticity_from_direction(e_i[n], cos_phi, sin_phi)
                     e_plus[np.isnan(e_plus)] = 0.0
                     e_cross[np.isnan(e_cross)] = 0.0
                     np.add.at(Splus_D, (ind_r, ind_pi),

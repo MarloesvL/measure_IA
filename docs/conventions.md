@@ -60,6 +60,19 @@ Here $\phi$ is the angle between the projected separation vector $r_p$ and the s
 object, computed per position–shape pair. The magnitude $\epsilon$ follows from $q$ (see below). This branch is
 radial-positive by construction.
 
+!!! note "The sign of `Axis_Direction` does not matter"
+    A semi-major axis has no head and no tail: $\hat a$ and $-\hat a$ describe the same shape. MeasureIA
+    therefore never forms $\phi$ itself, and instead builds $\cos 2\phi$ and $\sin 2\phi$ directly from the
+    dot and 2D cross products of $\hat a$ with the unit separation direction,
+
+    $$\cos 2\phi = 2(\hat a\cdot\hat s)^2 - 1\,,\qquad \sin 2\phi = 2(\hat a\cdot\hat s)(\hat a\times\hat s)\,.$$
+
+    Both are invariant under $\hat a\to-\hat a$, so you may supply whatever sign convention your shape code
+    emits — canonicalised (say, a positive first component) or not — and every output is bit-for-bit
+    identical. Recovering $\phi$ with `arccos` would **not** have this property: it folds the angle into
+    $[0,\pi]$, which leaves $\cos 2\phi$ alone but flips $\sin 2\phi$, so $e_\times$ would depend on an
+    arbitrary input choice. Versions before this fix did exactly that; see the changelog.
+
 ### Lightcone (`MeasureIALightcone`)
 
 Shapes are given directly as the two **ellipticity/shear components** `e1` and `e2`. These must follow the

@@ -115,6 +115,8 @@ class MeasureIABase(SimInfo):
 		Calculates dot product of elements of two arrays
 	get_ellipticity()
 		Given e and phi, e_+ and e_x components of ellipticity are returned.
+	get_ellipticity_from_direction()
+		As get_ellipticity, but from cos(phi)/sin(phi) rather than phi itself.
 	get_random_pairs()
 		Analytical RR for a (rp,pi) bin.
 	get_volume_spherical_cap()
@@ -330,6 +332,42 @@ class MeasureIABase(SimInfo):
 		else:
 			e_plus, e_cross = e * np.cos(2 * phi), e * np.sin(2 * phi)
 		return e_plus, e_cross
+
+	@staticmethod
+	def get_ellipticity_from_direction(e, cos_phi, sin_phi):
+		"""Radial (+) and cross (x) ellipticity components from the *signed* angle between the
+		semi-major axis and the separation vector, supplied as its cosine and sine.
+
+		This is the scalar-``e`` counterpart of :meth:`get_ellipticity`, and exists because the
+		semi-major axis direction has a physically meaningless sign: ``a`` and ``-a`` describe the
+		same shape. Recovering the angle with ``arccos`` folds it into ``[0, pi]``, which maps
+		``phi -> pi - phi`` under that flip. ``cos 2phi`` survives it but ``sin 2phi`` changes sign,
+		so ``e_x`` — and any product of two ``e_x`` — would depend on an arbitrary input
+		convention. Passing the signed pair ``(cos phi, sin phi)`` built from the dot and 2D cross
+		products of the two unit vectors instead maps the flip to ``phi -> phi + pi``, under which
+		both components are invariant.
+
+		The double-angle identities are applied directly, so no trigonometric call is made.
+
+		Parameters
+		----------
+		e : float or ndarray
+			Size of the ellipticity vector. A scalar broadcasts against ``cos_phi``/``sin_phi``.
+		cos_phi : ndarray
+			Dot product of the unit semi-major axis with the unit projected separation direction.
+		sin_phi : ndarray
+			2D cross product of the same two unit vectors, ``a_0 s_1 - a_1 s_0``; the rotation
+			carrying the axis onto the separation direction.
+
+		Returns
+		-------
+		ndarray
+			e_+ and e_x
+
+		"""
+		cos_2phi = 2.0 * cos_phi * cos_phi - 1.0
+		sin_2phi = 2.0 * cos_phi * sin_phi
+		return e * cos_2phi, e * sin_2phi
 
 	@staticmethod
 	def get_random_pairs(rp_max, rp_min, pi_max, pi_min, L3, corrtype, Num_position, Num_shape,
