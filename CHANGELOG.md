@@ -10,6 +10,27 @@ public API mean a major version bump.
 
 ### Added
 
+- **Shape–shape (`++`) accumulation in the pair kernel.** `pair_kernel.accumulate` and both
+  `prepare_*_samples` functions now take `shapes="both"` alongside `True`/`False`, in which
+  case the *density* sample carries shapes too and every pair contributes three further
+  products: `Splus_Splus` and `Scross_Scross` (the two II signals, $\xi_{++}$ and
+  $\xi_{\times\times}$) and the symmetrised `Splus_Scross` (the parity-odd null), each with a
+  union-deletion jackknife twin. The density sample's shapes are read from
+  `Axis_Direction_density_sample`/`q_density_sample` on the box and
+  `e1_density_sample`/`e2_density_sample` on the lightcone, and get their own responsivity, so
+  the box divides by $(2\mathcal{R})(2\mathcal{R}_\mathrm{pos})$.
+
+    On the lightcone the shape–shape products project **each galaxy in its own (east, north)
+    tangent frame**, while the existing $g+$ terms keep their partner-frame convention
+    unchanged — see [Conventions](conventions.md).
+
+    This is internal groundwork: no public method requests it yet, and with `shapes` left at
+    `True`/`False` the pair loop, its iteration order and its float summation order are
+    untouched, so existing measurements are **bit-identical** (verified across the full
+    2697-array, 45-configuration bit-identity matrix) and no slower. The new branch is covered
+    by independent $O(N^2)$ references on both geometries and both binnings, and by the
+    delete-one jackknife identity.
+
 - `COLIBRE_L400` and `COLIBRE_L200` presets in `SimInfo`, so the box size and $h$ of the COLIBRE
   runs are filled in from the `simulation` tag like the other simulations.
 - A documentation page for `measure_galaxy_contributions`, and the method is now shown on the
