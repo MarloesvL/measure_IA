@@ -12,6 +12,10 @@ Structure:
       ``east``/``north`` sky basis, ``e = (e1, e2)`` pre-scaled by 1/(2R)) → a ``SampleSet``.
     - binnings: ``BoxRpPi`` / ``BoxRMuR`` (periodic box) and ``SkyRpPi`` / ``SkyRMuR``
       (lightcone, midpoint LOS ``n_LOS = (s1+s2)/|s1+s2|``), each exposing ``bin_pairs``.
+    - shape-shape (``shapes="both"``): the density sample carries shapes as well, so each
+      pair contributes the products ``e_+ e_+``, ``e_x e_x`` and the symmetrised
+      ``e_+ e_x`` into ``Splus_Splus`` / ``Scross_Scross`` / ``Splus_Scross``. ``shapes=True``
+      is unchanged by it, bit for bit.
     - ``accumulate`` — the pair loop. ``chunk_axis="shape"`` runs the box order (outer loop
       over shape chunks, positions queried per chunk); ``chunk_axis="position"`` runs the
       lightcone order (outer loop over position chunks, shapes queried). Backends ``"tree"``
@@ -65,6 +69,16 @@ class SampleSet:
     east: Optional[np.ndarray] = None
     north: Optional[np.ndarray] = None
     n_pos: Optional[np.ndarray] = None
+    # Shape-shape (``shapes="both"``) only: the *density* sample carries shapes too, so
+    # every field above that describes the shape sample gets a position-aligned twin.
+    # Box: ``axis_direction_pos`` (N,2) unit projected semi-major axes, ``e_pos`` (N,).
+    # Lightcone: ``e_pos`` (N,2) = (e1,e2) pre-scaled by 1/(2R), and ``east_shape`` /
+    # ``north_shape`` (M,3) — the shape sample's own tangent basis, needed because for
+    # shape-shape each galaxy is projected in its *own* frame (see ``accumulate``).
+    axis_direction_pos: Optional[np.ndarray] = None
+    e_pos: Optional[np.ndarray] = None
+    east_shape: Optional[np.ndarray] = None
+    north_shape: Optional[np.ndarray] = None
 
 
 @dataclass
@@ -84,6 +98,17 @@ class Grids:
     Scross_D: Optional[np.ndarray] = None
     DD_jk: Optional[np.ndarray] = None
     Splus_D_jk: Optional[np.ndarray] = None
+    # Shape-shape (``shapes="both"``) products, None otherwise. ``Splus_Splus`` and
+    # ``Scross_Scross`` are the two II signals; ``Splus_Scross`` is the symmetrised
+    # parity-odd null. As with ``Splus_D``/``Splus_D_jk``, the full-sample grids carry
+    # the responsivity division and the ``_jk`` twins store the raw sums, because the
+    # per-realisation responsivity is only known at reduction time.
+    Splus_Splus: Optional[np.ndarray] = None
+    Scross_Scross: Optional[np.ndarray] = None
+    Splus_Scross: Optional[np.ndarray] = None
+    Splus_Splus_jk: Optional[np.ndarray] = None
+    Scross_Scross_jk: Optional[np.ndarray] = None
+    Splus_Scross_jk: Optional[np.ndarray] = None
     DD_gal: Optional[np.ndarray] = None
     Splus_D_gal: Optional[np.ndarray] = None
     DD_gal_jk: Optional[np.ndarray] = None
@@ -93,6 +118,21 @@ class Grids:
     gal_jk_patches: Optional[np.ndarray] = None
     DD_gal_jk_values: Optional[np.ndarray] = None
     Splus_D_gal_jk_values: Optional[np.ndarray] = None
+
+
+def shape_mode(shapes):
+    """Normalise the ``shapes`` argument to ``(want_shapes, want_shape_shape)``.
+
+    ``shapes`` is ``False`` (DD-only), ``True`` (shape-position terms) or the string
+    ``"both"`` (shape-position *and* shape-shape). ``"both"`` implies ``True``: the
+    shape-shape grids are accumulated alongside the ordinary S+D ones, in the same pass.
+    """
+    if isinstance(shapes, str):
+        if shapes != "both":
+            raise ValueError(
+                f"pair_kernel: shapes must be True, False or 'both'; got {shapes!r}.")
+        return True, True
+    return bool(shapes), False
 
 
 def prepare_box_samples(data, masks, Num_position, Num_shape, *, shapes, ellipticity, base,
@@ -124,8 +164,11 @@ def prepare_box_samples(data, masks, Num_position, Num_shape, *, shapes, ellipti
         ``weight_shape_sample`` masks when absent (legacy behaviour).
     Num_position, Num_shape : int
         Full (unmasked) sample sizes, used as the default "select all" mask length.
-    shapes : bool
+    shapes : bool or str
         If False, skip ``Axis_Direction``/``q``/``e`` (DD-only / count_pairs paths).
+        ``"both"`` additionally reads the *density* sample's shapes from
+        ``Axis_Direction_density_sample`` / ``q_density_sample`` and fills
+        ``axis_direction_pos`` / ``e_pos``, for the shape-shape correlation.
     ellipticity : str
         'distortion' or 'ellipticity'; see ``MeasureIABase.get_ellipticity``.
     base : object
@@ -136,6 +179,8 @@ def prepare_box_samples(data, masks, Num_position, Num_shape, *, shapes, ellipti
     -------
     SampleSet
     """
+    shapes, shape_shape = shape_mode(shapes)
+    axis_direction_pos_v = q_pos = None
     if masks is None:
         positions = data["Position"]
         positions_shape_sample = data["Position_shape_sample"]
@@ -143,6 +188,9 @@ def prepare_box_samples(data, masks, Num_position, Num_shape, *, shapes, ellipti
         weight_shape = data["weight_shape_sample"]
         axis_direction_v = data["Axis_Direction"] if shapes else None
         q = data["q"] if shapes else None
+        if shape_shape:
+            axis_direction_pos_v = data["Axis_Direction_density_sample"]
+            q_pos = data["q_density_sample"]
     else:
         if require_full_masks:
             pos_mask = masks["Position"]
@@ -170,18 +218,33 @@ def prepare_box_samples(data, masks, Num_position, Num_shape, *, shapes, ellipti
         else:
             axis_direction_v = None
             q = None
+        if shape_shape:
+            # The density sample's shape masks default to its coordinate mask in both
+            # modes: they are new keys, so no legacy caller can be relying on
+            # require_full_masks raising for them.
+            axis_direction_pos_v = data["Axis_Direction_density_sample"][
+                masks.get("Axis_Direction_density_sample", pos_mask)]
+            q_pos = data["q_density_sample"][masks.get("q_density_sample", pos_mask)]
+
+    def _unit_axis_and_e(axis_v, q_v):
+        axis_len = np.sqrt(np.sum(axis_v ** 2, axis=1))
+        axis = (axis_v.transpose() / axis_len).transpose()
+        if ellipticity == 'distortion':
+            e_ = (1 - q_v ** 2) / (1 + q_v ** 2)
+        elif ellipticity == 'ellipticity':
+            e_ = (1 - q_v) / (1 + q_v)
+        else:
+            raise ValueError("Invalid value for ellipticity. Choose 'distortion' or 'ellipticity'.")
+        return axis, e_
 
     axis_direction = None
     e = None
+    axis_direction_pos = None
+    e_pos = None
     if shapes:
-        axis_direction_len = np.sqrt(np.sum(axis_direction_v ** 2, axis=1))
-        axis_direction = (axis_direction_v.transpose() / axis_direction_len).transpose()
-        if ellipticity == 'distortion':
-            e = (1 - q ** 2) / (1 + q ** 2)
-        elif ellipticity == 'ellipticity':
-            e = (1 - q) / (1 + q)
-        else:
-            raise ValueError("Invalid value for ellipticity. Choose 'distortion' or 'ellipticity'.")
+        axis_direction, e = _unit_axis_and_e(axis_direction_v, q)
+    if shape_shape:
+        axis_direction_pos, e_pos = _unit_axis_and_e(axis_direction_pos_v, q_pos)
 
     LOS_ind = data["LOS"]
     not_LOS = np.array([0, 1, 2])[np.isin([0, 1, 2], LOS_ind, invert=True)]
@@ -200,6 +263,7 @@ def prepare_box_samples(data, masks, Num_position, Num_shape, *, shapes, ellipti
         pos=positions, pos_shape=positions_shape_sample,
         weight=weight, weight_shape=weight_shape,
         axis_direction=axis_direction, e=e,
+        axis_direction_pos=axis_direction_pos, e_pos=e_pos,
         LOS_ind=LOS_ind, not_LOS=not_LOS,
     )
 
@@ -231,9 +295,12 @@ def prepare_lightcone_samples(data, masks, *, shapes, cosmology, over_h,
     masks : dict or None
         Per-call mask dict; mutated in place to inject default ``weight``/
         ``weight_shape_sample`` masks when absent (legacy behaviour).
-    shapes : bool
+    shapes : bool or str
         If False, skip ``e1``/``e2``/responsivity and the ``east``/``north`` basis
-        (DD-only / count_pairs paths).
+        (DD-only / count_pairs paths). ``"both"`` additionally reads the *density*
+        sample's shapes from ``e1_density_sample``/``e2_density_sample`` into ``e_pos``
+        (responsivity-scaled with its own R) and builds the shape sample's own
+        ``east_shape``/``north_shape`` tangent basis, for the shape-shape correlation.
     cosmology : pyccl.Cosmology or None
         Cosmology for redshift→comoving distance; a fixed default is built (and, when
         ``print_num``, announced) if None, matching the legacy.
@@ -252,6 +319,8 @@ def prepare_lightcone_samples(data, masks, *, shapes, cosmology, over_h,
     -------
     SampleSet
     """
+    shapes, shape_shape = shape_mode(shapes)
+    e1_pos = e2_pos = None
     if masks is None:
         redshift = data["Redshift"]
         redshift_shape_sample = data["Redshift_shape_sample"]
@@ -264,6 +333,9 @@ def prepare_lightcone_samples(data, masks, *, shapes, cosmology, over_h,
         if shapes:
             e1 = data["e1"]
             e2 = data["e2"]
+        if shape_shape:
+            e1_pos = data["e1_density_sample"]
+            e2_pos = data["e2_density_sample"]
     else:
         redshift = data["Redshift"][masks["Redshift"]]
         redshift_shape_sample = data["Redshift_shape_sample"][masks["Redshift_shape_sample"]]
@@ -274,6 +346,10 @@ def prepare_lightcone_samples(data, masks, *, shapes, cosmology, over_h,
         if shapes:
             e1 = data["e1"][masks["e1"]]
             e2 = data["e2"][masks["e2"]]
+        if shape_shape:
+            # New keys, so they default to the RA coordinate mask rather than raising.
+            e1_pos = data["e1_density_sample"][masks.get("e1_density_sample", masks["RA"])]
+            e2_pos = data["e2_density_sample"][masks.get("e2_density_sample", masks["RA"])]
         if "weight" not in masks:
             masks["weight"] = masks["RA"]
         if "weight_shape_sample" not in masks:
@@ -298,11 +374,22 @@ def prepare_lightcone_samples(data, masks, *, shapes, cosmology, over_h,
     e = None
     east = None
     north = None
+    e_pos = None
+    east_shape = None
+    north_shape = None
     if shapes:
         if responsivity_correction:
             R = sum(weight_shape * (1 - (e1 ** 2 + e2 ** 2) / 2.0)) / sum(weight_shape)
             e1, e2 = e1 / (2 * R), e2 / (2 * R)
         e = np.array([e1, e2]).transpose()
+    if shape_shape:
+        # The density sample gets its own responsivity, computed over its own weights --
+        # the two samples generally have different shape-noise properties, and in the
+        # auto case (same catalogue in both slots) this reduces to the same number.
+        if responsivity_correction:
+            R_pos = sum(weight * (1 - (e1_pos ** 2 + e2_pos ** 2) / 2.0)) / sum(weight)
+            e1_pos, e2_pos = e1_pos / (2 * R_pos), e2_pos / (2 * R_pos)
+        e_pos = np.array([e1_pos, e2_pos]).transpose()
 
     RA_rad = RA / 180 * np.pi
     RA_shape_sample_rad = RA_shape_sample / 180 * np.pi
@@ -322,12 +409,25 @@ def prepare_lightcone_samples(data, masks, *, shapes, cosmology, over_h,
             -np.sin(DEC_rad) * np.sin(RA_rad),
             np.cos(DEC_rad)
         ]).transpose()
+    if shape_shape:
+        # For shape-shape each galaxy is projected in its *own* tangent frame, so the
+        # shape sample needs the basis too. (The g+ path deliberately keeps its existing
+        # convention of projecting the shape galaxy in its partner's frame -- see
+        # ``_accumulate_lightcone``.)
+        east_shape = np.array([-np.sin(RA_shape_sample_rad), np.cos(RA_shape_sample_rad),
+                               np.zeros(len(RA_shape_sample_rad))]).transpose()
+        north_shape = np.array([
+            -np.sin(DEC_shape_sample_rad) * np.cos(RA_shape_sample_rad),
+            -np.sin(DEC_shape_sample_rad) * np.sin(RA_shape_sample_rad),
+            np.cos(DEC_shape_sample_rad)
+        ]).transpose()
     s_pos = np.array([LOS_all]).transpose() * n_pos
 
     return SampleSet(
         pos=s_pos, pos_shape=s_shape,
         weight=weight, weight_shape=weight_shape,
         e=e, east=east, north=north, n_pos=n_pos,
+        e_pos=e_pos, east_shape=east_shape, north_shape=north_shape,
     )
 
 
@@ -644,11 +744,24 @@ def _accumulate_lightcone(sample_set, binning, *, base, shapes, chunk_size_outer
     builds it once in the parent process and shares it with every worker rather than
     rebuilding per batch; when None the tree is built here.
     """
+    shapes, shape_shape = shape_mode(shapes)
+
     DD = np.array([[0.0] * binning.num_bins_pi] * binning.num_bins_r)
     Splus_D = np.array([[0.0] * binning.num_bins_pi] * binning.num_bins_r) if shapes else None
     Scross_D = np.array([[0.0] * binning.num_bins_pi] * binning.num_bins_r) if shapes else None
     DD_jk = np.zeros((num_jk, binning.num_bins_r, binning.num_bins_pi)) if jk else None
     Splus_D_jk = np.zeros((num_jk, binning.num_bins_r, binning.num_bins_pi)) if (jk and shapes) else None
+
+    def _pp_grid():
+        return np.zeros((binning.num_bins_r, binning.num_bins_pi)) if shape_shape else None
+
+    def _pp_grid_jk():
+        return (np.zeros((num_jk, binning.num_bins_r, binning.num_bins_pi))
+                if (jk and shape_shape) else None)
+
+    Splus_Splus, Scross_Scross, Splus_Scross = _pp_grid(), _pp_grid(), _pp_grid()
+    Splus_Splus_jk, Scross_Scross_jk, Splus_Scross_jk = (
+        _pp_grid_jk(), _pp_grid_jk(), _pp_grid_jk())
 
     s_pos = sample_set.pos
     s_shape = sample_set.pos_shape
@@ -680,6 +793,8 @@ def _accumulate_lightcone(sample_set, binning, *, base, shapes, chunk_size_outer
         if shapes:
             east_i = sample_set.east[sel]
             north_i = sample_set.north[sel]
+        if shape_shape:
+            e_pos_i = sample_set.e_pos[sel]
         if jk:
             jk_pos_i = sample_set.jk_pos[sel]
         if backend == "brute":
@@ -713,6 +828,28 @@ def _accumulate_lightcone(sample_set, binning, *, base, shapes, chunk_size_outer
                               weight_i[n] * weight_shape[cand][mask] * e_plus[mask])
                     np.add.at(Scross_D, (ind_r, ind_2nd),
                               weight_i[n] * weight_shape[cand][mask] * e_cross[mask])
+                if shape_shape:
+                    # Shape-shape projects each galaxy in its *own* tangent frame, so the
+                    # shape member gets a second projection here rather than reusing the
+                    # partner-frame e_plus/e_cross above. The g+ terms deliberately keep
+                    # their existing partner-frame convention; the asymmetry is documented
+                    # in docs/conventions.md. ``phi`` is already the position galaxy's own
+                    # frame, so it serves the density member unchanged.
+                    xs = np.sum(s_perp * sample_set.east_shape[cand], axis=1)
+                    ys = np.sum(s_perp * sample_set.north_shape[cand], axis=1)
+                    phi_s = np.arctan2(ys, xs)
+                    ep_s, ex_s = base.get_ellipticity(sample_set.e[cand], phi_s)
+                    ep_p, ex_p = base.get_ellipticity(e_pos_i[n][None, :], phi)
+                    for arr in (ep_s, ex_s, ep_p, ex_p):
+                        arr[np.isnan(arr)] = 0.0
+                    w_pp = weight_i[n] * weight_shape[cand][mask]
+                    pp = ep_s[mask] * ep_p[mask]
+                    xx = ex_s[mask] * ex_p[mask]
+                    px = 0.5 * (ep_s[mask] * ex_p[mask] + ex_s[mask] * ep_p[mask])
+                    # no /(2R) here: the lightcone bakes responsivity into e and e_pos
+                    np.add.at(Splus_Splus, (ind_r, ind_2nd), w_pp * pp)
+                    np.add.at(Scross_Scross, (ind_r, ind_2nd), w_pp * xx)
+                    np.add.at(Splus_Scross, (ind_r, ind_2nd), w_pp * px)
                 np.add.at(DD, (ind_r, ind_2nd), weight_i[n] * weight_shape[cand][mask])
 
                 if jk:
@@ -729,12 +866,25 @@ def _accumulate_lightcone(sample_set, binning, *, base, shapes, chunk_size_outer
                         np.add.at(Splus_D_jk,
                                   (other_patches[other_diff], ind_r[other_diff], ind_2nd[other_diff]),
                                   (w_pairs * e_plus[mask])[other_diff])
+                    if shape_shape:
+                        for grid, prod in ((Splus_Splus_jk, pp),
+                                           (Scross_Scross_jk, xx),
+                                           (Splus_Scross_jk, px)):
+                            contrib = w_pairs * prod
+                            np.add.at(grid, (chunked_patch, ind_r, ind_2nd), contrib)
+                            np.add.at(grid,
+                                      (other_patches[other_diff], ind_r[other_diff],
+                                       ind_2nd[other_diff]),
+                                      contrib[other_diff])
                     np.add.at(DD_jk, (chunked_patch, ind_r, ind_2nd), w_pairs)
                     np.add.at(DD_jk,
                               (other_patches[other_diff], ind_r[other_diff], ind_2nd[other_diff]),
                               w_pairs[other_diff])
 
-    return Grids(DD=DD, Splus_D=Splus_D, Scross_D=Scross_D, DD_jk=DD_jk, Splus_D_jk=Splus_D_jk)
+    return Grids(DD=DD, Splus_D=Splus_D, Scross_D=Scross_D, DD_jk=DD_jk, Splus_D_jk=Splus_D_jk,
+                 Splus_Splus=Splus_Splus, Scross_Scross=Scross_Scross, Splus_Scross=Splus_Scross,
+                 Splus_Splus_jk=Splus_Splus_jk, Scross_Scross_jk=Scross_Scross_jk,
+                 Splus_Scross_jk=Splus_Scross_jk)
 
 
 def spatial_order(coords):
@@ -786,7 +936,7 @@ def spatial_order(coords):
     return np.argsort(key, kind="stable")
 
 
-def accumulate(sample_set, binning, *, base, R=None, shapes=True,
+def accumulate(sample_set, binning, *, base, R=None, R_pos=None, shapes=True,
                chunk_axis="shape", chunk_size_outer=100, jk=False, num_box=None,
                pos_tree=None, shape_tree=None, backend="tree",
                per_galaxy=False, per_galaxy_proj=None, per_galaxy_jk=False,
@@ -941,11 +1091,28 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
                 f"expected {expected} (num_bins_r, num_bins_pi)."
             )
 
+    shapes, shape_shape = shape_mode(shapes)
+    if shape_shape and chunk_axis == "shape" and R_pos is None:
+        raise ValueError(
+            "pair_kernel.accumulate: shapes='both' on the box path needs R_pos, the "
+            "density sample's responsivity (pass 0.5 to disable the correction).")
+
     DD = np.array([[0.0] * binning.num_bins_pi] * binning.num_bins_r)
     Splus_D = np.array([[0.0] * binning.num_bins_pi] * binning.num_bins_r) if shapes else None
     Scross_D = np.array([[0.0] * binning.num_bins_pi] * binning.num_bins_r) if shapes else None
     DD_jk = np.zeros((num_box, binning.num_bins_r, binning.num_bins_pi)) if jk else None
     Splus_D_jk = np.zeros((num_box, binning.num_bins_r, binning.num_bins_pi)) if (jk and shapes) else None
+
+    def _pp_grid():
+        return np.zeros((binning.num_bins_r, binning.num_bins_pi)) if shape_shape else None
+
+    def _pp_grid_jk():
+        return (np.zeros((num_box, binning.num_bins_r, binning.num_bins_pi))
+                if (jk and shape_shape) else None)
+
+    Splus_Splus, Scross_Scross, Splus_Scross = _pp_grid(), _pp_grid(), _pp_grid()
+    Splus_Splus_jk, Scross_Scross_jk, Splus_Scross_jk = (
+        _pp_grid_jk(), _pp_grid_jk(), _pp_grid_jk())
 
     DD_gal = Splus_D_gal = DD_gal_jk = Splus_D_gal_jk = None
     if per_galaxy:
@@ -1052,6 +1219,34 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
                               (weight[ind_rbin_i[n]][mask] * weight_shape_i[n] * e_plus[mask]) / (2 * R))
                     np.add.at(Scross_D, (ind_r, ind_pi),
                               (weight[ind_rbin_i[n]][mask] * weight_shape_i[n] * e_cross[mask]) / (2 * R))
+                if shape_shape:
+                    # The density-sample partner's own shape, projected about the *same*
+                    # separation direction. Its orientation is irrelevant: s -> -s sends
+                    # (cos phi, sin phi) -> (-cos phi, -sin phi), which leaves both
+                    # cos 2phi = 2c^2-1 and sin 2phi = 2cs unchanged, so one direction
+                    # serves both members of the pair.
+                    a_pos = sample_set.axis_direction_pos[ind_rbin_i[n]]
+                    with np.errstate(invalid='ignore'):
+                        cos_phi_p = (separation_dir[:, 0] * a_pos[:, 0]
+                                     + separation_dir[:, 1] * a_pos[:, 1])
+                        sin_phi_p = (a_pos[:, 0] * separation_dir[:, 1]
+                                     - a_pos[:, 1] * separation_dir[:, 0])
+                    e_plus_p, e_cross_p = base.get_ellipticity_from_direction(
+                        sample_set.e_pos[ind_rbin_i[n]], cos_phi_p, sin_phi_p)
+                    e_plus_p[np.isnan(e_plus_p)] = 0.0
+                    e_cross_p[np.isnan(e_cross_p)] = 0.0
+                    w_pp = weight[ind_rbin_i[n]][mask] * weight_shape_i[n]
+                    pp = e_plus[mask] * e_plus_p[mask]
+                    xx = e_cross[mask] * e_cross_p[mask]
+                    # symmetrised, so the parity null does not depend on which sample a
+                    # given galaxy was placed in (it is exactly the ordered-pair average
+                    # the auto case would produce on its own)
+                    px = 0.5 * (e_plus[mask] * e_cross_p[mask]
+                                + e_cross[mask] * e_plus_p[mask])
+                    resp_pp = (2 * R) * (2 * R_pos)
+                    np.add.at(Splus_Splus, (ind_r, ind_pi), w_pp * pp / resp_pp)
+                    np.add.at(Scross_Scross, (ind_r, ind_pi), w_pp * xx / resp_pp)
+                    np.add.at(Splus_Scross, (ind_r, ind_pi), w_pp * px / resp_pp)
                 np.add.at(DD, (ind_r, ind_pi), weight[ind_rbin_i[n]][mask] * weight_shape_i[n])
 
                 if jk:
@@ -1069,6 +1264,17 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
                         np.add.at(Splus_D_jk,
                                   (pos_patches[pos_diff], ind_r[pos_diff], ind_pi[pos_diff]),
                                   (w_pairs * e_plus[mask])[pos_diff])
+                    if shape_shape:
+                        # raw (un-responsivity-divided), like Splus_D_jk: both samples'
+                        # per-realisation responsivities are only known at reduction time
+                        for grid, prod in ((Splus_Splus_jk, pp),
+                                           (Scross_Scross_jk, xx),
+                                           (Splus_Scross_jk, px)):
+                            contrib = w_pairs * prod
+                            np.add.at(grid, (shape_patch, ind_r, ind_pi), contrib)
+                            np.add.at(grid,
+                                      (pos_patches[pos_diff], ind_r[pos_diff], ind_pi[pos_diff]),
+                                      contrib[pos_diff])
                     np.add.at(DD_jk, (shape_patch, ind_r, ind_pi), w_pairs)
                     np.add.at(DD_jk,
                               (pos_patches[pos_diff], ind_r[pos_diff], ind_pi[pos_diff]),
@@ -1139,6 +1345,9 @@ def accumulate(sample_set, binning, *, base, R=None, shapes=True,
                 Splus_D_gal_jk_values, order, fill=0.0)
 
     return Grids(DD=DD, Splus_D=Splus_D, Scross_D=Scross_D, DD_jk=DD_jk, Splus_D_jk=Splus_D_jk,
+                 Splus_Splus=Splus_Splus, Scross_Scross=Scross_Scross, Splus_Scross=Splus_Scross,
+                 Splus_Splus_jk=Splus_Splus_jk, Scross_Scross_jk=Scross_Scross_jk,
+                 Splus_Scross_jk=Splus_Scross_jk,
                  DD_gal=DD_gal, Splus_D_gal=Splus_D_gal,
                  DD_gal_jk=DD_gal_jk, Splus_D_gal_jk=Splus_D_gal_jk,
                  gal_jk_patches=gal_jk_patches,

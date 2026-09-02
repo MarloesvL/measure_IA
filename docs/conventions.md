@@ -97,6 +97,18 @@ vector in the internal (east, north) sky frame. As in the box case, the output $
     $w_{g+}$ — it replaces $\cos 2(\phi_a - \phi_s)$ with $\cos 2(\phi_a + \phi_s)$ and washes the signal out
     to noise, which is a common cause of a "vague, noisy mismatch" against other codes.
 
+!!! note "Which tangent frame each shape is projected in"
+    On the curved sky the local (east, north) basis differs from galaxy to galaxy, so a pair has two
+    of them. For $w_{g+}$ MeasureIA projects the shape galaxy's `e1`/`e2` in the tangent frame of its
+    **position-sample partner** — a plane-of-the-pair approximation, and the source of part of the
+    residual against TreeCorr documented in `validation/README.md`.
+
+    The shape–shape terms instead project **each galaxy in its own frame**, because the pair is
+    symmetric there and no single partner frame is privileged. The two conventions therefore coexist
+    deliberately; they agree in the plane-parallel limit and differ by curvature terms of the same
+    order as the other separation-definition differences. The box has no such ambiguity: its
+    projection plane is fixed by `LOS`.
+
 ## Ellipticity definitions
 
 The shape magnitude $\epsilon$ is derived from the axis ratio $q$, so this choice applies to the **box** only;
