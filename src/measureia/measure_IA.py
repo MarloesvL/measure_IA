@@ -7,7 +7,15 @@ from .measure_m_box import MeasureMultipolesBox
 from .measure_jackknife import MeasureJackknife
 from .measure_galaxy_box import MeasureGalaxyContributionsBox
 from .check_input import CheckInput
+from .measure_IA_base import W_PRODUCTS, M_PRODUCTS
 from . import worker_pool
+
+
+#: Correlation types accepted by the box measurement methods. ``'both'`` keeps its original
+#: meaning (g+ and gg) so existing scripts are unaffected; ``'all'`` is the new everything option.
+CORR_TYPES = ("g+", "gg", "both", "++", "all")
+#: The subset that needs shapes on the density sample as well.
+SHAPE_SHAPE_CORR_TYPES = ("++", "all")
 
 
 class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, MeasureMBoxJackknife, MeasureJackknife,
@@ -150,13 +158,22 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 		return
 
 	@staticmethod
-	def _validate_measure_options(corr_type, ellipticity, num_jk):
+	def _validate_measure_options(corr_type, ellipticity, num_jk, has_density_sample_shapes=True):
 		"""Validate the user-facing option strings and ``num_jk`` up front, before any pair
 		counting. Previously ``corr_type`` was only checked at the reduction stage (after the
 		full count) with a ``KeyError``, ``ellipticity`` only inside the backends, and a
-		negative ``num_jk`` was silently treated as 0; all now raise a uniform ``ValueError``."""
-		if corr_type not in ("g+", "gg", "both"):
-			raise ValueError(f"Unknown corr_type {corr_type!r}. Choose from ['g+', 'gg', 'both'].")
+		negative ``num_jk`` was silently treated as 0; all now raise a uniform ``ValueError``.
+
+		``has_density_sample_shapes`` reports whether the catalogue carries shapes on the
+		density sample; a shape-shape correlation is refused without them, here rather than
+		after a full pair count."""
+		if corr_type not in CORR_TYPES:
+			raise ValueError(f"Unknown corr_type {corr_type!r}. Choose from {sorted(CORR_TYPES)}.")
+		if corr_type in SHAPE_SHAPE_CORR_TYPES and not has_density_sample_shapes:
+			raise ValueError(
+				f"corr_type={corr_type!r} correlates the shapes of both samples, so the density "
+				f"sample needs shapes of its own. Supply 'Axis_Direction_density_sample' and "
+				f"'q_density_sample' (or the names you gave the constructor).")
 		if ellipticity not in ("distortion", "ellipticity"):
 			raise ValueError(
 				f"Unknown ellipticity {ellipticity!r}. Choose from ['distortion', 'ellipticity'].")
@@ -174,7 +191,10 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 		dataset_name : str
 			Name of the dataset in the output file.
 		corr_type : str
-			Type of correlation to be measured. Choose from [g+, gg, both].
+			Type of correlation to be measured. Choose from [g+, gg, both, ++, all].
+			'both' means g+ and gg; '++' is the shape-shape correlation (which also yields the
+			cross-cross signal and the parity null) and needs shapes on the density sample;
+			'all' is g+, gg and ++ together.
 		num_jk : int, optional
 			Number of jackknife regions (needs to be x^3, with x an int) for the covariance measurement.
 			Default is 0 (no covariance).
@@ -197,7 +217,13 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			correlations are affected; the clustering (gg) signal is unchanged. Default is True.
 
 		"""
-		self._validate_measure_options(corr_type, ellipticity, num_jk)
+		self._validate_measure_options(corr_type, ellipticity, num_jk,
+									   getattr(self, "has_density_sample_shapes", False))
+
+		# tells pair_kernel (via the backends) to accumulate the shape-shape products too;
+		# an attribute rather than an argument because the multiprocessing backends pickle
+		# ``self`` into their workers and read their options off it the same way
+		self._shape_mode = "both" if corr_type in SHAPE_SHAPE_CORR_TYPES else True
 		self.responsivity_correction = responsivity
 		masks = self.rename_input_keys(masks, self._input_name_map)
 		if num_jk > 0:
@@ -258,14 +284,7 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			for i in np.arange(num_jk):
 				self._measure_w_g_i(corr_type=corr_type, dataset_name=f"{dataset_name}_{i}",
 									jk_group_name=f"{dataset_name}_jk{num_jk}", return_output=False)
-			if corr_type == "both":
-				corr_group = ["w_g_plus", "w_gg"]
-			elif corr_type == "g+":
-				corr_group = ["w_g_plus"]
-			elif corr_type == "gg":
-				corr_group = ["w_gg"]
-			else:
-				raise KeyError("Unknown value for corr_type. Choose from [g+, gg, both]")
+			corr_group = [w_name for _, w_name in W_PRODUCTS[corr_type]]
 			self._combine_jackknife_information(dataset_name=dataset_name, jk_group_name=f"{dataset_name}_jk{num_jk}",
 												corr_group=corr_group, num_box=num_jk)
 		else:  # no covariance
@@ -305,7 +324,10 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 		dataset_name : str
 			Name of the dataset in the output file.
 		corr_type : str
-			Type of correlation to be measured. Choose from [g+, gg, both].
+			Type of correlation to be measured. Choose from [g+, gg, both, ++, all].
+			'both' means g+ and gg; '++' is the shape-shape correlation (which also yields the
+			cross-cross signal and the parity null) and needs shapes on the density sample;
+			'all' is g+, gg and ++ together.
 		num_jk : int, optional
 			Number of jackknife regions (needs to be x^3, with x an int) for the covariance measurement. Default is 0 (no covariance).
 		temp_file_path : str or NoneType, optional
@@ -321,7 +343,12 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			Definition of ellipticity. Choose from 'distortion', defined as (1-q^2)/(1+q^2), or 'ellipticity', defined
 			 as (1-q)/(1+q). Default is 'distortion'.
 		"""
-		self._validate_measure_options(corr_type, ellipticity, num_jk)
+		self._validate_measure_options(corr_type, ellipticity, num_jk,
+									   getattr(self, "has_density_sample_shapes", False))
+		# tells pair_kernel (via the backends) to accumulate the shape-shape products too;
+		# an attribute rather than an argument because the multiprocessing backends pickle
+		# ``self`` into their workers and read their options off it the same way
+		self._shape_mode = "both" if corr_type in SHAPE_SHAPE_CORR_TYPES else True
 		self.responsivity_correction = responsivity
 		masks = self.rename_input_keys(masks, self._input_name_map)
 		if num_jk > 0:
@@ -382,14 +409,7 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			for i in np.arange(num_jk):
 				self._measure_multipoles(corr_type=corr_type, dataset_name=f"{dataset_name}_{i}",
 										 jk_group_name=f"{dataset_name}_jk{num_jk}", return_output=False)
-			if corr_type == "both":
-				corr_group = ["multipoles_g_plus", "multipoles_gg"]
-			elif corr_type == "g+":
-				corr_group = ["multipoles_g_plus"]
-			elif corr_type == "gg":
-				corr_group = ["multipoles_gg"]
-			else:
-				raise KeyError("Unknown value for corr_type. Choose from [g+, gg, both]")
+			corr_group = [m_name for _, m_name, _ in M_PRODUCTS[corr_type]]
 			self._combine_jackknife_information(dataset_name=dataset_name, jk_group_name=f"{dataset_name}_jk{num_jk}",
 												corr_group=corr_group, num_box=num_jk)
 		else:  # no covariance
