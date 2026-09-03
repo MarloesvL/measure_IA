@@ -57,6 +57,8 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			redshift_shape_sample_name="Redshift_shape_sample",
 			e1_name="e1",
 			e2_name="e2",
+			e1_density_sample_name="e1_density_sample",
+			e2_density_sample_name="e2_density_sample",
 			weight_density_sample_name="weight",
 			weight_shape_sample_name="weight_shape_sample",
 	):
@@ -90,6 +92,13 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			Name of the key in the data dictionary that contains the first ellipticity component of the shape sample.
 		e2_name : str, optional
 			Name of the key in the data dictionary that contains the second ellipticity component of the shape sample.
+		e1_density_sample_name : str, optional
+			Name of the key in the data dictionary that contains the first ellipticity component of the **density**
+			sample. Only needed for shape-shape ('++') correlations, which require shapes on both members of a
+			pair; leave it out for 'g+', 'gg' or 'both'. Must be supplied together with `e2_density_sample_name`.
+		e2_density_sample_name : str, optional
+			Name of the key in the data dictionary that contains the second ellipticity component of the
+			**density** sample. See `e1_density_sample_name`.
 		weight_density_sample_name : str, optional
 			Name of the key in the data (and randoms) dictionary that contains the weights of the density sample.
 		weight_shape_sample_name : str, optional
@@ -112,6 +121,8 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			redshift_shape_sample_name: "Redshift_shape_sample",
 			e1_name: "e1",
 			e2_name: "e2",
+			e1_density_sample_name: "e1_density_sample",
+			e2_density_sample_name: "e2_density_sample",
 			weight_density_sample_name: "weight",
 			weight_shape_sample_name: "weight_shape_sample",
 		}
@@ -125,7 +136,13 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 														DEC_density_sample_name, DEC_shape_sample_name,
 														redshift_density_sample_name, redshift_shape_sample_name,
 														e1_name, e2_name))
+			# optional, and only used by shape-shape correlations
+			self.has_density_sample_shapes = self.check_density_sample_shapes(
+				data, (RA_density_sample_name, e1_density_sample_name, e2_density_sample_name),
+				"lightcone")
 			data = self.rename_input_keys(data, self._input_name_map)
+		else:
+			self.has_density_sample_shapes = False
 		if randoms_data is not None:
 			self.check_dict(randoms_data,
 							[RA_density_sample_name, DEC_density_sample_name, redshift_density_sample_name])

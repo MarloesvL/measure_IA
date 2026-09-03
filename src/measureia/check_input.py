@@ -19,6 +19,8 @@ class CheckInput:
 		Check types and shapes of the entries of the input data dictionary (Box).
 	check_type_input_data_lightcone()
 		Check types, shapes and coordinate ranges of the input data dictionary (Lightcone).
+	check_density_sample_shapes()
+		Check the optional density-sample shape entries used by the shape-shape correlation.
 	check_jackknife_max_separation()
 		Warn if the maximum separation or number of r bins is too large for the jackknife subbox size.
 	rename_input_keys()
@@ -190,6 +192,81 @@ class CheckInput:
 			if dict[key].min() < -90. or dict[key].max() > 90.:
 				raise ValueError(f"'{key}' must be in [-90, 90] degrees.")
 		return
+
+	@staticmethod
+	def check_density_sample_shapes(dict, names, geometry):
+		"""Checks the **optional** density-sample shape entries, which the shape-shape
+		(``corr_type='++'``) correlation needs.
+
+		Ordinarily only the shape sample carries shapes. A shape-shape correlation needs them
+		on both members of a pair, so the density sample may carry its own; these keys are
+		absent for every other correlation and their absence is not an error. Supplying only
+		*some* of them is, though -- that is a typo or a half-finished catalogue, and silently
+		ignoring it would produce a confusing "no shape-shape output" later.
+
+		Parameters
+		----------
+		dict : dict
+			Data dictionary to check.
+		names : iterable of str
+			For ``geometry='box'``: ``(positions_density_sample_name,
+			axis_direction_density_sample_name, axis_ratio_density_sample_name)``.
+			For ``geometry='lightcone'``: ``(RA_density_sample_name, e1_density_sample_name,
+			e2_density_sample_name)``.
+		geometry : str
+			``'box'`` or ``'lightcone'``.
+
+		Returns
+		-------
+		bool
+			True if the density sample carries shapes, False if the keys are absent.
+
+		"""
+		if geometry not in ("box", "lightcone"):
+			raise ValueError(f"geometry must be 'box' or 'lightcone', got {geometry!r}.")
+		reference_name, *shape_names = names
+		present = [name for name in shape_names if name in dict]
+		if not present:
+			return False
+		if len(present) != len(shape_names):
+			missing = [name for name in shape_names if name not in dict]
+			raise KeyError(
+				f"The density sample carries {present} but not {missing}. Shape-shape "
+				f"correlations need all of {list(shape_names)} on the density sample; supply "
+				f"the missing keys, or none of them if you do not want a shape-shape "
+				f"measurement.")
+
+		n_density = len(dict[reference_name])
+
+		def _ndarray(key):
+			if not isinstance(dict[key], np.ndarray):
+				raise TypeError(f"'{key}' must be a numpy ndarray, got {type(dict[key]).__name__}.")
+			return dict[key]
+
+		if geometry == "box":
+			axis_dir_name, axis_ratio_name = shape_names
+			axis_dir = _ndarray(axis_dir_name)
+			axis_ratio = _ndarray(axis_ratio_name)
+			if axis_dir.ndim != 2 or axis_dir.shape[1] != 2:
+				raise ValueError(f"'{axis_dir_name}' must have shape (N, 2), got {axis_dir.shape}.")
+			if axis_ratio.ndim != 1:
+				raise ValueError(f"'{axis_ratio_name}' must be a 1-D array, got shape {axis_ratio.shape}.")
+			arrays = ((axis_dir_name, axis_dir), (axis_ratio_name, axis_ratio))
+		else:
+			arrays = tuple((name, _ndarray(name)) for name in shape_names)
+			for name, arr in arrays:
+				if arr.ndim != 1:
+					raise ValueError(f"'{name}' must be a 1-D array, got shape {arr.shape}.")
+
+		for name, arr in arrays:
+			# these describe the *density* sample, so they align with it, not with the shapes
+			if len(arr) != n_density:
+				raise ValueError(
+					f"'{name}' (length {len(arr)}) describes the density sample and must match "
+					f"'{reference_name}' (length {n_density}).")
+			if not np.isfinite(arr).all():
+				raise ValueError(f"'{name}' contains NaN or infinite values.")
+		return True
 
 	@staticmethod
 	def check_jackknife_max_separation(num_jk, boxsize, max_separation, num_r_bins):

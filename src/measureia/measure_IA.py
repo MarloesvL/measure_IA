@@ -49,6 +49,8 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			positions_shape_sample_name="Position_shape_sample",
 			axis_direction_name="Axis_Direction",
 			axis_ratio_name="q",
+			axis_direction_density_sample_name="Axis_Direction_density_sample",
+			axis_ratio_density_sample_name="q_density_sample",
 			line_of_sight_index_name="LOS",
 			weight_density_sample_name="weight",
 			weight_shape_sample_name="weight_shape_sample",
@@ -69,6 +71,14 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			Name of the key in the data dictionary that contains the axis direction vectors of the shape sample.
 		axis_ratio_name : str, optional
 			Name of the key in the data dictionary that contains the axis ratios of the shape sample.
+		axis_direction_density_sample_name : str, optional
+			Name of the key in the data dictionary that contains the axis direction vectors of the **density**
+			sample. Only needed for shape-shape ('++') correlations, which require shapes on both members of a
+			pair; leave it out for 'g+', 'gg' or 'both'. Must be supplied together with
+			`axis_ratio_density_sample_name`.
+		axis_ratio_density_sample_name : str, optional
+			Name of the key in the data dictionary that contains the axis ratios of the **density** sample.
+			See `axis_direction_density_sample_name`.
 		line_of_sight_index_name : str, optional
 			Name of the key in the data dictionary that contains the column index of the line of sight in the
 			position vectors.
@@ -101,6 +111,8 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			positions_shape_sample_name: "Position_shape_sample",
 			axis_direction_name: "Axis_Direction",
 			axis_ratio_name: "q",
+			axis_direction_density_sample_name: "Axis_Direction_density_sample",
+			axis_ratio_density_sample_name: "q_density_sample",
 			line_of_sight_index_name: "LOS",
 			weight_density_sample_name: "weight",
 			weight_shape_sample_name: "weight_shape_sample",
@@ -113,7 +125,13 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			self.check_type_input_data(data,
 									   (positions_density_sample_name, positions_shape_sample_name, axis_direction_name,
 										axis_ratio_name, line_of_sight_index_name))
+			# optional, and only used by shape-shape correlations
+			self.has_density_sample_shapes = self.check_density_sample_shapes(
+				data, (positions_density_sample_name, axis_direction_density_sample_name,
+					   axis_ratio_density_sample_name), "box")
 			data = self.rename_input_keys(data, self._input_name_map)
+		else:
+			self.has_density_sample_shapes = False
 		super().__init__(data, output_file_name, simulation, snapshot, separation_limits, num_bins_r, num_bins_pi,
 						 pi_max, boxsize, periodicity)
 		if self.data is not None and self.boxsize is not None:
