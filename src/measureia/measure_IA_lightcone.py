@@ -5,6 +5,7 @@ from .measure_m_lightcone_jk import MeasureMultipolesLightconeJackknife
 from .measure_m_lightcone import MeasureMultipolesLightcone
 from .measure_jackknife import MeasureJackknife
 from .check_input import CheckInput
+from .measure_IA_base import W_PRODUCTS, M_PRODUCTS, CORR_TYPES, SHAPE_SHAPE_CORR_TYPES
 from . import worker_pool
 
 
@@ -267,31 +268,33 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 		# Shape-position combinations:
 		# S+D (Cg+, Gg+)
 		# S+R (Cg+, Gg+)
-		if corr_type == "g+" or corr_type == "both":
+		if corr_type in ("g+", "both", "++", "all"):
 			# S+D
 			self.data = self.data_dir
 			method_shape_correlation(masks=self._merged_masks(masks, masks), dataset_name=dataset_name,
 									 over_h=over_h, data_suffix="_SplusD",
 									 cosmology=cosmology, chunk_size=chunk_size, num_nodes=num_nodes,
 									 temp_file_path=temp_file_path)
-			# S+R
-			self.data = {
-				"Redshift": self.randoms_data["Redshift"],
-				"Redshift_shape_sample": self.data_dir["Redshift_shape_sample"],
-				"RA": self.randoms_data["RA"],
-				"RA_shape_sample": self.data_dir["RA_shape_sample"],
-				"DEC": self.randoms_data["DEC"],
-				"DEC_shape_sample": self.data_dir["DEC_shape_sample"],
-				"e1": self.data_dir["e1"],
-				"e2": self.data_dir["e2"],
-				"weight": self.randoms_data["weight"],
-				"weight_shape_sample": self.data_dir["weight_shape_sample"]
-			}
-			# print(self.data)
-			method_shape_correlation(masks=self._merged_masks(masks_randoms, masks), dataset_name=f"{dataset_name}",
-									 over_h=over_h, data_suffix="_SplusR",
-									 cosmology=cosmology, chunk_size=chunk_size, num_nodes=num_nodes,
-									 temp_file_path=temp_file_path)
+			# S+R -- randoms carry no shapes, so there is no shape-shape analogue of this
+			# pass; a pure '++' run does not need it at all
+			if corr_type != "++":
+				self.data = {
+					"Redshift": self.randoms_data["Redshift"],
+					"Redshift_shape_sample": self.data_dir["Redshift_shape_sample"],
+					"RA": self.randoms_data["RA"],
+					"RA_shape_sample": self.data_dir["RA_shape_sample"],
+					"DEC": self.randoms_data["DEC"],
+					"DEC_shape_sample": self.data_dir["DEC_shape_sample"],
+					"e1": self.data_dir["e1"],
+					"e2": self.data_dir["e2"],
+					"weight": self.randoms_data["weight"],
+					"weight_shape_sample": self.data_dir["weight_shape_sample"]
+				}
+				# print(self.data)
+				method_shape_correlation(masks=self._merged_masks(masks_randoms, masks), dataset_name=f"{dataset_name}",
+										 over_h=over_h, data_suffix="_SplusR",
+										 cosmology=cosmology, chunk_size=chunk_size, num_nodes=num_nodes,
+										 temp_file_path=temp_file_path)
 
 		# Position-position combinations:
 		# SD (Cgg, Ggg)
@@ -332,7 +335,7 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 							   data_suffix="_SR", chunk_size=chunk_size, num_nodes=num_nodes,
 							   temp_file_path=temp_file_path)
 
-		if corr_type == "gg" or corr_type == "both":
+		if corr_type in ("gg", "both", "all"):
 			# RD (Cgg, Ggg)
 			self.data = {
 				"Redshift": self.data_dir["Redshift"],
@@ -349,7 +352,7 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 							   data_suffix="_RD", chunk_size=chunk_size, num_nodes=num_nodes,
 							   temp_file_path=temp_file_path)
 
-		if IA_estimator == "galaxies" or corr_type == "gg" or corr_type == "both":
+		if IA_estimator == "galaxies" or corr_type in ("gg", "both", "all", "++"):
 			# RR (Cgg, Gg+, Ggg)
 			self.data = {
 				"Redshift": self.randoms_data["Redshift"],
@@ -374,7 +377,7 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 		# Shape-position combinations:
 		# S+D (Cg+, Gg+)
 		# S+R (Cg+, Gg+)
-		if corr_type == "g+" or corr_type == "both":
+		if corr_type in ("g+", "both", "++", "all"):
 			# S+D
 			self.data = self.data_dir
 			method_shape_correlation(jackknife_region_indices_pos=jk_patches["position"],
@@ -385,26 +388,28 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 									 over_h=over_h, data_suffix="_SplusD",
 									 cosmology=cosmology, chunk_size=chunk_size, num_nodes=num_nodes,
 									 temp_file_path=temp_file_path)
-			# S+R
-			self.data = {
-				"Redshift": self.randoms_data["Redshift"],
-				"Redshift_shape_sample": self.data_dir["Redshift_shape_sample"],
-				"RA": self.randoms_data["RA"],
-				"RA_shape_sample": self.data_dir["RA_shape_sample"],
-				"DEC": self.randoms_data["DEC"],
-				"DEC_shape_sample": self.data_dir["DEC_shape_sample"],
-				"e1": self.data_dir["e1"],
-				"e2": self.data_dir["e2"],
-				"weight": self.randoms_data["weight"],
-				"weight_shape_sample": self.data_dir["weight_shape_sample"]
-			}
-			method_shape_correlation(jackknife_region_indices_pos=jk_patches["randoms_position"],
-									 jackknife_region_indices_shape=jk_patches["shape"],
-									 masks=self._merged_masks(masks_randoms, masks),
-									 dataset_name=f"{dataset_name}", data_suffix="_SplusR",
-									 over_h=over_h, jk_group_name=f"{dataset_name}_jk{num_jk}",
-									 cosmology=cosmology, chunk_size=chunk_size, num_nodes=num_nodes,
-									 temp_file_path=temp_file_path)
+			# S+R -- randoms carry no shapes, so there is no shape-shape analogue of this
+			# pass; a pure '++' run does not need it at all
+			if corr_type != "++":
+				self.data = {
+					"Redshift": self.randoms_data["Redshift"],
+					"Redshift_shape_sample": self.data_dir["Redshift_shape_sample"],
+					"RA": self.randoms_data["RA"],
+					"RA_shape_sample": self.data_dir["RA_shape_sample"],
+					"DEC": self.randoms_data["DEC"],
+					"DEC_shape_sample": self.data_dir["DEC_shape_sample"],
+					"e1": self.data_dir["e1"],
+					"e2": self.data_dir["e2"],
+					"weight": self.randoms_data["weight"],
+					"weight_shape_sample": self.data_dir["weight_shape_sample"]
+				}
+				method_shape_correlation(jackknife_region_indices_pos=jk_patches["randoms_position"],
+										 jackknife_region_indices_shape=jk_patches["shape"],
+										 masks=self._merged_masks(masks_randoms, masks),
+										 dataset_name=f"{dataset_name}", data_suffix="_SplusR",
+										 over_h=over_h, jk_group_name=f"{dataset_name}_jk{num_jk}",
+										 cosmology=cosmology, chunk_size=chunk_size, num_nodes=num_nodes,
+										 temp_file_path=temp_file_path)
 
 		# Position-position combinations:
 		# SD (Cgg, Ggg)
@@ -451,7 +456,7 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 							   data_suffix="_SR", chunk_size=chunk_size, num_nodes=num_nodes,
 							   temp_file_path=temp_file_path)
 
-		if corr_type == "gg" or corr_type == "both":
+		if corr_type in ("gg", "both", "all"):
 			# RD (Cgg, Ggg)
 			self.data = {
 				"Redshift": self.data_dir["Redshift"],
@@ -471,7 +476,7 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 							   data_suffix="_RD", chunk_size=chunk_size, num_nodes=num_nodes,
 							   temp_file_path=temp_file_path)
 
-		if IA_estimator == "galaxies" or corr_type == "gg" or corr_type == "both":
+		if IA_estimator == "galaxies" or corr_type in ("gg", "both", "all", "++"):
 			# RR (Cgg, Gg+, Ggg)
 			self.data = {
 				"Redshift": self.randoms_data["Redshift"],
@@ -564,6 +569,26 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 					print("Warning, masks given for data vector but not for randoms.")
 		else:
 			raise KeyError("Unknown input for IA_estimator, choose from [clusters, galaxies].")
+
+		if corr_type not in CORR_TYPES:
+			raise ValueError(f"Unknown corr_type {corr_type!r}. Choose from {sorted(CORR_TYPES)}.")
+		if corr_type in SHAPE_SHAPE_CORR_TYPES:
+			if not getattr(self, "has_density_sample_shapes", False):
+				raise ValueError(
+					f"corr_type={corr_type!r} correlates the shapes of both samples, so the "
+					f"density sample needs shapes of its own. Supply 'e1_density_sample' and "
+					f"'e2_density_sample' (or the names you gave the constructor).")
+			if IA_estimator == "clusters":
+				# xi_++ = S+S+/RR has no published 'clusters' analogue: that estimator
+				# normalises by the clustering counts, and inventing a form for it here
+				# would be our own definition rather than a documented one.
+				raise ValueError(
+					f"IA_estimator='clusters' is not defined for corr_type={corr_type!r}. "
+					f"Use IA_estimator='galaxies' for shape-shape correlations.")
+		# tells pair_kernel (via the backends) to accumulate the shape-shape products; an
+		# attribute rather than an argument because the mp backends pickle `self` into
+		# their workers and read their options off it the same way
+		self._shape_mode = "both" if corr_type in SHAPE_SHAPE_CORR_TYPES else True
 
 		self.responsivity_correction = responsivity
 		masks = self.rename_input_keys(masks, self._input_name_map)
@@ -668,14 +693,7 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 
 				self._measure_w_g_i(corr_type=corr_type, dataset_name=f"{dataset_name}_{i}",
 									jk_group_name=f"{dataset_name}_jk{num_jk}", return_output=False)
-			if corr_type == "both":
-				corr_group = ["w_g_plus", "w_gg"]
-			elif corr_type == "g+":
-				corr_group = ["w_g_plus"]
-			elif corr_type == "gg":
-				corr_group = ["w_gg"]
-			else:
-				raise KeyError("Unknown value for corr_type. Choose from [g+, gg, both]")
+			corr_group = [w_name for _, w_name in W_PRODUCTS[corr_type]]
 			self._combine_jackknife_information(dataset_name=dataset_name, jk_group_name=f"{dataset_name}_jk{num_jk}",
 												corr_group=corr_group, num_box=num_jk)
 		else:
@@ -783,6 +801,26 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 		else:
 			raise KeyError("Unknown input for IA_estimator, choose from [clusters, galaxies].")
 
+		if corr_type not in CORR_TYPES:
+			raise ValueError(f"Unknown corr_type {corr_type!r}. Choose from {sorted(CORR_TYPES)}.")
+		if corr_type in SHAPE_SHAPE_CORR_TYPES:
+			if not getattr(self, "has_density_sample_shapes", False):
+				raise ValueError(
+					f"corr_type={corr_type!r} correlates the shapes of both samples, so the "
+					f"density sample needs shapes of its own. Supply 'e1_density_sample' and "
+					f"'e2_density_sample' (or the names you gave the constructor).")
+			if IA_estimator == "clusters":
+				# xi_++ = S+S+/RR has no published 'clusters' analogue: that estimator
+				# normalises by the clustering counts, and inventing a form for it here
+				# would be our own definition rather than a documented one.
+				raise ValueError(
+					f"IA_estimator='clusters' is not defined for corr_type={corr_type!r}. "
+					f"Use IA_estimator='galaxies' for shape-shape correlations.")
+		# tells pair_kernel (via the backends) to accumulate the shape-shape products; an
+		# attribute rather than an argument because the mp backends pickle `self` into
+		# their workers and read their options off it the same way
+		self._shape_mode = "both" if corr_type in SHAPE_SHAPE_CORR_TYPES else True
+
 		self.responsivity_correction = responsivity
 		masks = self.rename_input_keys(masks, self._input_name_map)
 		masks_randoms = self.rename_input_keys(masks_randoms, self._input_name_map)
@@ -885,14 +923,7 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 
 				self._measure_multipoles(corr_type=corr_type, dataset_name=f"{dataset_name}_{i}",
 										 jk_group_name=f"{dataset_name}_jk{num_jk}", return_output=False)
-			if corr_type == "both":
-				corr_group = ["multipoles_g_plus", "multipoles_gg"]
-			elif corr_type == "g+":
-				corr_group = ["multipoles_g_plus"]
-			elif corr_type == "gg":
-				corr_group = ["multipoles_gg"]
-			else:
-				raise KeyError("Unknown value for corr_type. Choose from [g+, gg, both]")
+			corr_group = [m_name for _, m_name, _ in M_PRODUCTS[corr_type]]
 			self._combine_jackknife_information(dataset_name=dataset_name, jk_group_name=f"{dataset_name}_jk{num_jk}",
 												corr_group=corr_group, num_box=num_jk)
 		else:

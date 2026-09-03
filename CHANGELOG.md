@@ -10,6 +10,31 @@ public API mean a major version bump.
 
 ### Added
 
+- **Shape–shape (`++`) correlations, on both entry points.** `corr_type='++'` measures
+  $w_{++}$, $w_{\times\times}$ and the parity-odd $w_{+\times}$, plus the $(\ell,s)=(4,4)$
+  multipole of $\xi_{++}$; `corr_type='all'` adds $g+$ and $gg$ alongside. `'both'` keeps its
+  original meaning — exactly $g+$ and $gg$ — so existing scripts are unaffected.
+
+    The density sample carries its own shapes for this, through
+    `Axis_Direction_density_sample`/`q_density_sample` (box) or
+    `e1_density_sample`/`e2_density_sample` (lightcone), with matching constructor arguments.
+    They are optional, validated only when present, and a shape-shape run without them is
+    refused up front rather than after a full pair count. Both the auto case (one catalogue in
+    both slots) and a genuine two-catalogue cross correlation are supported.
+
+    Available on every backend — brute, tree and multiprocessing — with jackknife covariance,
+    in both geometries. Each sample gets its own responsivity, so the box divides the products
+    by $(2\mathcal{R})(2\mathcal{R}_\mathrm{pos})$ and the jackknife applies the
+    retained-sample pair per realisation. On the lightcone $\xi_{++} = S_+S_+/RR$: the randoms
+    carry no shapes, so there is no $S_+R$ analogue to subtract, and `IA_estimator='clusters'`
+    is refused for `'++'` rather than given an invented definition. Shape–shape projects each
+    galaxy in its own tangent frame while $g+$ keeps its partner-frame convention — see
+    [Conventions](conventions.md).
+
+    $\xi_{\times\times}$ has no published multipole convention, so only the $\xi_{++}$
+    multipole is produced; adding the other means choosing a convention rather than filling in
+    a number.
+
 - **Shape–shape (`++`) accumulation in the pair kernel.** `pair_kernel.accumulate` and both
   `prepare_*_samples` functions now take `shapes="both"` alongside `True`/`False`, in which
   case the *density* sample carries shapes too and every pair contributes three further
@@ -36,6 +61,15 @@ public API mean a major version bump.
 - A documentation page for `measure_galaxy_contributions`, and the method is now shown on the
   `MeasureIABox` API page (it comes from a mixin, so it needed `inherited_members`); the same for
   `assign_jackknife_patches` on both class pages.
+
+### Changed
+
+- **Breaking (lightcone):** an unknown `corr_type` now raises `ValueError` rather than
+  `KeyError`, and raises **before** any pair counting rather than at the reduction stage. The
+  box has always raised `ValueError` here, via `_validate_measure_options`; the two entry
+  points now agree, and a typo costs seconds instead of a full measurement. Code catching
+  `KeyError` around `MeasureIALightcone.measure_xi_w` / `measure_xi_multipoles` for this case
+  needs updating.
 
 ### Fixed
 

@@ -7,15 +7,8 @@ from .measure_m_box import MeasureMultipolesBox
 from .measure_jackknife import MeasureJackknife
 from .measure_galaxy_box import MeasureGalaxyContributionsBox
 from .check_input import CheckInput
-from .measure_IA_base import W_PRODUCTS, M_PRODUCTS
+from .measure_IA_base import W_PRODUCTS, M_PRODUCTS, CORR_TYPES, SHAPE_SHAPE_CORR_TYPES
 from . import worker_pool
-
-
-#: Correlation types accepted by the box measurement methods. ``'both'`` keeps its original
-#: meaning (g+ and gg) so existing scripts are unaffected; ``'all'`` is the new everything option.
-CORR_TYPES = ("g+", "gg", "both", "++", "all")
-#: The subset that needs shapes on the density sample as well.
-SHAPE_SHAPE_CORR_TYPES = ("++", "all")
 
 
 class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, MeasureMBoxJackknife, MeasureJackknife,
