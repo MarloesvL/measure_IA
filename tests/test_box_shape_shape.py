@@ -224,6 +224,25 @@ class TestJackknife:
             g = f[obj.snap_group + "multipoles_plus_plus"]
             assert f"t_jackknife_cov_{NUM_JK}" in g
 
+    @pytest.mark.parametrize("method", ["measure_xi_w", "measure_xi_multipoles"])
+    def test_errorbars_are_sqrt_diag_cov(self, tmp_path, method):
+        """The written errorbars and covariance are accumulated separately, so
+        check they agree for every product ('all' = g+, gg and shape-shape)."""
+        obj = _obj(_catalogue(), tmp_path)
+        getattr(obj, method)("t", "all", NUM_JK, temp_file_path=False)
+        checked = 0
+        with h5py.File(obj.output_file_name, "r") as f:
+            g = f[obj.snap_group]
+            for name in g.keys():
+                if f"t_jackknife_cov_{NUM_JK}" not in g[name]:
+                    continue
+                cov = g[name][f"t_jackknife_cov_{NUM_JK}"][:]
+                err = g[name][f"t_jackknife_{NUM_JK}"][:]
+                np.testing.assert_allclose(err, np.sqrt(np.diag(cov)), rtol=1e-12,
+                                           err_msg=name)
+                checked += 1
+        assert checked >= 3, f"only {checked} products carried a covariance"
+
 
 # ===========================================================================
 # 5. Analytic limits

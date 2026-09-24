@@ -246,3 +246,20 @@ class TestJackknife:
         lc_ss.measure_xi_multipoles("galaxies", "t", "++", num_jk=NUM_JK, tree=True)
         with h5py.File(lc_ss.output_file_name, "r") as f:
             assert f"t_jackknife_cov_{NUM_JK}" in f["multipoles_plus_plus"]
+
+    @pytest.mark.parametrize("method", ["measure_xi_w", "measure_xi_multipoles"])
+    def test_errorbars_are_sqrt_diag_cov(self, lc_ss, method):
+        """The written errorbars and covariance are accumulated separately, so
+        check they agree for every product ('all' = g+, gg and shape-shape)."""
+        getattr(lc_ss, method)("galaxies", "t", "all", num_jk=NUM_JK, tree=True)
+        checked = 0
+        with h5py.File(lc_ss.output_file_name, "r") as f:
+            for name in f.keys():
+                if not isinstance(f[name], h5py.Group) or f"t_jackknife_cov_{NUM_JK}" not in f[name]:
+                    continue
+                cov = f[name][f"t_jackknife_cov_{NUM_JK}"][:]
+                err = f[name][f"t_jackknife_{NUM_JK}"][:]
+                np.testing.assert_allclose(err, np.sqrt(np.diag(cov)), rtol=1e-12,
+                                           err_msg=name)
+                checked += 1
+        assert checked >= 3, f"only {checked} products carried a covariance"
