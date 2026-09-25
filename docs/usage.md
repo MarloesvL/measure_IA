@@ -80,3 +80,31 @@ mi = MeasureIALightcone(data, randoms_data, output_file_name="./outfile.hdf5")
 mi.measure_xi_w("clusters", dataset_name="ds1", corr_type="both", num_jk=27, temp_file_path='./')
 mi.measure_xi_multipoles("clusters", dataset_name="ds1", corr_type="both", num_jk=27, temp_file_path='./')
 ```
+
+
+## Shape-shape correlations
+
+`corr_type="++"` correlates the shapes of both samples, giving $w_{++}$, $w_{\times\times}$ and the
+parity-odd null $w_{+\times}$ in one run, plus the $(4,4)$ multipole of $\xi_{++}$ from
+`measure_xi_multipoles`. It needs shapes on the density sample as well, which are supplied through
+extra keys in the data dictionary (see [Input](input.md#shape-shape-correlations)):
+
+```python
+data_dict = {
+	"Position": np.array([]),
+	"Position_shape_sample": np.array([]),
+	"Axis_Direction": np.array([]),
+	"LOS": 2,
+	"q": np.array([]),
+	"Axis_Direction_density_sample": np.array([]),   # shapes of the density sample
+	"q_density_sample": np.array([]),
+}
+
+mi = MeasureIABox(data=data_dict, output_file_name="./outfile.hdf5", boxsize=205.0)
+mi.measure_xi_w(dataset_name="ds1", corr_type="++", num_jk=27, temp_file_path='./')
+```
+
+Use `corr_type="all"` to measure $g+$, $gg$ and $++$ together. `"both"` keeps its original meaning of
+$g+$ and $gg$ only, so existing scripts are unaffected. The lightcone works the same way, with
+`e1_density_sample` and `e2_density_sample` instead, except that `IA_estimator="clusters"` is not
+defined for shape-shape and raises.

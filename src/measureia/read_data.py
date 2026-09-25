@@ -81,6 +81,18 @@ class ReadData(SimInfo):
 		self.errors_multipoles_gp = None
 		self.cov_w_gg = None
 		self.errors_w_gg = None
+		self.w_pp = None
+		self.w_xx = None
+		self.w_px = None
+		self.multipoles_pp = None
+		self.cov_w_pp = None
+		self.errors_w_pp = None
+		self.cov_w_xx = None
+		self.errors_w_xx = None
+		self.cov_w_px = None
+		self.errors_w_px = None
+		self.cov_multipoles_pp = None
+		self.errors_multipoles_pp = None
 		self.cov_w_gp = None
 		self.errors_w_gp = None
 		return
@@ -313,6 +325,10 @@ class ReadData(SimInfo):
 		Fills in the available w_gg, w_gp, multipoles_gg, multipoles_gp, r, rp, and associated cov and errors attributes
 		for a given dataset and num_jk from the output file of MeasureIA.
 
+		Shape-shape products are read too when present: w_pp, w_xx and w_px (the parity-odd null)
+		and multipoles_pp, with their cov_/errors_ counterparts. Products that were not measured
+		stay None.
+
 		Parameters
 		----------
 		dataset_name: str
@@ -334,6 +350,18 @@ class ReadData(SimInfo):
 		self.errors_multipoles_gp = None
 		self.cov_w_gg = None
 		self.errors_w_gg = None
+		self.w_pp = None
+		self.w_xx = None
+		self.w_px = None
+		self.multipoles_pp = None
+		self.cov_w_pp = None
+		self.errors_w_pp = None
+		self.cov_w_xx = None
+		self.errors_w_xx = None
+		self.cov_w_px = None
+		self.errors_w_px = None
+		self.cov_multipoles_pp = None
+		self.errors_multipoles_pp = None
 		self.cov_w_gp = None
 		self.errors_w_gp = None
 
@@ -372,6 +400,29 @@ class ReadData(SimInfo):
 			if num_jk != None:
 				self.cov_w_gp = data_group[f"w_g_plus/{dataset_name}_jackknife_cov_{num_jk}"][:]
 				self.errors_w_gp = data_group[f"w_g_plus/{dataset_name}_jackknife_{num_jk}"][:]
+		except KeyError:
+			pass
+		# shape-shape products (corr_type '++' / 'all'); absent groups are skipped as above
+		for group, attribute in (("w_plus_plus", "w_pp"), ("w_cross_cross", "w_xx"),
+								 ("w_plus_cross", "w_px")):
+			try:
+				setattr(self, attribute, data_group[f"{group}/{dataset_name}"][:])
+				self.rp = data_group[f"{group}/{dataset_name}_rp"][:]
+				if num_jk != None:
+					setattr(self, f"cov_{attribute}",
+							data_group[f"{group}/{dataset_name}_jackknife_cov_{num_jk}"][:])
+					setattr(self, f"errors_{attribute}",
+							data_group[f"{group}/{dataset_name}_jackknife_{num_jk}"][:])
+			except KeyError:
+				pass
+		try:
+			self.multipoles_pp = data_group[f"multipoles_plus_plus/{dataset_name}"][:]
+			self.r = data_group[f"multipoles_plus_plus/{dataset_name}_r"][:]
+			if num_jk != None:
+				self.cov_multipoles_pp = data_group[
+					f"multipoles_plus_plus/{dataset_name}_jackknife_cov_{num_jk}"][:]
+				self.errors_multipoles_pp = data_group[
+					f"multipoles_plus_plus/{dataset_name}_jackknife_{num_jk}"][:]
 		except KeyError:
 			pass
 		file.close()

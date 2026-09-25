@@ -37,6 +37,8 @@ supporting classes.
 
 Recently completed:
 
+- Shape–shape (II) correlations: `w_++`, `w_xx` and the parity-odd `w_+x`, plus the (4,4) multipole
+  of `xi_++`, on box and lightcone, validated against halotools and treecorr
 - Lightcone methods & cross-code validation (against halotools, treecorr and corr_pc)
 - Multiprocessing support for the lightcone version (both `w` and multipoles)
 - Optional responsivity factor for the shape calibration

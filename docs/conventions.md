@@ -132,6 +132,19 @@ The correction is controlled by the `responsivity` argument: it defaults to `Tru
 $\mathcal{R} = 0.5$ so that $2\mathcal{R} = 1$ and no calibration is applied. Only the $g+$ correlations are
 affected; the clustering ($gg$) signal is unchanged.
 
+### Shape-shape: one factor per sample
+
+A shape–shape product has two spin-2 factors, so it carries **two** responsivities — one per sample,
+each computed over its own weights:
+
+$$S_+S_+ = \sum w_i w_j \frac{e_+(j|i)}{2\mathcal{R}_j}\frac{e_+(i|j)}{2\mathcal{R}_i}\,.$$
+
+The two generally differ, since the density and shape samples have different shape-noise properties;
+in the auto case (the same catalogue in both slots) they coincide and the factor reduces to
+$(2\mathcal{R})^2$. Switching `responsivity` off sets both to $0.5$, rescaling the shape–shape
+products by exactly $(2\mathcal{R}_i)(2\mathcal{R}_j)$ — quadratically rather than linearly as for
+$g+$.
+
 The differing defaults are deliberate rather than an oversight: they match what each input format usually
 contains, so the common case needs no argument. Pass `responsivity` explicitly whenever your inputs do not
 follow that pattern — for example `responsivity=True` on the lightcone when your `e1`/`e2` are raw

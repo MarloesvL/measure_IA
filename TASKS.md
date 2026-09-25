@@ -241,7 +241,7 @@ P1 = features, P2 = input validation, P3 = test suite, P4 = cleanup & docs.
   *`min_patch=1`: won't-fix — 1-based patch indices now raise a clear `ValueError` telling the
   user to renumber (test added); `auto` corrtype: dead commented-out branches deleted from the
   Box backends, DD documented as cross-count-only (`get_random_pairs`' tested `auto` utility
-  branch kept); `++` correlation: deferred post-JOSS, comment updated to say so.* Still open
+  branch kept); `++` correlation: **no longer deferred — implemented, see below.*** Still open
   from this list: "deal with masks" in the lightcone dispatchers (`measure_IA_lightcone.py`,
   the `# ToDo: deal with masks` sites) — *now closed: both dispatcher mask blocks were
   replaced by `_sample_coordinates()` / `_field_mask()` during the P3 pass.*
@@ -618,3 +618,25 @@ and treecorr (lightcone), plus measureia-only profiling. Methodology in
 
   Current state for reference: **90% line coverage** (5,994 statements, 580 missed) and
   every backend x geometry x statistic x jk cell occupied.
+
+## Shape–shape (`++`) correlations — deferred items
+
+The feature itself is done: `corr_type='++'`/`'all'` on box and lightcone, `w` and multipoles,
+brute/tree/multiprocessing, with jackknife covariance, validated against halotools (ratio exactly
+1.0, auto *and* cross) and treecorr (`w_++` ≤3.5e-3, `w_xx` ≤7.1e-3). What was deliberately left
+out:
+
+- [ ] **Multipole decomposition of `xi_xx`.** Singh et al. (2024) give no convention for one, and
+  choosing it is a modelling decision rather than a missing number. The `(r, mu_r)` grid is written
+  to file so users can integrate it themselves. `M_PRODUCTS` in `measure_IA_base.py` is the single
+  place to add it.
+- [ ] **`measure_galaxy_contributions` for `++`.** The per-galaxy decomposition currently covers
+  `g+` only.
+- [ ] **Cosmic-shear $\xi_\pm$ as first-class outputs.** Reconstructable by the user as
+  `xi_+ = w_++ + w_xx` and `xi_- = w_++ - w_xx`; not written directly.
+- [ ] **General $\ell > s_{ab}$ multipoles** (e.g. $\ell=6$ of `++`, $\ell=4$ of `g+`). The
+  `l_list = sab_list` coupling in `_measure_multipoles` is the single place to break.
+- [ ] **Upstream issue for halotools `ii_minus_projected`**, which builds the second sample's marks
+  from the first sample's orientations (`marks2[:, 1] = orientations1[:, 0]`, where
+  `ii_plus_projected` correctly uses `orientations2`) and whose output depends on the physically
+  meaningless sign of the orientation vectors. Both documented in `validation/README.md`.

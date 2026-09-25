@@ -35,6 +35,20 @@ public API mean a major version bump.
     multipole is produced; adding the other means choosing a convention rather than filling in
     a number.
 
+    **Cross-validated**: $w_{++}$ against halotools `ii_plus_projected` at a ratio of exactly 1.0
+    in every bin, for the auto case *and* the genuine two-catalogue cross correlation (which is
+    what pins the $(2\mathcal{R}_\mathrm{shape})(2\mathcal{R}_\mathrm{density})$ responsivity,
+    rather than $(2\mathcal{R})^2$); and $w_{++}$/$w_{\times\times}$ against treecorr `GG` at
+    $\le3.5\times10^{-3}$ / $\le7.1\times10^{-3}$. $w_{\times\times}$ needs treecorr
+    specifically: halotools' `ii_minus_projected` cannot serve as its reference, both because its
+    output depends on the physically meaningless sign of the orientation vectors and because it
+    builds the second sample's marks from the first sample's orientations. See
+    `validation/README.md`.
+
+    The mock generators gain `density_shapes=False`, which when set gives the density sample its
+    own shapes for the cross case. The extra draws happen strictly after every existing one, so
+    default catalogues are byte-identical and the pinned fingerprints are untouched.
+
 - **Shape–shape (`++`) accumulation in the pair kernel.** `pair_kernel.accumulate` and both
   `prepare_*_samples` functions now take `shapes="both"` alongside `True`/`False`, in which
   case the *density* sample carries shapes too and every pair contributes three further
