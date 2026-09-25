@@ -244,6 +244,98 @@ class TestJackknife:
         assert checked >= 3, f"only {checked} products carried a covariance"
 
 
+class TestDeleteOneIdentity:
+    """Each shape-shape jackknife realisation, reconstructed by count
+    subtraction, against an independent direct measurement on the catalogue with
+    that subbox physically removed -- through the **public** estimator, not the
+    kernel.
+
+    The kernel-level version of this (tests/test_pair_kernel_shape_shape.py)
+    compares raw grids and is exact. This one additionally exercises the analytic
+    RR rescaling and the per-realisation responsivity of *both* samples, which
+    only exist above the kernel. As documented for the g+ jackknife, the box
+    rescales the analytic RR to the retained counts and volume, so a delete-one
+    estimator relates to a direct measurement on the deleted catalogue by the
+    exact volume factor VF = L^3 / (L^3 - 1) rather than being equal to it.
+    """
+
+    L_SUB = 2                     # 2^3 = 8 subboxes
+    NUM_BOX = L_SUB ** 3
+
+    @staticmethod
+    def _read(obj, group, key):
+        with h5py.File(obj.output_file_name, "r") as f:
+            return f[obj.snap_group + group][key][:]
+
+    def test_realisations_match_direct_measurement(self, tmp_path):
+        from measureia.mocks import subbox_labels
+
+        data = _catalogue(seed=11, n_centrals=160, n_sat=6)
+        obj = _obj(data, tmp_path, "jkid.hdf5")
+        obj.measure_xi_w("t", "++", self.NUM_BOX, temp_file_path=False)
+
+        lab_pos = subbox_labels(data["Position"], BOXSIZE, self.L_SUB)
+        lab_shape = subbox_labels(data["Position_shape_sample"], BOXSIZE, self.L_SUB)
+        vf = BOXSIZE ** 3 / (BOXSIZE ** 3 - (BOXSIZE / self.L_SUB) ** 3)
+
+        checked = 0
+        for i in range(self.NUM_BOX):
+            keep_p, keep_s = lab_pos != i, lab_shape != i
+            if keep_p.sum() < 10 or keep_s.sum() < 10:
+                continue
+            deleted = {
+                "Position": data["Position"][keep_p],
+                "Position_shape_sample": data["Position_shape_sample"][keep_s],
+                "Axis_Direction": data["Axis_Direction"][keep_s],
+                "q": data["q"][keep_s],
+                "Axis_Direction_density_sample":
+                    data["Axis_Direction_density_sample"][keep_p],
+                "q_density_sample": data["q_density_sample"][keep_p],
+                "LOS": 2,
+            }
+            direct = _obj(deleted, tmp_path, f"d{i}.hdf5")
+            direct.measure_xi_w("t", "++", 0, temp_file_path=False)
+
+            for group in ("xi_plus_plus", "xi_cross_cross", "xi_plus_cross"):
+                jk = self._read(obj, f"w/{group}/t_jk{self.NUM_BOX}", f"t_{i}")
+                dm = self._read(direct, f"w/{group}", "t")
+                np.testing.assert_allclose(
+                    jk * vf, dm, rtol=1e-9, atol=1e-11,
+                    err_msg=f"{group}, realisation {i}")
+            checked += 1
+        assert checked >= self.NUM_BOX - 1, f"only {checked} realisations checked"
+
+    def test_the_volume_factor_is_actually_needed(self, tmp_path):
+        """Guard: without VF the comparison above must fail.
+
+        Otherwise the test would pass just as well on an implementation that
+        forgot to rescale the analytic RR under deletion.
+        """
+        from measureia.mocks import subbox_labels
+
+        data = _catalogue(seed=11, n_centrals=160, n_sat=6)
+        obj = _obj(data, tmp_path, "vf.hdf5")
+        obj.measure_xi_w("t", "++", self.NUM_BOX, temp_file_path=False)
+        lab_pos = subbox_labels(data["Position"], BOXSIZE, self.L_SUB)
+        lab_shape = subbox_labels(data["Position_shape_sample"], BOXSIZE, self.L_SUB)
+        keep_p, keep_s = lab_pos != 0, lab_shape != 0
+        deleted = {
+            "Position": data["Position"][keep_p],
+            "Position_shape_sample": data["Position_shape_sample"][keep_s],
+            "Axis_Direction": data["Axis_Direction"][keep_s],
+            "q": data["q"][keep_s],
+            "Axis_Direction_density_sample": data["Axis_Direction_density_sample"][keep_p],
+            "q_density_sample": data["q_density_sample"][keep_p],
+            "LOS": 2,
+        }
+        direct = _obj(deleted, tmp_path, "vfd.hdf5")
+        direct.measure_xi_w("t", "++", 0, temp_file_path=False)
+        jk = self._read(obj, f"w/xi_plus_plus/t_jk{self.NUM_BOX}", "t_0")
+        dm = self._read(direct, "w/xi_plus_plus", "t")
+        assert not np.allclose(jk, dm, rtol=1e-6), "VF is 1; the guard is vacuous"
+
+
+
 # ===========================================================================
 # 5. Analytic limits
 # ===========================================================================

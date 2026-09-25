@@ -50,6 +50,83 @@ periodic box, distant-observer LOS along z.
   4×10⁻¹⁵ across all bins — machine precision. Enforced at rtol=1e-10 in
   `tests/test_validation_references.py`.
 
+### Box w_++ / w_xx vs halotools (`run_box_shape_shape_halotools.py`)
+
+Compares `MeasureIABox.measure_xi_w(corr_type='++')` against
+`halotools.mock_observables.ia_correlations.ii_plus_projected` and
+`ii_minus_projected`, on the **II auto-correlation of the shape (satellite)
+sample**: the same catalogue goes into both sample slots, which is what
+halotools does with `sample2=sample1`, and which carries a real signal because
+satellites of a shared central are aligned with each other through it. This
+also exercises measureia's auto path (`num_overlap` detects the full overlap;
+`num_overlap=0` is passed to state halotools' N₁·N₂ convention explicitly).
+
+- **Responsivity**: a shape-shape product carries one factor per sample, and
+  both slots hold the same catalogue, so
+  `w_++^measureia × (2R)² = w_++^halotools`. halotools applies none.
+- **Result** (halotools 0.9.4, 2026-09-04): `w_++` agrees with a ratio of
+  **exactly 1.0 in all ten bins** — machine precision, as for the g+ leg, both
+  codes using analytic RR. Enforced at `rtol=1e-10` in
+  `tests/test_validation_references.py` (`TestBoxShapeShapeAgainstHalotools`).
+  The parity-odd `w_+x` comes out below 25% of `w_++` and is pinned there.
+
+- **The genuine two-catalogue cross correlation is checked too**, not only the
+  auto case: the density sample (centrals + satellites, carrying their own
+  shapes via `radial_alignment_box_mock(density_shapes=True)`) against the shape
+  sample. The two samples then have *different* responsivities, so the factor is
+  `(2R_shape)(2R_density)` rather than `(2R)²` — the part of the estimator the
+  auto case cannot pin down. Ratio again **exactly 1.0 in all ten bins**, with
+  guards that the cross result really differs from the auto one and that the two
+  responsivities really differ.
+
+- **A second halotools defect, distinct from the sign dependence.** As of 0.9.4,
+  `ii_minus_projected` builds the second sample's marks from the *first*
+  sample's orientations — `marks2[:, 1] = orientations1[:, 0]` where
+  `ii_plus_projected` correctly uses `orientations2`. It raises outright when the
+  two samples differ in length (which is how it was found here) and would
+  silently use the wrong orientations if they happened to match. So the cross
+  leg calls only `ii_plus_projected`.
+
+- **`w_xx` is deliberately NOT enforced against halotools.** halotools' cross
+  component is defined as `e_-(j|i) = e_j sin(2φ)` with `cos φ = ô_j · r̂`, and
+  its value depends on the *sign* of the orientation vectors — a degree of
+  freedom that carries no physical meaning, since `ô` and `−ô` describe the
+  same shape. halotools documents no required sign convention, and none of the
+  ones tried here reconciles the two codes, so `ii_minus_projected` has no
+  single value for `w_xx` to be compared against. (This is not a claim about
+  halotools' internals, which are compiled; it is what the outputs do.)
+
+  Four other explanations were tested and ruled out on this mock:
+
+  | Alternative | Evidence against |
+  |---|---|
+  | different pair set or binning | `w_++` agrees at ratio 1.0 on the same pairs |
+  | a global sign / handedness convention | no uniform ±1; ratios span −1.04 to +6.44 |
+  | `ii_minus` is really ξ₋ = ξ₊₊ − ξ_×× | ratio to `w_++ − w_xx` scatters (−2.98, +13.8, −0.67, …) |
+  | a particular input orientation convention | raw, +x, +y and −x canonicalisations all scatter (±x agree, as a *global* flip cancels in a product) |
+
+  What is left is the sign dependence, measured directly:
+
+  | | identical under a per-galaxy axis flip? |
+  |---|---|
+  | measureia `w_++` | yes (bitwise) |
+  | measureia `w_xx` | yes (bitwise) |
+  | halotools `ii_plus` (`weight_func_id=5`) | yes (bitwise) |
+  | halotools `ii_minus` (`weight_func_id=6`) | **no — 113% change** |
+
+  measureia's own box `e_x` had the same sensitivity until the axis-direction
+  sign fix (see that CHANGELOG entry), which is what prompted looking for it
+  here.
+
+  The invariance above is necessary but not sufficient — a statistic can be
+  convention-independent and still wrong in sign or amplitude — so `w_xx` is
+  validated separately against treecorr GG, below.
+
+  Both halves of the table are pinned by
+  `TestShapeShapeOrientationSignInvariance`, whose halotools half is written to
+  **fail** if `ii_minus` ever becomes sign-invariant — at which point it could
+  be enforced and the exclusion removed.
+
 ### Lightcone w_gg / w_g+ vs treecorr (`run_lightcone_treecorr.py`)
 
 Compares `MeasureIALightcone.measure_xi_w` ('galaxies' estimator) against
@@ -236,6 +313,78 @@ CORR_PC_BIN=$PWD/corr_pc python run_box_multipoles_corrpc.py
 CORR_PC_BIN=$PWD/corr_pc python run_lightcone_corrpc.py
 CORR_PC_BIN=$PWD/corr_pc python run_lightcone_multipoles_corrpc.py
 ```
+
+### Lightcone w_++ / w_xx vs treecorr GG (`run_lightcone_shape_shape_treecorr.py`)
+
+**This is the leg that validates the cross-cross signal.** treecorr works with
+spin-2 shear components, for which
+
+    xi_+ = xi_tt + xi_xx        xi_- = xi_tt - xi_xx
+
+are well defined and free of the orientation-sign ambiguity that makes
+halotools' `ii_minus` unusable as a reference. The raw sums measureia
+accumulates are recovered from a `GGCorrelation` as
+`S_+S_+ = (xip + xim)·weight/2` and `S_xS_x = (xip - xim)·weight/2`, one
+treecorr run per signed π slab (`min_rpar`/`max_rpar`, `metric='Rperp'`,
+`bin_slop=0`), on the same II auto-correlation of the shape sample as the box
+halotools leg.
+
+The comparison is made at the level of those **raw pair sums**, which isolates
+the projection itself — no RR, no estimator and no Π integral in between.
+
+- **No shear sign flip is applied, and none is needed.** measureia's IA
+  convention has `e_+ = -γ_t`, but a shape-shape product carries two such
+  factors so the flip cancels exactly. The script checks this rather than
+  assuming it, by running treecorr both ways: the two agree to
+  **7×10⁻¹⁶ relative** (floating-point noise; treecorr rotates the shears
+  internally, so the runs are not bitwise identical).
+- **Convention difference — and there is only one.** Both codes project each
+  shear in *its own* (east, north) tangent frame; treecorr's
+  `ProjectHelper<Sphere>` is explicit that "the angles aren't equal" at the two
+  ends of a pair. But the projection direction is NOT one of them: measureia's
+  midpoint-LOS-perpendicular direction and treecorr's great-circle bearing are
+  the *same* direction, exactly, in each galaxy's own tangent frame. Proof: at
+  galaxy i the tangential part of the separation s = r_j n_j - r_i n_i is r_j
+  times the tangential part of n_j, since n_i has no tangential component at i
+  by construction -- so the radial separation drops out of the direction. And
+  n_mid is proportional to r_i n_i + r_j n_j, hence lies in span(n_i, n_j), so
+  its tangential part at i is along that same direction; subtracting a multiple
+  of it rescales but cannot rotate, and a sign change is irrelevant to a spin-2
+  quantity (phi -> phi + pi leaves cos 2phi and sin 2phi fixed). Verified
+  numerically over separations of 0.3-179.4 deg and distance ratios up to 18.7:
+  cos 2phi and sin 2phi agree to 3e-13.
+
+  So the whole residual below comes from the **separation magnitude**: treecorr
+  bins on `Rperp` (FisherRperp), measureia on its midpoint-LOS definition, and
+  pairs near a bin edge land in different bins. Nothing in it is a projection
+  disagreement. (Adopting treecorr's great-circle bearing would therefore be a
+  no-op — measured, not assumed.)
+- **Result** (treecorr 5.1.3, 2026-09-04):
+
+  | rp bin | rp (Mpc) | DD pairs | dev. S₊S₊ | dev. S_×S_× |
+  |---:|---:|---:|---:|---:|
+  | 0–5 | 0.65 – 6.5 | 526 – 7802 | ≤ 3.5×10⁻³ | ≤ 1.3×10⁻³ |
+  | 6 | 10.3 | 3014 | 3.4×10⁻³ | 7.1×10⁻³ |
+  | 7 | 16.3 | 7200 | 5.3×10⁻² | 4.3×10⁻² |
+
+  Note the residual grows with **angular separation, not sparseness**: the
+  outermost bin has the *most* pairs and the worst agreement, because the
+  curvature terms distinguishing the two codes' separation and projection
+  definitions scale with the pair opening angle. Enforced in
+  `tests/test_validation_references.py`
+  (`TestLightconeShapeShapeAgainstTreecorr`) at `rtol=1e-2` for rp ≲ 10 Mpc and
+  `rtol=1e-1` for the outermost bin, with a guard that the ξ_×× signal is
+  non-null *and changes sign* across the bins — otherwise a sign error could
+  hide.
+
+**Validation status of the three shape-shape products:**
+
+| product | external reference | agreement |
+|---|---|---|
+| `w_++` | halotools `ii_plus_projected` (box) | ratio exactly 1.0, machine precision |
+| `w_++` | treecorr `GG` (lightcone) | ≤ 3.5×10⁻³ inner bins |
+| `w_xx` | treecorr `GG` (lightcone) | ≤ 7.1×10⁻³ inner bins |
+| `w_+x` | none — it is the parity null | pinned below 10% of `w_++` |
 
 ### Jackknife covariance vs treecorr (`run_lightcone_treecorr_cov.py`)
 

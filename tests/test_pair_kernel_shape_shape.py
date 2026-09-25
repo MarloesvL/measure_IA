@@ -471,6 +471,79 @@ class TestShapeShapeLightcone:
         np.testing.assert_array_equal(plain.DD, both.DD)
 
 
+class TestProjectionDirectionConvention:
+    """measureia's separation direction IS treecorr's great-circle bearing.
+
+    The lightcone projects a shape using the angle of the separation in that
+    galaxy's own (east, north) tangent frame, where the separation direction is
+    the 3D vector made perpendicular to the pair-midpoint line of sight.
+    treecorr instead uses the exact great-circle bearing at that galaxy. These
+    are the same direction, exactly -- not merely to curvature order:
+
+    At galaxy i the tangential part of s = r_j n_j - r_i n_i is r_j times the
+    tangential part of n_j, because n_i has no tangential component at i by
+    construction; the radial separation drops out of the direction. And n_mid is
+    proportional to r_i n_i + r_j n_j, so it lies in span(n_i, n_j) and its
+    tangential part at i is along that same direction -- subtracting a multiple
+    of it rescales but cannot rotate. A sign change is irrelevant to a spin-2
+    quantity, since phi -> phi + pi leaves cos 2phi and sin 2phi fixed.
+
+    This matters because it means the whole residual against treecorr comes from
+    the separation *magnitude* (Rperp vs midpoint-LOS), and that adopting
+    treecorr's bearing would change nothing. If someone alters the projection,
+    this test says so.
+    """
+
+    @staticmethod
+    def _unit(v):
+        return v / np.linalg.norm(v, axis=-1, keepdims=True)
+
+    @pytest.mark.parametrize("wide", [False, True])
+    def test_directions_agree_as_spin_2_angles(self, wide):
+        rng = np.random.default_rng(7)
+        n_pairs = 20000
+        if wide:
+            # full sky, distances differing by a factor of ~20
+            ra = rng.uniform(0, 2 * np.pi, 2 * n_pairs)
+            dec = np.arcsin(rng.uniform(-1, 1, 2 * n_pairs))
+            r = rng.uniform(100.0, 2000.0, 2 * n_pairs)
+        else:
+            # a realistic narrow cone at survey depth
+            ra = np.radians(rng.uniform(150.0, 160.0, 2 * n_pairs))
+            dec = np.radians(rng.uniform(0.0, 10.0, 2 * n_pairs))
+            r = rng.uniform(2400.0, 2700.0, 2 * n_pairs)
+
+        n = np.column_stack([np.cos(dec) * np.cos(ra),
+                             np.cos(dec) * np.sin(ra), np.sin(dec)])
+        x = n * r[:, None]
+        east = np.column_stack([-np.sin(ra), np.cos(ra), np.zeros_like(ra)])
+        north = np.column_stack([-np.sin(dec) * np.cos(ra),
+                                 -np.sin(dec) * np.sin(ra), np.cos(dec)])
+        i = np.arange(0, 2 * n_pairs, 2)
+        j = i + 1
+
+        s = x[j] - x[i]
+        n_mid = self._unit(x[i] + x[j])
+        los = np.sum(s * n_mid, axis=1)
+        s_perp = s - los[:, None] * n_mid                    # measureia
+        dot = np.sum(n[j] * n[i], axis=1)
+        bearing = self._unit(n[j] - dot[:, None] * n[i])     # treecorr
+
+        def angle(v):
+            return np.arctan2(np.sum(v * north[i], axis=1),
+                              np.sum(v * east[i], axis=1))
+
+        phi_m, phi_g = angle(s_perp), angle(bearing)
+        # only the spin-2 combination is physical
+        np.testing.assert_allclose(np.cos(2 * phi_m), np.cos(2 * phi_g), atol=1e-11)
+        np.testing.assert_allclose(np.sin(2 * phi_m), np.sin(2 * phi_g), atol=1e-11)
+
+        if wide:  # guard: the wide case really does span large separations
+            sep = np.degrees(np.arccos(np.clip(dot, -1, 1)))
+            assert sep.max() > 170.0 and (sep > 90).sum() > 1000
+
+
+
 # ===========================================================================
 # 3. Jackknife
 # ===========================================================================

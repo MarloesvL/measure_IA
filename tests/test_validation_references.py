@@ -23,6 +23,7 @@ _VALIDATION_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(_
 sys.path.insert(0, _VALIDATION_DIR)
 
 import run_box_halotools as box_halotools
+import run_box_shape_shape_halotools as box_shape_shape
 import run_box_cov_bridge as box_cov_bridge
 import run_box_corrpc_cov as box_corrpc_cov
 import run_box_multipoles_corrpc as box_multipoles
@@ -31,13 +32,16 @@ import run_lightcone_corrpc_cov as lc_corrpc_cov
 import run_lightcone_multipoles_corrpc as lc_multipoles
 import run_lightcone_multipoles_corrpc_cov as lc_mp_corrpc_cov
 import run_lightcone_treecorr as lc_treecorr
+import run_lightcone_shape_shape_treecorr as lc_shape_shape
 import run_lightcone_treecorr_cov as lc_treecorr_cov
 import run_plane_parallel as plane_parallel
 from measureia.mocks import (radial_alignment_box_mock, responsivity,
                              radial_alignment_lightcone_mock)
 
 _BOX_REF = box_halotools.REFERENCE_FILE
+_BOX_SS_REF = box_shape_shape.REFERENCE_FILE
 _LC_REF = lc_treecorr.REFERENCE_FILE
+_LC_SS_REF = lc_shape_shape.REFERENCE_FILE
 
 
 def _reference_patches(reference_file, ia, data, randoms, num_jk, seed):
@@ -101,6 +105,258 @@ class TestBoxAgainstHalotools:
             wgg_halotools = f["w_gg"][:]
         np.testing.assert_allclose(box_measureia_results["w_gg"], wgg_halotools,
                                    rtol=1e-10, atol=1e-12)
+
+
+requires_box_shape_shape_reference = pytest.mark.skipif(
+    not os.path.exists(_BOX_SS_REF),
+    reason="no committed halotools shape-shape reference outputs; run "
+           "validation/run_box_shape_shape_halotools.py with halotools installed first",
+)
+
+
+def _q_responsivity(q):
+    e = (1 - q ** 2) / (1 + q ** 2)
+    return np.mean(1 - e ** 2 / 2.0)
+
+
+@pytest.fixture(scope="module")
+def box_shape_shape_results(tmp_path_factory):
+    """measureia shape-shape on the validation mock, auto and cross."""
+    mock = radial_alignment_box_mock(density_shapes=True)
+    tmp = tmp_path_factory.mktemp("validation")
+    rp, w_pp, w_xx, w_px = box_shape_shape.run_measureia(
+        mock, str(tmp / "box_shape_shape_mock.hdf5"))
+    _, x_pp, x_xx, x_px = box_shape_shape.run_measureia(
+        mock, str(tmp / "box_shape_shape_cross.hdf5"), cross=True)
+    return {"rp": rp, "w_plus_plus": w_pp, "w_cross_cross": w_xx,
+            "w_plus_cross": w_px, "R": responsivity(mock),
+            "cross_w_plus_plus": x_pp, "cross_w_plus_cross": x_px,
+            "R_density": _q_responsivity(mock["q_density_sample"])}
+
+
+@requires_box_shape_shape_reference
+class TestBoxShapeShapeAgainstHalotools:
+    """w_++ against halotools ii_plus_projected, on the shape sample's II
+    auto-correlation.
+
+    Only w_++ is enforced. halotools' ii_minus_projected depends on the *sign*
+    of the orientation vectors, a degree of freedom with no physical meaning --
+    flipping a random half of the signs leaves ii_plus bit-identical and moves
+    ii_minus by 113%, while both measureia products are bit-identical. Four
+    other explanations (different pair set, a global sign convention, ii_minus
+    being xi_- rather than xi_xx, and a particular input convention) were tested
+    and ruled out; see validation/README.md.
+
+    Note this does NOT validate measureia's w_xx: invariance is necessary but
+    not sufficient, and a statistic can be convention-independent and still
+    wrong. w_xx has no external validation yet -- treecorr's xi_+/xi_- is the
+    intended reference.
+    """
+
+    def test_reference_binning_matches(self, box_shape_shape_results):
+        with h5py.File(_BOX_SS_REF, "r") as f:
+            rp_bins = f["rp_bins"][:]
+            assert f.attrs["pi_max"] == box_shape_shape.PI_MAX
+        expected = np.logspace(np.log10(box_shape_shape.RP_LIMS[0]),
+                               np.log10(box_shape_shape.RP_LIMS[1]),
+                               box_shape_shape.NUM_BINS_RP + 1)
+        np.testing.assert_allclose(rp_bins, expected, rtol=1e-10)
+
+    def test_w_plus_plus_matches_halotools_up_to_2R_squared(self, box_shape_shape_results):
+        """A shape-shape product carries one responsivity factor per sample.
+
+        Both slots hold the same catalogue here, so the factor is (2R)^2.
+        halotools applies no responsivity at all.
+        """
+        with h5py.File(_BOX_SS_REF, "r") as f:
+            wpp_halotools = f["w_plus_plus"][:]
+        R = box_shape_shape_results["R"]
+        np.testing.assert_allclose(
+            box_shape_shape_results["w_plus_plus"] * (2 * R) ** 2, wpp_halotools,
+            rtol=1e-10, atol=1e-12)
+
+    def test_cross_correlation_matches_halotools(self, box_shape_shape_results):
+        """The genuine two-catalogue cross correlation, not just the auto case.
+
+        Density sample (centrals + satellites, carrying their own shapes) against
+        the shape sample (satellites). The two samples now have *different*
+        responsivities, so the factor is (2R_shape)(2R_density) rather than
+        (2R)^2 -- which is the part of the estimator this test actually pins
+        down beyond the auto case.
+        """
+        with h5py.File(_BOX_SS_REF, "r") as f:
+            if "cross_w_plus_plus" not in f:
+                pytest.skip("reference file predates the cross comparison; "
+                            "rerun validation/run_box_shape_shape_halotools.py")
+            wpp_halotools = f["cross_w_plus_plus"][:]
+        resp = (2 * box_shape_shape_results["R"]) * (2 * box_shape_shape_results["R_density"])
+        np.testing.assert_allclose(
+            box_shape_shape_results["cross_w_plus_plus"] * resp, wpp_halotools,
+            rtol=1e-10, atol=1e-12)
+
+    def test_cross_differs_from_auto(self, box_shape_shape_results):
+        """Guard: the cross test would be vacuous if it silently ran the auto case."""
+        auto = box_shape_shape_results["w_plus_plus"]
+        cross = box_shape_shape_results["cross_w_plus_plus"]
+        assert not np.allclose(auto, cross, rtol=1e-3)
+
+    def test_two_responsivities_actually_differ(self, box_shape_shape_results):
+        """Guard on the (2R_s)(2R_d) factor above: if the two samples happened to
+        share a responsivity, the cross test could not distinguish it from (2R)^2."""
+        assert box_shape_shape_results["R"] != box_shape_shape_results["R_density"]
+
+    def test_signal_is_non_null(self, box_shape_shape_results):
+        """Guard: agreement on an all-zero signal would prove nothing."""
+        assert np.max(np.abs(box_shape_shape_results["w_plus_plus"])) > 1.0
+
+    def test_parity_null_is_small(self, box_shape_shape_results):
+        """w_+x is the parity-odd null and should be far below w_++."""
+        w_pp = np.abs(box_shape_shape_results["w_plus_plus"])
+        w_px = np.abs(box_shape_shape_results["w_plus_cross"])
+        assert np.max(w_px) < 0.25 * np.max(w_pp)
+
+
+class TestShapeShapeOrientationSignInvariance:
+    """measureia's shape-shape products do not depend on the arbitrary sign of
+    the orientation vectors, and halotools' ii_minus does.
+
+    The first half locks the Milestone-0 projection fix at the level of the
+    public estimator; the second documents why w_xx cannot be enforced against
+    halotools. Neither needs halotools installed for the measureia half.
+    """
+
+    @staticmethod
+    def _flip(mock, seed=0):
+        flipped = dict(mock)
+        rng = np.random.default_rng(seed)
+        signs = rng.choice([-1.0, 1.0], len(mock["Axis_Direction"]))
+        flipped["Axis_Direction"] = mock["Axis_Direction"] * signs[:, None]
+        return flipped
+
+    def test_measureia_products_are_invariant(self, tmp_path):
+        mock = radial_alignment_box_mock()
+        a = box_shape_shape.run_measureia(mock, str(tmp_path / "a.hdf5"))
+        b = box_shape_shape.run_measureia(self._flip(mock), str(tmp_path / "b.hdf5"))
+        for got, want, name in zip(b[1:], a[1:], ("w_++", "w_xx", "w_+x")):
+            np.testing.assert_array_equal(got, want, err_msg=name)
+        assert np.max(np.abs(a[1])) > 1.0, "w_++ is trivially zero"
+
+    def test_halotools_ii_minus_is_not_invariant(self, tmp_path):
+        """Documents the premise of the w_xx exclusion above.
+
+        If halotools ever makes ii_minus sign-invariant, this test fails and
+        w_xx can be enforced against it too -- which is the point of pinning it.
+        """
+        pytest.importorskip("halotools")
+        mock = radial_alignment_box_mock()
+        rp_bins = np.logspace(np.log10(box_shape_shape.RP_LIMS[0]),
+                              np.log10(box_shape_shape.RP_LIMS[1]),
+                              box_shape_shape.NUM_BINS_RP + 1)
+        pp_a, xx_a = box_shape_shape.run_halotools(mock, rp_bins)
+        pp_b, xx_b = box_shape_shape.run_halotools(self._flip(mock), rp_bins)
+        np.testing.assert_array_equal(pp_a, pp_b)          # ii_plus is invariant
+        assert not np.allclose(xx_a, xx_b, rtol=1e-6), (
+            "halotools ii_minus is now orientation-sign invariant; w_xx can be "
+            "enforced against it, and the exclusion above should be removed")
+
+
+requires_lc_shape_shape_reference = pytest.mark.skipif(
+    not os.path.exists(_LC_SS_REF),
+    reason="no committed treecorr shape-shape reference outputs; run "
+           "validation/run_lightcone_shape_shape_treecorr.py with treecorr installed first",
+)
+
+
+@pytest.fixture(scope="module")
+def lc_shape_shape_results(tmp_path_factory):
+    """measureia shape-shape sums on the lightcone mock (same config as the script)."""
+    data, randoms, dist = lc_shape_shape.build_catalogues()
+    tmp = tmp_path_factory.mktemp("validation_lc_ss")
+    out = str(tmp / "lc_shape_shape_mock.hdf5")
+    rp, SpSp, SxSx, w_pp, w_xx, w_px = lc_shape_shape.run_measureia(
+        data, randoms, out, str(tmp))
+    return {"rp": rp, "SplusSplus": SpSp, "ScrossScross": SxSx,
+            "w_plus_plus": w_pp, "w_cross_cross": w_xx, "w_plus_cross": w_px}
+
+
+@requires_lc_shape_shape_reference
+class TestLightconeShapeShapeAgainstTreecorr:
+    """w_++ AND w_xx against treecorr GG, on the shape sample's II auto-correlation.
+
+    This is the leg that validates the cross-cross signal: treecorr works with
+    spin-2 shear components, so xi_+ = xi_tt + xi_xx and xi_- = xi_tt - xi_xx
+    are well defined and free of the orientation-sign ambiguity that makes
+    halotools' ii_minus unusable as a reference (see
+    TestBoxShapeShapeAgainstHalotools).
+
+    The comparison is at the level of the raw pair sums, which isolates the
+    projection: no RR, no estimator, no Pi integral in between.
+
+    The only convention difference is the separation *magnitude* (treecorr's
+    Rperp vs measureia's midpoint-LOS), which migrates pairs near bin edges.
+    The projection direction is NOT a difference: measureia's
+    midpoint-LOS-perpendicular direction equals treecorr's great-circle bearing
+    exactly -- see test_projection_direction_is_the_great_circle_bearing in
+    tests/test_pair_kernel_shape_shape.py, and validation/README.md for the
+    proof.
+    """
+
+    #: The two codes' separation and projection definitions differ by curvature
+    #: terms, which grow with the pair opening angle, so the residual grows with
+    #: rp rather than with sparseness -- measured on this mock the outermost bin
+    #: has the MOST pairs (7200 vs 3014 in the next one in) and the worst
+    #: agreement. Hence a scale-split rather than a count-split.
+    _INNER = slice(0, 7)     # rp <~ 10 Mpc: agreement <= 7e-3
+    _OUTER = slice(7, None)  # rp ~ 16 Mpc:  agreement <= 5.3e-2
+    _RTOL_INNER = 1e-2
+    _RTOL_OUTER = 1e-1
+
+    def test_reference_binning_matches(self, lc_shape_shape_results):
+        with h5py.File(_LC_SS_REF, "r") as f:
+            rp_bins = f["rp_bins"][:]
+            assert f.attrs["pi_max"] == lc_shape_shape.PI_MAX
+        expected = np.logspace(np.log10(lc_shape_shape.RP_LIMS[0]),
+                               np.log10(lc_shape_shape.RP_LIMS[1]),
+                               lc_shape_shape.NUM_BINS_RP + 1)
+        np.testing.assert_allclose(rp_bins, expected, rtol=1e-10)
+
+    @pytest.mark.parametrize("key", ["SplusSplus", "ScrossScross"])
+    def test_raw_sums_match_treecorr(self, lc_shape_shape_results, key):
+        """Both II products against treecorr GG, at the raw pair-sum level.
+
+        ScrossScross is the one that validates w_xx. Nothing else in the suite
+        confirms the cross-cross sign or amplitude: halotools cannot serve as a
+        reference for it, and measureia's own invariance tests are necessary but
+        not sufficient.
+        """
+        with h5py.File(_LC_SS_REF, "r") as f:
+            tc = f[key][:].sum(axis=1)
+        mia = lc_shape_shape_results[key].sum(axis=1)
+        np.testing.assert_allclose(mia[self._INNER], tc[self._INNER],
+                                   rtol=self._RTOL_INNER,
+                                   err_msg=f"{key}, rp <~ 10 Mpc")
+        np.testing.assert_allclose(mia[self._OUTER], tc[self._OUTER],
+                                   rtol=self._RTOL_OUTER,
+                                   err_msg=f"{key}, outermost rp bin")
+
+    def test_cross_cross_signal_is_non_null_and_changes_sign(self,
+                                                             lc_shape_shape_results):
+        """Guard on the test above.
+
+        Agreement would be trivial on a null signal, and a sign error would be
+        invisible if the signal never left one side of zero. This mock's
+        xi_xx does both.
+        """
+        tc_file = h5py.File(_LC_SS_REF, "r")
+        tc = tc_file["ScrossScross"][:].sum(axis=1)
+        tc_file.close()
+        assert np.max(np.abs(tc)) > 1.0
+        assert np.min(tc) < 0 < np.max(tc), "signal never changes sign"
+
+    def test_parity_null_is_small(self, lc_shape_shape_results):
+        w_pp = np.abs(lc_shape_shape_results["w_plus_plus"])
+        w_px = np.abs(lc_shape_shape_results["w_plus_cross"])
+        assert np.max(w_px) < 0.1 * np.max(w_pp)
 
 
 requires_lc_reference = pytest.mark.skipif(
