@@ -51,6 +51,45 @@ def available_pairs(Num_position, Num_shape, num_overlap=0, corrtype="cross"):
 	return num_pairs / 2.0 if corrtype == "auto" else num_pairs
 
 
+#: Correlation types accepted by the measurement methods. ``'both'`` keeps its original
+#: meaning (g+ and gg) so existing scripts are unaffected; ``'all'`` is the new everything
+#: option and ``'++'`` the shape-shape one.
+CORR_TYPES = ("g+", "gg", "both", "++", "all")
+#: The subset that needs shapes on the density sample as well.
+SHAPE_SHAPE_CORR_TYPES = ("++", "all")
+
+#: Which (xi group, w group) pairs each corr_type produces for the projected statistic.
+#: 'both' keeps its original meaning (g+ and gg); '++' adds the three shape-shape products
+#: and 'all' is everything. The parity-odd plus-cross term rides along with '++' exactly as
+#: xi_g_cross rides along with g+.
+_GP = ("xi_g_plus", "w_g_plus")
+_GG = ("xi_gg", "w_gg")
+_PP = ("xi_plus_plus", "w_plus_plus")
+_XX = ("xi_cross_cross", "w_cross_cross")
+_PX = ("xi_plus_cross", "w_plus_cross")
+W_PRODUCTS = {
+	"g+": [_GP],
+	"gg": [_GG],
+	"both": [_GP, _GG],
+	"++": [_PP, _XX, _PX],
+	"all": [_GP, _GG, _PP, _XX, _PX],
+}
+
+#: Multipole products: (xi group, multipole group, spin s_ab). Singh et al. (2023) give
+#: s_ab = 2 for xi_g+ and s_ab = 4 for xi_++ ("given that there are two shapes in the
+#: auto-correlation"), so the lowest non-zero moment is the hexadecapole L^{4,4}.
+#: xi_cross_cross has no published multipole convention, so it is deliberately absent --
+#: adding it means choosing one, not just filling in a number. See TASKS.md.
+M_PRODUCTS = {
+	"g+": [("xi_g_plus", "multipoles_g_plus", 2)],
+	"gg": [("xi_gg", "multipoles_gg", 0)],
+	"both": [("xi_g_plus", "multipoles_g_plus", 2), ("xi_gg", "multipoles_gg", 0)],
+	"++": [("xi_plus_plus", "multipoles_plus_plus", 4)],
+	"all": [("xi_g_plus", "multipoles_g_plus", 2), ("xi_gg", "multipoles_gg", 0),
+			("xi_plus_plus", "multipoles_plus_plus", 4)],
+}
+
+
 def count_overlap(positions_a, positions_b):
 	"""Number of rows present in both coordinate arrays, matched exactly.
 
@@ -370,6 +409,212 @@ class MeasureIABase(SimInfo):
 		return e * cos_2phi, e * sin_2phi
 
 	@staticmethod
+	def sample_responsivity(e, weight, responsivity_correction=True):
+		"""Weighted responsivity ``R = <w(1 - e^2/2)>/<w>`` for one sample, or 0.5 when the
+		correction is off (so that ``2R = 1`` and no calibration is applied).
+
+		Factored out because a shape-shape correlation needs one of these per sample: the
+		density sample carries its own shapes and generally its own shape-noise properties.
+		"""
+		if not responsivity_correction or e is None or sum(weight) <= 0:
+			return 0.5
+		return sum(weight * (1 - e ** 2 / 2.0)) / sum(weight)
+
+	def write_shape_shape_grids(self, output_file, statistic, coords, grids, RR, RR_denom,
+								separation_bins, second_bins, dataset_name, jk_group_name=""):
+		r"""Writes the three shape-shape products and their estimators to the output file.
+
+		Additive: it touches none of the existing groups, so the g+/gg datasets and their
+		float summation order are unaffected by a shape-shape run.
+
+		``Splus_Splus`` and ``Scross_Scross`` are the two II signals ($\xi_{++}$,
+		$\xi_{\times\times}$); ``Splus_Scross`` is the symmetrised parity-odd null, the
+		shape-shape analogue of $\xi_{g\times}$. All three share the g+ random-pair grid,
+		because they count exactly the same pairs.
+
+		Parameters
+		----------
+		output_file : h5py.File
+			Open output file.
+		statistic : str
+			'w' or 'multipoles' -- the top-level group.
+		coords : tuple of 2 str
+			Suffixes of the two bin-centre datasets, ('rp', 'pi') or ('r', 'mu_r').
+		grids : pair_kernel.Grids
+			Must carry the shape-shape products (i.e. the kernel ran with ``shapes="both"``).
+		RR : ndarray
+			Random-pair grid, written to file as-is.
+		RR_denom : ndarray
+			The same grid with zeros replaced by ones, used as the divisor.
+		separation_bins, second_bins : ndarray
+			Bin centres of the two axes.
+		dataset_name : str
+			Name of the dataset in the output file.
+		jk_group_name : str, optional
+			Sub-group for jackknife realisations; empty for the full sample.
+
+		"""
+		coord_1, coord_2 = coords
+		for group_name, raw, suffix in (
+				("xi_plus_plus", grids.Splus_Splus, "_SplusSplus"),
+				("xi_cross_cross", grids.Scross_Scross, "_ScrossScross"),
+				("xi_plus_cross", grids.Splus_Scross, "_SplusScross")):
+			group = create_group_hdf5(
+				output_file, f"{self.snap_group}/{statistic}/{group_name}/{jk_group_name}")
+			write_dataset_hdf5(group, dataset_name, data=raw / RR_denom)
+			write_dataset_hdf5(group, dataset_name + suffix, data=raw)
+			write_dataset_hdf5(group, dataset_name + "_RR", data=RR)
+			write_dataset_hdf5(group, dataset_name + f"_{coord_1}", data=separation_bins)
+			write_dataset_hdf5(group, dataset_name + f"_{coord_2}", data=second_bins)
+		return
+
+	def write_shape_shape_counts(self, output_file, statistic, coords, grids,
+								 separation_bins, second_bins, dataset_name, jk_group_name=""):
+		"""Writes the raw shape-shape pair sums for the lightcone.
+
+		The lightcone backends write counts and let ``_obs_estimator`` assemble the
+		estimator from them once every pass has run, so unlike the box writer this one
+		does no division. Only the S+D pass produces these sums -- the S+R pass swaps the
+		density sample for randoms, which carry no shapes.
+
+		Parameters
+		----------
+		output_file : h5py.File
+			Open output file.
+		statistic : str
+			'w' or 'multipoles'.
+		coords : tuple of 2 str
+			Suffixes of the two bin-centre datasets, ('rp', 'pi') or ('r', 'mu_r').
+		grids : pair_kernel.Grids
+			Must carry the shape-shape products.
+		separation_bins, second_bins : ndarray
+			Bin centres of the two axes.
+		dataset_name : str
+			Name of the dataset in the output file.
+		jk_group_name : str, optional
+			Sub-group for jackknife realisations; empty for the full sample.
+
+		"""
+		coord_1, coord_2 = coords
+		for group_name, raw, suffix in (
+				("xi_plus_plus", grids.Splus_Splus, "_SplusSplus"),
+				("xi_cross_cross", grids.Scross_Scross, "_ScrossScross"),
+				("xi_plus_cross", grids.Splus_Scross, "_SplusScross")):
+			group = create_group_hdf5(
+				output_file, f"{self.snap_group}/{statistic}/{group_name}/{jk_group_name}")
+			write_dataset_hdf5(group, dataset_name + suffix, data=raw)
+			write_dataset_hdf5(group, dataset_name + f"_{coord_1}", data=separation_bins)
+			write_dataset_hdf5(group, dataset_name + f"_{coord_2}", data=second_bins)
+		return
+
+	def write_shape_shape_counts_jk(self, output_file, statistic, coords, grids,
+									separation_bins, second_bins, dataset_name,
+									jk_group_name, num_jk):
+		"""Lightcone jackknife twin of :meth:`write_shape_shape_counts`.
+
+		Mirrors how the lightcone writes ``S_+D`` under jackknife: the full-sample sums go
+		to the top-level group and the delete-one sums, ``full - jk[i]``, into the
+		realisation group. There is no responsivity juggling here -- the lightcone bakes
+		1/(2R) into ``e`` and ``e_pos`` up front, so the subtraction is plain, exactly as
+		it is for ``S_+D``.
+
+		Parameters
+		----------
+		output_file : h5py.File
+			Open output file.
+		statistic : str
+			'w' or 'multipoles'.
+		coords : tuple of 2 str
+			Suffixes of the two bin-centre datasets, ('rp', 'pi') or ('r', 'mu_r').
+		grids : pair_kernel.Grids
+			Must carry the shape-shape products and their ``_jk`` twins.
+		separation_bins, second_bins : ndarray
+			Bin centres of the two axes.
+		dataset_name : str
+			Name of the dataset in the output file.
+		jk_group_name : str
+			Sub-group holding the realisations.
+		num_jk : int
+			Number of jackknife realisations.
+
+		"""
+		coord_1, coord_2 = coords
+		for group_name, full, raw_jk, suffix in (
+				("xi_plus_plus", grids.Splus_Splus, grids.Splus_Splus_jk, "_SplusSplus"),
+				("xi_cross_cross", grids.Scross_Scross, grids.Scross_Scross_jk, "_ScrossScross"),
+				("xi_plus_cross", grids.Splus_Scross, grids.Splus_Scross_jk, "_SplusScross")):
+			group = create_group_hdf5(
+				output_file, f"{self.snap_group}/{statistic}/{group_name}/")
+			write_dataset_hdf5(group, dataset_name + suffix, data=full)
+			write_dataset_hdf5(group, dataset_name + f"_{coord_1}", data=separation_bins)
+			write_dataset_hdf5(group, dataset_name + f"_{coord_2}", data=second_bins)
+			group = create_group_hdf5(
+				output_file, f"{self.snap_group}/{statistic}/{group_name}/{jk_group_name}")
+			for i in np.arange(0, num_jk):
+				write_dataset_hdf5(group, dataset_name + f"_{i}" + suffix,
+								   data=full - raw_jk[i])
+				write_dataset_hdf5(group, dataset_name + f"_{i}_{coord_1}", data=separation_bins)
+				write_dataset_hdf5(group, dataset_name + f"_{i}_{coord_2}", data=second_bins)
+		return
+
+	def write_shape_shape_jk_realisations(self, output_file, statistic, coords, grids, RR_jk,
+										  resp_full, R_jk, R_pos_jk, separation_bins,
+										  second_bins, dataset_name, jk_group_name, num_box):
+		r"""Writes the delete-one shape-shape realisations, mirroring the g+ jackknife block.
+
+		The ``_jk`` grids from the kernel are raw sums, while the full-sample grids already
+		carry the ``(2R)(2R_pos)`` division, so the full grid is multiplied back up before the
+		subtraction. Both samples' responsivities change from realisation to realisation, so
+		the retained-sample pair ``R_jk[i]``/``R_pos_jk[i]`` is applied per realisation --
+		the shape-shape analogue of the single ``2 R_jk[i]`` the g+ block applies.
+
+		Parameters
+		----------
+		output_file : h5py.File
+			Open output file.
+		statistic : str
+			'w' or 'multipoles'.
+		coords : tuple of 2 str
+			Suffixes of the two bin-centre datasets, ('rp', 'pi') or ('r', 'mu_r').
+		grids : pair_kernel.Grids
+			Must carry the shape-shape products and their ``_jk`` twins.
+		RR_jk : ndarray
+			(num_box, nr, n2) random-pair grids of the delete-one samples.
+		resp_full : float
+			``(2R)(2R_pos)`` of the full sample, undoing the division in the full-sample grids.
+		R_jk, R_pos_jk : ndarray
+			Per-realisation responsivities of the shape and density samples.
+		separation_bins, second_bins : ndarray
+			Bin centres of the two axes.
+		dataset_name : str
+			Name of the dataset in the output file.
+		jk_group_name : str
+			Sub-group holding the realisations.
+		num_box : int
+			Number of jackknife realisations.
+
+		"""
+		coord_1, coord_2 = coords
+		for group_name, full, raw_jk, suffix in (
+				("xi_plus_plus", grids.Splus_Splus, grids.Splus_Splus_jk, "_SplusSplus"),
+				("xi_cross_cross", grids.Scross_Scross, grids.Scross_Scross_jk, "_ScrossScross"),
+				("xi_plus_cross", grids.Splus_Scross, grids.Splus_Scross_jk, "_SplusScross")):
+			group = create_group_hdf5(
+				output_file, f"{self.snap_group}/{statistic}/{group_name}/{jk_group_name}")
+			for i in np.arange(0, num_box):
+				RR_jk_denom = RR_jk[i].copy()  # guard against empty realisations/bins
+				RR_jk_denom[RR_jk_denom == 0] = 1
+				retained = full * resp_full - raw_jk[i]
+				resp_i = (2 * R_jk[i]) * (2 * R_pos_jk[i])
+				write_dataset_hdf5(group, dataset_name + f"_{i}",
+								   data=retained / (RR_jk_denom * resp_i))
+				write_dataset_hdf5(group, dataset_name + f"_{i}" + suffix, data=retained / resp_i)
+				write_dataset_hdf5(group, dataset_name + f"_{i}_RR", data=RR_jk[i])
+				write_dataset_hdf5(group, dataset_name + f"_{i}_{coord_1}", data=separation_bins)
+				write_dataset_hdf5(group, dataset_name + f"_{i}_{coord_2}", data=second_bins)
+		return
+
+	@staticmethod
 	def get_random_pairs(rp_max, rp_min, pi_max, pi_min, L3, corrtype, Num_position, Num_shape,
 						 num_overlap=0):
 		"""Returns analytical value of the number of pairs expected in an r_p, pi bin for a random uniform distribution.
@@ -468,7 +713,8 @@ class MeasureIABase(SimInfo):
 		return_output : bool, optional
 			Output is returned if True, saved to file if False. Default value = False
 		corr_type : str, optional
-			Type of correlation function. Choose from [g+,gg,both]. Default value = "both"
+			Type of correlation function. Choose from [g+,gg,both,++,all]. Default value = "both".
+			'++' covers the three shape-shape products (plus-plus, cross-cross and the parity null).
 		jk_group_name : str, optional
 			Name of subgroup in hdf5 file where jackknife realisations are stored. Default value = ""
 
@@ -478,17 +724,11 @@ class MeasureIABase(SimInfo):
 			[rp, wgg] or [rp, wg+] if return_output is True
 
 		"""
-		if corr_type == "both":
-			xi_data = ["xi_g_plus", "xi_gg"]
-			wg_data = ["w_g_plus", "w_gg"]
-		elif corr_type == "g+":
-			xi_data = ["xi_g_plus"]
-			wg_data = ["w_g_plus"]
-		elif corr_type == "gg":
-			xi_data = ["xi_gg"]
-			wg_data = ["w_gg"]
-		else:
-			raise KeyError("Unknown value for corr_type. Choose from [g+, gg, both]")
+		try:
+			xi_data, wg_data = zip(*W_PRODUCTS[corr_type])
+		except KeyError:
+			raise KeyError(f"Unknown value for corr_type. Choose from {sorted(W_PRODUCTS)}")
+		xi_data, wg_data = list(xi_data), list(wg_data)
 		for i in np.arange(0, len(xi_data)):
 			correlation_data_file = h5py.File(self.output_file_name, "a")
 			group = correlation_data_file[f"{self.snap_group}w/{xi_data[i]}/{jk_group_name}"]
@@ -528,7 +768,8 @@ class MeasureIABase(SimInfo):
 		dataset_name : str
 			Name of xi_gg or xi_g+ dataset and name given to multipoles dataset when stored.
 		corr_type : str, optional
-			Type of correlation function. Choose from [g+,gg,both]. Default value = "both"
+			Type of correlation function. Choose from [g+,gg,both,++,all]. Default value = "both".
+			'++' covers the three shape-shape products (plus-plus, cross-cross and the parity null).
 		return_output : bool, optional
 			Output is returned if True, saved to file if False. Default value = False.
 		jk_group_name : str, optional
@@ -540,36 +781,23 @@ class MeasureIABase(SimInfo):
 			[r, multipoles_gg] or [r, multipoles_g+] if return_output is True
 		"""
 		correlation_data_file = h5py.File(self.output_file_name, "a")
-		if corr_type == "g+":  # '++' (shape-shape) correlations are a planned post-release feature
-			group = correlation_data_file[f"{self.snap_group}multipoles/xi_g_plus/{jk_group_name}"]
-			correlation_data_list = [group[dataset_name][:]]  # xi_g+ in grid of r,mur
-			r_list = [group[dataset_name + "_r"][:]]
-			mu_r_list = [group[dataset_name + "_mu_r"][:]]
-			sab_list = [2]
-			l_list = sab_list
-			corr_type_list = ["g_plus"]
-		elif corr_type == "gg":
-			group = correlation_data_file[f"{self.snap_group}multipoles/xi_gg/{jk_group_name}"]
-			correlation_data_list = [group[dataset_name][:]]  # xi_g+ in grid of rp,pi
-			r_list = [group[dataset_name + "_r"][:]]
-			mu_r_list = [group[dataset_name + "_mu_r"][:]]
-			sab_list = [0]
-			l_list = sab_list
-			corr_type_list = ["gg"]
-		elif corr_type == "both":
-			group = correlation_data_file[f"{self.snap_group}multipoles/xi_g_plus/{jk_group_name}"]
-			correlation_data_list = [group[dataset_name][:]]  # xi_g+ in grid of rp,pi
-			r_list = [group[dataset_name + "_r"][:]]
-			mu_r_list = [group[dataset_name + "_mu_r"][:]]
-			group = correlation_data_file[f"{self.snap_group}multipoles/xi_gg/{jk_group_name}"]
-			correlation_data_list.append(group[dataset_name][:])  # xi_g+ in grid of rp,pi
+		# The (l, s_ab) pairs live in M_PRODUCTS: (0,0) for gg, (2,2) for g+ and (4,4) for
+		# ++ (Singh et al. 2023 -- two shapes in the correlation, so spin 4). l == s_ab for
+		# every product currently offered, which is why the two share one list; a general
+		# l > s_ab moment would break that coupling here.
+		try:
+			products = M_PRODUCTS[corr_type]
+		except KeyError:
+			raise KeyError(f"Unknown value for corr_type. Choose from {sorted(M_PRODUCTS)}")
+		correlation_data_list, r_list, mu_r_list, sab_list, corr_type_list = [], [], [], [], []
+		for xi_name, multipole_name, sab in products:
+			group = correlation_data_file[f"{self.snap_group}multipoles/{xi_name}/{jk_group_name}"]
+			correlation_data_list.append(group[dataset_name][:])   # xi in the (r, mu_r) grid
 			r_list.append(group[dataset_name + "_r"][:])
 			mu_r_list.append(group[dataset_name + "_mu_r"][:])
-			sab_list = [2, 0]
-			l_list = sab_list
-			corr_type_list = ["g_plus", "gg"]
-		else:
-			raise KeyError("Unknown value for corr_type. Choose from [g+, gg, both]")
+			sab_list.append(sab)
+			corr_type_list.append(multipole_name.replace("multipoles_", ""))
+		l_list = sab_list
 		for i in np.arange(0, len(sab_list)):
 			corr_type_i = corr_type_list[i]
 			correlation_data = correlation_data_list[i]
@@ -638,9 +866,23 @@ class MeasureIABase(SimInfo):
 		-------
 
 		"""
+		# which families this call has to assemble; 'both' keeps its original meaning
+		# (g+ and gg) and 'all' adds the shape-shape products on top
+		want_gp = corr_type[0] in ("g+", "both", "all")
+		want_gg = corr_type[0] in ("gg", "both", "all")
+		want_pp = corr_type[0] in ("++", "all")
 		output_file = h5py.File(self.output_file_name, "a")
 		group_gg = output_file[f"{self.snap_group}{corr_type[1]}/xi_gg/{jk_group_name}"]
-		if corr_type[0] == "g+" or corr_type[0] == "both":
+		if want_pp:
+			group_pp = output_file[f"{self.snap_group}{corr_type[1]}/xi_plus_plus/{jk_group_name}"]
+			group_xx = output_file[f"{self.snap_group}{corr_type[1]}/xi_cross_cross/{jk_group_name}"]
+			group_px = output_file[f"{self.snap_group}{corr_type[1]}/xi_plus_cross/{jk_group_name}"]
+			# same normalisation as S+D: the shape-shape sums run over the same D x S pairs
+			pp_norm = max(num_samples["S"] * num_samples["D"] - num_samples["D_S"], 1)
+			SpSp = group_pp[f"{dataset_name}_SplusSplus"][:] / pp_norm
+			SxSx = group_xx[f"{dataset_name}_ScrossScross"][:] / pp_norm
+			SpSx = group_px[f"{dataset_name}_SplusScross"][:] / pp_norm
+		if want_gp:
 			group_gp = output_file[
 				f"{self.snap_group}{corr_type[1]}/xi_g_plus/{jk_group_name}"]
 			SpD = group_gp[f"{dataset_name}_SplusD"][:]
@@ -653,18 +895,18 @@ class MeasureIABase(SimInfo):
 				ScD /= max(num_samples["S"] * num_samples["D"] - num_samples["D_S"], 1)
 				ScR = group_gc[f"{dataset_name}_ScrossR"][:]
 				ScR /= max(num_samples["S"] * num_samples["R_D"], 1)
-		if corr_type[0] == "gg" or corr_type[0] == "both" or IA_estimator == "clusters":
+		if want_gg or IA_estimator == "clusters":
 			SR = group_gg[f"{dataset_name}_SR"][:]
 			SR /= max(num_samples["S"] * num_samples["R_D"], 1)
-		if corr_type[0] == "gg" or corr_type[0] == "both":
+		if want_gg:
 			RD = group_gg[f"{dataset_name}_RD"][:]
 			RD /= max(num_samples["D"] * num_samples["R_S"], 1)
-		if IA_estimator == 'clusters' or corr_type[0] == "gg" or corr_type[0] == "both":
+		if IA_estimator == 'clusters' or want_gg:
 			DD = group_gg[f"{dataset_name}_DD"][:]
 			DD /= max(num_samples["D"] * num_samples["S"] - num_samples["D_S"], 1)
 			DD_denom = DD.copy()  # guard for the clusters division; raw DD keeps 0 in the gg numerator
 			DD_denom[DD_denom == 0] = 1.
-		if IA_estimator == "galaxies" or corr_type[0] == "gg" or corr_type[0] == "both":
+		if IA_estimator == "galaxies" or want_gg or want_pp:
 			RR = group_gg[f"{dataset_name}_RR"][:]
 			if jk_group_name == "" and np.any(RR == 0):
 				warnings.warn(
@@ -678,25 +920,34 @@ class MeasureIABase(SimInfo):
 		# silence the redundant numpy divide/invalid-value warnings from these divisions.
 		with np.errstate(invalid='ignore', divide='ignore'):
 			if IA_estimator == "clusters":
-				if corr_type[0] == "g+" or corr_type[0] == "both":
+				if want_gp:
 					correlation_gp = SpD / DD_denom - SpR / SR
 					write_dataset_hdf5(group_gp, dataset_name, correlation_gp)
 					if jk_group_name == "":
 						correlation_gc = ScD / DD_denom - ScR / SR
 						write_dataset_hdf5(group_gc, dataset_name, correlation_gc)
-				if corr_type[0] == "gg" or corr_type[0] == "both":
+				if want_gg:
 					correlation_gg = (DD - RD - SR) / RR + 1
 					write_dataset_hdf5(group_gg, dataset_name, correlation_gg)
 			elif IA_estimator == "galaxies":
-				if corr_type[0] == "g+" or corr_type[0] == "both":
+				if want_gp:
 					correlation_gp = (SpD - SpR) / RR
 					write_dataset_hdf5(group_gp, dataset_name, correlation_gp)
 					if jk_group_name == "":
 						correlation_gc = (ScD - ScR) / RR
 						write_dataset_hdf5(group_gc, dataset_name, correlation_gc)
-				if corr_type[0] == "gg" or corr_type[0] == "both":
+				if want_gg:
 					correlation_gg = (DD - RD - SR) / RR + 1
 					write_dataset_hdf5(group_gg, dataset_name, correlation_gg)
+				if want_pp:
+					# xi_++ = S+S+/RR, and likewise for the cross-cross signal and the
+					# parity-odd null. There is no S+R analogue to subtract: the randoms
+					# carry no shapes, so no shape-shape term can be built from them.
+					for group, raw, suffix in (
+							(group_pp, SpSp, "_SplusSplus"),
+							(group_xx, SxSx, "_ScrossScross"),
+							(group_px, SpSx, "_SplusScross")):
+						write_dataset_hdf5(group, dataset_name, raw / RR)
 			else:
 				raise ValueError("Unknown input for IA_estimator, choose from [clusters, galaxies].")
 		output_file.close()

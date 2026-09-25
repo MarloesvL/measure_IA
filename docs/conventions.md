@@ -97,6 +97,18 @@ vector in the internal (east, north) sky frame. As in the box case, the output $
     $w_{g+}$ — it replaces $\cos 2(\phi_a - \phi_s)$ with $\cos 2(\phi_a + \phi_s)$ and washes the signal out
     to noise, which is a common cause of a "vague, noisy mismatch" against other codes.
 
+!!! note "Which tangent frame each shape is projected in"
+    On the curved sky the local (east, north) basis differs from galaxy to galaxy, so a pair has two
+    of them. For $w_{g+}$ MeasureIA projects the shape galaxy's `e1`/`e2` in the tangent frame of its
+    **position-sample partner** — a plane-of-the-pair approximation, and the source of part of the
+    residual against TreeCorr documented in `validation/README.md`.
+
+    The shape–shape terms instead project **each galaxy in its own frame**, because the pair is
+    symmetric there and no single partner frame is privileged. The two conventions therefore coexist
+    deliberately; they agree in the plane-parallel limit and differ by curvature terms of the same
+    order as the other separation-definition differences. The box has no such ambiguity: its
+    projection plane is fixed by `LOS`.
+
 ## Ellipticity definitions
 
 The shape magnitude $\epsilon$ is derived from the axis ratio $q$, so this choice applies to the **box** only;
@@ -119,6 +131,19 @@ The correction is controlled by the `responsivity` argument: it defaults to `Tru
 `False` for the lightcone (where `e1`/`e2` are assumed to be already-calibrated shears). When switched off,
 $\mathcal{R} = 0.5$ so that $2\mathcal{R} = 1$ and no calibration is applied. Only the $g+$ correlations are
 affected; the clustering ($gg$) signal is unchanged.
+
+### Shape-shape: one factor per sample
+
+A shape–shape product has two spin-2 factors, so it carries **two** responsivities — one per sample,
+each computed over its own weights:
+
+$$S_+S_+ = \sum w_i w_j \frac{e_+(j|i)}{2\mathcal{R}_j}\frac{e_+(i|j)}{2\mathcal{R}_i}\,.$$
+
+The two generally differ, since the density and shape samples have different shape-noise properties;
+in the auto case (the same catalogue in both slots) they coincide and the factor reduces to
+$(2\mathcal{R})^2$. Switching `responsivity` off sets both to $0.5$, rescaling the shape–shape
+products by exactly $(2\mathcal{R}_i)(2\mathcal{R}_j)$ — quadratically rather than linearly as for
+$g+$.
 
 The differing defaults are deliberate rather than an oversight: they match what each input format usually
 contains, so the common case needs no argument. Pass `responsivity` explicitly whenever your inputs do not
