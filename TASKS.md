@@ -636,7 +636,11 @@ out:
   `xi_+ = w_++ + w_xx` and `xi_- = w_++ - w_xx`; not written directly.
 - [ ] **General $\ell > s_{ab}$ multipoles** (e.g. $\ell=6$ of `++`, $\ell=4$ of `g+`). The
   `l_list = sab_list` coupling in `_measure_multipoles` is the single place to break.
-- [ ] **Upstream issue for halotools `ii_minus_projected`**, which builds the second sample's marks
+- [x] **Upstream issue filed** ([halotools_ia#3](https://github.com/duncandc/halotools_ia/issues/3)): `ii_minus_projected` builds the second sample's marks
   from the first sample's orientations (`marks2[:, 1] = orientations1[:, 0]`, where
-  `ii_plus_projected` correctly uses `orientations2`) and whose output depends on the physically
-  meaningless sign of the orientation vectors. Both documented in `validation/README.md`.
+  `ii_plus_projected` correctly uses `orientations2`). *The separate sign-dependence observation
+  was deliberately left out of that report and is documented only in `validation/README.md`,
+  since the counting kernel is compiled and a defect cannot be told from an unstated input
+  convention from the outside. Our own conclusion is unaffected either way: `ii_minus_projected`
+  has no single value for `w_xx` to be compared against, and `w_xx` is validated against
+  treecorr.*

@@ -127,6 +127,16 @@ also exercises measureia's auto path (`num_overlap` detects the full overlap;
   **fail** if `ii_minus` ever becomes sign-invariant — at which point it could
   be enforced and the exclusion removed.
 
+  The `orientations1` slip is reported upstream as
+  [halotools_ia#3](https://github.com/duncandc/halotools_ia/issues/3). That report deliberately covers only that
+  defect, which is unambiguous. The sign dependence is recorded here but not
+  reported upstream: halotools' counting kernel is compiled, so we cannot tell
+  from the outside whether it is a defect or an unstated input convention, and
+  either way it does not change our conclusion — `ii_minus_projected` has no
+  single value for `w_xx` to be compared against. For completeness, the sign
+  dependence also affects `ii_minus_3d` and `gi_minus_projected`, while the
+  `orientations1` slip is confined to `ii_minus_projected`.
+
 ### Lightcone w_gg / w_g+ vs treecorr (`run_lightcone_treecorr.py`)
 
 Compares `MeasureIALightcone.measure_xi_w` ('galaxies' estimator) against
