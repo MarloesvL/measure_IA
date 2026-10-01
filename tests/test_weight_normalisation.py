@@ -6,8 +6,9 @@ property is invariance: multiplying any one sample's weights by a constant must 
 correlation function (and its jackknife covariance) unchanged. For unit weights the weight
 sums are the sample sizes, so the ordinary unweighted results are untouched.
 
-Also covered here is a lightcone jackknife bug in the same normalisation code: the
-per-patch overlap count.
+Also covered here are two lightcone jackknife bugs in the same normalisation code: the
+per-patch overlap count, and masks combined with jackknife patches, which must give exactly
+what pre-filtering the catalogues gives.
 """
 from __future__ import annotations
 
@@ -162,6 +163,34 @@ def test_lightcone_per_patch_overlap(lc_catalogue, tmp_path):
         assert norm["D_S"] == pytest.approx(expected)
         assert norm["D"] == pytest.approx(data["weight"][patches["position"] != n].sum())
         assert norm["R_D"] == pytest.approx(randoms["weight"][patches["randoms_position"] != n].sum())
+
+
+@pytest.mark.parametrize("statistic", ["w", "multipoles"])
+def test_lightcone_masked_jackknife_equals_prefiltered(lc_catalogue, tmp_path, statistic):
+    """Masking must be exactly equivalent to removing the objects beforehand, covariance
+    included. The patch labels used to be passed unmasked into the masked pair counts."""
+    data, randoms, patches = lc_catalogue
+    m_d = data["RA"] < 154.0
+    m_s = data["RA_shape_sample"] < 154.0
+    m_r = randoms["RA"] < 154.0
+    m_rs = randoms["RA_shape_sample"] < 154.0
+    masks = {"RA": m_d, "RA_shape_sample": m_s}
+    masks_randoms = {"RA": m_r, "RA_shape_sample": m_rs}
+    masked = _run_lc(data, randoms, tmp_path, "masked", statistic, "galaxies", patches,
+                     masks=masks, masks_randoms=masks_randoms)
+
+    d_keys = ("RA", "DEC", "Redshift", "weight")
+    s_keys = ("RA_shape_sample", "DEC_shape_sample", "Redshift_shape_sample",
+              "weight_shape_sample", "e1", "e2")
+    fd = {k: data[k][m_d] for k in d_keys} | {k: data[k][m_s] for k in s_keys}
+    fr = ({k: randoms[k][m_r] for k in d_keys}
+          | {k: randoms[k][m_rs] for k in s_keys if k in randoms})
+    fp = dict(position=patches["position"][m_d], shape=patches["shape"][m_s],
+              randoms_position=patches["randoms_position"][m_r],
+              randoms_shape=patches["randoms_shape"][m_rs])
+    filtered = _run_lc(fd, fr, tmp_path, "filtered", statistic, "galaxies", fp)
+    for name in masked:
+        np.testing.assert_allclose(masked[name], filtered[name], rtol=1e-12, atol=0, err_msg=name)
 
 
 # ---------------------------------------------------------------------------

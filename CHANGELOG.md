@@ -114,6 +114,13 @@ public API mean a major version bump.
   $1/N$-level shift in the normalisation, visible only in the realisations and the covariance built
   from them; full-sample outputs never used it. The per-patch sample sizes also counted every
   object, ignoring `masks`; they are now taken over the masked samples.
+- **Lightcone jackknife covariances are now correct when `masks` are used.** The patch labels are
+  given for the full catalogues, but they were passed unmasked into the masked pair counts, so
+  objects were assigned to the wrong patches.
+  The measurement itself was right, but its covariance was not (diagonal entries off by factors of up
+  to ~50 in a small test). Masking is now exactly equivalent to pre-filtering the catalogues,
+  covariance included, which a regression test pins. The box was not affected: it builds its
+  regions from the masked positions.
 - **The box cross component $e_\times$ no longer depends on the arbitrary sign of `Axis_Direction`.**
   The box pair loop recovered the projection angle with `arccos`, which folds $\phi$ into $[0,\pi]$
   and so maps the physically meaningless axis flip $\hat a\to-\hat a$ to $\phi\to\pi-\phi$.

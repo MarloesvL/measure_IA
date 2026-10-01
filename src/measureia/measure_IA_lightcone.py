@@ -471,6 +471,8 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 							 corr_type, jk_patches=None, masks=None, masks_randoms=None, cosmology=None, over_h=False,
 							 chunk_size=1000, num_nodes=1, temp_file_path=None):
 		num_jk = max(jk_patches["shape"]) - min(jk_patches["shape"]) + 1
+		# the counting passes run over the masked samples, so their patch labels must be masked too
+		jk_patches = self._masked_jk_patches(jk_patches, masks, masks_randoms)
 		# Shape-position combinations:
 		# S+D (Cg+, Gg+)
 		# S+R (Cg+, Gg+)
