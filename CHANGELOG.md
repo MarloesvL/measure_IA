@@ -90,6 +90,30 @@ public API mean a major version bump.
 
 ### Fixed
 
+- **Weighted pair counts are now normalised by the weight sums, so every estimator is invariant
+  under a constant rescaling of any sample's weights.** The counts were accumulated with
+  $w_i w_j$ but divided by $N_a N_b$, which is only right when $\langle w\rangle = 1$ for every
+  sample. Otherwise each term carried the product of its two samples' mean weights. For the
+  lightcone `IA_estimator='galaxies'` that put $\xi_{g+}$/$w_{g+}$ off by the constant
+  $\langle w_S\rangle\langle w_D\rangle / (\langle w_{R_D}\rangle\langle w_{R_S}\rangle)$ — 4.6 on a
+  DESI LRG sample in the report that found it — while $\xi_{gg}$/$w_{gg}$ was wrong by a
+  bin-dependent amount on both estimators. (The `'clusters'` $g+$ estimator was unaffected: its
+  factors cancel.) The box analytic $RR$ had the same issue whenever the weights did not average to 1.
+  Both geometries now divide by $W_a W_b$ with $W = \sum w$, removing the self-pairs by their weight
+  product $w_D w_S$, matching pycorr, TreeCorr and Corrfunc. A box `num_overlap` override, being an
+  object count, is scaled by both samples' mean weights. For unit weights nothing changes: the
+  2697-array bit-identity matrix is identical apart from the jackknife fix below.
+
+    **This changes results for any run with weights that do not average to 1.** Tests that had
+    pinned the old behaviour (halving every weight quartering $w_{g+}$) now assert invariance, and
+    new tests rescale every sample by a different factor, covariance included, on both geometries.
+
+- **The lightcone jackknife used a wrong overlap count in every delete-one realisation.** The
+  per-patch self-pair correction was `len(np.where(...))`, which is always 1, so each realisation
+  subtracted one pair instead of the shared objects left outside the removed patch. This is a
+  $1/N$-level shift in the normalisation, visible only in the realisations and the covariance built
+  from them; full-sample outputs never used it. The per-patch sample sizes also counted every
+  object, ignoring `masks`; they are now taken over the masked samples.
 - **The box cross component $e_\times$ no longer depends on the arbitrary sign of `Axis_Direction`.**
   The box pair loop recovered the projection angle with `arccos`, which folds $\phi$ into $[0,\pi]$
   and so maps the physically meaningless axis flip $\hat a\to-\hat a$ to $\phi\to\pi-\phi$.

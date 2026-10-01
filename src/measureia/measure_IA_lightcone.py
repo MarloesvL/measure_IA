@@ -5,7 +5,7 @@ from .measure_m_lightcone_jk import MeasureMultipolesLightconeJackknife
 from .measure_m_lightcone import MeasureMultipolesLightcone
 from .measure_jackknife import MeasureJackknife
 from .check_input import CheckInput
-from .measure_IA_base import W_PRODUCTS, M_PRODUCTS, CORR_TYPES, SHAPE_SHAPE_CORR_TYPES
+from .measure_IA_base import W_PRODUCTS, M_PRODUCTS, CORR_TYPES, SHAPE_SHAPE_CORR_TYPES, weight_sum, overlap_weight
 from . import worker_pool
 
 
@@ -261,6 +261,103 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 		num_R_S = len(self.randoms_data["RA_shape_sample"][
 						  self._field_mask(masks_randoms, "RA_shape_sample", "RA_shape_sample", n_RS)])
 		return coords_D, coords_S, num_R_D, num_R_S
+
+	def _masked_jk_patches(self, jk_patches, masks, masks_randoms):
+		"""Applies the sample masks to the jackknife patch labels, so the labels line up with the
+		masked samples the pair counting runs over.
+
+		Patch labels are given per object of the full (unmasked) catalogues, while every pair-count
+		pass works on the masked samples. Each label array is masked with its sample's coordinate
+		mask, the same selection '_merged_masks' makes for that slot.
+
+		Parameters
+		----------
+		jk_patches : dict
+			Patch labels with keys 'position', 'shape', 'randoms_position' and 'randoms_shape'.
+		masks : dict or NoneType
+			Mask dictionary for the data sample.
+		masks_randoms : dict or NoneType
+			Mask dictionary for the randoms.
+
+		Returns
+		-------
+		dict
+			The masked patch labels, under the same keys.
+
+		"""
+		def masked(labels, sample_masks, coordinate_key):
+			labels = np.asarray(labels)
+			return labels[self._field_mask(sample_masks, coordinate_key, coordinate_key, len(labels))]
+
+		return {
+			"position": masked(jk_patches["position"], masks, "RA"),
+			"shape": masked(jk_patches["shape"], masks, "RA_shape_sample"),
+			"randoms_position": masked(jk_patches["randoms_position"], masks_randoms, "RA"),
+			"randoms_shape": masked(jk_patches["randoms_shape"], masks_randoms, "RA_shape_sample"),
+		}
+
+	def _sample_normalisation(self, masks, masks_randoms, jk_patches=None, num_jk=0):
+		"""Weighted sample sizes the pair counts are normalised by, for the full sample and for each
+		delete-one jackknife realisation.
+
+		The pair counts are accumulated with the product of the two objects' weights, so each count is
+		normalised by the product of the two samples' weight sums rather than their sizes (see
+		'weight_sum'). This makes the estimators invariant under a constant rescaling of any sample's
+		weights, and reduces to the plain sample sizes for unit weights. Objects present in both the
+		position and the shape sample cannot pair with themselves, so 'D_S' is the weighted overlap: the
+		sum of w_D * w_S over those objects.
+
+		A delete-one realisation drops every pair with either member in the removed patch, so its weight
+		sums exclude that patch's objects and its overlap keeps only the shared objects outside the
+		patch in both samples.
+
+		Parameters
+		----------
+		masks : dict or NoneType
+			Mask dictionary for the data sample.
+		masks_randoms : dict or NoneType
+			Mask dictionary for the randoms.
+		jk_patches : dict or NoneType, optional
+			Masked patch labels, as returned by '_masked_jk_patches'. Default value = None
+		num_jk : int, optional
+			Number of jackknife patches. Default value = 0
+
+		Returns
+		-------
+		dict, list of dict
+			Normalisation for the full sample, with keys D, S, D_S, R_D, R_S, and one such dictionary
+			per jackknife realisation (empty list when no patches are given).
+
+		"""
+		coords_D, coords_S, _, _ = self._sample_coordinates(masks, masks_randoms)
+		n_D, n_S = len(self.data_dir["RA"]), len(self.data_dir["RA_shape_sample"])
+		n_RD, n_RS = len(self.randoms_data["RA"]), len(self.randoms_data["RA_shape_sample"])
+		# the weights of each slot are masked exactly as in the pair-count passes
+		weights = {
+			"D": self.data_dir["weight"][self._field_mask(masks, "weight", "RA", n_D)],
+			"S": self.data_dir["weight_shape_sample"][
+				self._field_mask(masks, "weight_shape_sample", "RA_shape_sample", n_S)],
+			"R_D": self.randoms_data["weight"][self._field_mask(masks_randoms, "weight", "RA", n_RD)],
+			"R_S": self.randoms_data["weight_shape_sample"][
+				self._field_mask(masks_randoms, "weight_shape_sample", "RA_shape_sample", n_RS)],
+		}
+		weights = {key: np.asarray(w, dtype=np.float64) for key, w in weights.items()}
+		D_S, ind_D, ind_S = overlap_weight(coords_D, coords_S, weights["D"], weights["S"])
+		num_samples = {key: weight_sum(w) for key, w in weights.items()}
+		num_samples["D_S"] = D_S
+
+		num_samples_jk = []
+		if jk_patches is not None:
+			patch_keys = {"D": "position", "S": "shape", "R_D": "randoms_position", "R_S": "randoms_shape"}
+			removed = {key: np.bincount(jk_patches[patch_keys[key]], weights=weights[key], minlength=num_jk)
+					   for key in patch_keys}
+			w_overlap = weights["D"][ind_D] * weights["S"][ind_S]
+			p_D, p_S = jk_patches["position"][ind_D], jk_patches["shape"][ind_S]
+			for i in range(num_jk):
+				num_samples_i = {key: num_samples[key] - removed[key][i] for key in patch_keys}
+				num_samples_i["D_S"] = float(np.sum(w_overlap[(p_D != i) & (p_S != i)]))
+				num_samples_jk.append(num_samples_i)
+		return num_samples, num_samples_jk
 
 	def measure_xi_helper(self, method_count_pairs, method_shape_correlation, IA_estimator, dataset_name, corr_type,
 						  masks=None, masks_randoms=None, cosmology=None, over_h=False, chunk_size=1000, num_nodes=1,
@@ -637,21 +734,13 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 		if "weight_shape_sample" not in self.data_dir:
 			self.data_dir["weight_shape_sample"] = np.ones(len(self.data_dir["RA_shape_sample"]))
 
-		# Sample sizes are needed to correct for a different number of randoms and galaxies/clusters in the
-		# data. Masks are resolved per field, defaulting to the sample's coordinate mask (see _field_mask).
-		num_samples = {}
-		coords_D, coords_S, num_R_D, num_R_S = self._sample_coordinates(masks, masks_randoms)
-		# Use a structured view so np.intersect1d compares full pairs
-		D_view = coords_D.view([('', coords_D.dtype)] * 2)
-		S_view = coords_S.view([('', coords_S.dtype)] * 2)
-
-		overlap, ind_D, ind_S = np.intersect1d(D_view, S_view, return_indices=True)
-
-		num_samples["D"] = len(coords_D)
-		num_samples["S"] = len(coords_S)
-		num_samples["D_S"] = len(overlap)
-		num_samples["R_D"] = num_R_D
-		num_samples["R_S"] = num_R_S
+		# Weighted sample sizes, needed to correct for a different number (and total weight) of randoms and
+		# galaxies/clusters in the data. Masks are resolved per field, defaulting to the sample's coordinate
+		# mask (see _field_mask); the patch labels are masked to match.
+		num_samples, num_samples_jk = self._sample_normalisation(
+			masks, masks_randoms,
+			jk_patches=self._masked_jk_patches(jk_patches, masks, masks_randoms) if measure_cov else None,
+			num_jk=num_jk if measure_cov else 0)
 
 		if measure_cov:
 			if self.num_nodes == 1:
@@ -678,16 +767,8 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 										  temp_file_path=temp_file_path)
 			self._obs_estimator([corr_type, "w"], IA_estimator, dataset_name, num_samples)
 			self._measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
-			print(num_samples)
 			for i in np.arange(num_jk):
-				overlap_i = np.where(jk_patches["position"][ind_D] == (i + min_patch))
-				num_samples_i = {
-					"S": num_samples["S"] - sum(jk_patches["shape"] == (i + min_patch)),
-					"D": num_samples["D"] - sum(jk_patches["position"] == (i + min_patch)),
-					"R_S": num_samples["R_S"] - sum(jk_patches["randoms_shape"] == (i + min_patch)),
-					"R_D": num_samples["R_D"] - sum(jk_patches["randoms_position"] == (i + min_patch)),
-					"D_S": num_samples["D_S"] - len(overlap_i)
-				}
+				num_samples_i = num_samples_jk[i]
 				self._obs_estimator([corr_type, "w"], IA_estimator, f"{dataset_name}_{i}",
 									num_samples_i, jk_group_name=f"{dataset_name}_jk{num_jk}")
 
@@ -868,21 +949,13 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 		if "weight_shape_sample" not in self.data_dir:
 			self.data_dir["weight_shape_sample"] = np.ones(len(self.data_dir["RA_shape_sample"]))
 
-		# Sample sizes are needed to correct for a different number of randoms and galaxies/clusters in the
-		# data. Masks are resolved per field, defaulting to the sample's coordinate mask (see _field_mask).
-		num_samples = {}
-		coords_D, coords_S, num_R_D, num_R_S = self._sample_coordinates(masks, masks_randoms)
-		# Use a structured view so np.intersect1d compares full pairs
-		D_view = coords_D.view([('', coords_D.dtype)] * 2)
-		S_view = coords_S.view([('', coords_S.dtype)] * 2)
-
-		overlap, ind_D, ind_S = np.intersect1d(D_view, S_view, return_indices=True)
-
-		num_samples["D"] = len(coords_D)
-		num_samples["S"] = len(coords_S)
-		num_samples["D_S"] = len(overlap)
-		num_samples["R_D"] = num_R_D
-		num_samples["R_S"] = num_R_S
+		# Weighted sample sizes, needed to correct for a different number (and total weight) of randoms and
+		# galaxies/clusters in the data. Masks are resolved per field, defaulting to the sample's coordinate
+		# mask (see _field_mask); the patch labels are masked to match.
+		num_samples, num_samples_jk = self._sample_normalisation(
+			masks, masks_randoms,
+			jk_patches=self._masked_jk_patches(jk_patches, masks, masks_randoms) if measure_cov else None,
+			num_jk=num_jk if measure_cov else 0)
 
 		if measure_cov:
 			if self.num_nodes == 1:
@@ -910,14 +983,7 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			self._obs_estimator([corr_type, "multipoles"], IA_estimator, dataset_name, num_samples)
 			self._measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
 			for i in np.arange(num_jk):
-				overlap_i = np.where(jk_patches["position"][ind_D] == (i + min_patch))
-				num_samples_i = {
-					"S": num_samples["S"] - sum(jk_patches["shape"] == (i + min_patch)),
-					"D": num_samples["D"] - sum(jk_patches["position"] == (i + min_patch)),
-					"R_S": num_samples["R_S"] - sum(jk_patches["randoms_shape"] == (i + min_patch)),
-					"R_D": num_samples["R_D"] - sum(jk_patches["randoms_position"] == (i + min_patch)),
-					"D_S": num_samples["D_S"] - len(overlap_i)
-				}
+				num_samples_i = num_samples_jk[i]
 				self._obs_estimator([corr_type, "multipoles"], IA_estimator, f"{dataset_name}_{i}",
 									num_samples_i, jk_group_name=f"{dataset_name}_jk{num_jk}")
 

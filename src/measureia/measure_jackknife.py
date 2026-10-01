@@ -261,9 +261,14 @@ class MeasureJackknife(MeasureIABase):
 		if masks == None:
 			positions = self.data["Position"]
 			positions_shape_sample = self.data["Position_shape_sample"]
+			weight = self.data["weight"]
+			weight_shape = self.data["weight_shape_sample"]
 		else:
 			positions = self.data["Position"][masks["Position"]]
 			positions_shape_sample = self.data["Position_shape_sample"][masks["Position_shape_sample"]]
+			weight = self.data["weight"][masks.get("weight", masks["Position"])]
+			weight_shape = self.data["weight_shape_sample"][
+				masks.get("weight_shape_sample", masks["Position_shape_sample"])]
 		L_sub = self.L_0p5 * 2.0 / L_subboxes
 		jackknife_region_indices_pos = np.zeros(len(positions))
 		jackknife_region_indices_shape = np.zeros(len(positions_shape_sample))
@@ -291,24 +296,35 @@ class MeasureJackknife(MeasureIABase):
 		jk_pos = np.array(jackknife_region_indices_pos, dtype=int)
 		jk_shape = np.array(jackknife_region_indices_shape, dtype=int)
 
-		# Per-region counts of objects present in both samples, so a delete-one realisation
-		# adjusts the available-pair count by exactly the overlap it removes. An overlapping
-		# object has identical coordinates in both samples and so falls in the same sub-box
-		# in both; counting it once on the shape side is enough. Imported here rather than at
-		# module scope to keep the import graph acyclic.
+		# Weight sums of each delete-one realisation, the weighted sample sizes its analytic
+		# RR is built from (see weight_sum).
+		num_regions = L_subboxes ** 3
+		from .measure_IA_base import weight_sum, overlap_weight, overlap_override_weight
+		weight = np.asarray(weight, dtype=np.float64)
+		weight_shape = np.asarray(weight_shape, dtype=np.float64)
+		self.sum_w_position_jk = weight_sum(weight) - np.bincount(
+			jk_pos, weights=weight, minlength=num_regions)
+		self.sum_w_shape_jk = weight_sum(weight_shape) - np.bincount(
+			jk_shape, weights=weight_shape, minlength=num_regions)
+
+		# Per-region weighted overlap (the weight products of the self-pairs), so a delete-one
+		# realisation adjusts the available-pair count by exactly the overlap it removes. An
+		# overlapping object has identical coordinates in both samples and so falls in the
+		# same sub-box in both; binning it on the shape side is enough. Imported here rather
+		# than at module scope to keep the import graph acyclic.
 		override = getattr(self, "_num_overlap_override", None)
 		if override is not None:
 			# An explicit override is a statement about the whole sample, so it is applied
 			# uniformly and no per-region adjustment is made. For the usual override (0,
 			# matching codes that treat the samples as independent) that is exact.
-			self.num_overlap = int(override)
-			self.overlap_jk_counts = np.zeros(L_subboxes ** 3, dtype=int)
+			self.num_overlap = overlap_override_weight(override, weight, weight_shape)
+			self.overlap_jk_counts = np.zeros(num_regions)
 		else:
-			from .measure_IA_base import overlap_indices
-			ov = overlap_indices(positions, positions_shape_sample)
-			self.num_overlap = int(len(ov))
-			self.overlap_jk_counts = (np.bincount(jk_shape[ov], minlength=L_subboxes ** 3)
-									  if len(ov) else np.zeros(L_subboxes ** 3, dtype=int))
+			self.num_overlap, ind_pos, ind_shape = overlap_weight(
+				positions, positions_shape_sample, weight, weight_shape)
+			self.overlap_jk_counts = np.bincount(
+				jk_shape[ind_shape], weights=weight[ind_pos] * weight_shape[ind_shape],
+				minlength=num_regions)
 		return jk_pos, jk_shape
 
 	def measure_covariance_multiple_datasets(self, corr_types, dataset_names, num_box=27, return_output=False):

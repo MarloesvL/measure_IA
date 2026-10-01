@@ -28,6 +28,10 @@ def available_pairs(Num_position, Num_shape, num_overlap=0, corrtype="cross"):
 	``"auto"`` correlation is the same count halved, since each unordered pair is counted
 	twice.
 
+	The pair counts are weighted, so the estimators pass weighted amounts here: the weight
+	sums of the two samples (:func:`weight_sum`) and the weighted overlap
+	(:func:`overlap_weight`). For unit weights these are the plain counts.
+
 	This is the box counterpart of the normalisation the lightcone estimator already
 	applies through ``num_samples["D_S"]`` (see ``MeasureIABase._obs_estimator``).
 
@@ -126,6 +130,56 @@ def overlap_indices(positions_a, positions_b):
 	view = [('', a.dtype)] * a.shape[1]
 	_, _, ind_b = np.intersect1d(a.view(view), b.view(view), return_indices=True)
 	return ind_b
+
+
+def weight_sum(weight):
+	"""Sum of a weight array in float64, the weighted stand-in for a sample size.
+
+	Every pair count is accumulated with the product of the two objects' weights, so the
+	counts are normalised by ``weight_sum(w_a) * weight_sum(w_b)`` rather than by
+	``N_a * N_b``. That makes each estimator invariant under a constant rescaling of any
+	sample's weights, and it reduces to the plain sample sizes for unit weights.
+	"""
+	return float(np.sum(weight, dtype=np.float64))
+
+
+def overlap_weight(positions_a, positions_b, weight_a, weight_b):
+	"""Weighted count of the self-pairs between two samples, and where they are.
+
+	The weighted counterpart of :func:`count_overlap`: an object present in both samples
+	contributes the product of its two weights, the amount its (dropped) self-pair would
+	have added to a weighted pair count. Matching uses the same exact-coordinate rule.
+
+	Returns
+	-------
+	float, ndarray, ndarray
+		The weighted overlap, and the indices of the shared objects into ``positions_a``
+		and ``positions_b``.
+	"""
+	a = np.ascontiguousarray(positions_a)
+	b = np.ascontiguousarray(positions_b)
+	if a.size == 0 or b.size == 0:
+		return 0.0, np.zeros(0, dtype=int), np.zeros(0, dtype=int)
+	if a.shape[1] != b.shape[1]:
+		raise ValueError("overlap_weight: coordinate arrays have different widths.")
+	if a.dtype != b.dtype:
+		b = b.astype(a.dtype)
+	view = [('', a.dtype)] * a.shape[1]
+	_, ind_a, ind_b = np.intersect1d(a.view(view), b.view(view), return_indices=True)
+	w = np.asarray(weight_a, dtype=np.float64)[ind_a] * np.asarray(weight_b, dtype=np.float64)[ind_b]
+	return float(np.sum(w)), ind_a, ind_b
+
+
+def overlap_override_weight(num_overlap, weight_a, weight_b):
+	"""Converts a user ``num_overlap`` override (an object count) to a weighted overlap.
+
+	The override is scaled by both samples' mean weights, which is exact for unit weights,
+	keeps the estimator invariant under weight rescaling, and leaves an override of 0 at 0.
+	"""
+	if num_overlap == 0 or len(weight_a) == 0 or len(weight_b) == 0:
+		return float(num_overlap)
+	return (float(num_overlap) * weight_sum(weight_a) / len(weight_a)
+			* weight_sum(weight_b) / len(weight_b))
 
 
 class MeasureIABase(SimInfo):

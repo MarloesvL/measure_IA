@@ -70,8 +70,9 @@ are ordered $x,y,z$, 'LOS' needs to have a value of 2 (if $x$, it would be 0 etc
 The 'weight' and 'weight_shape_sample' keys are optional array inputs where a weight per object for the position and
 shape
 samples, respectively, can be added.
-The ordering is assumed to be the same as in the 'Position' and 'Position_shape_sample' arrays and normalisation is
-not enforced. See the [Estimator definitions](estimator_definitions.md) page for how these weights are included in the
+The ordering is assumed to be the same as in the 'Position' and 'Position_shape_sample' arrays. The weights need no
+particular normalisation: pair counts are normalised by the samples' weight sums, so multiplying a sample's weights by a
+constant leaves every correlation function unchanged. See the [Estimator definitions](estimator_definitions.md) page for how these weights are included in the
 pair counts.
 
 ## Lightcone input
