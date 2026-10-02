@@ -31,15 +31,32 @@ implementations, for both the box and the lightcone.
 | Box jackknife covariance | corr_pc | $w$ + multipole cov | realisations $\le5\times10^{-5}$, std $\le5\times10^{-7}$ |
 | Lightcone jackknife covariance | treecorr | $w$ cov | std $\le5\times10^{-5}$ ($g+$), $\le0.6\%$ ($gg$) |
 | Lightcone jackknife covariance | corr_pc | $w$ + multipole cov | realisations $\le3\times10^{-4}$ |
+| Box $w_{++}$ (auto **and** cross) | halotools | projected $w_{++}$ | ratio exactly $1.0$ in every bin¹ |
+| Lightcone $w_{++}$, $w_{\times\times}$ | treecorr | raw $S_+S_+$, $S_\times S_\times$ sums | $\le3.5\times10^{-3}$ / $\le7.1\times10^{-3}$³ |
+| Box shape-shape jackknife | — (self-consistency) | delete-one realisations | machine precision ($\le10^{-9}$) |
 
 ¹ Agreement is exact up to floating point / the external code's output precision, once the responsivity
 $2\mathcal{R}$ factor is accounted for (MeasureIA divides $S_+$ terms by $2\mathcal{R}$; halotools and corr_pc do
 not — see [Conventions](conventions.md)).
+³ The shape-shape residual against treecorr is the `Rperp` versus midpoint-LOS **separation**
+definition alone, which migrates pairs near bin edges; it grows with angular separation rather than
+with sparseness. The projection *direction* is not a difference at all — MeasureIA's
+midpoint-LOS-perpendicular direction is treecorr's great-circle bearing exactly (verified to
+$3\times10^{-13}$ over separations of $0.3^\circ$–$179^\circ$). See `validation/README.md` for the
+derivation.
+
 ² The plane-parallel box↔lightcone difference is understood: analytic randoms (periodic box) versus empirical
 randoms (bounded window), plus the box/lightcone estimator and responsivity differences.
 
 The lightcone comparisons also confirm the **`e1`/`e2` shear convention** and chirality documented on the
-[Conventions](conventions.md) page (treecorr needs only the standard IA flip $g \to -g$).
+[Conventions](conventions.md) page (treecorr needs only the standard IA flip $g \to -g$). For shape-shape
+no flip is needed at all: a product of two spin-2 factors is invariant under it.
+
+$w_{\times\times}$ is validated against **treecorr only**. halotools' `ii_minus_projected` cannot serve as a
+reference for it — its value depends on the sign of the orientation vectors, which carries no physical
+meaning, and as of 0.9.4 it also builds the second sample's marks from the *first* sample's orientations.
+`validation/README.md` documents both, along with the four alternative explanations that were tested and
+ruled out.
 
 ## Running the validations yourself
 

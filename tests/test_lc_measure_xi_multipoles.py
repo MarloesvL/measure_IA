@@ -121,7 +121,13 @@ class TestCorrTypeM:
                                       _read(obj, "multipoles_gg", "lc_m_ct_gg"))
 
     def test_invalid_corr_type_raises(self, IA_mock_lc_n1, tmp_path):
-        with pytest.raises(KeyError):
+        """ValueError, and raised up front rather than at the reduction stage.
+
+        The lightcone used to reach the end of the pair counting and then fail with a
+        KeyError from the corr_group lookup; it now validates corr_type before any
+        counting, with the same ValueError the box has always raised for this.
+        """
+        with pytest.raises(ValueError, match="Unknown corr_type"):
             IA_mock_lc_n1.measure_xi_multipoles(
                 "galaxies", "lc_m_bad_ct", "gg+",
                 tree=False,

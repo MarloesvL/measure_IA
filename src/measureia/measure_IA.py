@@ -7,6 +7,7 @@ from .measure_m_box import MeasureMultipolesBox
 from .measure_jackknife import MeasureJackknife
 from .measure_galaxy_box import MeasureGalaxyContributionsBox
 from .check_input import CheckInput
+from .measure_IA_base import W_PRODUCTS, M_PRODUCTS, CORR_TYPES, SHAPE_SHAPE_CORR_TYPES
 from . import worker_pool
 
 
@@ -49,6 +50,8 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			positions_shape_sample_name="Position_shape_sample",
 			axis_direction_name="Axis_Direction",
 			axis_ratio_name="q",
+			axis_direction_density_sample_name="Axis_Direction_density_sample",
+			axis_ratio_density_sample_name="q_density_sample",
 			line_of_sight_index_name="LOS",
 			weight_density_sample_name="weight",
 			weight_shape_sample_name="weight_shape_sample",
@@ -69,6 +72,14 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			Name of the key in the data dictionary that contains the axis direction vectors of the shape sample.
 		axis_ratio_name : str, optional
 			Name of the key in the data dictionary that contains the axis ratios of the shape sample.
+		axis_direction_density_sample_name : str, optional
+			Name of the key in the data dictionary that contains the axis direction vectors of the **density**
+			sample. Only needed for shape-shape ('++') correlations, which require shapes on both members of a
+			pair; leave it out for 'g+', 'gg' or 'both'. Must be supplied together with
+			`axis_ratio_density_sample_name`.
+		axis_ratio_density_sample_name : str, optional
+			Name of the key in the data dictionary that contains the axis ratios of the **density** sample.
+			See `axis_direction_density_sample_name`.
 		line_of_sight_index_name : str, optional
 			Name of the key in the data dictionary that contains the column index of the line of sight in the
 			position vectors.
@@ -101,6 +112,8 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			positions_shape_sample_name: "Position_shape_sample",
 			axis_direction_name: "Axis_Direction",
 			axis_ratio_name: "q",
+			axis_direction_density_sample_name: "Axis_Direction_density_sample",
+			axis_ratio_density_sample_name: "q_density_sample",
 			line_of_sight_index_name: "LOS",
 			weight_density_sample_name: "weight",
 			weight_shape_sample_name: "weight_shape_sample",
@@ -113,7 +126,13 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			self.check_type_input_data(data,
 									   (positions_density_sample_name, positions_shape_sample_name, axis_direction_name,
 										axis_ratio_name, line_of_sight_index_name))
+			# optional, and only used by shape-shape correlations
+			self.has_density_sample_shapes = self.check_density_sample_shapes(
+				data, (positions_density_sample_name, axis_direction_density_sample_name,
+					   axis_ratio_density_sample_name), "box")
 			data = self.rename_input_keys(data, self._input_name_map)
+		else:
+			self.has_density_sample_shapes = False
 		super().__init__(data, output_file_name, simulation, snapshot, separation_limits, num_bins_r, num_bins_pi,
 						 pi_max, boxsize, periodicity)
 		if self.data is not None and self.boxsize is not None:
@@ -132,13 +151,22 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 		return
 
 	@staticmethod
-	def _validate_measure_options(corr_type, ellipticity, num_jk):
+	def _validate_measure_options(corr_type, ellipticity, num_jk, has_density_sample_shapes=True):
 		"""Validate the user-facing option strings and ``num_jk`` up front, before any pair
 		counting. Previously ``corr_type`` was only checked at the reduction stage (after the
 		full count) with a ``KeyError``, ``ellipticity`` only inside the backends, and a
-		negative ``num_jk`` was silently treated as 0; all now raise a uniform ``ValueError``."""
-		if corr_type not in ("g+", "gg", "both"):
-			raise ValueError(f"Unknown corr_type {corr_type!r}. Choose from ['g+', 'gg', 'both'].")
+		negative ``num_jk`` was silently treated as 0; all now raise a uniform ``ValueError``.
+
+		``has_density_sample_shapes`` reports whether the catalogue carries shapes on the
+		density sample; a shape-shape correlation is refused without them, here rather than
+		after a full pair count."""
+		if corr_type not in CORR_TYPES:
+			raise ValueError(f"Unknown corr_type {corr_type!r}. Choose from {sorted(CORR_TYPES)}.")
+		if corr_type in SHAPE_SHAPE_CORR_TYPES and not has_density_sample_shapes:
+			raise ValueError(
+				f"corr_type={corr_type!r} correlates the shapes of both samples, so the density "
+				f"sample needs shapes of its own. Supply 'Axis_Direction_density_sample' and "
+				f"'q_density_sample' (or the names you gave the constructor).")
 		if ellipticity not in ("distortion", "ellipticity"):
 			raise ValueError(
 				f"Unknown ellipticity {ellipticity!r}. Choose from ['distortion', 'ellipticity'].")
@@ -156,7 +184,10 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 		dataset_name : str
 			Name of the dataset in the output file.
 		corr_type : str
-			Type of correlation to be measured. Choose from [g+, gg, both].
+			Type of correlation to be measured. Choose from [g+, gg, both, ++, all].
+			'both' means g+ and gg; '++' is the shape-shape correlation (which also yields the
+			cross-cross signal and the parity null) and needs shapes on the density sample;
+			'all' is g+, gg and ++ together.
 		num_jk : int, optional
 			Number of jackknife regions (needs to be x^3, with x an int) for the covariance measurement.
 			Default is 0 (no covariance).
@@ -179,7 +210,13 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			correlations are affected; the clustering (gg) signal is unchanged. Default is True.
 
 		"""
-		self._validate_measure_options(corr_type, ellipticity, num_jk)
+		self._validate_measure_options(corr_type, ellipticity, num_jk,
+									   getattr(self, "has_density_sample_shapes", False))
+
+		# tells pair_kernel (via the backends) to accumulate the shape-shape products too;
+		# an attribute rather than an argument because the multiprocessing backends pickle
+		# ``self`` into their workers and read their options off it the same way
+		self._shape_mode = "both" if corr_type in SHAPE_SHAPE_CORR_TYPES else True
 		self.responsivity_correction = responsivity
 		masks = self.rename_input_keys(masks, self._input_name_map)
 		if num_jk > 0:
@@ -240,14 +277,7 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			for i in np.arange(num_jk):
 				self._measure_w_g_i(corr_type=corr_type, dataset_name=f"{dataset_name}_{i}",
 									jk_group_name=f"{dataset_name}_jk{num_jk}", return_output=False)
-			if corr_type == "both":
-				corr_group = ["w_g_plus", "w_gg"]
-			elif corr_type == "g+":
-				corr_group = ["w_g_plus"]
-			elif corr_type == "gg":
-				corr_group = ["w_gg"]
-			else:
-				raise KeyError("Unknown value for corr_type. Choose from [g+, gg, both]")
+			corr_group = [w_name for _, w_name in W_PRODUCTS[corr_type]]
 			self._combine_jackknife_information(dataset_name=dataset_name, jk_group_name=f"{dataset_name}_jk{num_jk}",
 												corr_group=corr_group, num_box=num_jk)
 		else:  # no covariance
@@ -287,7 +317,10 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 		dataset_name : str
 			Name of the dataset in the output file.
 		corr_type : str
-			Type of correlation to be measured. Choose from [g+, gg, both].
+			Type of correlation to be measured. Choose from [g+, gg, both, ++, all].
+			'both' means g+ and gg; '++' is the shape-shape correlation (which also yields the
+			cross-cross signal and the parity null) and needs shapes on the density sample;
+			'all' is g+, gg and ++ together.
 		num_jk : int, optional
 			Number of jackknife regions (needs to be x^3, with x an int) for the covariance measurement. Default is 0 (no covariance).
 		temp_file_path : str or NoneType, optional
@@ -303,7 +336,12 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			Definition of ellipticity. Choose from 'distortion', defined as (1-q^2)/(1+q^2), or 'ellipticity', defined
 			 as (1-q)/(1+q). Default is 'distortion'.
 		"""
-		self._validate_measure_options(corr_type, ellipticity, num_jk)
+		self._validate_measure_options(corr_type, ellipticity, num_jk,
+									   getattr(self, "has_density_sample_shapes", False))
+		# tells pair_kernel (via the backends) to accumulate the shape-shape products too;
+		# an attribute rather than an argument because the multiprocessing backends pickle
+		# ``self`` into their workers and read their options off it the same way
+		self._shape_mode = "both" if corr_type in SHAPE_SHAPE_CORR_TYPES else True
 		self.responsivity_correction = responsivity
 		masks = self.rename_input_keys(masks, self._input_name_map)
 		if num_jk > 0:
@@ -364,14 +402,7 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			for i in np.arange(num_jk):
 				self._measure_multipoles(corr_type=corr_type, dataset_name=f"{dataset_name}_{i}",
 										 jk_group_name=f"{dataset_name}_jk{num_jk}", return_output=False)
-			if corr_type == "both":
-				corr_group = ["multipoles_g_plus", "multipoles_gg"]
-			elif corr_type == "g+":
-				corr_group = ["multipoles_g_plus"]
-			elif corr_type == "gg":
-				corr_group = ["multipoles_gg"]
-			else:
-				raise KeyError("Unknown value for corr_type. Choose from [g+, gg, both]")
+			corr_group = [m_name for _, m_name, _ in M_PRODUCTS[corr_type]]
 			self._combine_jackknife_information(dataset_name=dataset_name, jk_group_name=f"{dataset_name}_jk{num_jk}",
 												corr_group=corr_group, num_box=num_jk)
 		else:  # no covariance

@@ -161,7 +161,9 @@ information for different numbers of jackknife realisations (num_jk) for the sam
 
 ## Roadmap
 
-Recently completed: the lightcone methods and their cross-code validation (against halotools, treecorr and corr_pc);
+Recently completed: shape-shape (II) correlations - `w_++`, `w_xx` and the parity-odd `w_+x`, plus the (4,4)
+multipole of `xi_++`, on both box and lightcone and validated against halotools and treecorr; the lightcone
+methods and their cross-code validation (against halotools, treecorr and corr_pc);
 multiprocessing support for the lightcone version; an optional responsivity factor for the shape calibration; NumPy 2
 support and testing across Python 3.10 - 3.14; a documentation website; more exhaustive docstrings; and a 1.4x - 1.7x
 speed-up of the pair-counting kernel alongside a benchmark suite comparing MeasureIA against halotools and treecorr.

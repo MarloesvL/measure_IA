@@ -24,6 +24,9 @@ data_dict = {
 	"LOS": 2,
 	"weight": np.array([]),
 	"weight_shape_sample": np.array([]),
+	# only for shape-shape correlations (corr_type='++' or 'all'):
+	"Axis_Direction_density_sample": np.array([]),
+	"q_density_sample": np.array([]),
 }
 ```
 
@@ -35,6 +38,12 @@ given boxsize. When using an initialisation of MeasureIABox with the internal 's
 boxsize will be in cMpc/$h$ (see [Included simulations](simulations.md) for the available presets).
 In the same fashion, the 'Position_shape_sample' key contains the array with the coordinates of the shape sample,
 or the second position sample in case only clustering is measured.
+
+For a shape-shape correlation (`corr_type='++'` or `'all'`) the density sample needs shapes of its own as well,
+given by the optional 'Axis_Direction_density_sample' and 'q_density_sample' keys. These hold the same
+quantities as 'Axis_Direction' and 'q' described below, but with rows corresponding to objects in the
+*position* sample, in the same ordering as 'Position'. Building them with the shape sample's length instead is
+an easy mistake to make, so they are length-checked against the position sample and a mismatch raises.
 
 The 'Axis_Direction' key contains an array with the components of the unit vector corresponding to the direction of the
 projected axis with respect to which the measurement is done.
@@ -84,6 +93,9 @@ data_dict = {
 	"e2": np.array([]),                 # second ellipticity component of the shape sample
 	"weight": np.array([]),                 # optional, position sample
 	"weight_shape_sample": np.array([]),    # optional, shape sample
+	# only for shape-shape correlations (corr_type='++' or 'all'):
+	"e1_density_sample": np.array([]),      # first ellipticity component of the density sample
+	"e2_density_sample": np.array([]),      # second ellipticity component of the density sample
 }
 ```
 
@@ -97,6 +109,11 @@ Instead of the axis direction and axis ratio used in the box case, the shapes ar
 two ellipticity (or shear) components `e1` and `e2`. See the [Estimator definitions](estimator_definitions.md)
 page for the sign/chirality convention and the `responsivity` option that controls the $2R$ shape
 calibration. The `weight` and `weight_shape_sample` keys are optional, as in the box case.
+
+For a shape-shape correlation (`corr_type='++'` or `'all'`) the position sample needs shapes as well, given by
+the optional `e1_density_sample` and `e2_density_sample` keys. These follow the same convention as `e1`/`e2`,
+with rows corresponding to objects in the position sample and the same ordering as `RA`/`DEC`/`Redshift`, and
+are length-checked against it.
 
 The `randoms_data` dictionary provides the random catalogues used for the pair counts:
 
@@ -112,6 +129,16 @@ randoms_dict = {
 If only `RA`, `DEC` and `Redshift` are given, the same random sample is used for both the position and the
 shape random terms; provide the `*_shape_sample` keys as well to use a separate random catalogue for the
 shape sample.
+
+## Shape-shape correlations
+
+The density-sample shape keys described above are optional and ignored by every other `corr_type`; supplying
+only some of them raises, since that is a typo rather than a request. Asking for `'++'` without them raises
+before any pair counting, so a missing key costs seconds rather than a full measurement.
+
+Putting the same catalogue in both sample slots gives the II auto-correlation, and putting two different
+catalogues in gives a genuine cross correlation. Both are supported, and the overlap between the samples is
+measured from the coordinates rather than assumed, so no extra bookkeeping is needed either way.
 
 ## Custom key names
 

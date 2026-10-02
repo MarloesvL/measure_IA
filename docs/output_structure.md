@@ -52,6 +52,37 @@ Your output file with your own input of [output_file_name, snapshot, dataset_nam
 				└── [dataset_name]_[i]_[x]				with x in [rp, pi, RR_g_cross, ScrossD] as above
 
 ```
+
+## Shape-shape (`corr_type='++'`)
+
+A shape–shape run adds three more families, in exactly the shape of the ones above. The top level
+gains `w_plus_plus`, `w_cross_cross` and `w_plus_cross` (or `multipoles_plus_plus` — only $\xi_{++}$
+is decomposed, see [Estimator definitions](estimator_definitions.md#multipoles)), each with the same
+`_rp`, `_mean_[num_jk]`, `_jackknife_cov_[num_jk]`, `_jackknife_[num_jk]` and `_jk[num_jk]` entries
+as `w_g_plus`. Under `w` (or `multipoles`) the grids are:
+
+```
+	└──  w
+		├── xi_plus_plus
+		│	├── [dataset_name]							xi_++ grid in (r_p,pi)
+		│	├── [dataset_name]_rp						r_p mean bin values
+		│	├── [dataset_name]_pi						pi mean bin values
+		│	├── [dataset_name]_RR						RR grid in (r_p,pi)
+		│	├── [dataset_name]_SplusSplus				S+S+ grid in (r_p,pi)
+		│	└── [dataset_name]_jk[num_jk]				group containing all jackknife realisations
+		│		├── [dataset_name]_[i] 					jackknife realisations, i from 0 to num_jk - 1
+		│		└── [dataset_name]_[i]_[x]				with x in [rp, pi, RR, SplusSplus] as above
+		├── xi_cross_cross								as above, with ScrossScross in place of SplusSplus
+		└── xi_plus_cross								as above, with SplusScross in place of SplusSplus
+```
+
+Note the random-pair grid is called `RR` here, not `RR_plus_plus`: all three products divide by the
+same random pairs as $\xi_{g+}$, because they count the same pairs.
+
+Unlike `xi_g_cross`, the parity null `xi_plus_cross` **does** get per-realisation jackknife entries
+and a covariance, since it is produced by the same pass as the two signals rather than as a
+full-sample-only extra.
+
 The pair-count dataset names above (`RR_gg`, `RR_g_plus`, `RR_g_cross`, `DD`, `SplusD`, `ScrossD`) are the
 **box** ones; the lightcone writes a different set, listed under [Box vs lightcone](#box-vs-lightcone) below.
 The `xi_g_cross` group holds the parity null test $\xi_{g\times}$ and, unlike `xi_gg` and `xi_g_plus`, is
@@ -133,7 +164,7 @@ The file that is read is `data_path + catalogue + ".hdf5"`, and every dataset pa
 
 ### `read_MeasureIA_output(dataset_name, num_jk)`
 
-The convenience route: it looks for all four correlation functions of one dataset and fills the corresponding
+The convenience route: it looks for every correlation function of one dataset and fills the corresponding
 attributes on the object, leaving whatever is not in the file at `None`.
 
 ```python
@@ -147,13 +178,17 @@ plt.errorbar(reader.rp, reader.w_gp, yerr=reader.errors_w_gp)
 | `rp`, `r` | mean bin values of the projected (`w`) and 3D (`multipoles`) statistics |
 | `w_gg`, `w_gp` | `w_gg` and `w_g+` per `r_p` bin |
 | `multipoles_gg`, `multipoles_gp` | the monopole of `xi_gg` and the quadrupole of `xi_g+` per `r` bin |
-| `cov_w_gg`, `cov_w_gp`, `cov_multipoles_gg`, `cov_multipoles_gp` | jackknife covariance matrices |
-| `errors_w_gg`, `errors_w_gp`, `errors_multipoles_gg`, `errors_multipoles_gp` | sqrt of the diagonal of those covariances, i.e. the error bars |
+| `w_pp`, `w_xx`, `w_px` | `w_++`, `w_xx` and the parity-odd null `w_+x` per `r_p` bin (shape-shape runs) |
+| `multipoles_pp` | the hexadecapole of `xi_++` per `r` bin |
+| `cov_*`, `errors_*` | jackknife covariance matrices and the sqrt of their diagonals (the error bars), one pair per attribute above — e.g. `cov_w_gp`/`errors_w_gp`, `cov_w_pp`/`errors_w_pp`, `cov_multipoles_pp`/`errors_multipoles_pp` |
 
 Notes:
 
 - `num_jk` must match the number of jackknife regions of the run that wrote the file, since it is part of the
   dataset names. Pass `num_jk=None` to read only the measurements and skip the covariance.
+- The shape-shape attributes are filled only by a `corr_type='++'` or `'all'` run and stay `None` otherwise;
+  `multipoles_xx` does not exist, since `xi_xx` is deliberately not decomposed (see
+  [Estimator definitions](estimator_definitions.md#multipoles)).
 - Statistics that were never measured (e.g. the multipoles, if only `measure_xi_w` was called) stay `None`,
   and so do the covariance attributes when the run used `num_jk=0`. All attributes are reset at the start of
   every call, so the same object can be reused for several datasets.

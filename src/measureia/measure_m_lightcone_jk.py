@@ -94,8 +94,15 @@ class MeasureMultipolesLightconeJackknife(MeasureIABase):
 		num_jk = max(jackknife_region_indices_pos) - min(jackknife_region_indices_pos) + 1
 		jackknife_region_indices_pos -= min(jackknife_region_indices_pos)
 		jackknife_region_indices_shape -= min(jackknife_region_indices_shape)
+		# only the S+D pass has shapes on both samples: S+R swaps the density sample
+		# for randoms, which carry none, so there is no shape-shape term there
+		shape_mode = getattr(self, "_shape_mode", True) if data_suffix == "_SplusD" else True
+		# the batch methods have no data_suffix of their own, so the effective mode for
+		# this pass is handed to them on self (they are bound methods pickled into the
+		# workers, which is how every other per-run option reaches them)
+		self._batch_shape_mode = shape_mode
 		sample_set = pair_kernel.prepare_lightcone_samples(
-			self.data, masks, shapes=True, cosmology=cosmology, over_h=over_h,
+			self.data, masks, shapes=shape_mode, cosmology=cosmology, over_h=over_h,
 			responsivity_correction=getattr(self, "responsivity_correction", False),
 			base=self, print_num=print_num,
 		)
@@ -107,7 +114,7 @@ class MeasureMultipolesLightconeJackknife(MeasureIABase):
 			print(
 				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
 		binning = pair_kernel.SkyRMuR(self)
-		grids = pair_kernel.accumulate(sample_set, binning, base=self, shapes=True,
+		grids = pair_kernel.accumulate(sample_set, binning, base=self, shapes=shape_mode,
 									   chunk_axis="position", chunk_size_outer=100, backend="brute",
 									   jk=True, num_box=num_jk)
 		DD = grids.DD
@@ -144,6 +151,10 @@ class MeasureMultipolesLightconeJackknife(MeasureIABase):
 				write_dataset_hdf5(group, dataset_name + f"_{i}{DD_suff}", data=(DD - DD_jk[i]))
 				write_dataset_hdf5(group, dataset_name + f"_{i}_r", data=separation_bins)
 				write_dataset_hdf5(group, dataset_name + f"_{i}_mu_r", data=mu_r_bins)
+			if grids.Splus_Splus is not None:
+				self.write_shape_shape_counts_jk(
+					output_file, "multipoles", ("r", "mu_r"), grids,
+					separation_bins, mu_r_bins, dataset_name, jk_group_name, num_jk)
 			output_file.close()
 			return
 		else:
@@ -193,8 +204,15 @@ class MeasureMultipolesLightconeJackknife(MeasureIABase):
 		num_jk = max(jackknife_region_indices_pos) - min(jackknife_region_indices_pos) + 1
 		jackknife_region_indices_pos -= min(jackknife_region_indices_pos)
 		jackknife_region_indices_shape -= min(jackknife_region_indices_shape)
+		# only the S+D pass has shapes on both samples: S+R swaps the density sample
+		# for randoms, which carry none, so there is no shape-shape term there
+		shape_mode = getattr(self, "_shape_mode", True) if data_suffix == "_SplusD" else True
+		# the batch methods have no data_suffix of their own, so the effective mode for
+		# this pass is handed to them on self (they are bound methods pickled into the
+		# workers, which is how every other per-run option reaches them)
+		self._batch_shape_mode = shape_mode
 		sample_set = pair_kernel.prepare_lightcone_samples(
-			self.data, masks, shapes=True, cosmology=cosmology, over_h=over_h,
+			self.data, masks, shapes=shape_mode, cosmology=cosmology, over_h=over_h,
 			responsivity_correction=getattr(self, "responsivity_correction", False),
 			base=self, print_num=print_num,
 		)
@@ -206,7 +224,7 @@ class MeasureMultipolesLightconeJackknife(MeasureIABase):
 			print(
 				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
 		binning = pair_kernel.SkyRMuR(self)
-		grids = pair_kernel.accumulate(sample_set, binning, base=self, shapes=True,
+		grids = pair_kernel.accumulate(sample_set, binning, base=self, shapes=shape_mode,
 									   chunk_axis="position", chunk_size_outer=100, backend="tree",
 									   jk=True, num_box=num_jk)
 		DD = grids.DD
@@ -243,6 +261,10 @@ class MeasureMultipolesLightconeJackknife(MeasureIABase):
 				write_dataset_hdf5(group, dataset_name + f"_{i}{DD_suff}", data=(DD - DD_jk[i]))
 				write_dataset_hdf5(group, dataset_name + f"_{i}_r", data=separation_bins)
 				write_dataset_hdf5(group, dataset_name + f"_{i}_mu_r", data=mu_r_bins)
+			if grids.Splus_Splus is not None:
+				self.write_shape_shape_counts_jk(
+					output_file, "multipoles", ("r", "mu_r"), grids,
+					separation_bins, mu_r_bins, dataset_name, jk_group_name, num_jk)
 			output_file.close()
 			return
 		else:
@@ -279,7 +301,7 @@ class MeasureMultipolesLightconeJackknife(MeasureIABase):
 		Returns
 		-------
 		type
-			xi_g_plus, xi_gg, separation_bins, pi_bins if no output file is specified
+			xi_g_plus, xi_gg, separation_bins, mu_r_bins if no output file is specified
 
 		"""
 		num_jk = max(jackknife_region_indices_pos) - min(jackknife_region_indices_pos) + 1
@@ -424,16 +446,23 @@ class MeasureMultipolesLightconeJackknife(MeasureIABase):
 			e=shared_data[f"e_{self.ID_shm}"],
 			east=shared_data[f"east_{self.ID_shm}"][i:i2],
 			north=shared_data[f"north_{self.ID_shm}"][i:i2],
+			e_pos=(shared_data[f"e_pos_{self.ID_shm}"][i:i2]
+				   if f"e_pos_{self.ID_shm}" in shared_data else None),
+			east_shape=shared_data.get(f"east_shape_{self.ID_shm}"),
+			north_shape=shared_data.get(f"north_shape_{self.ID_shm}"),
 			jk_pos=shared_data[f"jk_region_indices_pos_{self.ID_shm}"][i:i2],
 			jk_shape=shared_data[f"jk_region_indices_shape_{self.ID_shm}"],
 		)
 		binning = pair_kernel.SkyRMuR(self)
-		grids = pair_kernel.accumulate(sample_set, binning, base=self, shapes=True,
+		grids = pair_kernel.accumulate(sample_set, binning, base=self, shapes=getattr(self, "_batch_shape_mode", True),
 									   chunk_axis="position", chunk_size_outer=100, backend="tree",
 									   jk=True, num_box=self.num_jk, shape_tree=self.shape_tree)
 		for shm in shms:
 			shm.close()
-		return grids.Splus_D, grids.Scross_D, grids.DD, grids.DD_jk, grids.Splus_D_jk
+		# shape-shape grids appended; None unless shapes="both"
+		return (grids.Splus_D, grids.Scross_D, grids.DD, grids.DD_jk, grids.Splus_D_jk,
+				grids.Splus_Splus, grids.Scross_Scross, grids.Splus_Scross,
+				grids.Splus_Splus_jk, grids.Scross_Scross_jk, grids.Splus_Scross_jk)
 
 	def _measure_xi_r_mur_lightcone_jk_multiprocessing(self, dataset_name, jackknife_region_indices_pos,
 													   jackknife_region_indices_shape, temp_file_path,
@@ -490,8 +519,15 @@ class MeasureMultipolesLightconeJackknife(MeasureIABase):
 		self.num_jk = max(jackknife_region_indices_pos) - min(jackknife_region_indices_pos) + 1
 		jackknife_region_indices_pos -= min(jackknife_region_indices_pos)
 		jackknife_region_indices_shape -= min(jackknife_region_indices_shape)
+		# only the S+D pass has shapes on both samples: S+R swaps the density sample
+		# for randoms, which carry none, so there is no shape-shape term there
+		shape_mode = getattr(self, "_shape_mode", True) if data_suffix == "_SplusD" else True
+		# the batch methods have no data_suffix of their own, so the effective mode for
+		# this pass is handed to them on self (they are bound methods pickled into the
+		# workers, which is how every other per-run option reaches them)
+		self._batch_shape_mode = shape_mode
 		sample_set = pair_kernel.prepare_lightcone_samples(
-			self.data, masks, shapes=True, cosmology=cosmology, over_h=over_h,
+			self.data, masks, shapes=shape_mode, cosmology=cosmology, over_h=over_h,
 			responsivity_correction=getattr(self, "responsivity_correction", False),
 			base=self, print_num=True,
 		)
@@ -500,6 +536,11 @@ class MeasureMultipolesLightconeJackknife(MeasureIABase):
 		e = sample_set.e
 		east = sample_set.east
 		north = sample_set.north
+		# shape-shape only. e_pos is position-aligned (sliced per batch, like east/north);
+		# east_shape/north_shape are shape-aligned and passed whole, like e.
+		e_pos = sample_set.e_pos
+		east_shape = sample_set.east_shape
+		north_shape = sample_set.north_shape
 		weight = sample_set.weight
 		weight_shape = sample_set.weight_shape
 		self.Num_position_masked = len(s_pos)
@@ -540,6 +581,10 @@ class MeasureMultipolesLightconeJackknife(MeasureIABase):
 				f"jk_region_indices_pos_{self.ID_shm}": jackknife_region_indices_pos,
 				f"jk_region_indices_shape_{self.ID_shm}": jackknife_region_indices_shape,
 			}
+			if e_pos is not None:
+				shared_data[f"e_pos_{self.ID_shm}"] = e_pos
+				shared_data[f"east_shape_{self.ID_shm}"] = east_shape
+				shared_data[f"north_shape_{self.ID_shm}"] = north_shape
 			for k in shared_data.keys():
 				try:
 					old = shared_memory.SharedMemory(name=k)
@@ -582,12 +627,29 @@ class MeasureMultipolesLightconeJackknife(MeasureIABase):
 		DD_jk = np.zeros((self.num_jk, self.num_bins_r, self.num_bins_pi))
 		Splus_D_jk = np.zeros((self.num_jk, self.num_bins_r, self.num_bins_pi))
 
+		shape_shape = result[0][5] is not None
+		_z = (lambda: np.zeros_like(DD)) if shape_shape else (lambda: None)
+		_zjk = (lambda: np.zeros_like(DD_jk)) if shape_shape else (lambda: None)
+		Splus_Splus, Scross_Scross, Splus_Scross = _z(), _z(), _z()
+		Splus_Splus_jk, Scross_Scross_jk, Splus_Scross_jk = _zjk(), _zjk(), _zjk()
 		for i in np.arange(len(result)):
 			Splus_D += result[i][0]
 			Scross_D += result[i][1]
 			DD += result[i][2]
 			DD_jk += result[i][3]
 			Splus_D_jk += result[i][4]
+			if shape_shape:
+				Splus_Splus += result[i][5]
+				Scross_Scross += result[i][6]
+				Splus_Scross += result[i][7]
+				Splus_Splus_jk += result[i][8]
+				Scross_Scross_jk += result[i][9]
+				Splus_Scross_jk += result[i][10]
+		grids = pair_kernel.Grids(
+			DD=DD, Splus_D=Splus_D, Scross_D=Scross_D, DD_jk=DD_jk, Splus_D_jk=Splus_D_jk,
+			Splus_Splus=Splus_Splus, Scross_Scross=Scross_Scross, Splus_Scross=Splus_Scross,
+			Splus_Splus_jk=Splus_Splus_jk, Scross_Scross_jk=Scross_Scross_jk,
+			Splus_Scross_jk=Splus_Scross_jk)
 		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
 		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
 		dmur = (self.mu_r_bins[1:] - self.mu_r_bins[:-1]) / 2.0
@@ -617,6 +679,10 @@ class MeasureMultipolesLightconeJackknife(MeasureIABase):
 				write_dataset_hdf5(group, dataset_name + f"_{i}{DD_suff}", data=(DD - DD_jk[i]))
 				write_dataset_hdf5(group, dataset_name + f"_{i}_r", data=separation_bins)
 				write_dataset_hdf5(group, dataset_name + f"_{i}_mu_r", data=mu_r_bins)
+			if grids.Splus_Splus is not None:
+				self.write_shape_shape_counts_jk(
+					output_file, "multipoles", ("r", "mu_r"), grids,
+					separation_bins, mu_r_bins, dataset_name, jk_group_name, self.num_jk)
 			output_file.close()
 			return
 		else:

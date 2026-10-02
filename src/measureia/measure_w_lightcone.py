@@ -88,8 +88,15 @@ class MeasureWLightcone(MeasureIABase):
 			Scross_suff = "_ScrossR"
 		else:
 			raise ValueError("data_suffix must be _SplusD or _SplusR")
+		# only the S+D pass has shapes on both samples: S+R swaps the density sample
+		# for randoms, which carry none, so there is no shape-shape term there
+		shape_mode = getattr(self, "_shape_mode", True) if data_suffix == "_SplusD" else True
+		# the batch methods have no data_suffix of their own, so the effective mode for
+		# this pass is handed to them on self (they are bound methods pickled into the
+		# workers, which is how every other per-run option reaches them)
+		self._batch_shape_mode = shape_mode
 		sample_set = pair_kernel.prepare_lightcone_samples(
-			self.data, masks, shapes=True, cosmology=cosmology, over_h=over_h,
+			self.data, masks, shapes=shape_mode, cosmology=cosmology, over_h=over_h,
 			responsivity_correction=getattr(self, "responsivity_correction", False),
 			base=self, print_num=print_num,
 		)
@@ -99,7 +106,7 @@ class MeasureWLightcone(MeasureIABase):
 			print(
 				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
 		binning = pair_kernel.SkyRpPi(self)
-		grids = pair_kernel.accumulate(sample_set, binning, base=self, shapes=True,
+		grids = pair_kernel.accumulate(sample_set, binning, base=self, shapes=shape_mode,
 									   chunk_axis="position", chunk_size_outer=100, backend="brute")
 		DD = grids.DD
 		Splus_D = grids.Splus_D
@@ -128,6 +135,10 @@ class MeasureWLightcone(MeasureIABase):
 			write_dataset_hdf5(group, dataset_name + DD_suff, data=DD)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
+			if grids.Splus_Splus is not None:
+				self.write_shape_shape_counts(output_file, "w", ("rp", "pi"),
+											  grids, separation_bins, pi_bins,
+											  dataset_name, jk_group_name)
 			output_file.close()
 			return
 		else:
@@ -173,8 +184,15 @@ class MeasureWLightcone(MeasureIABase):
 			Scross_suff = "_ScrossR"
 		else:
 			raise ValueError("data_suffix must be _SplusD or _SplusR")
+		# only the S+D pass has shapes on both samples: S+R swaps the density sample
+		# for randoms, which carry none, so there is no shape-shape term there
+		shape_mode = getattr(self, "_shape_mode", True) if data_suffix == "_SplusD" else True
+		# the batch methods have no data_suffix of their own, so the effective mode for
+		# this pass is handed to them on self (they are bound methods pickled into the
+		# workers, which is how every other per-run option reaches them)
+		self._batch_shape_mode = shape_mode
 		sample_set = pair_kernel.prepare_lightcone_samples(
-			self.data, masks, shapes=True, cosmology=cosmology, over_h=over_h,
+			self.data, masks, shapes=shape_mode, cosmology=cosmology, over_h=over_h,
 			responsivity_correction=getattr(self, "responsivity_correction", False),
 			base=self, print_num=print_num,
 		)
@@ -184,7 +202,7 @@ class MeasureWLightcone(MeasureIABase):
 			print(
 				f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
 		binning = pair_kernel.SkyRpPi(self)
-		grids = pair_kernel.accumulate(sample_set, binning, base=self, shapes=True,
+		grids = pair_kernel.accumulate(sample_set, binning, base=self, shapes=shape_mode,
 									   chunk_axis="position", chunk_size_outer=100, backend="tree")
 		DD = grids.DD
 		Splus_D = grids.Splus_D
@@ -208,6 +226,10 @@ class MeasureWLightcone(MeasureIABase):
 			write_dataset_hdf5(group, dataset_name + DD_suff, data=DD)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
+			if grids.Splus_Splus is not None:
+				self.write_shape_shape_counts(output_file, "w", ("rp", "pi"),
+											  grids, separation_bins, pi_bins,
+											  dataset_name, "")
 			output_file.close()
 			return
 		else:
@@ -365,14 +387,20 @@ class MeasureWLightcone(MeasureIABase):
 			e=shared_data[f"e_{self.ID_shm}"],
 			east=shared_data[f"east_{self.ID_shm}"][i:i2],
 			north=shared_data[f"north_{self.ID_shm}"][i:i2],
+			e_pos=(shared_data[f"e_pos_{self.ID_shm}"][i:i2]
+				   if f"e_pos_{self.ID_shm}" in shared_data else None),
+			east_shape=shared_data.get(f"east_shape_{self.ID_shm}"),
+			north_shape=shared_data.get(f"north_shape_{self.ID_shm}"),
 		)
 		binning = pair_kernel.SkyRpPi(self)
-		grids = pair_kernel.accumulate(sample_set, binning, base=self, shapes=True,
+		grids = pair_kernel.accumulate(sample_set, binning, base=self, shapes=getattr(self, "_batch_shape_mode", True),
 									   chunk_axis="position", chunk_size_outer=100, backend="tree",
 									   shape_tree=self.shape_tree)
 		for shm in shms:
 			shm.close()
-		return grids.Splus_D, grids.Scross_D, grids.DD
+		# shape-shape grids appended; None unless shapes="both"
+		return (grids.Splus_D, grids.Scross_D, grids.DD,
+				grids.Splus_Splus, grids.Scross_Scross, grids.Splus_Scross)
 
 	def _measure_xi_rp_pi_lightcone_multiprocessing(self, dataset_name, temp_file_path, masks=None,
 													 return_output=False, over_h=False, cosmology=None,
@@ -396,8 +424,15 @@ class MeasureWLightcone(MeasureIABase):
 			Scross_suff = "_ScrossR"
 		else:
 			raise ValueError("data_suffix must be _SplusD or _SplusR")
+		# only the S+D pass has shapes on both samples: S+R swaps the density sample
+		# for randoms, which carry none, so there is no shape-shape term there
+		shape_mode = getattr(self, "_shape_mode", True) if data_suffix == "_SplusD" else True
+		# the batch methods have no data_suffix of their own, so the effective mode for
+		# this pass is handed to them on self (they are bound methods pickled into the
+		# workers, which is how every other per-run option reaches them)
+		self._batch_shape_mode = shape_mode
 		sample_set = pair_kernel.prepare_lightcone_samples(
-			self.data, masks, shapes=True, cosmology=cosmology, over_h=over_h,
+			self.data, masks, shapes=shape_mode, cosmology=cosmology, over_h=over_h,
 			responsivity_correction=getattr(self, "responsivity_correction", False),
 			base=self, print_num=True,
 		)
@@ -406,6 +441,11 @@ class MeasureWLightcone(MeasureIABase):
 		e = sample_set.e
 		east = sample_set.east
 		north = sample_set.north
+		# shape-shape only. e_pos is position-aligned (sliced per batch, like east/north);
+		# east_shape/north_shape are shape-aligned and passed whole, like e.
+		e_pos = sample_set.e_pos
+		east_shape = sample_set.east_shape
+		north_shape = sample_set.north_shape
 		weight = sample_set.weight
 		weight_shape = sample_set.weight_shape
 		self.Num_position_masked = len(s_pos)
@@ -442,6 +482,10 @@ class MeasureWLightcone(MeasureIABase):
 				f"weight_{self.ID_shm}": weight,
 				f"weight_shape_{self.ID_shm}": weight_shape,
 			}
+			if e_pos is not None:
+				shared_data[f"e_pos_{self.ID_shm}"] = e_pos
+				shared_data[f"east_shape_{self.ID_shm}"] = east_shape
+				shared_data[f"north_shape_{self.ID_shm}"] = north_shape
 			for k in shared_data.keys():
 				try:
 					old = shared_memory.SharedMemory(name=k)
@@ -480,10 +524,21 @@ class MeasureWLightcone(MeasureIABase):
 		DD = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Splus_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		shape_shape = result[0][3] is not None
+		Splus_Splus = np.zeros_like(DD) if shape_shape else None
+		Scross_Scross = np.zeros_like(DD) if shape_shape else None
+		Splus_Scross = np.zeros_like(DD) if shape_shape else None
 		for i in np.arange(len(result)):
 			Splus_D += result[i][0]
 			Scross_D += result[i][1]
 			DD += result[i][2]
+			if shape_shape:
+				Splus_Splus += result[i][3]
+				Scross_Scross += result[i][4]
+				Splus_Scross += result[i][5]
+		grids = pair_kernel.Grids(DD=DD, Splus_D=Splus_D, Scross_D=Scross_D,
+								  Splus_Splus=Splus_Splus, Scross_Scross=Scross_Scross,
+								  Splus_Scross=Splus_Scross)
 		dsep = (self.r_bins[1:] - self.r_bins[:-1]) / 2.0
 		separation_bins = self.r_bins[:-1] + abs(dsep)  # middle of bins
 		dpi = (self.pi_bins[1:] - self.pi_bins[:-1]) / 2.0
@@ -503,6 +558,10 @@ class MeasureWLightcone(MeasureIABase):
 			write_dataset_hdf5(group, dataset_name + DD_suff, data=DD)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
+			if grids.Splus_Splus is not None:
+				self.write_shape_shape_counts(output_file, "w", ("rp", "pi"),
+											  grids, separation_bins, pi_bins,
+											  dataset_name, "")
 			output_file.close()
 			return
 		else:
