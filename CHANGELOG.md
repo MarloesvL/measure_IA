@@ -8,6 +8,8 @@ public API mean a major version bump.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-02
+
 ### Added
 
 - **Linear separation bins** ([#78](https://github.com/MarloesvL/measure_IA/issues/78)).
@@ -405,7 +407,8 @@ moment estimator, and sub-box jackknife covariances.
   than kept at the time. Fill in the 0.2.x lines if the detail is worth having.
 -->
 
-[Unreleased]: https://github.com/MarloesvL/measure_IA/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/MarloesvL/measure_IA/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/MarloesvL/measure_IA/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/MarloesvL/measure_IA/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/MarloesvL/measure_IA/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/MarloesvL/measure_IA/compare/v0.2.1...v0.3.0
