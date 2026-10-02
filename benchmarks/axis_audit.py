@@ -39,9 +39,19 @@ def _axes(binning, *, geometry, backend, shapes, jk, per_galaxy):
     if name == "BoxRpPi":
         # the only binning that chooses its tree dimensionality at runtime
         branch = "3D" if getattr(binning, "tree_is_3d", True) else "2D"
+    # Three values, not two: shapes="both" adds the shape-shape products on top of
+    # the g+ ones, and it is a genuinely different code path in the pair loop. Folding
+    # it into "shapes" (it is truthy) would hide exactly the cells this tool exists to
+    # expose.
+    if isinstance(shapes, str):
+        shape_terms = "shape-shape"
+    elif shapes:
+        shape_terms = "shapes"
+    else:
+        shape_terms = "count-only"
     return (geometry, statistic, backend, branch,
             "jk" if jk else "full", "per-gal" if per_galaxy else "-",
-            "shapes" if shapes else "count-only")
+            shape_terms)
 
 
 def pytest_configure(config):
@@ -81,13 +91,13 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
         return
 
     header = (f"  {'geometry':<10}{'stat':<11}{'backend':<9}{'branch':<8}"
-              f"{'jk':<6}{'per-gal':<9}{'shapes':<12}{'calls':>8}")
+              f"{'jk':<6}{'per-gal':<9}{'shapes':<14}{'calls':>8}")
     w(header)
     w("  " + "-" * (len(header) - 2))
     for axes, n in sorted(_CALLS.items()):
         g, st, be, br, jk, pg, sh = axes
-        w(f"  {g:<10}{st:<11}{be:<9}{br or '-':<8}{jk:<6}{pg:<9}{sh:<12}{n:>8,}")
-    w(f"  {'':<65}{sum(_CALLS.values()):>8,} total")
+        w(f"  {g:<10}{st:<11}{be:<9}{br or '-':<8}{jk:<6}{pg:<9}{sh:<14}{n:>8,}")
+    w(f"  {'':<67}{sum(_CALLS.values()):>8,} total")
 
     # the cells that matter most: every backend x geometry x statistic, and for
     # the box w path both tree branches

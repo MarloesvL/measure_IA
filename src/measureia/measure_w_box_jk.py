@@ -53,6 +53,7 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 			pi_max=None,
 			boxsize=None,
 			periodicity=True,
+			binning="log",
 	):
 		"""
 		The __init__ method of the MeasureWSimulations class.
@@ -60,11 +61,11 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 		Notes
 		-----
 		Constructor parameters 'data', 'output_file_name', 'simulation', 'snapshot', 'separation_limits', 'num_bins_r',
-		'num_bins_pi', 'pi_max', 'boxsize' and 'periodicity' are passed to MeasureIABase.
+		'num_bins_pi', 'pi_max', 'boxsize', 'periodicity' and 'binning' are passed to MeasureIABase.
 
 		"""
 		super().__init__(data, output_file_name, simulation, snapshot, separation_limits, num_bins_r, num_bins_pi,
-						 pi_max, boxsize, periodicity)
+						 pi_max, boxsize, periodicity, binning)
 		return
 
 	def _measure_xi_rp_pi_box_jk_brute(self, dataset_name, L_subboxes, masks=None, return_output=False,
@@ -96,7 +97,7 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 		"""
 		sample_set = pair_kernel.prepare_box_samples(
 			self.data, masks, self.Num_position, self.Num_shape,
-			shapes=True, ellipticity=ellipticity, base=self, require_full_masks=True,
+			shapes=getattr(self, "_shape_mode", True), ellipticity=ellipticity, base=self, require_full_masks=True,
 		)
 		jackknife_region_indices_pos, jackknife_region_indices_shape = self._get_jackknife_region_indices(masks, L_subboxes)
 		sample_set.jk_pos = jackknife_region_indices_pos
@@ -114,7 +115,11 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 		print(
 			f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
 		binning = pair_kernel.BoxRpPi(self)
-		grids = pair_kernel.accumulate(sample_set, binning, base=self, R=R, shapes=True,
+		shape_mode = getattr(self, "_shape_mode", True)
+		R_pos = self.sample_responsivity(sample_set.e_pos, sample_set.weight,
+										 getattr(self, "responsivity_correction", True))
+		grids = pair_kernel.accumulate(sample_set, binning, base=self, R=R, R_pos=R_pos,
+									   shapes=shape_mode,
 									   chunk_axis="shape", chunk_size_outer=100, backend="brute", jk=True, num_box=num_box)
 		DD = grids.DD
 		Splus_D = grids.Splus_D
@@ -122,22 +127,25 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 		DD_jk = grids.DD_jk
 		Splus_D_jk = grids.Splus_D_jk
 		R_jk = pair_kernel.compute_R_jk(e, weight_shape, jackknife_region_indices_shape, num_box, getattr(self, "responsivity_correction", True))
+		R_pos_jk = (pair_kernel.compute_R_jk(sample_set.e_pos, sample_set.weight,
+											 jackknife_region_indices_pos, num_box,
+											 getattr(self, "responsivity_correction", True))
+					if sample_set.e_pos is not None else None)
 		corrtype = "cross"
 
 		for i in np.arange(0, self.num_bins_r):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_g_plus[i, p] = self.get_random_pairs(
 					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "cross",
-					Num_position, Num_shape, self.num_overlap)
+					self.sum_w_position, self.sum_w_shape, self.num_overlap)
 				RR_gg[i, p] = self.get_random_pairs(
 					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, corrtype,
-					Num_position, Num_shape, self.num_overlap)
+					self.sum_w_position, self.sum_w_shape, self.num_overlap)
 
 		RR_jk = np.zeros((num_box, self.num_bins_r, self.num_bins_pi))
 		volume_jk = L3 * (num_box - 1) / (num_box)
 		for jk in np.arange(num_box):
-			Num_position_jk, Num_shape_jk = len(np.where(jackknife_region_indices_pos != jk)[0]), len(
-				np.where(jackknife_region_indices_shape != jk)[0])
+			Num_position_jk, Num_shape_jk = self.sum_w_position_jk[jk], self.sum_w_shape_jk[jk]
 			for i in np.arange(0, self.num_bins_r):
 				for p in np.arange(0, self.num_bins_pi):
 					RR_jk[jk, i, p] = self.get_random_pairs(
@@ -199,6 +207,14 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 				write_dataset_hdf5(group, dataset_name + f"_{i}_RR", data=RR_jk[i])
 				write_dataset_hdf5(group, dataset_name + f"_{i}_rp", data=separation_bins)
 				write_dataset_hdf5(group, dataset_name + f"_{i}_pi", data=pi_bins)
+			if grids.Splus_Splus is not None:
+				self.write_shape_shape_grids(output_file, "w", ("rp", "pi"), grids,
+											 RR_g_plus, RR_g_plus_denom, separation_bins,
+											 pi_bins, dataset_name)
+				self.write_shape_shape_jk_realisations(
+					output_file, "w", ("rp", "pi"), grids, RR_jk,
+					(2 * R) * (2 * R_pos), R_jk, R_pos_jk, separation_bins, pi_bins,
+					dataset_name, jk_group_name, num_box)
 			output_file.close()
 			return
 		else:
@@ -235,7 +251,7 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 		"""
 		sample_set = pair_kernel.prepare_box_samples(
 			self.data, masks, self.Num_position, self.Num_shape,
-			shapes=True, ellipticity=ellipticity, base=self, require_full_masks=True,
+			shapes=getattr(self, "_shape_mode", True), ellipticity=ellipticity, base=self, require_full_masks=True,
 		)
 		jackknife_region_indices_pos, jackknife_region_indices_shape = self._get_jackknife_region_indices(masks, L_subboxes)
 		sample_set.jk_pos = jackknife_region_indices_pos
@@ -253,7 +269,11 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 		print(
 			f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
 		binning = pair_kernel.BoxRpPi(self)
-		grids = pair_kernel.accumulate(sample_set, binning, base=self, R=R, shapes=True,
+		shape_mode = getattr(self, "_shape_mode", True)
+		R_pos = self.sample_responsivity(sample_set.e_pos, sample_set.weight,
+										 getattr(self, "responsivity_correction", True))
+		grids = pair_kernel.accumulate(sample_set, binning, base=self, R=R, R_pos=R_pos,
+									   shapes=shape_mode,
 									   chunk_axis="shape", chunk_size_outer=100, backend="tree", jk=True, num_box=num_box)
 		DD = grids.DD
 		Splus_D = grids.Splus_D
@@ -261,22 +281,25 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 		DD_jk = grids.DD_jk
 		Splus_D_jk = grids.Splus_D_jk
 		R_jk = pair_kernel.compute_R_jk(e, weight_shape, jackknife_region_indices_shape, num_box, getattr(self, "responsivity_correction", True))
+		R_pos_jk = (pair_kernel.compute_R_jk(sample_set.e_pos, sample_set.weight,
+											 jackknife_region_indices_pos, num_box,
+											 getattr(self, "responsivity_correction", True))
+					if sample_set.e_pos is not None else None)
 		corrtype = "cross"
 
 		for i in np.arange(0, self.num_bins_r):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_g_plus[i, p] = self.get_random_pairs(
 					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "cross",
-					Num_position, Num_shape, self.num_overlap)
+					self.sum_w_position, self.sum_w_shape, self.num_overlap)
 				RR_gg[i, p] = self.get_random_pairs(
 					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, corrtype,
-					Num_position, Num_shape, self.num_overlap)
+					self.sum_w_position, self.sum_w_shape, self.num_overlap)
 
 		RR_jk = np.zeros((num_box, self.num_bins_r, self.num_bins_pi))
 		volume_jk = L3 * (num_box - 1) / num_box
 		for jk in np.arange(num_box):
-			Num_position_jk, Num_shape_jk = len(np.where(jackknife_region_indices_pos != jk)[0]), len(
-				np.where(jackknife_region_indices_shape != jk)[0])
+			Num_position_jk, Num_shape_jk = self.sum_w_position_jk[jk], self.sum_w_shape_jk[jk]
 			for i in np.arange(0, self.num_bins_r):
 				for p in np.arange(0, self.num_bins_pi):
 					RR_jk[jk, i, p] = self.get_random_pairs(
@@ -338,6 +361,14 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 				write_dataset_hdf5(group, dataset_name + f"_{i}_RR", data=RR_jk[i])
 				write_dataset_hdf5(group, dataset_name + f"_{i}_rp", data=separation_bins)
 				write_dataset_hdf5(group, dataset_name + f"_{i}_pi", data=pi_bins)
+			if grids.Splus_Splus is not None:
+				self.write_shape_shape_grids(output_file, "w", ("rp", "pi"), grids,
+											 RR_g_plus, RR_g_plus_denom, separation_bins,
+											 pi_bins, dataset_name)
+				self.write_shape_shape_jk_realisations(
+					output_file, "w", ("rp", "pi"), grids, RR_jk,
+					(2 * R) * (2 * R_pos), R_jk, R_pos_jk, separation_bins, pi_bins,
+					dataset_name, jk_group_name, num_box)
 			output_file.close()
 			return
 		else:
@@ -373,14 +404,23 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 			not_LOS=self.not_LOS,
 			jk_pos=shared_data[f"jk_region_indices_pos_{self.ID_shm}"],
 			jk_shape=shared_data[f"jk_region_indices_shape_{self.ID_shm}"][i:i2],
+			# density-sample shapes are position-aligned, so they are passed whole
+			axis_direction_pos=shared_data.get(f"axis_direction_pos_{self.ID_shm}"),
+			e_pos=shared_data.get(f"e_pos_{self.ID_shm}"),
 		)
 		binning = pair_kernel.BoxRpPi(self)
-		grids = pair_kernel.accumulate(sample_set, binning, base=self, R=self.R, shapes=True,
+		grids = pair_kernel.accumulate(sample_set, binning, base=self, R=self.R,
+									   R_pos=getattr(self, "R_pos", 0.5),
+									   shapes=getattr(self, "_shape_mode", True),
 									   chunk_axis="shape", chunk_size_outer=100, pos_tree=self.pos_tree,
 									   jk=True, num_box=self.num_box)
 		for shm in shms:
 			shm.close()
-		return grids.Splus_D, grids.Scross_D, grids.DD, grids.DD_jk, grids.Splus_D_jk
+		# the six shape-shape grids are appended, and are None unless shapes="both", so
+		# the existing positional unpacking in the parent is unaffected
+		return (grids.Splus_D, grids.Scross_D, grids.DD, grids.DD_jk, grids.Splus_D_jk,
+				grids.Splus_Splus, grids.Scross_Scross, grids.Splus_Scross,
+				grids.Splus_Splus_jk, grids.Scross_Scross_jk, grids.Splus_Scross_jk)
 
 	def _measure_xi_rp_pi_box_jk_multiprocessing(self, dataset_name, L_subboxes, temp_file_path,
 												 masks=None, return_output=False, jk_group_name="",
@@ -421,7 +461,7 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 		"""
 		sample_set = pair_kernel.prepare_box_samples(
 			self.data, masks, self.Num_position, self.Num_shape,
-			shapes=True, ellipticity=ellipticity, base=self, require_full_masks=True,
+			shapes=getattr(self, "_shape_mode", True), ellipticity=ellipticity, base=self, require_full_masks=True,
 		)
 		positions = sample_set.pos
 		positions_shape_sample = sample_set.pos_shape
@@ -429,6 +469,11 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 		e = sample_set.e
 		weight = sample_set.weight
 		weight_shape = sample_set.weight_shape
+		# shape-shape only: density-sample shapes, position-aligned (not sliced per batch)
+		axis_direction_pos = sample_set.axis_direction_pos
+		e_pos = sample_set.e_pos
+		self.R_pos = self.sample_responsivity(e_pos, weight,
+											  getattr(self, "responsivity_correction", True))
 		self.Num_position_masked = len(positions)
 		self.Num_shape_masked = len(positions_shape_sample)
 		print(
@@ -438,8 +483,6 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 		self.R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape) \
 			if getattr(self, "responsivity_correction", True) and sum(weight_shape) > 0 else 0.5
 		L3 = self.boxsize ** 3  # box volume
-		self.sub_box_len_logrp = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
-		self.sub_box_len_pi = (self.pi_bins[-1] - self.pi_bins[0]) / self.num_bins_pi
 		self.num_box = L_subboxes ** 3
 		jackknife_region_indices_pos, jackknife_region_indices_shape = self._get_jackknife_region_indices(
 			masks,
@@ -487,6 +530,9 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 				f"jk_region_indices_pos_{self.ID_shm}": jackknife_region_indices_pos,
 				f"jk_region_indices_shape_{self.ID_shm}": jackknife_region_indices_shape,
 			}
+			if e_pos is not None:
+				shared_data[f"axis_direction_pos_{self.ID_shm}"] = axis_direction_pos
+				shared_data[f"e_pos_{self.ID_shm}"] = e_pos
 			for k in shared_data.keys():
 				try:
 					old = shared_memory.SharedMemory(name=k)
@@ -534,18 +580,41 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 		DD_jk = np.zeros((self.num_box, self.num_bins_r, self.num_bins_pi))
 		Splus_D_jk = np.zeros((self.num_box, self.num_bins_r, self.num_bins_pi))
 
+		shape_shape = result[0][5] is not None
+		_z = (lambda: np.zeros_like(DD)) if shape_shape else (lambda: None)
+		_zjk = (lambda: np.zeros_like(DD_jk)) if shape_shape else (lambda: None)
+		Splus_Splus, Scross_Scross, Splus_Scross = _z(), _z(), _z()
+		Splus_Splus_jk, Scross_Scross_jk, Splus_Scross_jk = _zjk(), _zjk(), _zjk()
 		for i in np.arange(len(result)):
 			Splus_D += result[i][0]
 			Scross_D += result[i][1]
 			DD += result[i][2]
 			DD_jk += result[i][3]
 			Splus_D_jk += result[i][4]
+			if shape_shape:
+				Splus_Splus += result[i][5]
+				Scross_Scross += result[i][6]
+				Splus_Scross += result[i][7]
+				Splus_Splus_jk += result[i][8]
+				Scross_Scross_jk += result[i][9]
+				Splus_Scross_jk += result[i][10]
+		grids = pair_kernel.Grids(
+			DD=DD, Splus_D=Splus_D, Scross_D=Scross_D, DD_jk=DD_jk, Splus_D_jk=Splus_D_jk,
+			Splus_Splus=Splus_Splus, Scross_Scross=Scross_Scross, Splus_Scross=Splus_Scross,
+			Splus_Splus_jk=Splus_Splus_jk, Scross_Scross_jk=Scross_Scross_jk,
+			Splus_Scross_jk=Splus_Scross_jk)
 
 		if masks is None:
 			weight_shape = self.data["weight_shape_sample"]
+			weight = self.data["weight"]
 		else:
 			weight_shape = self.data["weight_shape_sample"][masks["weight_shape_sample"]]
+			weight = self.data["weight"][masks["weight"]]
 		R_jk = pair_kernel.compute_R_jk(e, weight_shape, jackknife_region_indices_shape, self.num_box, getattr(self, "responsivity_correction", True))
+		R_pos_jk = (pair_kernel.compute_R_jk(e_pos, weight, jackknife_region_indices_pos,
+											 self.num_box,
+											 getattr(self, "responsivity_correction", True))
+					if e_pos is not None else None)
 
 		corrtype = "cross"
 
@@ -553,16 +622,15 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_g_plus[i, p] = self.get_random_pairs(
 					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "cross",
-					self.Num_position_masked, self.Num_shape_masked, self.num_overlap)
+					self.sum_w_position, self.sum_w_shape, self.num_overlap)
 				RR_gg[i, p] = self.get_random_pairs(
 					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, corrtype,
-					self.Num_position_masked, self.Num_shape_masked, self.num_overlap)
+					self.sum_w_position, self.sum_w_shape, self.num_overlap)
 
 		RR_jk = np.zeros((self.num_box, self.num_bins_r, self.num_bins_pi))
 		volume_jk = L3 * (self.num_box - 1) / self.num_box
 		for jk in np.arange(self.num_box):
-			Num_position_jk, Num_shape_jk = len(np.where(jackknife_region_indices_pos != jk)[0]), len(
-				np.where(jackknife_region_indices_shape != jk)[0])
+			Num_position_jk, Num_shape_jk = self.sum_w_position_jk[jk], self.sum_w_shape_jk[jk]
 			for i in np.arange(0, self.num_bins_r):
 				for p in np.arange(0, self.num_bins_pi):
 					RR_jk[jk, i, p] = self.get_random_pairs(
@@ -623,6 +691,14 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 				write_dataset_hdf5(group, dataset_name + f"_{i}_RR", data=RR_jk[i])
 				write_dataset_hdf5(group, dataset_name + f"_{i}_rp", data=separation_bins)
 				write_dataset_hdf5(group, dataset_name + f"_{i}_pi", data=pi_bins)
+			if grids.Splus_Splus is not None:
+				self.write_shape_shape_grids(output_file, "w", ("rp", "pi"), grids,
+											 RR_g_plus, RR_g_plus_denom, separation_bins,
+											 pi_bins, dataset_name)
+				self.write_shape_shape_jk_realisations(
+					output_file, "w", ("rp", "pi"), grids, RR_jk,
+					(2 * self.R) * (2 * self.R_pos), R_jk, R_pos_jk, separation_bins,
+					pi_bins, dataset_name, jk_group_name, self.num_box)
 			output_file.close()
 			return
 		else:
@@ -679,13 +755,12 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_gg[i, p] = self.get_random_pairs(
 					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, corrtype,
-					Num_position, Num_shape, self.num_overlap)
+					self.sum_w_position, self.sum_w_shape, self.num_overlap)
 
 		RR_jk = np.zeros((num_box, self.num_bins_r, self.num_bins_pi))
 		volume_jk = L3 * (num_box - 1) / (num_box)
 		for jk in np.arange(num_box):
-			Num_position_jk, Num_shape_jk = len(np.where(jackknife_region_indices_pos != jk)[0]), len(
-				np.where(jackknife_region_indices_shape != jk)[0])
+			Num_position_jk, Num_shape_jk = self.sum_w_position_jk[jk], self.sum_w_shape_jk[jk]
 			for i in np.arange(0, self.num_bins_r):
 				for p in np.arange(0, self.num_bins_pi):
 					RR_jk[jk, i, p] = self.get_random_pairs(
@@ -775,13 +850,12 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_gg[i, p] = self.get_random_pairs(
 					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, corrtype,
-					Num_position, Num_shape, self.num_overlap)
+					self.sum_w_position, self.sum_w_shape, self.num_overlap)
 
 		RR_jk = np.zeros((num_box, self.num_bins_r, self.num_bins_pi))
 		volume_jk = L3 * (num_box - 1) / num_box
 		for jk in np.arange(num_box):
-			Num_position_jk, Num_shape_jk = len(np.where(jackknife_region_indices_pos != jk)[0]), len(
-				np.where(jackknife_region_indices_shape != jk)[0])
+			Num_position_jk, Num_shape_jk = self.sum_w_position_jk[jk], self.sum_w_shape_jk[jk]
 			for i in np.arange(0, self.num_bins_r):
 				for p in np.arange(0, self.num_bins_pi):
 					RR_jk[jk, i, p] = self.get_random_pairs(
@@ -905,8 +979,6 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 		self.LOS_ind = sample_set.LOS_ind
 		self.not_LOS = sample_set.not_LOS
 		L3 = self.boxsize ** 3  # box volume
-		self.sub_box_len_logrp = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
-		self.sub_box_len_pi = (self.pi_bins[-1] - self.pi_bins[0]) / self.num_bins_pi
 		self.num_box = L_subboxes ** 3
 		jackknife_region_indices_pos, jackknife_region_indices_shape = self._get_jackknife_region_indices(
 			masks,
@@ -1005,13 +1077,12 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_gg[i, p] = self.get_random_pairs(
 					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, corrtype,
-					self.Num_position_masked, self.Num_shape_masked, self.num_overlap)
+					self.sum_w_position, self.sum_w_shape, self.num_overlap)
 
 		RR_jk = np.zeros((self.num_box, self.num_bins_r, self.num_bins_pi))
 		volume_jk = L3 * (self.num_box - 1) / self.num_box
 		for jk in np.arange(self.num_box):
-			Num_position_jk, Num_shape_jk = len(np.where(jackknife_region_indices_pos != jk)[0]), len(
-				np.where(jackknife_region_indices_shape != jk)[0])
+			Num_position_jk, Num_shape_jk = self.sum_w_position_jk[jk], self.sum_w_shape_jk[jk]
 			for i in np.arange(0, self.num_bins_r):
 				for p in np.arange(0, self.num_bins_pi):
 					RR_jk[jk, i, p] = self.get_random_pairs(

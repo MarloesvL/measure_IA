@@ -273,6 +273,76 @@ class TestGetEllipticity:
 
 
 # ---------------------------------------------------------------------------
+# get_ellipticity_from_direction
+# ---------------------------------------------------------------------------
+
+class TestGetEllipticityFromDirection:
+    """The sign-invariant scalar-e projection used by the box pair loop.
+
+    It takes the signed angle as (cos phi, sin phi) — the dot and 2D cross
+    products of the unit axis with the unit separation direction — rather than
+    the angle itself, so that the arbitrary sign of the semi-major axis cannot
+    leak into e_x. See MeasureIABase.get_ellipticity_from_direction.
+    """
+
+    @staticmethod
+    def _unit_pairs(n=200, seed=3):
+        rng = np.random.default_rng(seed)
+        phi = rng.uniform(-np.pi, np.pi, n)
+        return phi, np.cos(phi), np.sin(phi)
+
+    def test_matches_get_ellipticity_on_signed_angles(self):
+        """Identical to the 1-D get_ellipticity branch when phi is the signed angle."""
+        phi, c, sn = self._unit_pairs()
+        e = np.linspace(0.05, 0.9, len(phi))
+        ref_p, ref_x = MeasureIABase.get_ellipticity(e, phi)
+        got_p, got_x = MeasureIABase.get_ellipticity_from_direction(e, c, sn)
+        np.testing.assert_allclose(got_p, ref_p, rtol=0, atol=1e-14)
+        np.testing.assert_allclose(got_x, ref_x, rtol=0, atol=1e-14)
+
+    def test_invariant_under_axis_sign_flip(self):
+        """a -> -a sends (cos phi, sin phi) -> (-cos phi, -sin phi).
+
+        Both outputs must be unchanged *exactly*: the double-angle forms
+        2c^2-1 and 2cs are even under a simultaneous sign flip, and IEEE
+        multiplication makes that bit-exact rather than merely approximate.
+        """
+        _, c, sn = self._unit_pairs()
+        e = 0.4
+        p_a, x_a = MeasureIABase.get_ellipticity_from_direction(e, c, sn)
+        p_b, x_b = MeasureIABase.get_ellipticity_from_direction(e, -c, -sn)
+        np.testing.assert_array_equal(p_a, p_b)
+        np.testing.assert_array_equal(x_a, x_b)
+
+    def test_arccos_would_not_be_invariant(self):
+        """Guard on the premise: the old arccos route really does flip e_x.
+
+        Documents why the helper exists — if this ever stops holding, the
+        invariance tests above have become vacuous.
+        """
+        phi, c, sn = self._unit_pairs()
+        e = 0.4
+        _, x_pos = MeasureIABase.get_ellipticity(e, np.arccos(c))
+        _, x_neg = MeasureIABase.get_ellipticity(e, np.arccos(-c))
+        np.testing.assert_allclose(x_neg, -x_pos, atol=1e-14)
+        assert np.max(np.abs(x_pos)) > 0.1     # not trivially zero
+
+    def test_radial_alignment_is_positive(self):
+        """Axis parallel to the separation (phi = 0) gives e_+ = e, e_x = 0."""
+        e_p, e_x = MeasureIABase.get_ellipticity_from_direction(
+            np.array([0.6]), np.array([1.0]), np.array([0.0]))
+        np.testing.assert_allclose(e_p, [0.6])
+        np.testing.assert_allclose(e_x, [0.0], atol=1e-15)
+
+    def test_scalar_e_broadcasts(self):
+        """The box loop passes a scalar e against arrays of cos/sin."""
+        _, c, sn = self._unit_pairs(n=7)
+        e_p, e_x = MeasureIABase.get_ellipticity_from_direction(0.3, c, sn)
+        assert e_p.shape == (7,) and e_x.shape == (7,)
+
+
+
+# ---------------------------------------------------------------------------
 # get_random_pairs (analytical RR)
 # ---------------------------------------------------------------------------
 

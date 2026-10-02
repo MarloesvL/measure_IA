@@ -24,6 +24,7 @@ def radial_alignment_box_mock(
 		q_range=(0.3, 0.9),
 		seed=42,
 		margin=0.0,
+		density_shapes=False,
 ):
 	"""Generate a periodic-box mock with radially aligned satellites.
 
@@ -51,6 +52,17 @@ def radial_alignment_box_mock(
 		Needed when the same catalogue must also be measured without
 		periodicity (e.g. the plane-parallel lightcone consistency check).
 		Default 0 (fill the whole box).
+	density_shapes : bool, optional
+		If True, also give the **density** sample its own shapes, as
+		"Axis_Direction_density_sample" and "q_density_sample", which is what a
+		shape-shape ('++') correlation between two different catalogues needs.
+		The density sample is centrals followed by satellites, so its satellite
+		entries reuse the shapes those same objects already carry in the shape
+		sample and the centrals get independent random orientations; the II
+		signal therefore comes from the satellite-satellite pairs the two
+		samples share. Default False, which leaves the catalogue byte-for-byte
+		as before -- the random draws for the new arrays happen after every
+		existing one.
 
 	Returns
 	-------
@@ -87,7 +99,7 @@ def radial_alignment_box_mock(
 	q = rng.uniform(q_range[0], q_range[1], n_sats_total)
 	positions = np.vstack([centrals, satellites])
 
-	return {
+	mock = {
 		"Position": positions,
 		"Position_shape_sample": satellites,
 		"Axis_Direction": direction,
@@ -96,6 +108,20 @@ def radial_alignment_box_mock(
 		"boxsize": boxsize,
 		"seed": seed,
 	}
+
+	if density_shapes:
+		# Drawn last, so switching this on cannot perturb anything above it.
+		# The density sample is [centrals, satellites]: the satellites are the
+		# same objects as the shape sample and reuse their shapes, which is what
+		# makes the cross correlation carry a real II signal; the centrals get
+		# independent orientations and axis ratios.
+		theta_c = rng.uniform(0.0, 2.0 * np.pi, n_centrals)
+		direction_c = np.column_stack([np.cos(theta_c), np.sin(theta_c)])
+		q_c = rng.uniform(q_range[0], q_range[1], n_centrals)
+		mock["Axis_Direction_density_sample"] = np.vstack([direction_c, direction])
+		mock["q_density_sample"] = np.concatenate([q_c, q])
+
+	return mock
 
 
 def halotools_inputs(mock, ellipticity="distortion"):
@@ -185,6 +211,7 @@ def radial_alignment_lightcone_mock(
 		q_range=(0.3, 0.9),
 		n_randoms_factor=5,
 		seed=4242,
+		density_shapes=False,
 ):
 	"""Generate a lightcone mock with radially aligned satellites.
 
@@ -200,6 +227,17 @@ def radial_alignment_lightcone_mock(
 	satellites, so the two samples are disjoint (no self-pair corrections).
 	Distances are comoving; the caller converts r <-> redshift with their
 	cosmology (see r_com entries).
+
+	density_shapes : bool, optional
+		If True, also give the **density** sample (the centrals) its own shapes,
+		as "e1_density_sample"/"e2_density_sample", which is what a shape-shape
+		('++') correlation between two different catalogues needs. Each central
+		is oriented radially about the cone axis, with the same
+		`alignment_scatter`, so the centrals carry a coherent large-scale
+		alignment that correlates with the satellites' radial one and gives the
+		cross correlation a real, non-degenerate II signal. Default False, which
+		leaves the catalogue byte-for-byte as before -- the extra random draws
+		happen after every existing one.
 
 	Returns
 	-------
@@ -253,6 +291,30 @@ def radial_alignment_lightcone_mock(
 		"e1": e1, "e2": e2,
 		"weight": np.ones(n_centrals), "weight_shape_sample": np.ones(n_sats_total),
 	}
+
+	if density_shapes:
+		# Drawn after everything above, so switching this on perturbs nothing.
+		# Centrals are oriented radially about the cone axis: a coherent
+		# large-scale alignment that correlates with the satellites' radial one,
+		# so the cross correlation carries a real II signal rather than noise.
+		alpha_c, delta_c = np.radians(ra_c), np.radians(dec_c)
+		east_c = np.column_stack([-np.sin(alpha_c), np.cos(alpha_c), np.zeros(n_centrals)])
+		north_c = np.column_stack([-np.sin(delta_c) * np.cos(alpha_c),
+								   -np.sin(delta_c) * np.sin(alpha_c),
+								   np.cos(delta_c)])
+		axis_ra, axis_dec = np.mean(ra_range), np.mean(dec_range)
+		axis = _radec_to_cartesian(np.array([axis_ra]), np.array([axis_dec]),
+								   np.array([1.0]))[0]
+		n_c = pos_c / r_c[:, None]
+		# projected direction from each central toward the cone axis
+		d = axis[None, :] - np.sum(axis[None, :] * n_c, axis=1)[:, None] * n_c
+		phi_c = np.arctan2(np.sum(d * north_c, axis=1), np.sum(d * east_c, axis=1))
+		phi_c = phi_c + rng.normal(0.0, alignment_scatter, n_centrals)
+		q_c = rng.uniform(q_range[0], q_range[1], n_centrals)
+		e_c = (1 - q_c ** 2) / (1 + q_c ** 2)
+		# same survey-convention mapping as the satellites above
+		data["e1_density_sample"] = e_c * np.cos(2 * phi_c)
+		data["e2_density_sample"] = -e_c * np.sin(2 * phi_c)
 	randoms_data = {
 		"RA": ra_rd, "DEC": dec_rd, "r_com": r_rd,
 		"RA_shape_sample": ra_rs, "DEC_shape_sample": dec_rs, "r_com_shape_sample": r_rs,

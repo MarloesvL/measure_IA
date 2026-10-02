@@ -10,13 +10,146 @@ public API mean a major version bump.
 
 ### Added
 
+- **Linear separation bins** ([#78](https://github.com/MarloesvL/measure_IA/issues/78)).
+  `MeasureIABox` and `MeasureIALightcone` take `binning='linear'` to space the $r$ / $r_p$
+  bins linearly between `separation_limits`, e.g. for the BAO peak. The default stays
+  `binning='log'`, so existing results are unchanged; the reported bin centres are the
+  arithmetic midpoints of the edges in both schemes, as before.
+
+- **Shape–shape (`++`) correlations, on both entry points.** `corr_type='++'` measures
+  $w_{++}$, $w_{\times\times}$ and the parity-odd $w_{+\times}$, plus the $(\ell,s)=(4,4)$
+  multipole of $\xi_{++}$; `corr_type='all'` adds $g+$ and $gg$ alongside. `'both'` keeps its
+  original meaning — exactly $g+$ and $gg$ — so existing scripts are unaffected.
+
+    The density sample carries its own shapes for this, through
+    `Axis_Direction_density_sample`/`q_density_sample` (box) or
+    `e1_density_sample`/`e2_density_sample` (lightcone), with matching constructor arguments.
+    They are optional, validated only when present, and a shape-shape run without them is
+    refused up front rather than after a full pair count. Both the auto case (one catalogue in
+    both slots) and a genuine two-catalogue cross correlation are supported.
+
+    Available on every backend — brute, tree and multiprocessing — with jackknife covariance,
+    in both geometries. Each sample gets its own responsivity, so the box divides the products
+    by $(2\mathcal{R})(2\mathcal{R}_\mathrm{pos})$ and the jackknife applies the
+    retained-sample pair per realisation. On the lightcone $\xi_{++} = S_+S_+/RR$: the randoms
+    carry no shapes, so there is no $S_+R$ analogue to subtract, and `IA_estimator='clusters'`
+    is refused for `'++'` rather than given an invented definition. Shape–shape projects each
+    galaxy in its own tangent frame while $g+$ keeps its partner-frame convention — see
+    [Conventions](conventions.md).
+
+    $\xi_{\times\times}$ has no published multipole convention, so only the $\xi_{++}$
+    multipole is produced; adding the other means choosing a convention rather than filling in
+    a number.
+
+    **Cross-validated**: $w_{++}$ against halotools `ii_plus_projected` at a ratio of exactly 1.0
+    in every bin, for the auto case *and* the genuine two-catalogue cross correlation (which is
+    what pins the $(2\mathcal{R}_\mathrm{shape})(2\mathcal{R}_\mathrm{density})$ responsivity,
+    rather than $(2\mathcal{R})^2$); and $w_{++}$/$w_{\times\times}$ against treecorr `GG` at
+    $\le3.5\times10^{-3}$ / $\le7.1\times10^{-3}$. $w_{\times\times}$ needs treecorr
+    specifically: halotools' `ii_minus_projected` cannot serve as its reference. It builds the
+    second sample's marks from the first sample's orientations (reported upstream as
+    [halotools_ia#3](https://github.com/duncandc/halotools_ia/issues/3)), and its output changes
+    with the sign of the orientation vectors, which carries no physical meaning. Its kernel is
+    compiled, so we cannot tell from the outside whether the latter is a defect or an unstated
+    input convention; either way it leaves no single value of $w_{\times\times}$ to compare
+    against. See `validation/README.md`.
+
+    The mock generators gain `density_shapes=False`, which when set gives the density sample its
+    own shapes for the cross case. The extra draws happen strictly after every existing one, so
+    default catalogues are byte-identical and the pinned fingerprints are untouched.
+
+- **Shape–shape (`++`) accumulation in the pair kernel.** `pair_kernel.accumulate` and both
+  `prepare_*_samples` functions now take `shapes="both"` alongside `True`/`False`, in which
+  case the *density* sample carries shapes too and every pair contributes three further
+  products: `Splus_Splus` and `Scross_Scross` (the two II signals, $\xi_{++}$ and
+  $\xi_{\times\times}$) and the symmetrised `Splus_Scross` (the parity-odd null), each with a
+  union-deletion jackknife twin. The density sample's shapes are read from
+  `Axis_Direction_density_sample`/`q_density_sample` on the box and
+  `e1_density_sample`/`e2_density_sample` on the lightcone, and get their own responsivity, so
+  the box divides by $(2\mathcal{R})(2\mathcal{R}_\mathrm{pos})$.
+
+    On the lightcone the shape–shape products project **each galaxy in its own (east, north)
+    tangent frame**, while the existing $g+$ terms keep their partner-frame convention
+    unchanged — see [Conventions](conventions.md).
+
+    This is internal groundwork: no public method requests it yet, and with `shapes` left at
+    `True`/`False` the pair loop, its iteration order and its float summation order are
+    untouched, so existing measurements are **bit-identical** (verified across the full
+    2697-array, 45-configuration bit-identity matrix) and no slower. The new branch is covered
+    by independent $O(N^2)$ references on both geometries and both binnings, and by the
+    delete-one jackknife identity.
+
 - `COLIBRE_L400` and `COLIBRE_L200` presets in `SimInfo`, so the box size and $h$ of the COLIBRE
   runs are filled in from the `simulation` tag like the other simulations.
 - A documentation page for `measure_galaxy_contributions`, and the method is now shown on the
   `MeasureIABox` API page (it comes from a mixin, so it needed `inherited_members`); the same for
   `assign_jackknife_patches` on both class pages.
 
+### Changed
+
+- **Breaking (lightcone):** an unknown `corr_type` now raises `ValueError` rather than
+  `KeyError`, and raises **before** any pair counting rather than at the reduction stage. The
+  box has always raised `ValueError` here, via `_validate_measure_options`; the two entry
+  points now agree, and a typo costs seconds instead of a full measurement. Code catching
+  `KeyError` around `MeasureIALightcone.measure_xi_w` / `measure_xi_multipoles` for this case
+  needs updating.
+
 ### Fixed
+
+- **Weighted pair counts are now normalised by the weight sums, so every estimator is invariant
+  under a constant rescaling of any sample's weights.** The counts were accumulated with
+  $w_i w_j$ but divided by $N_a N_b$, which is only right when $\langle w\rangle = 1$ for every
+  sample. Otherwise each term carried the product of its two samples' mean weights. For the
+  lightcone `IA_estimator='galaxies'` that put $\xi_{g+}$/$w_{g+}$ off by the constant
+  $\langle w_S\rangle\langle w_D\rangle / (\langle w_{R_D}\rangle\langle w_{R_S}\rangle)$ — 4.6 on a
+  DESI LRG sample in the report that found it — while $\xi_{gg}$/$w_{gg}$ was wrong by a
+  bin-dependent amount on both estimators. (The `'clusters'` $g+$ estimator was unaffected: its
+  factors cancel.) The box analytic $RR$ had the same issue whenever the weights did not average to 1.
+  Both geometries now divide by $W_a W_b$ with $W = \sum w$, removing the self-pairs by their weight
+  product $w_D w_S$, matching pycorr, TreeCorr and Corrfunc. A box `num_overlap` override, being an
+  object count, is scaled by both samples' mean weights. For unit weights nothing changes: the
+  2697-array bit-identity matrix is identical apart from the jackknife fix below.
+
+    **This changes results for any run with weights that do not average to 1.** Tests that had
+    pinned the old behaviour (halving every weight quartering $w_{g+}$) now assert invariance, and
+    new tests rescale every sample by a different factor, covariance included, on both geometries.
+
+- **The lightcone jackknife used a wrong overlap count in every delete-one realisation.** The
+  per-patch self-pair correction was `len(np.where(...))`, which is always 1, so each realisation
+  subtracted one pair instead of the shared objects left outside the removed patch. This is a
+  $1/N$-level shift in the normalisation, visible only in the realisations and the covariance built
+  from them; full-sample outputs never used it. The per-patch sample sizes also counted every
+  object, ignoring `masks`; they are now taken over the masked samples.
+- **Lightcone jackknife covariances are now correct when `masks` are used.** The patch labels are
+  given for the full catalogues, but they were passed unmasked into the masked pair counts, so
+  objects were assigned to the wrong patches.
+  The measurement itself was right, but its covariance was not (diagonal entries off by factors of up
+  to ~50 in a small test). Masking is now exactly equivalent to pre-filtering the catalogues,
+  covariance included, which a regression test pins. The box was not affected: it builds its
+  regions from the masked positions.
+- **The box cross component $e_\times$ no longer depends on the arbitrary sign of `Axis_Direction`.**
+  The box pair loop recovered the projection angle with `arccos`, which folds $\phi$ into $[0,\pi]$
+  and so maps the physically meaningless axis flip $\hat a\to-\hat a$ to $\phi\to\pi-\phi$.
+  $\cos 2\phi$ survives that, but $\sin 2\phi$ changes sign, so the box parity null test
+  $\xi_{g\times}$ inherited whichever sign convention the user's shape code happened to emit. It was
+  null only when those signs were random; for a catalogue with canonicalised axes (the common case
+  — eigenvectors normalised to a positive first component) the spurious signal grew to the size of
+  the $g+$ signal itself. $\cos 2\phi$ and $\sin 2\phi$ are now built directly from the dot and 2D
+  cross products of the two unit vectors, which are invariant under the flip.
+
+    **This changes published `xi_g_cross` values from the box.** $w_{g+}$, $\xi_{g+}$ and $w_{gg}$ are
+    unaffected in exact arithmetic; in floating point the new trig-free form shifts them by at most
+    $3\times10^{-15}$ relative to the array scale (measured across the full 2697-array bit-identity
+    matrix; the largest movers are jackknife covariances, which are quadratic in the signal). Every
+    cross-code validation reference still passes at its existing tolerance. The lightcone path uses
+    `arctan2` on true `e1`/`e2` and was never affected — no lightcone output changes at all.
+
+    Locked by exact tests: canonicalising or randomly flipping the axis signs must leave every box
+    output bit-identical; a catalogue built from mirrored $\pm\delta$ axis twins must cancel to zero
+    in $S_\times D$; and $S_+D$/$S_\times D$ must match an independent $O(N^2)$ reference.
+    `MeasureIABase.get_ellipticity_from_direction` is the new helper; `get_ellipticity` is unchanged.
+    The new form is also trig-free, which makes a box `measure_xi_w` **~23% faster** (4.45 s vs
+    5.75 s for 9600 shapes against 10800 positions on the tree backend).
 
 - The box **parity null test** $\xi_{g\times}$ is written where the documentation says it is. With
   `num_jk > 0` the full-sample `xi_g_cross` datasets inherited the jackknife group name of the

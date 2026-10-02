@@ -442,7 +442,7 @@ class TestMasksM:
 
 
 # ---------------------------------------------------------------------------
-# 9. Weights — scaling laws
+# 9. Weights — the estimators are invariant under a constant weight rescaling; raw counts scale
 # ---------------------------------------------------------------------------
 
 class TestWeightsM:
@@ -454,13 +454,13 @@ class TestWeightsM:
         obj.measure_xi_multipoles(name, "both", NUM_JK,
                                   temp_file_path=str(tmp_path) + "/")
 
-    def test_weight_scaling_gp(self, IA_mock_TNG300_n1, tmp_path):
+    def test_gp_invariant_to_weight_scale(self, IA_mock_TNG300_n1, tmp_path):
         obj = IA_mock_TNG300_n1
         self._run_w(obj, "mwt_ones", 1.0, tmp_path)
         self._run_w(obj, "mwt_half", 0.5, tmp_path)
         np.testing.assert_allclose(
             _read(obj, "multipoles_g_plus", "mwt_ones"),
-            4 * _read(obj, "multipoles_g_plus", "mwt_half"))
+            _read(obj, "multipoles_g_plus", "mwt_half"), rtol=1e-12)
 
     def test_weight_scaling_dd(self, IA_mock_TNG300_n1, tmp_path):
         obj = IA_mock_TNG300_n1
@@ -470,23 +470,23 @@ class TestWeightsM:
             _read(obj, "multipoles/xi_gg", "mwt_ones_DD"),
             4 * _read(obj, "multipoles/xi_gg", "mwt_half_DD"))
 
-    def test_weight_scaling_cov_gp(self, IA_mock_TNG300_n1, tmp_path):
+    def test_cov_gp_invariant_to_weight_scale(self, IA_mock_TNG300_n1, tmp_path):
         obj = IA_mock_TNG300_n1
         self._run_w(obj, "mwt_ones", 1.0, tmp_path)
         self._run_w(obj, "mwt_half", 0.5, tmp_path)
         np.testing.assert_allclose(
             _read(obj, "multipoles_g_plus",
                   f"mwt_ones_jackknife_cov_{NUM_JK}"),
-            16 * _read(obj, "multipoles_g_plus",
+            _read(obj, "multipoles_g_plus",
                        f"mwt_half_jackknife_cov_{NUM_JK}"))
 
-    def test_weight_scaling_cov_gg(self, IA_mock_TNG300_n1, tmp_path):
+    def test_cov_gg_invariant_to_weight_scale(self, IA_mock_TNG300_n1, tmp_path):
         obj = IA_mock_TNG300_n1
         self._run_w(obj, "mwt_ones", 1.0, tmp_path)
         self._run_w(obj, "mwt_half", 0.5, tmp_path)
         np.testing.assert_allclose(
             _read(obj, "multipoles_gg", f"mwt_ones_jackknife_cov_{NUM_JK}"),
-            16 * _read(obj, "multipoles_gg",
+            _read(obj, "multipoles_gg",
                        f"mwt_half_jackknife_cov_{NUM_JK}"))
 
     def test_r_unchanged_by_weights(self, IA_mock_TNG300_n1, tmp_path):

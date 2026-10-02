@@ -353,6 +353,158 @@ class TestLightconeInputChecks:
 # 4. Numeric constructor parameters & up-front option-string validation
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# 4. Optional density-sample shapes (shape-shape correlations)
+# ---------------------------------------------------------------------------
+
+def _box_density_shapes(N=60, seed=77):
+    rng = np.random.default_rng(seed)
+    th = rng.uniform(0.0, 2.0 * math.pi, N)
+    return {
+        "Axis_Direction_density_sample": np.column_stack([np.cos(th), np.sin(th)]),
+        "q_density_sample": rng.uniform(0.1, 1.0, N),
+    }
+
+
+class TestDensitySampleShapesBox:
+    """The density sample may carry shapes, for shape-shape ('++') correlations.
+
+    They are optional: every other correlation leaves them out, and their absence
+    must not be an error. Supplying only some of them is an error, because it is
+    a typo or a half-built catalogue and would otherwise silently produce no
+    shape-shape output.
+    """
+
+    def test_absent_is_fine_and_flagged(self, tmp_path):
+        obj = MeasureIABox(_box_catalog(), str(tmp_path / "o.hdf5"), boxsize=BOXSIZE)
+        assert obj.has_density_sample_shapes is False
+
+    def test_present_is_flagged(self, tmp_path):
+        cat = {**_box_catalog(), **_box_density_shapes()}
+        obj = MeasureIABox(cat, str(tmp_path / "o.hdf5"), boxsize=BOXSIZE)
+        assert obj.has_density_sample_shapes is True
+
+    def test_partial_raises_naming_what_is_missing(self, tmp_path):
+        cat = {**_box_catalog(), **_box_density_shapes()}
+        del cat["q_density_sample"]
+        with pytest.raises(KeyError, match="q_density_sample"):
+            MeasureIABox(cat, str(tmp_path / "o.hdf5"), boxsize=BOXSIZE)
+
+    def test_wrong_length_raises(self, tmp_path):
+        cat = {**_box_catalog(), **_box_density_shapes()}
+        cat["q_density_sample"] = cat["q_density_sample"][:-3]
+        with pytest.raises(ValueError, match="describes the density sample"):
+            MeasureIABox(cat, str(tmp_path / "o.hdf5"), boxsize=BOXSIZE)
+
+    def test_aligns_with_density_not_shape_sample(self, tmp_path):
+        """Easy mistake to make: the arrays follow the *density* sample's length.
+
+        Built with the shape sample's length instead, they must be rejected.
+        """
+        cat = _box_catalog(N=60)
+        cat["Position_shape_sample"] = cat["Position_shape_sample"][:40]
+        cat["Axis_Direction"] = cat["Axis_Direction"][:40]
+        cat["q"] = cat["q"][:40]
+        cat.update(_box_density_shapes(N=40))          # wrong: 40 is the shape length
+        with pytest.raises(ValueError, match="must match"):
+            MeasureIABox(cat, str(tmp_path / "o.hdf5"), boxsize=BOXSIZE)
+
+    def test_wrong_shape_raises(self, tmp_path):
+        cat = {**_box_catalog(), **_box_density_shapes()}
+        cat["Axis_Direction_density_sample"] = cat["Axis_Direction_density_sample"][:, :1]
+        with pytest.raises(ValueError, match=r"must have shape \(N, 2\)"):
+            MeasureIABox(cat, str(tmp_path / "o.hdf5"), boxsize=BOXSIZE)
+
+    def test_nan_raises(self, tmp_path):
+        cat = {**_box_catalog(), **_box_density_shapes()}
+        cat["q_density_sample"][3] = np.nan
+        with pytest.raises(ValueError, match="NaN or infinite"):
+            MeasureIABox(cat, str(tmp_path / "o.hdf5"), boxsize=BOXSIZE)
+
+    def test_not_ndarray_raises(self, tmp_path):
+        cat = {**_box_catalog(), **_box_density_shapes()}
+        cat["q_density_sample"] = list(cat["q_density_sample"])
+        with pytest.raises(TypeError, match="numpy ndarray"):
+            MeasureIABox(cat, str(tmp_path / "o.hdf5"), boxsize=BOXSIZE)
+
+    def test_custom_key_names_are_remapped(self, tmp_path):
+        """The new keys go through the same remap-at-entry path as the rest."""
+        cat = {**_box_catalog(), **_box_density_shapes()}
+        cat["dens_dir"] = cat.pop("Axis_Direction_density_sample")
+        cat["dens_q"] = cat.pop("q_density_sample")
+        obj = MeasureIABox(
+            cat, str(tmp_path / "o.hdf5"), boxsize=BOXSIZE,
+            axis_direction_density_sample_name="dens_dir",
+            axis_ratio_density_sample_name="dens_q")
+        assert obj.has_density_sample_shapes is True
+        assert "Axis_Direction_density_sample" in obj.data
+        assert "q_density_sample" in obj.data
+
+
+class TestDensitySampleShapesLightcone:
+
+    @staticmethod
+    def _cats(seed=79):
+        data, randoms = _lc_catalogs()
+        rng = np.random.default_rng(seed)
+        n = len(data["RA"])
+        data["e1_density_sample"] = rng.uniform(-0.5, 0.5, n)
+        data["e2_density_sample"] = rng.uniform(-0.5, 0.5, n)
+        return data, randoms
+
+    def test_absent_is_fine_and_flagged(self, tmp_path):
+        data, randoms = _lc_catalogs()
+        obj = MeasureIALightcone(data=data, randoms_data=randoms,
+                                 output_file_name=str(tmp_path / "o.hdf5"), pi_max=60.0)
+        assert obj.has_density_sample_shapes is False
+
+    def test_present_is_flagged(self, tmp_path):
+        data, randoms = self._cats()
+        obj = MeasureIALightcone(data=data, randoms_data=randoms,
+                                 output_file_name=str(tmp_path / "o.hdf5"), pi_max=60.0)
+        assert obj.has_density_sample_shapes is True
+
+    def test_partial_raises(self, tmp_path):
+        data, randoms = self._cats()
+        del data["e2_density_sample"]
+        with pytest.raises(KeyError, match="e2_density_sample"):
+            MeasureIALightcone(data=data, randoms_data=randoms,
+                               output_file_name=str(tmp_path / "o.hdf5"), pi_max=60.0)
+
+    def test_wrong_length_raises(self, tmp_path):
+        data, randoms = self._cats()
+        data["e1_density_sample"] = data["e1_density_sample"][:-2]
+        with pytest.raises(ValueError, match="describes the density sample"):
+            MeasureIALightcone(data=data, randoms_data=randoms,
+                               output_file_name=str(tmp_path / "o.hdf5"), pi_max=60.0)
+
+    def test_custom_key_names_are_remapped(self, tmp_path):
+        data, randoms = self._cats()
+        data["d1"] = data.pop("e1_density_sample")
+        data["d2"] = data.pop("e2_density_sample")
+        obj = MeasureIALightcone(
+            data=data, randoms_data=randoms, output_file_name=str(tmp_path / "o.hdf5"),
+            pi_max=60.0, e1_density_sample_name="d1", e2_density_sample_name="d2")
+        assert obj.has_density_sample_shapes is True
+        assert "e1_density_sample" in obj.data and "e2_density_sample" in obj.data
+
+
+class TestCheckDensitySampleShapesUnit:
+
+    def test_bad_geometry_raises(self):
+        with pytest.raises(ValueError, match="'box' or 'lightcone'"):
+            CheckInput.check_density_sample_shapes({}, ("a", "b", "c"), "sphere")
+
+    def test_returns_false_when_absent(self):
+        assert CheckInput.check_density_sample_shapes(
+            {"RA": np.zeros(3)}, ("RA", "e1_d", "e2_d"), "lightcone") is False
+
+    def test_returns_true_when_present(self):
+        d = {"RA": np.zeros(3), "e1_d": np.zeros(3), "e2_d": np.zeros(3)}
+        assert CheckInput.check_density_sample_shapes(
+            d, ("RA", "e1_d", "e2_d"), "lightcone") is True
+
+
 class TestNumericParamValidation:
     def _box(self, tmp_path, **kw):
         cat = _box_catalog(N=40)

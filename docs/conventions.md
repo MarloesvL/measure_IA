@@ -21,6 +21,7 @@ The separation bins are fixed at initialisation and shared by every measurement 
 
 - **Transverse / 3D separation** ($r_p$ for $w$, $r$ for the multipoles): `num_bins_r` **logarithmic** bins
   between `separation_limits[0]` and `separation_limits[1]` (i.e. $r_\mathrm{min}$ and $r_\mathrm{max}$).
+  Pass `binning='linear'` to the constructor for **linear** bins instead (e.g. around the BAO peak).
 - **Line of sight** $\Pi$: `num_bins_pi` **linear** bins spanning the *signed* range
   $[-\Pi_\mathrm{max}, +\Pi_\mathrm{max}]$, with $\Pi_\mathrm{max}$ set by `pi_max`.
 - **$\mu_r = \Pi/r$** (used for the multipoles): `num_bins_pi` **linear** bins over $[-1, 1]$.
@@ -60,6 +61,19 @@ Here $\phi$ is the angle between the projected separation vector $r_p$ and the s
 object, computed per position–shape pair. The magnitude $\epsilon$ follows from $q$ (see below). This branch is
 radial-positive by construction.
 
+!!! note "The sign of `Axis_Direction` does not matter"
+    A semi-major axis has no head and no tail: $\hat a$ and $-\hat a$ describe the same shape. MeasureIA
+    therefore never forms $\phi$ itself, and instead builds $\cos 2\phi$ and $\sin 2\phi$ directly from the
+    dot and 2D cross products of $\hat a$ with the unit separation direction,
+
+    $$\cos 2\phi = 2(\hat a\cdot\hat s)^2 - 1\,,\qquad \sin 2\phi = 2(\hat a\cdot\hat s)(\hat a\times\hat s)\,.$$
+
+    Both are invariant under $\hat a\to-\hat a$, so you may supply whatever sign convention your shape code
+    emits — canonicalised (say, a positive first component) or not — and every output is bit-for-bit
+    identical. Recovering $\phi$ with `arccos` would **not** have this property: it folds the angle into
+    $[0,\pi]$, which leaves $\cos 2\phi$ alone but flips $\sin 2\phi$, so $e_\times$ would depend on an
+    arbitrary input choice. Versions before this fix did exactly that; see the changelog.
+
 ### Lightcone (`MeasureIALightcone`)
 
 Shapes are given directly as the two **ellipticity/shear components** `e1` and `e2`. These must follow the
@@ -84,6 +98,18 @@ vector in the internal (east, north) sky frame. As in the box case, the output $
     $w_{g+}$ — it replaces $\cos 2(\phi_a - \phi_s)$ with $\cos 2(\phi_a + \phi_s)$ and washes the signal out
     to noise, which is a common cause of a "vague, noisy mismatch" against other codes.
 
+!!! note "Which tangent frame each shape is projected in"
+    On the curved sky the local (east, north) basis differs from galaxy to galaxy, so a pair has two
+    of them. For $w_{g+}$ MeasureIA projects the shape galaxy's `e1`/`e2` in the tangent frame of its
+    **position-sample partner** — a plane-of-the-pair approximation, and the source of part of the
+    residual against TreeCorr documented in `validation/README.md`.
+
+    The shape–shape terms instead project **each galaxy in its own frame**, because the pair is
+    symmetric there and no single partner frame is privileged. The two conventions therefore coexist
+    deliberately; they agree in the plane-parallel limit and differ by curvature terms of the same
+    order as the other separation-definition differences. The box has no such ambiguity: its
+    projection plane is fixed by `LOS`.
+
 ## Ellipticity definitions
 
 The shape magnitude $\epsilon$ is derived from the axis ratio $q$, so this choice applies to the **box** only;
@@ -106,6 +132,19 @@ The correction is controlled by the `responsivity` argument: it defaults to `Tru
 `False` for the lightcone (where `e1`/`e2` are assumed to be already-calibrated shears). When switched off,
 $\mathcal{R} = 0.5$ so that $2\mathcal{R} = 1$ and no calibration is applied. Only the $g+$ correlations are
 affected; the clustering ($gg$) signal is unchanged.
+
+### Shape-shape: one factor per sample
+
+A shape–shape product has two spin-2 factors, so it carries **two** responsivities — one per sample,
+each computed over its own weights:
+
+$$S_+S_+ = \sum w_i w_j \frac{e_+(j|i)}{2\mathcal{R}_j}\frac{e_+(i|j)}{2\mathcal{R}_i}\,.$$
+
+The two generally differ, since the density and shape samples have different shape-noise properties;
+in the auto case (the same catalogue in both slots) they coincide and the factor reduces to
+$(2\mathcal{R})^2$. Switching `responsivity` off sets both to $0.5$, rescaling the shape–shape
+products by exactly $(2\mathcal{R}_i)(2\mathcal{R}_j)$ — quadratically rather than linearly as for
+$g+$.
 
 The differing defaults are deliberate rather than an oversight: they match what each input format usually
 contains, so the common case needs no argument. Pass `responsivity` explicitly whenever your inputs do not

@@ -52,6 +52,7 @@ class MeasureWBox(MeasureIABase, ReadData):
 			pi_max=None,
 			boxsize=None,
 			periodicity=True,
+			binning="log",
 	):
 		"""
 		The __init__ method of the MeasureWSimulations class.
@@ -59,11 +60,11 @@ class MeasureWBox(MeasureIABase, ReadData):
 		Notes
 		-----
 		Constructor parameters 'data', 'output_file_name', 'simulation', 'snapshot', 'separation_limits', 'num_bins_r',
-		'num_bins_pi', 'pi_max', 'boxsize' and 'periodicity' are passed to MeasureIABase.
+		'num_bins_pi', 'pi_max', 'boxsize', 'periodicity' and 'binning' are passed to MeasureIABase.
 
 		"""
 		super().__init__(data, output_file_name, simulation, snapshot, separation_limits, num_bins_r, num_bins_pi,
-						 pi_max, boxsize, periodicity)
+						 pi_max, boxsize, periodicity, binning)
 		return
 
 	def _measure_xi_rp_pi_box_brute(self, dataset_name, masks=None,
@@ -99,7 +100,7 @@ class MeasureWBox(MeasureIABase, ReadData):
 
 		sample_set = pair_kernel.prepare_box_samples(
 			self.data, masks, self.Num_position, self.Num_shape,
-			shapes=True, ellipticity=ellipticity, base=self,
+			shapes=getattr(self, "_shape_mode", True), ellipticity=ellipticity, base=self,
 		)
 		Num_position = len(sample_set.pos)
 		Num_shape = len(sample_set.pos_shape)
@@ -107,6 +108,9 @@ class MeasureWBox(MeasureIABase, ReadData):
 		e = sample_set.e
 		R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape) \
 			if getattr(self, "responsivity_correction", True) and sum(weight_shape) > 0 else 0.5
+		shape_mode = getattr(self, "_shape_mode", True)
+		R_pos = self.sample_responsivity(sample_set.e_pos, sample_set.weight,
+										 getattr(self, "responsivity_correction", True))
 		L3 = self.boxsize ** 3  # box volume
 		RR_g_plus = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		RR_gg = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
@@ -114,7 +118,8 @@ class MeasureWBox(MeasureIABase, ReadData):
 		print(
 			f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
 		binning = pair_kernel.BoxRpPi(self)
-		grids = pair_kernel.accumulate(sample_set, binning, base=self, R=R, shapes=True,
+		grids = pair_kernel.accumulate(sample_set, binning, base=self, R=R, R_pos=R_pos,
+									   shapes=shape_mode,
 									   chunk_axis="shape", chunk_size_outer=100, backend="brute")
 		DD = grids.DD
 		Splus_D = grids.Splus_D
@@ -125,10 +130,10 @@ class MeasureWBox(MeasureIABase, ReadData):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_g_plus[i, p] = self.get_random_pairs(
 					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "cross",
-					Num_position, Num_shape, self.num_overlap)
+					self.sum_w_position, self.sum_w_shape, self.num_overlap)
 				RR_gg[i, p] = self.get_random_pairs(
 					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, corrtype,
-					Num_position, Num_shape, self.num_overlap)
+					self.sum_w_position, self.sum_w_shape, self.num_overlap)
 		RR_g_plus_denom = RR_g_plus.copy()  # guard against empty samples/bins in the divisions; raw RR grids are written to file
 		RR_g_plus_denom[RR_g_plus_denom == 0] = 1
 		RR_gg_denom = RR_gg.copy()
@@ -162,6 +167,10 @@ class MeasureWBox(MeasureIABase, ReadData):
 			write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
+			if grids.Splus_Splus is not None:
+				self.write_shape_shape_grids(output_file, "w", ("rp", "pi"), grids,
+											 RR_g_plus, RR_g_plus_denom, separation_bins,
+											 pi_bins, dataset_name, jk_group_name)
 			output_file.close()
 			return
 		else:
@@ -200,7 +209,7 @@ class MeasureWBox(MeasureIABase, ReadData):
 
 		sample_set = pair_kernel.prepare_box_samples(
 			self.data, masks, self.Num_position, self.Num_shape,
-			shapes=True, ellipticity=ellipticity, base=self,
+			shapes=getattr(self, "_shape_mode", True), ellipticity=ellipticity, base=self,
 		)
 		Num_position = len(sample_set.pos)
 		Num_shape = len(sample_set.pos_shape)
@@ -208,6 +217,9 @@ class MeasureWBox(MeasureIABase, ReadData):
 		e = sample_set.e
 		R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape) \
 			if getattr(self, "responsivity_correction", True) and sum(weight_shape) > 0 else 0.5
+		shape_mode = getattr(self, "_shape_mode", True)
+		R_pos = self.sample_responsivity(sample_set.e_pos, sample_set.weight,
+										 getattr(self, "responsivity_correction", True))
 		L3 = self.boxsize ** 3  # box volume
 		RR_g_plus = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		RR_gg = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
@@ -215,7 +227,8 @@ class MeasureWBox(MeasureIABase, ReadData):
 		print(
 			f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
 		binning = pair_kernel.BoxRpPi(self)
-		grids = pair_kernel.accumulate(sample_set, binning, base=self, R=R, shapes=True,
+		grids = pair_kernel.accumulate(sample_set, binning, base=self, R=R, R_pos=R_pos,
+									   shapes=shape_mode,
 									   chunk_axis="shape", chunk_size_outer=100)
 		DD = grids.DD
 		Splus_D = grids.Splus_D
@@ -226,10 +239,10 @@ class MeasureWBox(MeasureIABase, ReadData):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_g_plus[i, p] = self.get_random_pairs(
 					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "cross",
-					Num_position, Num_shape, self.num_overlap)
+					self.sum_w_position, self.sum_w_shape, self.num_overlap)
 				RR_gg[i, p] = self.get_random_pairs(
 					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, corrtype,
-					Num_position, Num_shape, self.num_overlap)
+					self.sum_w_position, self.sum_w_shape, self.num_overlap)
 		RR_g_plus_denom = RR_g_plus.copy()  # guard against empty samples/bins in the divisions; raw RR grids are written to file
 		RR_g_plus_denom[RR_g_plus_denom == 0] = 1
 		RR_gg_denom = RR_gg.copy()
@@ -263,6 +276,10 @@ class MeasureWBox(MeasureIABase, ReadData):
 			write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
+			if grids.Splus_Splus is not None:
+				self.write_shape_shape_grids(output_file, "w", ("rp", "pi"), grids,
+											 RR_g_plus, RR_g_plus_denom, separation_bins,
+											 pi_bins, dataset_name, jk_group_name)
 			output_file.close()
 			return
 		else:
@@ -308,13 +325,21 @@ class MeasureWBox(MeasureIABase, ReadData):
 			e=shared_data[f"e_{self.ID_shm}"][i:i2],
 			LOS_ind=self.LOS_ind,
 			not_LOS=self.not_LOS,
+			# density-sample shapes are position-aligned, so they are passed whole
+			axis_direction_pos=shared_data.get(f"axis_direction_pos_{self.ID_shm}"),
+			e_pos=shared_data.get(f"e_pos_{self.ID_shm}"),
 		)
 		binning = pair_kernel.BoxRpPi(self)
-		grids = pair_kernel.accumulate(sample_set, binning, base=self, R=self.R, shapes=True,
+		shape_mode = getattr(self, "_shape_mode", True)
+		grids = pair_kernel.accumulate(sample_set, binning, base=self, R=self.R,
+									   R_pos=getattr(self, "R_pos", 0.5), shapes=shape_mode,
 									   chunk_axis="shape", chunk_size_outer=100, pos_tree=self.pos_tree)
 		for shm in shms:
 			shm.close()
-		return grids.Splus_D, grids.Scross_D, grids.DD
+		# the three shape-shape grids are appended, and are None unless shapes="both", so
+		# the existing positional unpacking in the parent is unaffected
+		return (grids.Splus_D, grids.Scross_D, grids.DD,
+				grids.Splus_Splus, grids.Scross_Scross, grids.Splus_Scross)
 
 	def _measure_xi_rp_pi_box_multiprocessing(self, dataset_name, temp_file_path, masks=None,
 											  return_output=False, jk_group_name="", num_nodes=1, chunk_size=1000,
@@ -349,7 +374,7 @@ class MeasureWBox(MeasureIABase, ReadData):
 
 		sample_set = pair_kernel.prepare_box_samples(
 			self.data, masks, self.Num_position, self.Num_shape,
-			shapes=True, ellipticity=ellipticity, base=self,
+			shapes=getattr(self, "_shape_mode", True), ellipticity=ellipticity, base=self,
 		)
 		positions = sample_set.pos
 		positions_shape_sample = sample_set.pos_shape
@@ -357,6 +382,12 @@ class MeasureWBox(MeasureIABase, ReadData):
 		e = sample_set.e
 		weight = sample_set.weight
 		weight_shape = sample_set.weight_shape
+		# shape-shape only: the density sample's shapes, which follow `positions` (they are
+		# NOT sliced per batch, exactly like `positions` and `weight`)
+		axis_direction_pos = sample_set.axis_direction_pos
+		e_pos = sample_set.e_pos
+		self.R_pos = self.sample_responsivity(e_pos, weight,
+											  getattr(self, "responsivity_correction", True))
 		# masking changes the number of galaxies
 		self.Num_position_masked = len(positions)
 		self.Num_shape_masked = len(positions_shape_sample)
@@ -407,6 +438,9 @@ class MeasureWBox(MeasureIABase, ReadData):
 				f"weight_{self.ID_shm}": weight,
 				f"weight_shape_{self.ID_shm}": weight_shape,
 			}
+			if e_pos is not None:
+				shared_data[f"axis_direction_pos_{self.ID_shm}"] = axis_direction_pos
+				shared_data[f"e_pos_{self.ID_shm}"] = e_pos
 			for k in shared_data.keys():
 				try:
 					old = shared_memory.SharedMemory(name=k)
@@ -449,10 +483,21 @@ class MeasureWBox(MeasureIABase, ReadData):
 		Scross_D = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		RR_g_plus = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
 		RR_gg = np.array([[0.0] * self.num_bins_pi] * self.num_bins_r)
+		shape_shape = result[0][3] is not None
+		Splus_Splus = np.zeros_like(DD) if shape_shape else None
+		Scross_Scross = np.zeros_like(DD) if shape_shape else None
+		Splus_Scross = np.zeros_like(DD) if shape_shape else None
 		for i in np.arange(len(result)):
 			Splus_D += result[i][0]
 			Scross_D += result[i][1]
 			DD += result[i][2]
+			if shape_shape:
+				Splus_Splus += result[i][3]
+				Scross_Scross += result[i][4]
+				Splus_Scross += result[i][5]
+		grids = pair_kernel.Grids(DD=DD, Splus_D=Splus_D, Scross_D=Scross_D,
+								  Splus_Splus=Splus_Splus, Scross_Scross=Scross_Scross,
+								  Splus_Scross=Splus_Scross)
 
 		corrtype = "cross"
 
@@ -460,10 +505,10 @@ class MeasureWBox(MeasureIABase, ReadData):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_g_plus[i, p] = self.get_random_pairs(
 					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, "cross",
-					self.Num_position_masked, self.Num_shape_masked, self.num_overlap)
+					self.sum_w_position, self.sum_w_shape, self.num_overlap)
 				RR_gg[i, p] = self.get_random_pairs(
 					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, corrtype,
-					self.Num_position_masked, self.Num_shape_masked, self.num_overlap)
+					self.sum_w_position, self.sum_w_shape, self.num_overlap)
 		RR_g_plus_denom = RR_g_plus.copy()  # guard against empty samples/bins in the divisions; raw RR grids are written to file
 		RR_g_plus_denom[RR_g_plus_denom == 0] = 1
 		RR_gg_denom = RR_gg.copy()
@@ -497,6 +542,10 @@ class MeasureWBox(MeasureIABase, ReadData):
 			write_dataset_hdf5(group, dataset_name + "_RR_gg", data=RR_gg)
 			write_dataset_hdf5(group, dataset_name + "_rp", data=separation_bins)
 			write_dataset_hdf5(group, dataset_name + "_pi", data=pi_bins)
+			if grids.Splus_Splus is not None:
+				self.write_shape_shape_grids(output_file, "w", ("rp", "pi"), grids,
+											 RR_g_plus, RR_g_plus_denom, separation_bins,
+											 pi_bins, dataset_name, jk_group_name)
 			output_file.close()
 			return
 		else:
@@ -545,7 +594,7 @@ class MeasureWBox(MeasureIABase, ReadData):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_gg[i, p] = self.get_random_pairs(
 					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, corrtype,
-					Num_position, Num_shape, self.num_overlap)
+					self.sum_w_position, self.sum_w_shape, self.num_overlap)
 		RR_gg_denom = RR_gg.copy()  # guard against empty samples/bins in the division; raw RR grid is written to file
 		RR_gg_denom[RR_gg_denom == 0] = 1
 		xi_gg = (DD / RR_gg_denom) - 1
@@ -611,7 +660,7 @@ class MeasureWBox(MeasureIABase, ReadData):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_gg[i, p] = self.get_random_pairs(
 					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, corrtype,
-					Num_position, Num_shape, self.num_overlap)
+					self.sum_w_position, self.sum_w_shape, self.num_overlap)
 		RR_gg_denom = RR_gg.copy()  # guard against empty samples/bins in the division; raw RR grid is written to file
 		RR_gg_denom[RR_gg_denom == 0] = 1
 		xi_gg = (DD / RR_gg_denom) - 1
@@ -810,7 +859,7 @@ class MeasureWBox(MeasureIABase, ReadData):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_gg[i, p] = self.get_random_pairs(
 					self.r_bins[i + 1], self.r_bins[i], self.pi_bins[p + 1], self.pi_bins[p], L3, corrtype,
-					self.Num_position_masked, self.Num_shape_masked, self.num_overlap)
+					self.sum_w_position, self.sum_w_shape, self.num_overlap)
 		RR_gg_denom = RR_gg.copy()  # guard against empty samples/bins in the division; raw RR grid is written to file
 		RR_gg_denom[RR_gg_denom == 0] = 1
 		xi_gg = (DD / RR_gg_denom) - 1

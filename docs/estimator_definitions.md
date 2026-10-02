@@ -3,6 +3,11 @@
 This page contains the mathematical definitions of the estimators used in MeasureIA to measure the correlation functions
 and the jackknife covariance.
 
+Which of them a run measures is set by the `corr_type` argument of `measure_xi_w` and `measure_xi_multipoles`:
+`'gg'` for clustering, `'g+'` for the shape-position correlation, `'++'` for the
+[shape-shape correlations](#shape-shape-correlations), and `'all'` for every one of them. `'both'` is kept as a
+synonym for $g+$ and $gg$ together, which is what it has always meant.
+
 ## Projected correlation functions
 
 First of all, we define $w_\mathrm{gg}$ and $w_{\mathrm{g}+}$ as follows:
@@ -25,17 +30,26 @@ DD &= \sum_{\{i,j\}}^{(r_\mathrm{p},\Pi)} w_i w_j \,.
 Both $w_i$ and $w_j$ denote the weights of objects in pair ${i,j}$, which are both set to $1$ if not provided.
 The weights can be provided using the 'weight' and 'weight_shape_sample' keys in the data dictionary upon
 initialisation.
+
+Because the pair counts are weighted, each one is normalised by the product of the two samples' **weight
+sums**, $W = \sum_i w_i$, rather than by their sizes $N$ — the convention of pycorr, TreeCorr and Corrfunc.
+Every estimator is therefore invariant under a constant rescaling of any sample's weights, so the weights
+need no particular normalisation; for unit weights $W = N$ and nothing changes. (Before this was fixed, the
+counts were divided by $N_a N_b$, which is only right when $\langle w \rangle = 1$ for every sample.)
+
 In the **box**, the $RR$ term is calculated analytically from the number of *available* pairs and the
 simulation volume. That count is
 
 \begin{align}
-N_\mathrm{pairs} &= N_\mathrm{position} N_\mathrm{shape} - N_\mathrm{overlap}
+N_\mathrm{pairs} &= W_\mathrm{position} W_\mathrm{shape} - W_\mathrm{overlap}
 \end{align}
 
-(halved for an auto-correlation), where $N_\mathrm{overlap}$ is the number of objects present in **both**
-samples. The subtraction is there because a shape galaxy cannot pair with itself: such a pair has zero
-separation and is dropped by the pair loop, whose window starts at $r_\mathrm{min}>0$. There is exactly one
-self-pair per shared object, hence the single subtraction.
+(halved for an auto-correlation), where $W_\mathrm{overlap} = \sum w_\mathrm{position}\, w_\mathrm{shape}$
+runs over the objects present in **both** samples. The subtraction is there because a shape galaxy cannot
+pair with itself: such a pair has zero separation and is dropped by the pair loop, whose window starts at
+$r_\mathrm{min}>0$. There is exactly one self-pair per shared object, carrying the product of that object's
+two weights. The rest of this section is written for unit weights, where $W_\mathrm{overlap}$ is simply the
+number of shared objects $N_\mathrm{overlap}$.
 
 This subsumes the two conventions in common use. For genuinely independent samples
 $N_\mathrm{overlap}=0$ and the count is the plain product $N_\mathrm{position}N_\mathrm{shape}$; when the
@@ -118,6 +132,56 @@ $e_\times$ in place of $e_+$ (galaxies: $(S_\times D - S_\times R)/RR$; clusters
 which is expected to be consistent with zero. The $\xi$ grids are then integrated over $\Pi$ (or $\mu_r$ for the
 multipoles) exactly as in the box case.
 
+## Shape-shape correlations
+
+Setting `corr_type='++'` correlates the shapes of **both** samples, giving the intrinsic–intrinsic
+(II) signal. Because a shape–shape product has two spin-2 factors, it yields three quantities at
+once rather than one:
+
+\begin{align}
+S_+S_+ &= \sum_{\{i,j\}}^{(r_\mathrm{p},\Pi)} w_i w_j
+          \frac{e_{+}(j|i)}{2\mathcal{R}_j}\frac{e_{+}(i|j)}{2\mathcal{R}_i}\,, \\\\
+S_\times S_\times &= \sum_{\{i,j\}}^{(r_\mathrm{p},\Pi)} w_i w_j
+          \frac{e_{\times}(j|i)}{2\mathcal{R}_j}\frac{e_{\times}(i|j)}{2\mathcal{R}_i}\,, \\\\
+S_+S_\times &= \tfrac{1}{2}\sum_{\{i,j\}}^{(r_\mathrm{p},\Pi)} w_i w_j
+          \left[\frac{e_{+}(j|i)}{2\mathcal{R}_j}\frac{e_{\times}(i|j)}{2\mathcal{R}_i}
+              + \frac{e_{\times}(j|i)}{2\mathcal{R}_j}\frac{e_{+}(i|j)}{2\mathcal{R}_i}\right]\,,
+\end{align}
+
+with $e_+$ and $e_\times$ exactly as defined above, each galaxy projected about the separation
+direction of the pair. Note the **two** responsivity factors, one per sample: the density and shape
+samples generally have different shape-noise properties, so each gets its own
+$\mathcal{R}$ computed over its own weights. In the auto case (the same catalogue in both slots)
+these coincide and the factor reduces to $(2\mathcal{R})^2$.
+
+$S_+S_\times$ is symmetrised so that it cannot depend on which catalogue a galaxy was placed in; it
+is the parity-odd null, the shape–shape analogue of $\xi_{g\times}$, and is expected to be
+consistent with zero.
+
+The estimators divide by the same random pairs as $\xi_{g+}$, since they count the same pairs:
+
+\begin{align}
+\xi_{++}(r_\mathrm{p},\Pi) &= \frac{S_+S_+}{RR}\,, &
+\xi_{\times\times}(r_\mathrm{p},\Pi) &= \frac{S_\times S_\times}{RR}\,, &
+\xi_{+\times}(r_\mathrm{p},\Pi) &= \frac{S_+S_\times}{RR}\,,
+\end{align}
+
+and are integrated over $\Pi$ to give $w_{++}$, $w_{\times\times}$ and $w_{+\times}$ exactly as for
+$w_{g+}$. There is **no $S_+R$ analogue to subtract**: random catalogues carry no shapes, so no
+shape–shape term can be built from them. For the same reason `IA_estimator='clusters'` is *not*
+defined for `'++'` and raises — that estimator normalises by the clustering counts, and no published
+form exists for shape–shape.
+
+An ordinary $g+$ measurement only needs shapes on the shape sample. A shape–shape correlation needs
+them on both members of a pair, so the density sample must carry its own, supplied through
+`Axis_Direction_density_sample`/`q_density_sample` (box) or `e1_density_sample`/`e2_density_sample`
+(lightcone) — see the [Input](input.md) page. Passing the same catalogue in both slots gives the II
+auto-correlation; passing two different ones gives a genuine cross correlation. Requesting `'++'`
+without these keys raises before any pair counting.
+
+`corr_type='all'` measures $g+$, $gg$ and $++$ together. For backwards compatibility `'both'` keeps
+its original meaning of $g+$ and $gg$ only.
+
 ## Multipoles
 
 For the multipole moment expansion, first introduced in [(Singh et al. 2024)](https://arxiv.org/abs/2307.02545), the
@@ -139,6 +203,22 @@ $$\tilde{\xi}_\mathrm{gg}^{0,0} (r) = \frac{1}{2}\int \text{d} \mu_{r}L^{0,0}(\m
 
 $$\tilde{\xi}_\mathrm{g+}^{2,2} (r) = \frac{5}{48}\int \text{d} \mu_{r}L^{2,2}(\mu_r)\xi_\mathrm{g+}(r, \mu_{r}) .$$
 
+For the **shape–shape** correlation the spin is $s_{ab}=4$ rather than 2, since two shapes enter
+the correlation rather than one ([Singh et al. 2024](https://arxiv.org/abs/2307.02545)). The lowest
+non-zero moment is therefore the hexadecapole:
+
+$$\tilde{\xi}_{++}^{4,4} (r) = \frac{9}{2}\frac{0!}{8!}\int \text{d} \mu_{r}L^{4,4}(\mu_r)\xi_{++}(r, \mu_{r})\,,
+\qquad L^{4,4}(\mu_r) = 105\,(1-\mu_r^2)^2 .$$
+
+The prefactor $9/(2\cdot 8!) = 1.116\times 10^{-4}$ normalises the basis so that
+$\int \text{d}\mu_r\, \text{prefactor}\times \left[L^{4,4}\right]^2 = 1$, as for the other two.
+
+Only $\xi_{++}$ is decomposed. [Singh et al. (2024)](https://arxiv.org/abs/2307.02545) give no
+convention for a $\xi_{\times\times}$ multipole, and choosing one is a modelling decision rather than
+a missing number, so MeasureIA deliberately does not invent it. The $(r,\mu_r)$ grid of
+$\xi_{\times\times}$ is still written to file, so you can integrate it yourself under whatever
+convention you prefer.
+
 ## Covariance
 
 The covariance is estimated using the jack-knife method. The covariance is measured by combining the measurements of
@@ -148,7 +228,8 @@ $N_\mathrm{jk}$ jackknife realisations in the following way:
 C_{ij} &= \frac{N_{\mathrm{jk}}-1}{N_{\mathrm{jk}}} \sum_{n=1}^{N_{\mathrm{jk}}} (\psi^n_i - \bar{\psi_i})(\psi^n_j -
 \bar{\psi_j}) \\
 &\mathrm{with} \ \bar{\psi_i} = \frac{1}{N_{\mathrm{jk}}} \sum_{n=1}^{N_{\mathrm{jk}}}\psi_i^n\\
-&\mathrm{and} \ \psi \in [w_{gg},w_{g+},\tilde{\xi}_{gg,0},\tilde{\xi}_{g+,2}] \,.
+&\mathrm{and} \ \psi \in [w_{gg},w_{g+},w_{++},w_{\times\times},w_{+\times},
+\tilde{\xi}_{gg,0},\tilde{\xi}_{g+,2},\tilde{\xi}_{++,4}] \,.
 \end{align}
 
 For **simulation boxes**, $N_\mathrm{jk}$ is the number of sub-boxes, which is related to the box-length $L$

@@ -126,7 +126,8 @@ class MeasureGalaxyContributionsBox:
 
         Delegates to the same ``get_random_pairs`` / ``get_random_pairs_r_mur`` the
         estimators use, so the normalisation conventions match exactly — including
-        ``num_overlap``, the count of objects present in both samples. Passing it is not
+        ``num_overlap``, the weighted count of objects present in both samples, and the
+        weight sums passed as ``Num_position``/``Num_shape``. Passing the overlap is not
         optional: it defaults to 0 (independent samples), and leaving it out here while the
         estimators measure it would put the per-galaxy sums a factor ``N/(N-1)`` away from
         the ordinary measurement they are supposed to reproduce.
@@ -155,7 +156,8 @@ class MeasureGalaxyContributionsBox:
         estimator actually uses.
 
         The delete-one realisation drops the overlapping objects that live in the removed
-        region, so it carries ``num_overlap`` less ``overlap_jk_counts[n]`` — the same
+        region, so it carries ``num_overlap`` less ``overlap_jk_counts[n]`` (both weighted,
+        like the delete-one weight sums ``n_pos_jk``/``n_shape_jk``) — the same
         per-region bookkeeping the jackknife backends use.
         """
         get_pairs = (self.get_random_pairs_r_mur if statistic == "multipoles"
@@ -307,7 +309,7 @@ class MeasureGalaxyContributionsBox:
         print(f"There are {Num_shape} galaxies in the shape sample and {Num_position} galaxies in the position sample.")
 
         L3 = self.boxsize ** 3
-        RR_g_plus = self._galaxy_analytic_RR(statistic, L3, Num_position, Num_shape)
+        RR_g_plus = self._galaxy_analytic_RR(statistic, L3, self.sum_w_position, self.sum_w_shape)
         K = self._galaxy_projection_kernel(statistic, RR_g_plus, ell)
 
         jk_pos = jk_shape = None
@@ -345,11 +347,10 @@ class MeasureGalaxyContributionsBox:
             volume_jk = L3 * (num_jk - 1) / num_jk
             rr_ratio = np.zeros(num_jk)
             for n in np.arange(num_jk):
-                n_pos_jk = int(np.count_nonzero(jk_pos != n))
-                n_shape_jk = int(np.count_nonzero(jk_shape != n))
-                overlap_jk = int(self.num_overlap - self.overlap_jk_counts[n])
-                rr_ratio[n] = self._galaxy_rr_ratio(statistic, volume_jk, n_pos_jk, n_shape_jk,
-                                                    L3, Num_position, Num_shape, overlap_jk)
+                overlap_jk = self.num_overlap - self.overlap_jk_counts[n]
+                rr_ratio[n] = self._galaxy_rr_ratio(statistic, volume_jk, self.sum_w_position_jk[n],
+                                                    self.sum_w_shape_jk[n], L3, self.sum_w_position,
+                                                    self.sum_w_shape, overlap_jk)
             out.update({"Y_jk_values": Y_jk, "P_jk_values": P_jk, "jk_patches": jk_patches,
                         "jk_shape": jk_shape, "R_jk": R_jk, "rr_ratio": rr_ratio, "R": R})
 
