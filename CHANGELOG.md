@@ -40,10 +40,13 @@ public API mean a major version bump.
     what pins the $(2\mathcal{R}_\mathrm{shape})(2\mathcal{R}_\mathrm{density})$ responsivity,
     rather than $(2\mathcal{R})^2$); and $w_{++}$/$w_{\times\times}$ against treecorr `GG` at
     $\le3.5\times10^{-3}$ / $\le7.1\times10^{-3}$. $w_{\times\times}$ needs treecorr
-    specifically: halotools' `ii_minus_projected` cannot serve as its reference, both because its
-    output depends on the physically meaningless sign of the orientation vectors and because it
-    builds the second sample's marks from the first sample's orientations. See
-    `validation/README.md`.
+    specifically: halotools' `ii_minus_projected` cannot serve as its reference. It builds the
+    second sample's marks from the first sample's orientations (reported upstream as
+    [halotools_ia#3](https://github.com/duncandc/halotools_ia/issues/3)), and its output changes
+    with the sign of the orientation vectors, which carries no physical meaning. Its kernel is
+    compiled, so we cannot tell from the outside whether the latter is a defect or an unstated
+    input convention; either way it leaves no single value of $w_{\times\times}$ to compare
+    against. See `validation/README.md`.
 
     The mock generators gain `density_shapes=False`, which when set gives the density sample its
     own shapes for the cross case. The extra draws happen strictly after every existing one, so
