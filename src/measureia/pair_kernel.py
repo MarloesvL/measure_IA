@@ -436,6 +436,25 @@ def prepare_lightcone_samples(data, masks, *, shapes, cosmology, over_h,
     )
 
 
+def _identity(x):
+    return x
+
+
+def separation_bin_scale(base):
+    """Transform and bin width that turn a separation length into its ``r_bins`` index.
+
+    The index is ``floor(f(r) / width - f(r_bins[0]) / width)``, with ``f = log10`` for
+    ``base.binning == "log"`` (bins of equal width in ``log10 r``) and the identity for
+    ``"linear"``. Bases without a ``binning`` attribute are treated as log-binned.
+    """
+    if getattr(base, "binning", "log") == "log":
+        transform = np.log10
+    else:
+        transform = _identity
+    width = (transform(base.r_max) - transform(base.r_min)) / base.num_bins_r
+    return transform, width
+
+
 class BoxRpPi:
     """(rp, pi) grid binning for a periodic Cartesian box.
 
@@ -451,7 +470,7 @@ class BoxRpPi:
         self.pi_bins = base.pi_bins
         self.num_bins_r = base.num_bins_r
         self.num_bins_pi = base.num_bins_pi
-        self.sub_box_len_logrp = (np.log10(base.r_max) - np.log10(base.r_min)) / base.num_bins_r
+        self.r_transform, self.sub_box_len_r = separation_bin_scale(base)
         self.sub_box_len_pi = (base.pi_bins[-1] - base.pi_bins[0]) / base.num_bins_pi
         # Candidate region: either the 3D ball enclosing the (rp <= r_max,
         # |pi| <= pi_max) cylinder this binning selects, or the 2D projection of
@@ -536,8 +555,8 @@ class BoxRpPi:
         mask = (separation_len >= self.r_bins[0]) * (separation_len < self.r_bins[-1]) * \
                (LOS >= self.pi_bins[0]) * (LOS < self.pi_bins[-1])
         ind_r = np.floor(
-            np.log10(separation_len[mask]) / self.sub_box_len_logrp
-            - np.log10(self.r_bins[0]) / self.sub_box_len_logrp
+            self.r_transform(separation_len[mask]) / self.sub_box_len_r
+            - self.r_transform(self.r_bins[0]) / self.sub_box_len_r
         )
         ind_r = np.array(ind_r, dtype=int)
         ind_pi = np.floor(
@@ -571,7 +590,7 @@ class BoxRMuR:
         self.num_bins_r = base.num_bins_r
         self.num_bins_pi = base.num_bins_pi
         self.rp_cut = rp_cut
-        self.sub_box_len_logr = (np.log10(base.r_max) - np.log10(base.r_min)) / base.num_bins_r
+        self.r_transform, self.sub_box_len_r = separation_bin_scale(base)
         self.sub_box_len_mu_r = 2.0 / base.num_bins_pi
         # the r-window is the 3D separation, so the ball is just r_max
         self.query_r_max = base.r_max
@@ -603,8 +622,8 @@ class BoxRMuR:
             * (separation_len < self.r_bins[-1])
         )
         ind_r = np.floor(
-            np.log10(separation_len[mask]) / self.sub_box_len_logr
-            - np.log10(self.r_bins[0]) / self.sub_box_len_logr
+            self.r_transform(separation_len[mask]) / self.sub_box_len_r
+            - self.r_transform(self.r_bins[0]) / self.sub_box_len_r
         )
         ind_r = np.array(ind_r, dtype=int)
         ind_mu_r = np.floor(
@@ -639,7 +658,7 @@ class SkyRpPi:
         self.pi_bins = base.pi_bins
         self.num_bins_r = base.num_bins_r
         self.num_bins_pi = base.num_bins_pi
-        self.sub_box_len_logrp = (np.log10(base.r_max) - np.log10(base.r_min)) / base.num_bins_r
+        self.r_transform, self.sub_box_len_r = separation_bin_scale(base)
         self.sub_box_len_pi = (base.pi_bins[-1] - base.pi_bins[0]) / base.num_bins_pi
         # KDTree query radius for candidate selection (REFACTOR_PLAN.md section 3.2).
         # query_r_min is retained for reference only: the inner query it used to drive was
@@ -661,8 +680,8 @@ class SkyRpPi:
         mask = (separation_len >= self.r_bins[0]) * (separation_len < self.r_bins[-1]) * \
                (LOS >= self.pi_bins[0]) * (LOS < self.pi_bins[-1])
         ind_r = np.floor(
-            np.log10(separation_len[mask]) / self.sub_box_len_logrp
-            - np.log10(self.r_bins[0]) / self.sub_box_len_logrp
+            self.r_transform(separation_len[mask]) / self.sub_box_len_r
+            - self.r_transform(self.r_bins[0]) / self.sub_box_len_r
         )
         ind_r = np.array(ind_r, dtype=int)
         ind_pi = np.floor(
@@ -692,7 +711,7 @@ class SkyRMuR:
         self.mu_r_bins = base.mu_r_bins
         self.num_bins_r = base.num_bins_r
         self.num_bins_pi = base.num_bins_pi
-        self.sub_box_len_logrp = (np.log10(base.r_max) - np.log10(base.r_min)) / base.num_bins_r
+        self.r_transform, self.sub_box_len_r = separation_bin_scale(base)
         self.sub_box_len_mu_r = 2.0 / base.num_bins_pi
         self.query_r_min = base.r_min
         self.query_r_max = base.r_max
@@ -708,8 +727,8 @@ class SkyRMuR:
         s_perp = s - np.sum(s * n_LOS, axis=1, keepdims=True) * n_LOS
         mask = (separation_len >= self.r_bins[0]) * (separation_len < self.r_bins[-1])
         ind_r = np.floor(
-            np.log10(separation_len[mask]) / self.sub_box_len_logrp
-            - np.log10(self.r_bins[0]) / self.sub_box_len_logrp
+            self.r_transform(separation_len[mask]) / self.sub_box_len_r
+            - self.r_transform(self.r_bins[0]) / self.sub_box_len_r
         )
         ind_r = np.array(ind_r, dtype=int)
         ind_mu_r = np.floor(

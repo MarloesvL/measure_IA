@@ -21,6 +21,7 @@ The separation bins are fixed at initialisation and shared by every measurement 
 
 - **Transverse / 3D separation** ($r_p$ for $w$, $r$ for the multipoles): `num_bins_r` **logarithmic** bins
   between `separation_limits[0]` and `separation_limits[1]` (i.e. $r_\mathrm{min}$ and $r_\mathrm{max}$).
+  Pass `binning='linear'` to the constructor for **linear** bins instead (e.g. around the BAO peak).
 - **Line of sight** $\Pi$: `num_bins_pi` **linear** bins spanning the *signed* range
   $[-\Pi_\mathrm{max}, +\Pi_\mathrm{max}]$, with $\Pi_\mathrm{max}$ set by `pi_max`.
 - **$\mu_r = \Pi/r$** (used for the multipoles): `num_bins_pi` **linear** bins over $[-1, 1]$.

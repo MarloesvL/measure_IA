@@ -195,6 +195,8 @@ class MeasureIABase(SimInfo):
 		Minimum bound of (projected) separation length; bin edge. Default is 0.1.
 	r_max : float
 		Maximum bound of (projected) separation length; bin edge. Default is 20.
+	binning : str
+		Spacing of the separation bins, 'log' (default) or 'linear'.
 	r_bins : ndarray
 		Bin edges of the (projected) separation length (r_p or r).
 	pi_bins : ndarray
@@ -244,6 +246,7 @@ class MeasureIABase(SimInfo):
 			pi_max=None,
 			boxsize=None,
 			periodicity=True,
+			binning="log",
 	):
 		"""
 		The __init__ method of the MeasureIABase class.
@@ -311,6 +314,8 @@ class MeasureIABase(SimInfo):
 		if not (0 < r_min_check < r_max_check):
 			raise ValueError(
 				f"separation_limits must satisfy 0 < r_min < r_max, got {separation_limits}.")
+		if binning not in ("log", "linear"):
+			raise ValueError(f"binning must be 'log' or 'linear', got {binning!r}.")
 		if self.boxsize is not None and self.boxsize is not False and not (self.boxsize > 0):
 			raise ValueError(f"boxsize must be > 0, got {self.boxsize!r}.")
 		if pi_max is not None and not (pi_max > 0):
@@ -342,7 +347,11 @@ class MeasureIABase(SimInfo):
 		self.r_max = separation_limits[1]  # cMpc/h
 		self.num_bins_r = num_bins_r
 		self.num_bins_pi = num_bins_pi
-		self.r_bins = np.logspace(np.log10(self.r_min), np.log10(self.r_max), self.num_bins_r + 1)
+		self.binning = binning
+		if binning == "log":
+			self.r_bins = np.logspace(np.log10(self.r_min), np.log10(self.r_max), self.num_bins_r + 1)
+		else:
+			self.r_bins = np.linspace(self.r_min, self.r_max, self.num_bins_r + 1)
 		if pi_max == None:
 			if self.L_0p5 is None:
 				raise ValueError(
@@ -356,7 +365,7 @@ class MeasureIABase(SimInfo):
 					observational data.\n \
 					There are {self.Num_shape} galaxies in the shape sample and {self.Num_position} galaxies in the position sample.\n\
 					The separation bin edges are given by {self.r_bins} Mpc.\n \
-					There are {num_bins_r} r or r_p bins and {num_bins_pi} pi bins.\n \
+					There are {num_bins_r} {binning} r or r_p bins and {num_bins_pi} pi bins.\n \
 					The maximum pi used for binning is {pi_max}.\n \
 					The data will be written to {self.output_file_name}")
 		else:
@@ -364,7 +373,7 @@ class MeasureIABase(SimInfo):
 			simulation {simulation} that has a {periodic}boxsize of {self.boxsize} cMpc/h.\n \
 			There are {self.Num_shape} galaxies in the shape sample and {self.Num_position} galaxies in the position sample.\n\
 			The separation bin edges are given by {self.r_bins} cMpc/h.\n \
-			There are {num_bins_r} r or r_p bins and {num_bins_pi} pi bins.\n \
+			There are {num_bins_r} {binning} r or r_p bins and {num_bins_pi} pi bins.\n \
 			The maximum pi used for binning is {pi_max}.\n \
 			The data will be written to {self.output_file_name}")
 		return

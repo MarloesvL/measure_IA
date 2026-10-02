@@ -10,6 +10,12 @@ public API mean a major version bump.
 
 ### Added
 
+- **Linear separation bins** ([#78](https://github.com/MarloesvL/measure_IA/issues/78)).
+  `MeasureIABox` and `MeasureIALightcone` take `binning='linear'` to space the $r$ / $r_p$
+  bins linearly between `separation_limits`, e.g. for the BAO peak. The default stays
+  `binning='log'`, so existing results are unchanged; the reported bin centres are the
+  arithmetic midpoints of the edges in both schemes, as before.
+
 - **Shape–shape (`++`) correlations, on both entry points.** `corr_type='++'` measures
   $w_{++}$, $w_{\times\times}$ and the parity-odd $w_{+\times}$, plus the $(\ell,s)=(4,4)$
   multipole of $\xi_{++}$; `corr_type='all'` adds $g+$ and $gg$ alongside. `'both'` keeps its
