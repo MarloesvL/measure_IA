@@ -62,6 +62,7 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			e2_density_sample_name="e2_density_sample",
 			weight_density_sample_name="weight",
 			weight_shape_sample_name="weight_shape_sample",
+			binning="log",
 	):
 		"""
 		The __init__ method of the MeasureIALightcone class.
@@ -104,11 +105,14 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 			Name of the key in the data (and randoms) dictionary that contains the weights of the density sample.
 		weight_shape_sample_name : str, optional
 			Name of the key in the data (and randoms) dictionary that contains the weights of the shape sample.
+		binning : str, optional
+			Spacing of the (projected) separation bins between the separation_limits: 'log' for logarithmically
+			spaced bins or 'linear' for linearly spaced bins (e.g. around the BAO peak). Default is 'log'.
 
 		Notes
 		-----
 		Constructor parameters 'data', 'output_file_name', 'separation_limits', 'num_bins_r',
-		'num_bins_pi', 'pi_max', are passed to MeasureIABase.
+		'num_bins_pi', 'pi_max' and 'binning' are passed to MeasureIABase.
 		The data, randoms and mask dictionaries may use any key names; they are given through the *_name
 		parameters and translated to the internal default names on input.
 
@@ -149,7 +153,7 @@ class MeasureIALightcone(MeasureWLightcone, MeasureMultipolesLightcone, MeasureW
 							[RA_density_sample_name, DEC_density_sample_name, redshift_density_sample_name])
 			randoms_data = self.rename_input_keys(randoms_data, self._input_name_map)
 		super().__init__(data, output_file_name, False, None, separation_limits, num_bins_r, num_bins_pi,
-						 pi_max, None, False)
+						 pi_max, None, False, binning)
 		if not (isinstance(num_nodes, (int, np.integer)) and not isinstance(num_nodes, bool) and num_nodes >= 1):
 			raise ValueError(f"num_nodes must be an integer >= 1, got {num_nodes!r}.")
 		self.num_nodes = num_nodes
