@@ -141,16 +141,15 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_g_plus[i, p] = self.get_random_pairs_r_mur(
 					self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, "cross",
-					Num_position, Num_shape, self.num_overlap)
+					self.sum_w_position, self.sum_w_shape, self.num_overlap)
 				RR_gg[i, p] = self.get_random_pairs_r_mur(
 					self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, corrtype,
-					Num_position, Num_shape, self.num_overlap)
+					self.sum_w_position, self.sum_w_shape, self.num_overlap)
 
 		RR_jk = np.zeros((num_box, self.num_bins_r, self.num_bins_pi))
 		volume_jk = L3 * (num_box - 1) / (num_box)
 		for jk in np.arange(num_box):
-			Num_position_jk, Num_shape_jk = len(np.where(jackknife_region_indices_pos != jk)[0]), len(
-				np.where(jackknife_region_indices_shape != jk)[0])
+			Num_position_jk, Num_shape_jk = self.sum_w_position_jk[jk], self.sum_w_shape_jk[jk]
 			for i in np.arange(0, self.num_bins_r):
 				for p in np.arange(0, self.num_bins_pi):
 					RR_jk[jk, i, p] = self.get_random_pairs_r_mur(
@@ -300,16 +299,15 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_g_plus[i, p] = self.get_random_pairs_r_mur(
 					self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, "cross",
-					Num_position, Num_shape, self.num_overlap)
+					self.sum_w_position, self.sum_w_shape, self.num_overlap)
 				RR_gg[i, p] = self.get_random_pairs_r_mur(
 					self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, corrtype,
-					Num_position, Num_shape, self.num_overlap)
+					self.sum_w_position, self.sum_w_shape, self.num_overlap)
 
 		RR_jk = np.zeros((num_box, self.num_bins_r, self.num_bins_pi))
 		volume_jk = L3 * (num_box - 1) / num_box
 		for jk in np.arange(num_box):
-			Num_position_jk, Num_shape_jk = len(np.where(jackknife_region_indices_pos != jk)[0]), len(
-				np.where(jackknife_region_indices_shape != jk)[0])
+			Num_position_jk, Num_shape_jk = self.sum_w_position_jk[jk], self.sum_w_shape_jk[jk]
 			for i in np.arange(0, self.num_bins_r):
 				for p in np.arange(0, self.num_bins_pi):
 					RR_jk[jk, i, p] = self.get_random_pairs_r_mur(
@@ -636,16 +634,15 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_g_plus[i, p] = self.get_random_pairs_r_mur(
 					self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, "cross",
-					self.Num_position_masked, self.Num_shape_masked, self.num_overlap)
+					self.sum_w_position, self.sum_w_shape, self.num_overlap)
 				RR_gg[i, p] = self.get_random_pairs_r_mur(
 					self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, corrtype,
-					self.Num_position_masked, self.Num_shape_masked, self.num_overlap)
+					self.sum_w_position, self.sum_w_shape, self.num_overlap)
 
 		RR_jk = np.zeros((self.num_box, self.num_bins_r, self.num_bins_pi))
 		volume_jk = L3 * (self.num_box - 1) / self.num_box
 		for jk in np.arange(self.num_box):
-			Num_position_jk, Num_shape_jk = len(np.where(jackknife_region_indices_pos != jk)[0]), len(
-				np.where(jackknife_region_indices_shape != jk)[0])
+			Num_position_jk, Num_shape_jk = self.sum_w_position_jk[jk], self.sum_w_shape_jk[jk]
 			for i in np.arange(0, self.num_bins_r):
 				for p in np.arange(0, self.num_bins_pi):
 					RR_jk[jk, i, p] = self.get_random_pairs_r_mur(
@@ -774,13 +771,12 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_gg[i, p] = self.get_random_pairs_r_mur(
 					self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, corrtype,
-					Num_position, Num_shape, self.num_overlap)
+					self.sum_w_position, self.sum_w_shape, self.num_overlap)
 
 		RR_jk = np.zeros((num_box, self.num_bins_r, self.num_bins_pi))
 		volume_jk = L3 * (num_box - 1) / (num_box)
 		for jk in np.arange(num_box):
-			Num_position_jk, Num_shape_jk = len(np.where(jackknife_region_indices_pos != jk)[0]), len(
-				np.where(jackknife_region_indices_shape != jk)[0])
+			Num_position_jk, Num_shape_jk = self.sum_w_position_jk[jk], self.sum_w_shape_jk[jk]
 			for i in np.arange(0, self.num_bins_r):
 				for p in np.arange(0, self.num_bins_pi):
 					RR_jk[jk, i, p] = self.get_random_pairs_r_mur(
@@ -874,13 +870,12 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_gg[i, p] = self.get_random_pairs_r_mur(
 					self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, corrtype,
-					Num_position, Num_shape, self.num_overlap)
+					self.sum_w_position, self.sum_w_shape, self.num_overlap)
 
 		RR_jk = np.zeros((num_box, self.num_bins_r, self.num_bins_pi))
 		volume_jk = L3 * (num_box - 1) / num_box
 		for jk in np.arange(num_box):
-			Num_position_jk, Num_shape_jk = len(np.where(jackknife_region_indices_pos != jk)[0]), len(
-				np.where(jackknife_region_indices_shape != jk)[0])
+			Num_position_jk, Num_shape_jk = self.sum_w_position_jk[jk], self.sum_w_shape_jk[jk]
 			for i in np.arange(0, self.num_bins_r):
 				for p in np.arange(0, self.num_bins_pi):
 					RR_jk[jk, i, p] = self.get_random_pairs_r_mur(
@@ -1106,13 +1101,12 @@ class MeasureMBoxJackknife(MeasureIABase, ReadData):
 			for p in np.arange(0, self.num_bins_pi):
 				RR_gg[i, p] = self.get_random_pairs_r_mur(
 					self.r_bins[i + 1], self.r_bins[i], self.mu_r_bins[p + 1], self.mu_r_bins[p], L3, corrtype,
-					self.Num_position_masked, self.Num_shape_masked, self.num_overlap)
+					self.sum_w_position, self.sum_w_shape, self.num_overlap)
 
 		RR_jk = np.zeros((self.num_box, self.num_bins_r, self.num_bins_pi))
 		volume_jk = L3 * (self.num_box - 1) / self.num_box
 		for jk in np.arange(self.num_box):
-			Num_position_jk, Num_shape_jk = len(np.where(jackknife_region_indices_pos != jk)[0]), len(
-				np.where(jackknife_region_indices_shape != jk)[0])
+			Num_position_jk, Num_shape_jk = self.sum_w_position_jk[jk], self.sum_w_shape_jk[jk]
 			for i in np.arange(0, self.num_bins_r):
 				for p in np.arange(0, self.num_bins_pi):
 					RR_jk[jk, i, p] = self.get_random_pairs_r_mur(

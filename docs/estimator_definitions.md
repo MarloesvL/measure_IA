@@ -30,17 +30,26 @@ DD &= \sum_{\{i,j\}}^{(r_\mathrm{p},\Pi)} w_i w_j \,.
 Both $w_i$ and $w_j$ denote the weights of objects in pair ${i,j}$, which are both set to $1$ if not provided.
 The weights can be provided using the 'weight' and 'weight_shape_sample' keys in the data dictionary upon
 initialisation.
+
+Because the pair counts are weighted, each one is normalised by the product of the two samples' **weight
+sums**, $W = \sum_i w_i$, rather than by their sizes $N$ — the convention of pycorr, TreeCorr and Corrfunc.
+Every estimator is therefore invariant under a constant rescaling of any sample's weights, so the weights
+need no particular normalisation; for unit weights $W = N$ and nothing changes. (Before this was fixed, the
+counts were divided by $N_a N_b$, which is only right when $\langle w \rangle = 1$ for every sample.)
+
 In the **box**, the $RR$ term is calculated analytically from the number of *available* pairs and the
 simulation volume. That count is
 
 \begin{align}
-N_\mathrm{pairs} &= N_\mathrm{position} N_\mathrm{shape} - N_\mathrm{overlap}
+N_\mathrm{pairs} &= W_\mathrm{position} W_\mathrm{shape} - W_\mathrm{overlap}
 \end{align}
 
-(halved for an auto-correlation), where $N_\mathrm{overlap}$ is the number of objects present in **both**
-samples. The subtraction is there because a shape galaxy cannot pair with itself: such a pair has zero
-separation and is dropped by the pair loop, whose window starts at $r_\mathrm{min}>0$. There is exactly one
-self-pair per shared object, hence the single subtraction.
+(halved for an auto-correlation), where $W_\mathrm{overlap} = \sum w_\mathrm{position}\, w_\mathrm{shape}$
+runs over the objects present in **both** samples. The subtraction is there because a shape galaxy cannot
+pair with itself: such a pair has zero separation and is dropped by the pair loop, whose window starts at
+$r_\mathrm{min}>0$. There is exactly one self-pair per shared object, carrying the product of that object's
+two weights. The rest of this section is written for unit weights, where $W_\mathrm{overlap}$ is simply the
+number of shared objects $N_\mathrm{overlap}$.
 
 This subsumes the two conventions in common use. For genuinely independent samples
 $N_\mathrm{overlap}=0$ and the count is the plain product $N_\mathrm{position}N_\mathrm{shape}$; when the

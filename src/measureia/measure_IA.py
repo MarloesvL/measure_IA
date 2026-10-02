@@ -89,15 +89,17 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			Name of the key in the data dictionary that contains the weights of the shape sample.
 		num_overlap : int or NoneType, optional
 			Number of objects present in *both* the position and the shape sample. The analytic
-			RR is normalised by ``Num_position * Num_shape - num_overlap``, because a shape
+			RR is normalised by ``W_position * W_shape - W_overlap``, with ``W`` the weight sums
+			and ``W_overlap`` the summed weight products of the shared objects, because a shape
 			galaxy cannot pair with itself and the pair loop already drops that self-pair (the
 			separation window starts at ``r_min > 0``). Default None, which measures the overlap
 			from the coordinates and is what you want for real data, where the shape sample is
 			normally drawn from the position sample. Pass an integer to override it -- most
 			usefully ``0``, which reproduces the convention external codes such as halotools
-			and corr_pc use, where the two samples are treated as independent. An override is
-			applied uniformly, so the per-jackknife-region adjustment is only made in the
-			default (measured) mode.
+			and corr_pc use, where the two samples are treated as independent. The override is an
+			object count, converted to a weighted overlap by scaling it with both samples' mean
+			weights (exact for unit weights; 0 stays 0). An override is applied uniformly, so the
+			per-jackknife-region adjustment is only made in the default (measured) mode.
 
 		Notes
 		-----
