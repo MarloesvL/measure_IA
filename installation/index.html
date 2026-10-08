@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="author" content="Marloes van Heukelum" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Installation - MeasureIA Documentation</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../assets/_mkdocstrings.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Installation";
+        var mkdocs_page_input_path = "installation.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> MeasureIA Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../getting_started/">Getting started</a>
+                </li>
+              </ul>
+              <ul class="current">
+                <li class="toctree-l1 current"><a class="reference internal current" href="#">Installation</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#requirements">Requirements</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#installing-with-pip">Installing with pip</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#installing-with-uv">Installing with uv</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#installing-an-unreleased-version">Installing an unreleased version</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#optional-extras">Optional extras</a>
+    </li>
+    </ul>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../input/">Input</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../usage/">Usage</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../output_structure/">Output</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../galaxy_contributions/">Per-galaxy contributions</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../simulations/">Included simulations</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Concepts</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../conventions/">Conventions</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../estimator_definitions/">Estimator definitions</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Examples</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../examples/example_MeasureIA_box/">Simulation box</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../examples/example_MeasureIA_lightcone/">Lightcone</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Validation & performance</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../validation/">Validation</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../performance/">Performance</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">API Reference</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/measureIABox/">MeasureIABox</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/measureIALightcone/">MeasureIALightcone</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/MeasureIABase/">MeasureIABase</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/MeasureJackknife/">MeasureJackknife</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Box backends</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWBox/">MeasureWBox</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMBox/">MeasureMultipolesBox</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWBoxJackknife/">MeasureWBoxJackknife</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMBoxJackknife/">MeasureMBoxJackknife</a>
+                </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Lightcone backends</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWLightcone/">MeasureWLightcone</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMLightcone/">MeasureMultipolesLightcone</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWLightconeJackknife/">MeasureWLightconeJackknife</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMLightconeJackknife/">MeasureMultipolesLightconeJackknife</a>
+                </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/pair_kernel/">pair_kernel</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/SimInfo/">SimInfo</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/ReadData/">ReadData</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/mocks/">mocks</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">MeasureIA Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+      <li class="breadcrumb-item active">Installation</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="installation">Installation</h1>
+<h2 id="requirements">Requirements</h2>
+<p>MeasureIA supports <strong>Python 3.10 – 3.14</strong> and requires <strong>NumPy 2</strong>. The remaining
+dependencies (astropy, scipy, h5py, matplotlib, pyccl, sympy) are resolved
+automatically; their versions are pinned in <code>pyproject.toml</code> / <code>uv.lock</code>.</p>
+<h2 id="installing-with-pip">Installing with pip</h2>
+<pre><code class="language-bash">pip install measureia
+</code></pre>
+<p>That is the whole installation — everything MeasureIA needs is on PyPI.</p>
+<h2 id="installing-with-uv">Installing with uv</h2>
+<p>If you manage your project with <a href="https://docs.astral.sh/uv/getting-started/installation/">uv</a>,
+add MeasureIA as a dependency:</p>
+<pre><code class="language-bash">uv add measureia
+</code></pre>
+<p>Your scripts then run inside that environment:</p>
+<pre><code class="language-bash">uv run my_script.py
+</code></pre>
+<p>To install into an existing environment instead of a uv project, use:</p>
+<pre><code class="language-bash">uv pip install measureia
+</code></pre>
+<h2 id="installing-an-unreleased-version">Installing an unreleased version</h2>
+<p>Released versions are on PyPI; work in progress lives on the <code>dev</code> branch of the
+<a href="https://github.com/MarloesvL/measure_IA">repository</a>. To install straight from a branch,
+without cloning:</p>
+<pre><code class="language-bash">pip install &quot;git+https://github.com/MarloesvL/measure_IA.git@dev&quot;
+uv add &quot;measureia @ git+https://github.com/MarloesvL/measure_IA.git@dev&quot;   # uv equivalent
+</code></pre>
+<p>Clone the repository instead if you want to edit the code, run the test suite, or contribute:</p>
+<pre><code class="language-bash">git clone https://github.com/MarloesvL/measure_IA.git
+cd measure_IA
+uv sync              # creates .venv with the locked dependencies
+uv run pytest        # optional: check the suite passes
+uv run my_script.py
+</code></pre>
+<p><code>uv sync</code> also installs a compatible Python interpreter, so no separate setup is needed.
+If you use neither uv nor pip, the dependencies are listed in <code>requirements.txt</code>.
+See <a href="https://github.com/MarloesvL/measure_IA/blob/main/CONTRIBUTING.md">Contributing</a> for the
+full development workflow.</p>
+<h2 id="optional-extras">Optional extras</h2>
+<p>The cross-package <a href="../validation/">validation</a> scripts compare MeasureIA against external
+codes, and the <a href="../performance/">performance</a> benchmarks time it against those same codes —
+halotools for the periodic box, TreeCorr for the lightcone. Both use one extra:</p>
+<pre><code class="language-bash">pip install measureia[validation]   # halotools + treecorr
+uv add &quot;measureia[validation]&quot;      # uv equivalent
+</code></pre>
+<p>Neither package is needed to use MeasureIA or to run its test suite. The scripts themselves
+live in <code>validation/</code> and <code>benchmarks/</code> in the repository rather than in the installed
+package, so running them means cloning it as described above:</p>
+<pre><code class="language-bash">uv sync --extra validation                                    # or: pip install -e &quot;.[validation]&quot;
+uv run python validation/run_box_halotools.py
+uv run python benchmarks/run_sweep.py --smoke --machine laptop
+</code></pre>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../getting_started/" class="btn btn-neutral float-left" title="Getting started"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../input/" class="btn btn-neutral float-right" title="Input">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../getting_started/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../input/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>

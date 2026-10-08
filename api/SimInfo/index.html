@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="author" content="Marloes van Heukelum" />
+      <link rel="shortcut icon" href="../../img/favicon.ico" />
+    <title>SimInfo - MeasureIA Documentation</title>
+    <link rel="stylesheet" href="../../css/theme.css" />
+    <link rel="stylesheet" href="../../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../../assets/_mkdocstrings.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "SimInfo";
+        var mkdocs_page_input_path = "api/SimInfo.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href="../.." class="icon icon-home"> MeasureIA Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../getting_started/">Getting started</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../../installation/">Installation</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../input/">Input</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../usage/">Usage</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../output_structure/">Output</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../galaxy_contributions/">Per-galaxy contributions</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../simulations/">Included simulations</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Concepts</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../conventions/">Conventions</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../estimator_definitions/">Estimator definitions</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Examples</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../examples/example_MeasureIA_box/">Simulation box</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../examples/example_MeasureIA_lightcone/">Lightcone</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Validation & performance</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../../validation/">Validation</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../../performance/">Performance</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">API Reference</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../measureIABox/">MeasureIABox</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../measureIALightcone/">MeasureIALightcone</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../MeasureIABase/">MeasureIABase</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../MeasureJackknife/">MeasureJackknife</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Box backends</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../MeasureWBox/">MeasureWBox</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../MeasureMBox/">MeasureMultipolesBox</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../MeasureWBoxJackknife/">MeasureWBoxJackknife</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../MeasureMBoxJackknife/">MeasureMBoxJackknife</a>
+                </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Lightcone backends</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../MeasureWLightcone/">MeasureWLightcone</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../MeasureMLightcone/">MeasureMultipolesLightcone</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../MeasureWLightconeJackknife/">MeasureWLightconeJackknife</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../MeasureMLightconeJackknife/">MeasureMultipolesLightconeJackknife</a>
+                </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../pair_kernel/">pair_kernel</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">SimInfo</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#measureia.SimInfo">SimInfo</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#measureia.SimInfo.__init__">__init__</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#measureia.SimInfo.get_specs">get_specs</a>
+    </li>
+    <li class="toctree-l3"><a class="reference internal" href="#measureia.SimInfo.get_file_info">get_file_info</a>
+    </li>
+        </ul>
+    </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../ReadData/">ReadData</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../mocks/">mocks</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../..">MeasureIA Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../.." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">API Reference</li>
+      <li class="breadcrumb-item active">SimInfo</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="siminfo">SimInfo</h1>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h2 id="measureia.SimInfo" class="doc doc-heading">
+            <code>measureia.SimInfo</code>
+
+
+</h2>
+
+
+    <div class="doc doc-contents first">
+
+
+
+        <p>Class that stores simulation information in an object to be inherited by other classes.
+        Simulation information is hard coded and therefore uses are limited. However, can easily be expanded.
+        Currently, these simulations are available: [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1,
+        FLAMINGO_L2p8, COLIBRE_L400, COLIBRE_L200].</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Attributes:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>simname</code></b>
+                  (<code><span title="str">str</span> or <span title="NoneType">NoneType</span></code>)
+              –
+              <div class="doc-md-description">
+                <p>Identifier of the simulation, allowing for correct information to be obtained.</p>
+              </div>
+            </li>
+            <li>
+              <b><code>snapshot</code></b>
+                  (<code><span title="int">int</span> or <span title="str">str</span> or <span title="NoneType">NoneType</span></code>)
+              –
+              <div class="doc-md-description">
+                <p>Number of the snapshot.</p>
+              </div>
+            </li>
+            <li>
+              <b><code>snap_group</code></b>
+                  (<code><span title="str">str</span></code>)
+              –
+              <div class="doc-md-description">
+                <p>Name of group in output file. Equal to 'Snapshot_[snapshot]' if snapshot is given, otherwise emtpy string.</p>
+              </div>
+            </li>
+            <li>
+              <b><code>boxsize</code></b>
+                  (<code>int or float or NoneType, default=None</code>)
+              –
+              <div class="doc-md-description">
+                <p>Size of simulation box. If simname is in SimInfo, units are cMpc/h. Otherwise, manual input.</p>
+              </div>
+            </li>
+            <li>
+              <b><code>L_0p5</code></b>
+                  (<code>int or float, default=None</code>)
+              –
+              <div class="doc-md-description">
+                <p>Half of the boxsize.</p>
+              </div>
+            </li>
+            <li>
+              <b><code>h</code></b>
+                  (<code>float, default=None</code>)
+              –
+              <div class="doc-md-description">
+                <p>Value of cosmological h parameter, for easy access to convert units.</p>
+              </div>
+            </li>
+            <li>
+              <b><code>N_files</code></b>
+                  (<code>int, default=None</code>)
+              –
+              <div class="doc-md-description">
+                <p>Number of files of snapshot or subhalo data. Used in ReadData class.</p>
+              </div>
+            </li>
+            <li>
+              <b><code>fof_folder</code></b>
+                  (<code>str, default=None</code>)
+              –
+              <div class="doc-md-description">
+                <p>Name of folder where fof files are saved (only available for TNG).</p>
+              </div>
+            </li>
+            <li>
+              <b><code>snap_folder</code></b>
+                  (<code>str, default=None</code>)
+              –
+              <div class="doc-md-description">
+                <p>Name of folder where snapshot files are saved.</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<p><span class="doc-section-title">Methods:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+            <tr class="doc-section-item">
+              <td><code><a class="autorefs autorefs-internal" title="get_specs() (measureia.SimInfo.get_specs)" href="#measureia.SimInfo.get_specs">get_specs</a></code></td>
+              <td>
+                <div class="doc-md-description">
+                  <p>Obtains the boxsize, L_0p5 and h parameters that are stored.</p>
+                </div>
+              </td>
+            </tr>
+            <tr class="doc-section-item">
+              <td><code><a class="autorefs autorefs-internal" title="get_file_info() (measureia.SimInfo.get_file_info)" href="#measureia.SimInfo.get_file_info">get_file_info</a></code></td>
+              <td>
+                <div class="doc-md-description">
+                  <p>Creates N_files, fof_folder and snap_folder attributed needed by ReadData class.</p>
+                </div>
+              </td>
+            </tr>
+      </tbody>
+    </table>
+
+
+
+
+
+
+
+              <details class="quote">
+                <summary>Source code in <code>src/measureia/Sim_info.py</code></summary>
+                <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">  1</span>
+<span class="normal">  2</span>
+<span class="normal">  3</span>
+<span class="normal">  4</span>
+<span class="normal">  5</span>
+<span class="normal">  6</span>
+<span class="normal">  7</span>
+<span class="normal">  8</span>
+<span class="normal">  9</span>
+<span class="normal"> 10</span>
+<span class="normal"> 11</span>
+<span class="normal"> 12</span>
+<span class="normal"> 13</span>
+<span class="normal"> 14</span>
+<span class="normal"> 15</span>
+<span class="normal"> 16</span>
+<span class="normal"> 17</span>
+<span class="normal"> 18</span>
+<span class="normal"> 19</span>
+<span class="normal"> 20</span>
+<span class="normal"> 21</span>
+<span class="normal"> 22</span>
+<span class="normal"> 23</span>
+<span class="normal"> 24</span>
+<span class="normal"> 25</span>
+<span class="normal"> 26</span>
+<span class="normal"> 27</span>
+<span class="normal"> 28</span>
+<span class="normal"> 29</span>
+<span class="normal"> 30</span>
+<span class="normal"> 31</span>
+<span class="normal"> 32</span>
+<span class="normal"> 33</span>
+<span class="normal"> 34</span>
+<span class="normal"> 35</span>
+<span class="normal"> 36</span>
+<span class="normal"> 37</span>
+<span class="normal"> 38</span>
+<span class="normal"> 39</span>
+<span class="normal"> 40</span>
+<span class="normal"> 41</span>
+<span class="normal"> 42</span>
+<span class="normal"> 43</span>
+<span class="normal"> 44</span>
+<span class="normal"> 45</span>
+<span class="normal"> 46</span>
+<span class="normal"> 47</span>
+<span class="normal"> 48</span>
+<span class="normal"> 49</span>
+<span class="normal"> 50</span>
+<span class="normal"> 51</span>
+<span class="normal"> 52</span>
+<span class="normal"> 53</span>
+<span class="normal"> 54</span>
+<span class="normal"> 55</span>
+<span class="normal"> 56</span>
+<span class="normal"> 57</span>
+<span class="normal"> 58</span>
+<span class="normal"> 59</span>
+<span class="normal"> 60</span>
+<span class="normal"> 61</span>
+<span class="normal"> 62</span>
+<span class="normal"> 63</span>
+<span class="normal"> 64</span>
+<span class="normal"> 65</span>
+<span class="normal"> 66</span>
+<span class="normal"> 67</span>
+<span class="normal"> 68</span>
+<span class="normal"> 69</span>
+<span class="normal"> 70</span>
+<span class="normal"> 71</span>
+<span class="normal"> 72</span>
+<span class="normal"> 73</span>
+<span class="normal"> 74</span>
+<span class="normal"> 75</span>
+<span class="normal"> 76</span>
+<span class="normal"> 77</span>
+<span class="normal"> 78</span>
+<span class="normal"> 79</span>
+<span class="normal"> 80</span>
+<span class="normal"> 81</span>
+<span class="normal"> 82</span>
+<span class="normal"> 83</span>
+<span class="normal"> 84</span>
+<span class="normal"> 85</span>
+<span class="normal"> 86</span>
+<span class="normal"> 87</span>
+<span class="normal"> 88</span>
+<span class="normal"> 89</span>
+<span class="normal"> 90</span>
+<span class="normal"> 91</span>
+<span class="normal"> 92</span>
+<span class="normal"> 93</span>
+<span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span>
+<span class="normal">169</span>
+<span class="normal">170</span>
+<span class="normal">171</span>
+<span class="normal">172</span>
+<span class="normal">173</span>
+<span class="normal">174</span>
+<span class="normal">175</span>
+<span class="normal">176</span>
+<span class="normal">177</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SimInfo</span><span class="p">:</span>
+<span class="w">	</span><span class="sd">"""Class that stores simulation information in an object to be inherited by other classes.</span>
+<span class="sd">		Simulation information is hard coded and therefore uses are limited. However, can easily be expanded.</span>
+<span class="sd">		Currently, these simulations are available: [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1,</span>
+<span class="sd">		FLAMINGO_L2p8, COLIBRE_L400, COLIBRE_L200].</span>
+
+<span class="sd">	Attributes</span>
+<span class="sd">	----------</span>
+<span class="sd">	simname : str or NoneType</span>
+<span class="sd">		Identifier of the simulation, allowing for correct information to be obtained.</span>
+<span class="sd">	snapshot : int or str or NoneType</span>
+<span class="sd">		Number of the snapshot.</span>
+<span class="sd">	snap_group : str</span>
+<span class="sd">		Name of group in output file. Equal to 'Snapshot_[snapshot]' if snapshot is given, otherwise emtpy string.</span>
+<span class="sd">	boxsize :  int or float or NoneType, default=None</span>
+<span class="sd">		Size of simulation box. If simname is in SimInfo, units are cMpc/h. Otherwise, manual input.</span>
+<span class="sd">	L_0p5 : int or float, default=None</span>
+<span class="sd">		Half of the boxsize.</span>
+<span class="sd">	h : float, default=None</span>
+<span class="sd">		Value of cosmological h parameter, for easy access to convert units.</span>
+<span class="sd">	N_files : int, default=None</span>
+<span class="sd">		Number of files of snapshot or subhalo data. Used in ReadData class.</span>
+<span class="sd">	fof_folder : str, default=None</span>
+<span class="sd">		Name of folder where fof files are saved (only available for TNG).</span>
+<span class="sd">	snap_folder : str, default=None</span>
+<span class="sd">		Name of folder where snapshot files are saved.</span>
+
+<span class="sd">	Methods</span>
+<span class="sd">	-------</span>
+<span class="sd">	get_specs()</span>
+<span class="sd">		Obtains the boxsize, L_0p5 and h parameters that are stored.</span>
+<span class="sd">	get_file_info()</span>
+<span class="sd">		Creates N_files, fof_folder and snap_folder attributed needed by ReadData class.</span>
+
+<span class="sd">	"""</span>
+
+	<span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sim_name</span><span class="p">,</span> <span class="n">snapshot</span><span class="p">,</span> <span class="n">boxsize</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">h</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">file_info</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">		</span><span class="sd">"""</span>
+<span class="sd">		The __init__ method of SimInfo class.</span>
+<span class="sd">		Creates all attributes and obtains information that is hardcoded in the class.</span>
+
+<span class="sd">		Parameters</span>
+<span class="sd">		----------</span>
+<span class="sd">		sim_name : str or NoneType</span>
+<span class="sd">			Identifier of the simulation, allowing for correct information to be obtained.</span>
+<span class="sd">			Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, FLAMINGO_L2p8, COLIBRE_L400,</span>
+<span class="sd">			COLIBRE_L200].</span>
+<span class="sd">			If None, no information will be returned that is not already given as input.</span>
+<span class="sd">		snapshot : int or str or NoneType</span>
+<span class="sd">			Number of the snapshot, which, if given, will ensure that the output file to contains a group</span>
+<span class="sd">			'Snapshot_[snapshot]'. If None, the group is omitted from the output file structure. Default is None.</span>
+<span class="sd">		boxsize : int or float, default=None</span>
+<span class="sd">			Size of simulation box. Use if your simulation information is not provided by SimInfo.</span>
+<span class="sd">			Make sure that the boxsize is in the same units as your position coordinates.</span>
+<span class="sd">		h : float, default=None</span>
+<span class="sd">			Value of cosmological h parameter, for easy access to convert units.</span>
+<span class="sd">		file_info : bool, default=False</span>
+<span class="sd">			If True, calls get_file_info method</span>
+
+<span class="sd">		"""</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">simname</span> <span class="o">=</span> <span class="n">sim_name</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">N_files</span> <span class="o">=</span> <span class="kc">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">fof_folder</span> <span class="o">=</span> <span class="kc">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">snap_folder</span> <span class="o">=</span> <span class="kc">None</span>
+		<span class="k">if</span> <span class="n">snapshot</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span> <span class="o">=</span> <span class="kc">None</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">snap_group</span> <span class="o">=</span> <span class="s2">""</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">snapshot</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">snap_group</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"Snapshot_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="si">}</span><span class="s2">/"</span>
+		<span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">sim_name</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">get_specs</span><span class="p">()</span>
+			<span class="k">if</span> <span class="n">file_info</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">get_file_info</span><span class="p">()</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">=</span> <span class="n">boxsize</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">h</span> <span class="o">=</span> <span class="n">h</span>
+			<span class="k">if</span> <span class="n">boxsize</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">L_0p5</span> <span class="o">=</span> <span class="kc">None</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">L_0p5</span> <span class="o">=</span> <span class="n">boxsize</span> <span class="o">/</span> <span class="mf">2.</span>
+		<span class="k">return</span>
+
+	<span class="k">def</span><span class="w"> </span><span class="nf">get_specs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">		</span><span class="sd">"""Obtains the boxsize, L_0p5 and h parameters that are stored for [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN,</span>
+<span class="sd">		FLAMINGO_L1, FLAMINGO_L2p8, COLIBRE_L400, COLIBRE_L200].</span>
+
+<span class="sd">		Raises</span>
+<span class="sd">		------</span>
+<span class="sd">		KeyError</span>
+<span class="sd">			If unknown simname is given.</span>
+
+<span class="sd">		"""</span>
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span> <span class="o">==</span> <span class="s2">"TNG100"</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">=</span> <span class="mf">75.0</span>  <span class="c1"># cMpc/h</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">L_0p5</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">/</span> <span class="mf">2.0</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">h</span> <span class="o">=</span> <span class="mf">0.6774</span>
+		<span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span> <span class="o">==</span> <span class="s2">"TNG100_2"</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">=</span> <span class="mf">75.0</span>  <span class="c1"># cMpc/h</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">L_0p5</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">/</span> <span class="mf">2.0</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">h</span> <span class="o">=</span> <span class="mf">0.6774</span>
+		<span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span> <span class="o">==</span> <span class="s2">"TNG300"</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">=</span> <span class="mf">205.0</span>  <span class="c1"># cMpc/h</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">L_0p5</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">/</span> <span class="mf">2.0</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">h</span> <span class="o">=</span> <span class="mf">0.6774</span>
+		<span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span> <span class="o">==</span> <span class="s2">"EAGLE"</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">=</span> <span class="mf">100.0</span> <span class="o">*</span> <span class="mf">0.6777</span>  <span class="c1"># cMpc/h</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">L_0p5</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">/</span> <span class="mf">2.0</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">h</span> <span class="o">=</span> <span class="mf">0.6777</span>
+		<span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span> <span class="o">==</span> <span class="s2">"HorizonAGN"</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">=</span> <span class="mf">100.0</span>  <span class="c1"># cMpc/h</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">L_0p5</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">/</span> <span class="mf">2.0</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">h</span> <span class="o">=</span> <span class="mf">0.704</span>
+		<span class="k">elif</span> <span class="s2">"FLAMINGO"</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span><span class="p">:</span>
+			<span class="k">if</span> <span class="s2">"L1"</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">=</span> <span class="mf">1000.0</span> <span class="o">*</span> <span class="mf">0.681</span>  <span class="c1"># cMpc/h</span>
+			<span class="k">elif</span> <span class="s2">"L2p8"</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">=</span> <span class="mf">2800.0</span> <span class="o">*</span> <span class="mf">0.681</span>  <span class="c1"># cMpc/h</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s2">"Add an L1 or L2p8 suffix to your simname to specify which boxsize is used"</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">L_0p5</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">/</span> <span class="mf">2.0</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">h</span> <span class="o">=</span> <span class="mf">0.681</span>
+		<span class="k">elif</span> <span class="s2">"COLIBRE"</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span><span class="p">:</span>
+			<span class="k">if</span> <span class="s2">"L4"</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">=</span> <span class="mf">400.0</span> <span class="o">*</span> <span class="mf">0.681</span>  <span class="c1"># cMpc/h</span>
+			<span class="k">elif</span> <span class="s2">"L2"</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span><span class="p">:</span>
+				<span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">=</span> <span class="mf">200.0</span> <span class="o">*</span> <span class="mf">0.681</span>  <span class="c1"># cMpc/h</span>
+			<span class="k">else</span><span class="p">:</span>
+				<span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s2">"Add an L4 or L2 suffix to your simname to specify which boxsize is used"</span><span class="p">)</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">L_0p5</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">/</span> <span class="mf">2.0</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">h</span> <span class="o">=</span> <span class="mf">0.681</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+				<span class="s2">"Simulation name not recognised. Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, "</span>
+				<span class="s2">"FLAMINGO_L2p8, COLIBRE_L400, COLIBRE_L200]."</span><span class="p">)</span>
+		<span class="k">return</span>
+
+	<span class="k">def</span><span class="w"> </span><span class="nf">get_file_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">		</span><span class="sd">"""Creates N_files, fof_folder and snap_folder attributed needed by ReadData class.</span>
+<span class="sd">		"""</span>
+
+		<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span> <span class="o">==</span> <span class="s2">"TNG100"</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">fof_folder</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"/fof_subhalo_tab_0</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="si">}</span><span class="s2">/fof_subhalo_tab_0</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="si">}</span><span class="s2">"</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">snap_folder</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"/snap_0</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="si">}</span><span class="s2">/snap_0</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="si">}</span><span class="s2">"</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">N_files</span> <span class="o">=</span> <span class="mi">448</span>
+		<span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span> <span class="o">==</span> <span class="s2">"TNG100_2"</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">fof_folder</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"/fof_subhalo_tab_0</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="si">}</span><span class="s2">/fof_subhalo_tab_0</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="si">}</span><span class="s2">"</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">snap_folder</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"/snap_0</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="si">}</span><span class="s2">/snap_0</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="si">}</span><span class="s2">"</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">N_files</span> <span class="o">=</span> <span class="mi">56</span>
+		<span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span> <span class="o">==</span> <span class="s2">"TNG300"</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">fof_folder</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"/fof_subhalo_tab_0</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="si">}</span><span class="s2">/fof_subhalo_tab_0</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="si">}</span><span class="s2">"</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">snap_folder</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"/snap_0</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="si">}</span><span class="s2">/snap_0</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="si">}</span><span class="s2">"</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">N_files</span> <span class="o">=</span> <span class="mi">600</span>
+		<span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span> <span class="o">==</span> <span class="s2">"EAGLE"</span><span class="p">:</span>
+			<span class="n">znames</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"28"</span><span class="p">:</span> <span class="s2">"z000p000"</span><span class="p">,</span> <span class="s2">"17"</span><span class="p">:</span> <span class="s2">"z001p487"</span><span class="p">,</span> <span class="s2">"19"</span><span class="p">:</span> <span class="s2">"z001p004"</span><span class="p">,</span> <span class="s2">"21"</span><span class="p">:</span> <span class="s2">"z000p736"</span><span class="p">,</span> <span class="s2">"23"</span><span class="p">:</span> <span class="s2">"z000p503"</span><span class="p">,</span>
+					  <span class="s2">"25"</span><span class="p">:</span> <span class="s2">"z000p271"</span><span class="p">,</span> <span class="kc">None</span><span class="p">:</span> <span class="kc">None</span><span class="p">}</span>
+			<span class="n">zname</span> <span class="o">=</span> <span class="n">znames</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="p">]</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">snap_folder</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"/snap_0</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="si">}</span><span class="s2">/RefL0100N1504/snapshot_0</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">zname</span><span class="si">}</span><span class="s2">/snap_0</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">zname</span><span class="si">}</span><span class="s2">"</span>  <span class="c1"># update for different z?</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">fof_folder</span> <span class="o">=</span> <span class="kc">None</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">N_files</span> <span class="o">=</span> <span class="mi">256</span>
+		<span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span> <span class="o">==</span> <span class="s2">"HorizonAGN"</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">fof_folder</span> <span class="o">=</span> <span class="kc">None</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">snap_folder</span> <span class="o">=</span> <span class="kc">None</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">N_files</span> <span class="o">=</span> <span class="mf">1.</span>
+		<span class="k">elif</span> <span class="s2">"FLAMINGO"</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">fof_folder</span> <span class="o">=</span> <span class="kc">None</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">snap_folder</span> <span class="o">=</span> <span class="kc">None</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">N_files</span> <span class="o">=</span> <span class="mi">1</span>
+		<span class="k">elif</span> <span class="s2">"COLIBRE"</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">fof_folder</span> <span class="o">=</span> <span class="kc">None</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">snap_folder</span> <span class="o">=</span> <span class="kc">None</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">N_files</span> <span class="o">=</span> <span class="mi">1</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+				<span class="s2">"Simulation name not recognised. Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, "</span>
+				<span class="s2">"FLAMINGO_L1, FLAMINGO_L2p8, COLIBRE_L400, COLIBRE_L200]."</span><span class="p">)</span>
+		<span class="k">return</span>
+</code></pre></div></td></tr></table></div>
+              </details>
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="measureia.SimInfo.__init__" class="doc doc-heading">
+            <code class="highlight language-python"><span class="fm">__init__</span><span class="p">(</span><span class="n">sim_name</span><span class="p">,</span> <span class="n">snapshot</span><span class="p">,</span> <span class="n">boxsize</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">h</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">file_info</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>The <strong>init</strong> method of SimInfo class.
+Creates all attributes and obtains information that is hardcoded in the class.</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Parameters:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+              <b><code>sim_name</code></b>
+                  (<code><span title="str">str</span> or <span title="NoneType">NoneType</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>Identifier of the simulation, allowing for correct information to be obtained.
+Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, FLAMINGO_L2p8, COLIBRE_L400,
+COLIBRE_L200].
+If None, no information will be returned that is not already given as input.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>snapshot</code></b>
+                  (<code><span title="int">int</span> or <span title="str">str</span> or <span title="NoneType">NoneType</span></code>)
+              –
+              <div class="doc-md-description">
+                <pre><code>Number of the snapshot, which, if given, will ensure that the output file to contains a group
+'Snapshot_[snapshot]'. If None, the group is omitted from the output file structure. Default is None.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>boxsize</code></b>
+                  (<code><span title="int">int</span> or <span title="float">float</span></code>, default:
+                      <code>None</code>
+)
+              –
+              <div class="doc-md-description">
+                <pre><code>Size of simulation box. Use if your simulation information is not provided by SimInfo.
+Make sure that the boxsize is in the same units as your position coordinates.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>h</code></b>
+                  (<code><span title="float">float</span></code>, default:
+                      <code>None</code>
+)
+              –
+              <div class="doc-md-description">
+                <pre><code>Value of cosmological h parameter, for easy access to convert units.
+</code></pre>
+              </div>
+            </li>
+            <li>
+              <b><code>file_info</code></b>
+                  (<code><span title="bool">bool</span></code>, default:
+                      <code>False</code>
+)
+              –
+              <div class="doc-md-description">
+                <pre><code>If True, calls get_file_info method
+</code></pre>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/measureia/Sim_info.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span>
+<span class="normal">55</span>
+<span class="normal">56</span>
+<span class="normal">57</span>
+<span class="normal">58</span>
+<span class="normal">59</span>
+<span class="normal">60</span>
+<span class="normal">61</span>
+<span class="normal">62</span>
+<span class="normal">63</span>
+<span class="normal">64</span>
+<span class="normal">65</span>
+<span class="normal">66</span>
+<span class="normal">67</span>
+<span class="normal">68</span>
+<span class="normal">69</span>
+<span class="normal">70</span>
+<span class="normal">71</span>
+<span class="normal">72</span>
+<span class="normal">73</span>
+<span class="normal">74</span>
+<span class="normal">75</span>
+<span class="normal">76</span>
+<span class="normal">77</span>
+<span class="normal">78</span>
+<span class="normal">79</span>
+<span class="normal">80</span>
+<span class="normal">81</span>
+<span class="normal">82</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sim_name</span><span class="p">,</span> <span class="n">snapshot</span><span class="p">,</span> <span class="n">boxsize</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">h</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">file_info</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">	</span><span class="sd">"""</span>
+<span class="sd">	The __init__ method of SimInfo class.</span>
+<span class="sd">	Creates all attributes and obtains information that is hardcoded in the class.</span>
+
+<span class="sd">	Parameters</span>
+<span class="sd">	----------</span>
+<span class="sd">	sim_name : str or NoneType</span>
+<span class="sd">		Identifier of the simulation, allowing for correct information to be obtained.</span>
+<span class="sd">		Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, FLAMINGO_L2p8, COLIBRE_L400,</span>
+<span class="sd">		COLIBRE_L200].</span>
+<span class="sd">		If None, no information will be returned that is not already given as input.</span>
+<span class="sd">	snapshot : int or str or NoneType</span>
+<span class="sd">		Number of the snapshot, which, if given, will ensure that the output file to contains a group</span>
+<span class="sd">		'Snapshot_[snapshot]'. If None, the group is omitted from the output file structure. Default is None.</span>
+<span class="sd">	boxsize : int or float, default=None</span>
+<span class="sd">		Size of simulation box. Use if your simulation information is not provided by SimInfo.</span>
+<span class="sd">		Make sure that the boxsize is in the same units as your position coordinates.</span>
+<span class="sd">	h : float, default=None</span>
+<span class="sd">		Value of cosmological h parameter, for easy access to convert units.</span>
+<span class="sd">	file_info : bool, default=False</span>
+<span class="sd">		If True, calls get_file_info method</span>
+
+<span class="sd">	"""</span>
+	<span class="bp">self</span><span class="o">.</span><span class="n">simname</span> <span class="o">=</span> <span class="n">sim_name</span>
+	<span class="bp">self</span><span class="o">.</span><span class="n">N_files</span> <span class="o">=</span> <span class="kc">None</span>
+	<span class="bp">self</span><span class="o">.</span><span class="n">fof_folder</span> <span class="o">=</span> <span class="kc">None</span>
+	<span class="bp">self</span><span class="o">.</span><span class="n">snap_folder</span> <span class="o">=</span> <span class="kc">None</span>
+	<span class="k">if</span> <span class="n">snapshot</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span> <span class="o">=</span> <span class="kc">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">snap_group</span> <span class="o">=</span> <span class="s2">""</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">snapshot</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">snap_group</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"Snapshot_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="si">}</span><span class="s2">/"</span>
+	<span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">sim_name</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span><span class="p">:</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">get_specs</span><span class="p">()</span>
+		<span class="k">if</span> <span class="n">file_info</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">get_file_info</span><span class="p">()</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">=</span> <span class="n">boxsize</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">h</span> <span class="o">=</span> <span class="n">h</span>
+		<span class="k">if</span> <span class="n">boxsize</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">L_0p5</span> <span class="o">=</span> <span class="kc">None</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">L_0p5</span> <span class="o">=</span> <span class="n">boxsize</span> <span class="o">/</span> <span class="mf">2.</span>
+	<span class="k">return</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="measureia.SimInfo.get_specs" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">get_specs</span><span class="p">()</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Obtains the boxsize, L_0p5 and h parameters that are stored for [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN,
+FLAMINGO_L1, FLAMINGO_L2p8, COLIBRE_L400, COLIBRE_L200].</p>
+
+
+<table class="field-list">
+  <colgroup>
+    <col class="field-name" />
+    <col class="field-body" />
+  </colgroup>
+  <tbody valign="top">
+    <tr class="field">
+      <th class="field-name">Raises:</th>
+      <td class="field-body">
+        <ul class="first simple">
+            <li>
+                  <code><span title="KeyError">KeyError</span></code>
+              –
+              <div class="doc-md-description">
+                <p>If unknown simname is given.</p>
+              </div>
+            </li>
+        </ul>
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/measureia/Sim_info.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 84</span>
+<span class="normal"> 85</span>
+<span class="normal"> 86</span>
+<span class="normal"> 87</span>
+<span class="normal"> 88</span>
+<span class="normal"> 89</span>
+<span class="normal"> 90</span>
+<span class="normal"> 91</span>
+<span class="normal"> 92</span>
+<span class="normal"> 93</span>
+<span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_specs</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">	</span><span class="sd">"""Obtains the boxsize, L_0p5 and h parameters that are stored for [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN,</span>
+<span class="sd">	FLAMINGO_L1, FLAMINGO_L2p8, COLIBRE_L400, COLIBRE_L200].</span>
+
+<span class="sd">	Raises</span>
+<span class="sd">	------</span>
+<span class="sd">	KeyError</span>
+<span class="sd">		If unknown simname is given.</span>
+
+<span class="sd">	"""</span>
+	<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span> <span class="o">==</span> <span class="s2">"TNG100"</span><span class="p">:</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">=</span> <span class="mf">75.0</span>  <span class="c1"># cMpc/h</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">L_0p5</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">/</span> <span class="mf">2.0</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">h</span> <span class="o">=</span> <span class="mf">0.6774</span>
+	<span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span> <span class="o">==</span> <span class="s2">"TNG100_2"</span><span class="p">:</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">=</span> <span class="mf">75.0</span>  <span class="c1"># cMpc/h</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">L_0p5</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">/</span> <span class="mf">2.0</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">h</span> <span class="o">=</span> <span class="mf">0.6774</span>
+	<span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span> <span class="o">==</span> <span class="s2">"TNG300"</span><span class="p">:</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">=</span> <span class="mf">205.0</span>  <span class="c1"># cMpc/h</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">L_0p5</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">/</span> <span class="mf">2.0</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">h</span> <span class="o">=</span> <span class="mf">0.6774</span>
+	<span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span> <span class="o">==</span> <span class="s2">"EAGLE"</span><span class="p">:</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">=</span> <span class="mf">100.0</span> <span class="o">*</span> <span class="mf">0.6777</span>  <span class="c1"># cMpc/h</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">L_0p5</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">/</span> <span class="mf">2.0</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">h</span> <span class="o">=</span> <span class="mf">0.6777</span>
+	<span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span> <span class="o">==</span> <span class="s2">"HorizonAGN"</span><span class="p">:</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">=</span> <span class="mf">100.0</span>  <span class="c1"># cMpc/h</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">L_0p5</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">/</span> <span class="mf">2.0</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">h</span> <span class="o">=</span> <span class="mf">0.704</span>
+	<span class="k">elif</span> <span class="s2">"FLAMINGO"</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span><span class="p">:</span>
+		<span class="k">if</span> <span class="s2">"L1"</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">=</span> <span class="mf">1000.0</span> <span class="o">*</span> <span class="mf">0.681</span>  <span class="c1"># cMpc/h</span>
+		<span class="k">elif</span> <span class="s2">"L2p8"</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">=</span> <span class="mf">2800.0</span> <span class="o">*</span> <span class="mf">0.681</span>  <span class="c1"># cMpc/h</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s2">"Add an L1 or L2p8 suffix to your simname to specify which boxsize is used"</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">L_0p5</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">/</span> <span class="mf">2.0</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">h</span> <span class="o">=</span> <span class="mf">0.681</span>
+	<span class="k">elif</span> <span class="s2">"COLIBRE"</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span><span class="p">:</span>
+		<span class="k">if</span> <span class="s2">"L4"</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">=</span> <span class="mf">400.0</span> <span class="o">*</span> <span class="mf">0.681</span>  <span class="c1"># cMpc/h</span>
+		<span class="k">elif</span> <span class="s2">"L2"</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span><span class="p">:</span>
+			<span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">=</span> <span class="mf">200.0</span> <span class="o">*</span> <span class="mf">0.681</span>  <span class="c1"># cMpc/h</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s2">"Add an L4 or L2 suffix to your simname to specify which boxsize is used"</span><span class="p">)</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">L_0p5</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">boxsize</span> <span class="o">/</span> <span class="mf">2.0</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">h</span> <span class="o">=</span> <span class="mf">0.681</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+			<span class="s2">"Simulation name not recognised. Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, FLAMINGO_L1, "</span>
+			<span class="s2">"FLAMINGO_L2p8, COLIBRE_L400, COLIBRE_L200]."</span><span class="p">)</span>
+	<span class="k">return</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="measureia.SimInfo.get_file_info" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">get_file_info</span><span class="p">()</span></code>
+
+</h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Creates N_files, fof_folder and snap_folder attributed needed by ReadData class.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>src/measureia/Sim_info.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span>
+<span class="normal">169</span>
+<span class="normal">170</span>
+<span class="normal">171</span>
+<span class="normal">172</span>
+<span class="normal">173</span>
+<span class="normal">174</span>
+<span class="normal">175</span>
+<span class="normal">176</span>
+<span class="normal">177</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_file_info</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">	</span><span class="sd">"""Creates N_files, fof_folder and snap_folder attributed needed by ReadData class.</span>
+<span class="sd">	"""</span>
+
+	<span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span> <span class="o">==</span> <span class="s2">"TNG100"</span><span class="p">:</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">fof_folder</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"/fof_subhalo_tab_0</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="si">}</span><span class="s2">/fof_subhalo_tab_0</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="si">}</span><span class="s2">"</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">snap_folder</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"/snap_0</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="si">}</span><span class="s2">/snap_0</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="si">}</span><span class="s2">"</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">N_files</span> <span class="o">=</span> <span class="mi">448</span>
+	<span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span> <span class="o">==</span> <span class="s2">"TNG100_2"</span><span class="p">:</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">fof_folder</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"/fof_subhalo_tab_0</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="si">}</span><span class="s2">/fof_subhalo_tab_0</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="si">}</span><span class="s2">"</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">snap_folder</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"/snap_0</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="si">}</span><span class="s2">/snap_0</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="si">}</span><span class="s2">"</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">N_files</span> <span class="o">=</span> <span class="mi">56</span>
+	<span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span> <span class="o">==</span> <span class="s2">"TNG300"</span><span class="p">:</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">fof_folder</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"/fof_subhalo_tab_0</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="si">}</span><span class="s2">/fof_subhalo_tab_0</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="si">}</span><span class="s2">"</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">snap_folder</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"/snap_0</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="si">}</span><span class="s2">/snap_0</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="si">}</span><span class="s2">"</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">N_files</span> <span class="o">=</span> <span class="mi">600</span>
+	<span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span> <span class="o">==</span> <span class="s2">"EAGLE"</span><span class="p">:</span>
+		<span class="n">znames</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"28"</span><span class="p">:</span> <span class="s2">"z000p000"</span><span class="p">,</span> <span class="s2">"17"</span><span class="p">:</span> <span class="s2">"z001p487"</span><span class="p">,</span> <span class="s2">"19"</span><span class="p">:</span> <span class="s2">"z001p004"</span><span class="p">,</span> <span class="s2">"21"</span><span class="p">:</span> <span class="s2">"z000p736"</span><span class="p">,</span> <span class="s2">"23"</span><span class="p">:</span> <span class="s2">"z000p503"</span><span class="p">,</span>
+				  <span class="s2">"25"</span><span class="p">:</span> <span class="s2">"z000p271"</span><span class="p">,</span> <span class="kc">None</span><span class="p">:</span> <span class="kc">None</span><span class="p">}</span>
+		<span class="n">zname</span> <span class="o">=</span> <span class="n">znames</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="p">]</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">snap_folder</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"/snap_0</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="si">}</span><span class="s2">/RefL0100N1504/snapshot_0</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">zname</span><span class="si">}</span><span class="s2">/snap_0</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">snapshot</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">zname</span><span class="si">}</span><span class="s2">"</span>  <span class="c1"># update for different z?</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">fof_folder</span> <span class="o">=</span> <span class="kc">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">N_files</span> <span class="o">=</span> <span class="mi">256</span>
+	<span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span> <span class="o">==</span> <span class="s2">"HorizonAGN"</span><span class="p">:</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">fof_folder</span> <span class="o">=</span> <span class="kc">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">snap_folder</span> <span class="o">=</span> <span class="kc">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">N_files</span> <span class="o">=</span> <span class="mf">1.</span>
+	<span class="k">elif</span> <span class="s2">"FLAMINGO"</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span><span class="p">:</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">fof_folder</span> <span class="o">=</span> <span class="kc">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">snap_folder</span> <span class="o">=</span> <span class="kc">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">N_files</span> <span class="o">=</span> <span class="mi">1</span>
+	<span class="k">elif</span> <span class="s2">"COLIBRE"</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">simname</span><span class="p">:</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">fof_folder</span> <span class="o">=</span> <span class="kc">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">snap_folder</span> <span class="o">=</span> <span class="kc">None</span>
+		<span class="bp">self</span><span class="o">.</span><span class="n">N_files</span> <span class="o">=</span> <span class="mi">1</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+			<span class="s2">"Simulation name not recognised. Choose from [TNG100, TNG100_2, TNG300, EAGLE, HorizonAGN, "</span>
+			<span class="s2">"FLAMINGO_L1, FLAMINGO_L2p8, COLIBRE_L400, COLIBRE_L200]."</span><span class="p">)</span>
+	<span class="k">return</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+
+</div>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../pair_kernel/" class="btn btn-neutral float-left" title="pair_kernel"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../ReadData/" class="btn btn-neutral float-right" title="ReadData">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../pair_kernel/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../ReadData/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "../..";</script>
+    <script src="../../js/theme_extra.js"></script>
+    <script src="../../js/theme.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      <script src="../../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
