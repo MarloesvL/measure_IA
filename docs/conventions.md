@@ -13,7 +13,9 @@ $$\mathbf{s} = \mathbf{x}_\mathrm{shape} - \mathbf{x}_\mathrm{position}\,,$$
 i.e. pointing *from* the position (density) object *to* the shape object. This ordering is used consistently
 across all backends (box and lightcone, brute-force and tree). The line-of-sight separation $\Pi$ is the
 component of $\mathbf{s}$ along the line of sight and is binned signed over $(-\Pi_\mathrm{max}, +\Pi_\mathrm{max})$;
-the projected separation $r_p$ is the perpendicular component.
+the projected separation $r_p$ is the perpendicular component. In the box the line of sight is a fixed
+coordinate axis; in the lightcone it is defined per pair, as described under
+[Lightcone geometry](#lightcone-geometry).
 
 ## Binning
 
@@ -30,6 +32,86 @@ The bin coordinates written to the output (`*_rp`, `*_pi`, `*_r`, `*_mu_r`) are 
 Separations are in the units of the input coordinates: for a box initialised with the internal `simulation`
 option these are Mpc/$h$; for the lightcone the comoving distances are computed from the redshifts using the
 chosen cosmology and can be converted with the `over_h` argument.
+
+## Lightcone geometry
+
+The lightcone is measured on the curved sky in full 3D. MeasureIA makes **no flat-sky or small-angle
+approximation**: there is no projection onto a tangent plane, and separations are never built from an
+angle times a distance.
+
+### Positions
+
+Each object's `RA`, `DEC` and `Redshift` become a 3D comoving position vector
+
+$$\mathbf{x} = \chi(z)\,\hat{\mathbf{n}}(\mathrm{RA}, \mathrm{DEC})\,,\qquad
+\hat{\mathbf{n}} = (\cos\delta\cos\alpha,\ \cos\delta\sin\alpha,\ \sin\delta)\,,$$
+
+where $\chi(z)$ is the comoving radial distance computed with
+[CCL](https://ccl.readthedocs.io/) for the `cosmology` passed to the measurement method. Without one, a
+default flat $\Lambda$CDM cosmology is used ($\Omega_c = 0.225$, $\Omega_b = 0.045$, $h = 0.7$,
+$\sigma_8 = 0.8$, $n_s = 1$). Distances are in Mpc, or Mpc/$h$.
+
+The redshift is converted to distance as given. If your redshifts include peculiar velocities
+(observed redshifts), the redshift-space distortions carry through into $\Pi$ and $\mu_r$; if they are
+cosmological redshifts, they do not.
+
+### Line of sight
+
+Each pair gets its own line of sight, the direction to the **comoving midpoint** of the pair:
+
+$$\hat{\mathbf{n}}_\mathrm{LOS} = \frac{\mathbf{x}_\mathrm{position} + \mathbf{x}_\mathrm{shape}}
+{\left|\mathbf{x}_\mathrm{position} + \mathbf{x}_\mathrm{shape}\right|}\,.$$
+
+This is the midpoint of the two 3D positions, *not* the angular bisector
+($\hat{\mathbf{n}}_1 + \hat{\mathbf{n}}_2$), and *not* the direction to either galaxy (the endpoint
+line of sight). The three agree when the pair's angular separation is small and differ in the wide-angle
+regime, so keep this in mind when comparing against a code that uses another choice.
+
+### Separations
+
+With $\mathbf{s} = \mathbf{x}_\mathrm{shape} - \mathbf{x}_\mathrm{position}$ as [above](#separation-vector),
+
+$$\Pi = \mathbf{s}\cdot\hat{\mathbf{n}}_\mathrm{LOS}\,,\qquad
+r_p = \sqrt{|\mathbf{s}|^2 - \Pi^2}\,,\qquad
+\mathbf{s}_\perp = \mathbf{s} - \Pi\,\hat{\mathbf{n}}_\mathrm{LOS}\,.$$
+
+- $\Pi$ is signed: it is positive when the shape object lies farther along the line of sight than the
+  position object. The `pi_max` window is applied to this comoving $\Pi$.
+- $r_p$ is a 3D comoving transverse distance, not an angular separation times a distance (such as
+  $\theta\,\chi$ or TreeCorr's `Rperp`). Pairs near bin edges can therefore fall into different bins in
+  MeasureIA and in an angle-based code; see [Validation](validation.md).
+- For the multipoles, $r = |\mathbf{s}|$ is the full 3D separation and $\mu_r = \Pi / r$, with the same
+  midpoint $\hat{\mathbf{n}}_\mathrm{LOS}$.
+
+### Projection of the shapes
+
+The orientation $\phi$ used to build $(e_+, e_\times)$ is the angle of the projected separation
+$\mathbf{s}_\perp$ in a galaxy's local (east, north) sky basis,
+
+$$\hat{\mathbf{e}}_\mathrm{east} = (-\sin\alpha,\ \cos\alpha,\ 0)\,,\qquad
+\hat{\mathbf{e}}_\mathrm{north} = (-\sin\delta\cos\alpha,\ -\sin\delta\sin\alpha,\ \cos\delta)\,,$$
+
+$$\phi = \operatorname{arctan2}\!\left(\mathbf{s}_\perp\cdot\hat{\mathbf{e}}_\mathrm{north},\
+\mathbf{s}_\perp\cdot\hat{\mathbf{e}}_\mathrm{east}\right).$$
+
+$\mathbf{s}_\perp$ is perpendicular to the *midpoint* line of sight, while each basis is tangent to the
+sphere at *one galaxy*, so the two planes differ slightly for a pair at finite angular separation. Which
+galaxy's basis is used differs between $w_{g+}$ and the shape–shape terms; see
+[Which tangent frame each shape is projected in](#lightcone-measureialightcone) below.
+
+MeasureIA applies no wide-angle correction. The measured statistic is exact for the line of sight
+defined above, with no flat-sky term left to correct. If the model you compare against assumes the
+plane-parallel limit, any wide-angle terms belong in that model, and they should use the same midpoint
+line of sight.
+
+### Comparison with the box
+
+The box uses a single fixed line of sight, the coordinate axis given by `LOS`: the plane-parallel
+(distant-observer) limit. The lightcone reduces to it when the angular extent of the pairs is small, and
+the box ↔ lightcone row of the [Validation](validation.md) table checks that the two agree in that limit.
+
+Lightcone jackknife patches are built on the sphere too: they are clustered by great-circle distance
+(k-means on unit vectors), not on a flat (RA, DEC) plane, so the patches stay compact near the poles.
 
 ## Radial ($+$) and cross ($\times$) shape components
 
