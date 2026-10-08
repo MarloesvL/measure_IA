@@ -104,7 +104,9 @@ The `RA`/`DEC`/`Redshift` keys describe the position (density) sample and the `*
 shape sample, each row corresponding to one object with the same ordering within a sample. `RA` is expected
 in degrees $\in [0, 360]$ and `DEC` in degrees $\in [-90, 90]$. Comoving distances are computed internally
 from the redshifts using the cosmology passed to the measurement method (a default $\Lambda$CDM cosmology is
-used if none is given).
+used if none is given). The measurement is done in full 3D on the curved sky, with a per-pair midpoint line of
+sight; see [Lightcone geometry](conventions.md#lightcone-geometry) for the definitions and the default
+cosmology.
 
 Instead of the axis direction and axis ratio used in the box case, the shapes are provided directly as the
 two ellipticity (or shear) components `e1` and `e2`. See the [Estimator definitions](estimator_definitions.md)
