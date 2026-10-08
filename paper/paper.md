@@ -34,7 +34,8 @@ lensing. Weak lensing infers the matter distribution from the coherent distortio
 background galaxy shapes by intervening mass; intrinsic alignments produce a correlated
 shape pattern that is difficult to separate from this signal, and if ignored they bias the 
 inferred cosmological parameters of current and upcoming surveys [@Krause_2015,@Paopiamsap2024]. 
-Measuring and modelling IA is therefore part of every weak-lensing cosmology analysis [@Li2023,@DES2026,@Wright2025].
+Modelling IA is therefore part of every weak-lensing cosmology analysis [@Li2023,@DES2026,@Wright2025].
+To inform the priors for these analyses, dedicated IA measurements on spectroscopic samples are performed.
 
 `MeasureIA` is a Python package that measures the two-point correlation functions used to
 quantify intrinsic alignments: galaxy clustering, $w_{gg}$; the position–shape correlation,
@@ -77,8 +78,8 @@ null result or a numerical problem. Box and lightcone measurements, moreover, ar
 made with different codes that follow different conventions, which makes a like-for-like
 comparison between simulation and survey awkward.
 
-`MeasureIA` addresses this by providing validated IA estimators for both regimes behind one
-interface, with the conventions fixed, documented and tested. A measurement is a single
+`MeasureIA` addresses this by providing validated IA estimators including jack-knife covariance for both 
+regimes behind one interface, with the conventions fixed, documented and tested. A measurement is a single
 method call on a catalogue, and the result — correlation function and covariance, including their building 
 blocks — is written to a documented HDF5 file. The target audience is anyone measuring
 alignments, in particular in cosmological boxes, on the sky, or in both.
@@ -123,7 +124,7 @@ way, are documented on the validation page of the documentation.
 periodic boundaries and analytic random counts, which are exact and free of shot noise.
 Lightcones are measured in (RA, Dec, redshift), with comoving distances, which factor the universe's
 expansion out of the distance for a given cosmology, from `CCL`
-[@chisari2019], a per-pair line of sight and an explicit random catalogue, which the survey
+[@chisari2019], a per-pair midpoint line of sight and an explicit random catalogue, which the survey
 footprint requires. Neither regime is converted into the other, so neither loses periodicity
 or picks up curvature errors.
 
