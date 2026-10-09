@@ -381,12 +381,12 @@ def lc_measureia_results(tmp_path_factory):
 @requires_lc_reference
 class TestLightconeAgainstTreecorr:
     """Agreement is close but not machine precision: treecorr's Rperp
-    separation definition and great-circle shear projection differ from
-    measureia's midpoint-LOS / (east, north)-frame conventions by curvature
-    terms, so a few pairs migrate bins and w_g+ picks up small frame
-    differences. On this mock: w_g+ agrees to ~1e-5 (relative) in the
-    high-signal bins, w_gg to <=0.5%; the atol term covers the near-zero
-    outer bins."""
+    separation definition differs from measureia's midpoint-LOS one by
+    curvature terms, so a few pairs migrate bins. The shear projection itself
+    is identical (both use each shape's own frame, along the great-circle
+    bearing). On this mock: w_g+ agrees to <~2e-5 (relative) in the
+    high-signal bins and ~1e-9 where no pair migrates, w_gg to <=0.5%; the
+    atol term covers the near-zero outer bins."""
 
     def test_reference_binning_matches(self, lc_measureia_results):
         with h5py.File(_LC_REF, "r") as f:

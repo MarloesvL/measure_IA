@@ -385,8 +385,8 @@ class MeasureMultipolesLightcone(MeasureIABase):
 			north=shared_data[f"north_{self.ID_shm}"][i:i2],
 			e_pos=(shared_data[f"e_pos_{self.ID_shm}"][i:i2]
 				   if f"e_pos_{self.ID_shm}" in shared_data else None),
-			east_shape=shared_data.get(f"east_shape_{self.ID_shm}"),
-			north_shape=shared_data.get(f"north_shape_{self.ID_shm}"),
+			east_shape=shared_data[f"east_shape_{self.ID_shm}"],
+			north_shape=shared_data[f"north_shape_{self.ID_shm}"],
 		)
 		binning = pair_kernel.SkyRMuR(self)
 		grids = pair_kernel.accumulate(sample_set, binning, base=self, shapes=getattr(self, "_batch_shape_mode", True),
@@ -437,8 +437,8 @@ class MeasureMultipolesLightcone(MeasureIABase):
 		e = sample_set.e
 		east = sample_set.east
 		north = sample_set.north
-		# shape-shape only. e_pos is position-aligned (sliced per batch, like east/north);
-		# east_shape/north_shape are shape-aligned and passed whole, like e.
+		# east_shape/north_shape are shape-aligned and passed whole, like e; e_pos
+		# (shape-shape only) is position-aligned and sliced per batch, like east/north.
 		e_pos = sample_set.e_pos
 		east_shape = sample_set.east_shape
 		north_shape = sample_set.north_shape
@@ -475,13 +475,13 @@ class MeasureMultipolesLightcone(MeasureIABase):
 				f"e_{self.ID_shm}": e,
 				f"east_{self.ID_shm}": east,
 				f"north_{self.ID_shm}": north,
+				f"east_shape_{self.ID_shm}": east_shape,
+				f"north_shape_{self.ID_shm}": north_shape,
 				f"weight_{self.ID_shm}": weight,
 				f"weight_shape_{self.ID_shm}": weight_shape,
 			}
 			if e_pos is not None:
 				shared_data[f"e_pos_{self.ID_shm}"] = e_pos
-				shared_data[f"east_shape_{self.ID_shm}"] = east_shape
-				shared_data[f"north_shape_{self.ID_shm}"] = north_shape
 			for k in shared_data.keys():
 				try:
 					old = shared_memory.SharedMemory(name=k)

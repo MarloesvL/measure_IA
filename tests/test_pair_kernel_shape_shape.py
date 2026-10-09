@@ -12,7 +12,8 @@ the kernel requests them yet, so these tests are the only cover they have.
 Sections
 --------
   1. Box geometry: brute-force reference, sample-swap symmetry, degenerate limits
-  2. Lightcone geometry: brute-force reference (each galaxy in its own frame)
+  2. Lightcone geometry: brute-force references (each galaxy in its own frame),
+     for the shape-shape products and for the g+ terms
   3. Jackknife: the delete-one identity for the new grids
   4. Non-interference: shapes=True / shapes=False behave exactly as before
 """
@@ -446,12 +447,11 @@ class TestShapeShapeLightcone:
             np.sum(ss.east_shape * ss.north_shape, axis=1), 0.0, atol=1e-12)
         assert not np.allclose(ss.east_shape[:len(ss.east)], ss.east)
 
-    def test_g_plus_terms_keep_the_partner_frame(self, tmp_path):
-        """shapes='both' must not silently re-project the existing g+ terms.
+    def test_shape_shape_mode_leaves_g_plus_unchanged(self, tmp_path):
+        """shapes='both' must not re-project the g+ terms.
 
-        The g+ path deliberately keeps its convention of projecting the shape
-        galaxy in its *partner's* tangent frame; only the shape-shape products
-        use each galaxy's own frame.
+        Both modes project the shape galaxy in its own tangent frame, so turning
+        on the shape-shape products must leave S+D, SxD and DD bit-identical.
         """
         data = _lc_catalogue()
         obj = _lc_obj(data, tmp_path, "cmp.hdf5")
@@ -469,6 +469,76 @@ class TestShapeShapeLightcone:
         np.testing.assert_array_equal(plain.Splus_D, both.Splus_D)
         np.testing.assert_array_equal(plain.Scross_D, both.Scross_D)
         np.testing.assert_array_equal(plain.DD, both.DD)
+
+
+def _bruteforce_lc_gplus(ss, binning, frame):
+    """O(N^2) reference for S+D / SxD, with phi measured in the shape galaxy's
+    own tangent frame (``frame="own"``) or its position partner's (``"partner"``,
+    the convention up to 0.6.0)."""
+    nr, npi = binning.num_bins_r, binning.num_bins_pi
+    sp = np.zeros((nr, npi)); sx = np.zeros((nr, npi))
+    r_bins, pi_bins = binning.r_bins, binning.pi_bins
+
+    for i in range(len(ss.pos)):
+        L = ss.pos[i] + ss.pos_shape
+        n_LOS = L / np.linalg.norm(L, axis=1)[:, None]
+        sep = ss.pos_shape - ss.pos[i]
+        los = np.sum(sep * n_LOS, axis=1)
+        rp = np.sqrt(np.maximum(np.sum(sep ** 2, axis=1) - los ** 2, 0.0))
+        ok = ((rp >= r_bins[0]) & (rp < r_bins[-1])
+              & (los >= pi_bins[0]) & (los < pi_bins[-1]))
+        if not ok.any():
+            continue
+        s_perp = (sep - los[:, None] * n_LOS)[ok]
+        if frame == "own":
+            east, north = ss.east_shape[ok], ss.north_shape[ok]
+        else:
+            east, north = ss.east[i], ss.north[i]
+        phi = np.arctan2(np.sum(s_perp * north, axis=1), np.sum(s_perp * east, axis=1))
+        c, s2 = np.cos(2 * phi), np.sin(2 * phi)
+        e = ss.e[ok]
+        w = ss.weight[i] * ss.weight_shape[ok]
+        ir = np.digitize(rp[ok], r_bins) - 1
+        ip = np.digitize(los[ok], pi_bins) - 1
+        np.add.at(sp, (ir, ip), w * (e[:, 0] * c - e[:, 1] * s2))
+        np.add.at(sx, (ir, ip), w * (e[:, 0] * s2 + e[:, 1] * c))
+    return sp, sx
+
+
+class TestGPlusLightconeFrame:
+    """The g+ terms project each shape in its *own* tangent frame.
+
+    e1/e2 are defined on the shape galaxy's local (RA, DEC) axes, so phi must be
+    measured there too. Measuring it in the position partner's frame (the
+    convention up to 0.6.0) mixes two bases that differ by the convergence of
+    the meridians, ~ dRA * sin(DEC), which is why the high-declination case is
+    included.
+    """
+
+    @pytest.mark.parametrize("backend", ["tree", "brute"])
+    @pytest.mark.parametrize("dec_shift", [0.0, 60.0])
+    def test_matches_own_frame_bruteforce(self, tmp_path, backend, dec_shift):
+        data = _lc_catalogue()
+        data["DEC"] = data["DEC"] + dec_shift
+        data["DEC_shape_sample"] = data["DEC_shape_sample"] + dec_shift
+        obj = _lc_obj(data, tmp_path, "gp.hdf5")
+        binning = pair_kernel.SkyRpPi(obj)
+        ss = pair_kernel.prepare_lightcone_samples(
+            data, None, shapes=True, cosmology=None, over_h=False,
+            responsivity_correction=False, base=obj, print_num=False)
+        grids = pair_kernel.accumulate(
+            ss, binning, base=obj, shapes=True, chunk_axis="position",
+            chunk_size_outer=20, backend=backend)
+
+        own = _bruteforce_lc_gplus(ss, binning, "own")
+        partner = _bruteforce_lc_gplus(ss, binning, "partner")
+        for got, want, other, name in zip((grids.Splus_D, grids.Scross_D), own, partner,
+                                          ("Splus_D", "Scross_D")):
+            assert np.max(np.abs(want)) > 1e-8, f"{name} reference is trivially zero"
+            # the two conventions must be distinguishable, or this test proves nothing
+            assert np.max(np.abs(want - other)) > 1e-6, f"{name}: frames indistinguishable"
+            np.testing.assert_allclose(got, want, rtol=1e-11, atol=1e-13,
+                                       err_msg=f"{name} disagrees with own-frame brute force")
 
 
 class TestProjectionDirectionConvention:

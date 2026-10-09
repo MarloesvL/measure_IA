@@ -69,16 +69,16 @@ class SampleSet:
     east: Optional[np.ndarray] = None
     north: Optional[np.ndarray] = None
     n_pos: Optional[np.ndarray] = None
+    # Lightcone, shape-aligned (M,3): the shape sample's own tangent basis. Every shape is
+    # projected in its *own* frame, the one its e1/e2 are defined in (see ``accumulate``).
+    east_shape: Optional[np.ndarray] = None
+    north_shape: Optional[np.ndarray] = None
     # Shape-shape (``shapes="both"``) only: the *density* sample carries shapes too, so
     # every field above that describes the shape sample gets a position-aligned twin.
     # Box: ``axis_direction_pos`` (N,2) unit projected semi-major axes, ``e_pos`` (N,).
-    # Lightcone: ``e_pos`` (N,2) = (e1,e2) pre-scaled by 1/(2R), and ``east_shape`` /
-    # ``north_shape`` (M,3) — the shape sample's own tangent basis, needed because for
-    # shape-shape each galaxy is projected in its *own* frame (see ``accumulate``).
+    # Lightcone: ``e_pos`` (N,2) = (e1,e2) pre-scaled by 1/(2R).
     axis_direction_pos: Optional[np.ndarray] = None
     e_pos: Optional[np.ndarray] = None
-    east_shape: Optional[np.ndarray] = None
-    north_shape: Optional[np.ndarray] = None
 
 
 @dataclass
@@ -287,11 +287,11 @@ def prepare_lightcone_samples(data, masks, *, shapes, cosmology, over_h,
     ellipticity ``e = (e1, e2)`` **pre-scaled by 1/(2R)** when ``responsivity_correction``
     (responsivity is baked into ``e`` here, not divided in the pair loop, unlike the box
     families — REFACTOR_PLAN.md section 3.2), plus the local ``east``/``north`` sky basis at
-    each position.
+    each position and ``east_shape``/``north_shape`` at each shape.
 
     ``SampleSet`` layout for the lightcone geometry: ``pos = s_pos`` (N,3), ``pos_shape =
     s_shape`` (M,3), ``weight``/``weight_shape``; and when ``shapes``: ``e`` (M,2), ``east``
-    (N,3), ``north`` (N,3), ``n_pos`` (N,3).
+    (N,3), ``north`` (N,3), ``n_pos`` (N,3), ``east_shape`` (M,3), ``north_shape`` (M,3).
 
     Parameters
     ----------
@@ -301,11 +301,10 @@ def prepare_lightcone_samples(data, masks, *, shapes, cosmology, over_h,
         Per-call mask dict; mutated in place to inject default ``weight``/
         ``weight_shape_sample`` masks when absent (legacy behaviour).
     shapes : bool or str
-        If False, skip ``e1``/``e2``/responsivity and the ``east``/``north`` basis
+        If False, skip ``e1``/``e2``/responsivity and the ``east``/``north`` bases
         (DD-only / count_pairs paths). ``"both"`` additionally reads the *density*
         sample's shapes from ``e1_density_sample``/``e2_density_sample`` into ``e_pos``
-        (responsivity-scaled with its own R) and builds the shape sample's own
-        ``east_shape``/``north_shape`` tangent basis, for the shape-shape correlation.
+        (responsivity-scaled with its own R), for the shape-shape correlation.
     cosmology : pyccl.Cosmology or None
         Cosmology for redshift→comoving distance; a fixed default is built (and, when
         ``print_num``, announced) if None, matching the legacy.
@@ -414,11 +413,9 @@ def prepare_lightcone_samples(data, masks, *, shapes, cosmology, over_h,
             -np.sin(DEC_rad) * np.sin(RA_rad),
             np.cos(DEC_rad)
         ]).transpose()
-    if shape_shape:
-        # For shape-shape each galaxy is projected in its *own* tangent frame, so the
-        # shape sample needs the basis too. (The g+ path deliberately keeps its existing
-        # convention of projecting the shape galaxy in its partner's frame -- see
-        # ``_accumulate_lightcone``.)
+        # Each shape is projected in its *own* tangent frame -- the frame its e1/e2 are
+        # defined in -- so the shape sample needs the basis too. (The position basis above
+        # serves the density member of a shape-shape pair.)
         east_shape = np.array([-np.sin(RA_shape_sample_rad), np.cos(RA_shape_sample_rad),
                                np.zeros(len(RA_shape_sample_rad))]).transpose()
         north_shape = np.array([
@@ -842,10 +839,13 @@ def _accumulate_lightcone(sample_set, binning, *, base, shapes, chunk_size_outer
                 mask, ind_r, ind_2nd, s_perp = binning.bin_pairs(s, n_LOS, base)
 
                 if shapes:
-                    x = np.sum(s_perp * east_i[n], axis=1)
-                    y = np.sum(s_perp * north_i[n], axis=1)
-                    phi = np.arctan2(y, x)
-                    e_plus, e_cross = base.get_ellipticity(sample_set.e[cand], phi)
+                    # The shape's e1/e2 live on its own (east, north) axes, so phi is
+                    # measured there too; this is also exactly treecorr's great-circle
+                    # bearing (see TestProjectionDirectionConvention).
+                    xs = np.sum(s_perp * sample_set.east_shape[cand], axis=1)
+                    ys = np.sum(s_perp * sample_set.north_shape[cand], axis=1)
+                    phi_s = np.arctan2(ys, xs)
+                    e_plus, e_cross = base.get_ellipticity(sample_set.e[cand], phi_s)
                     e_plus[np.isnan(e_plus)] = 0.0
                     e_cross[np.isnan(e_cross)] = 0.0
                     np.add.at(Splus_D, (ind_r, ind_2nd),
@@ -853,18 +853,15 @@ def _accumulate_lightcone(sample_set, binning, *, base, shapes, chunk_size_outer
                     np.add.at(Scross_D, (ind_r, ind_2nd),
                               weight_i[n] * weight_shape[cand][mask] * e_cross[mask])
                 if shape_shape:
-                    # Shape-shape projects each galaxy in its *own* tangent frame, so the
-                    # shape member gets a second projection here rather than reusing the
-                    # partner-frame e_plus/e_cross above. The g+ terms deliberately keep
-                    # their existing partner-frame convention; the asymmetry is documented
-                    # in docs/conventions.md. ``phi`` is already the position galaxy's own
-                    # frame, so it serves the density member unchanged.
-                    xs = np.sum(s_perp * sample_set.east_shape[cand], axis=1)
-                    ys = np.sum(s_perp * sample_set.north_shape[cand], axis=1)
-                    phi_s = np.arctan2(ys, xs)
-                    ep_s, ex_s = base.get_ellipticity(sample_set.e[cand], phi_s)
+                    # Each galaxy in its *own* tangent frame: the shape member is the
+                    # e_plus/e_cross above, the density member is projected in the
+                    # position galaxy's frame.
+                    x = np.sum(s_perp * east_i[n], axis=1)
+                    y = np.sum(s_perp * north_i[n], axis=1)
+                    phi = np.arctan2(y, x)
+                    ep_s, ex_s = e_plus, e_cross
                     ep_p, ex_p = base.get_ellipticity(e_pos_i[n][None, :], phi)
-                    for arr in (ep_s, ex_s, ep_p, ex_p):
+                    for arr in (ep_p, ex_p):
                         arr[np.isnan(arr)] = 0.0
                     w_pp = weight_i[n] * weight_shape[cand][mask]
                     pp = ep_s[mask] * ep_p[mask]

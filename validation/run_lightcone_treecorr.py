@@ -14,10 +14,8 @@ metric='Rperp' and bin_slop=0.
 
 Known convention differences (see README):
 - treecorr uses the lensing shear sign convention: g1 = -e1, g2 = -e2.
-- treecorr's tangential projection uses the great-circle frame of each
-  pair; measureia evaluates the position angle in the (east, north) frame
-  of the position-sample galaxy. These agree only up to curvature terms,
-  so w_g+ matches at the sub-percent level, not machine precision.
+- Both codes project each shape in its own (east, north) frame along the
+  great-circle bearing to its partner, so the projections are identical.
 - treecorr's Rperp (FisherRperp) separation definition differs slightly
   from measureia's midpoint-LOS definition; a few pairs near bin edges
   land in different bins.

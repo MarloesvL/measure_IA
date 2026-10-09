@@ -157,14 +157,18 @@ treecorr run per signed pi slab (`min_rpar`/`max_rpar`, `metric='Rperp'`,
   cos(2(φ_axis−φ_sep))), which is easy to misdiagnose as a code bug.
 - **Separation definitions**: treecorr's `Rperp` (FisherRperp) and signed
   r_par differ from measureia's midpoint-LOS definitions by curvature
-  terms, so a few pairs near bin edges migrate bins; treecorr also
-  projects shears in the great-circle frame of each pair while measureia
-  uses the (east, north) frame of the position-sample galaxy.
-- **Result** (treecorr 5.1.3, 2026-07-16): w_g+ agrees to ~1×10⁻⁵
-  (relative) in all high-signal bins; w_gg is exact in most bins and
-  within 0.4% in the smallest-rp bins (bin migration). The near-zero
-  outer w_g+ bins differ by <0.04 in absolute terms. Enforced at
-  rtol=5e-3, atol=0.05 in `tests/test_validation_references.py`.
+  terms, so a few pairs near bin edges migrate bins. The shear
+  *projection* is identical: both codes project each shape in its own
+  (east, north) frame along the great-circle bearing (see the shape-shape
+  section below for the proof).
+- **Result** (treecorr 5.1.3, 2026-07-16; measureia re-run 2026-10-09
+  after the g+ own-frame fix): w_g+ agrees to ≲2×10⁻⁵ (relative) in
+  all high-signal bins, and to ~10⁻⁹ in bins where no pair migrates
+  (before the fix, ~6×10⁻⁷ there: the residual came from the partner-frame
+  projection). w_gg is exact in most bins and within 0.4% in the
+  smallest-rp bins (bin migration). The near-zero outer w_g+ bins differ
+  by <0.04 in absolute terms. Enforced at rtol=5e-3, atol=0.05 in
+  `tests/test_validation_references.py`.
 
 ### Box vs treecorr (planned)
 

@@ -8,6 +8,27 @@ public API mean a major version bump.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Lightcone $g+$ now projects each shape in its own tangent frame.** `e1`/`e2` are defined
+  on the shape galaxy's local (RA, DEC) axes, but the angle $\phi$ they were rotated by was
+  measured in the (east, north) frame of the *position-sample* partner. On the curved sky the
+  two bases differ by the convergence of the meridians between the two galaxies, so $\phi$
+  was off by roughly $\Delta\alpha\,\sin\delta$. That rotated part of $e_+$ into $e_\times$
+  and back. $\phi$ is now measured in the shape galaxy's own frame, the convention the
+  shape–shape terms already used. It is also exactly treecorr's great-circle bearing (see
+  [Conventions](conventions.md)), so the two codes now differ only in how they define the
+  separation magnitude.
+
+    Only $g+$ / $g\times$ outputs change ($S_+D$, $S_+R$, $S_\times D$, $\xi_{g+}$,
+    $\xi_{g\times}$, $w_{g+}$, the $g+$ multipoles and their jackknife covariances), and only
+    on the lightcone. $gg$, the shape–shape products and everything on the box are
+    unchanged. Pairs that straddle east–west of each other get rotations of opposite sign, so
+    the effect cancels to first order in $w_{g+}$: on the validation mock the change is
+    $\lesssim 3\times10^{-4}$ relative per bin. In bins where no pairs migrate across a bin
+    edge, the residual against treecorr drops from $\sim 10^{-6}$ to $\sim 10^{-9}$ relative.
+    The error grows with declination and opening angle, and is larger in $g\times$.
+
 ## [0.6.0] - 2026-10-02
 
 ### Added
