@@ -23,7 +23,7 @@ implementations, for both the box and the lightcone.
 |---|---|---|---|
 | Box $w_{gg}$, $w_{g+}$ | halotools | projected $w$ | machine precision ($2\times10^{-13}$ / $4\times10^{-15}$)¹ |
 | Box multipoles | corr_pc | $\xi(r,\mu)$ grid + $\tilde\xi_{gg,0}$, $\tilde\xi_{g+,2}$ | $\le5\times10^{-6}$ grid, $\sim10^{-6}$ multipoles¹ |
-| Lightcone $w$ | treecorr | $w_{gg}$, $w_{g+}$ | $\sim10^{-5}$ ($g+$), $\le0.4\%$ ($gg$) |
+| Lightcone $w$ | treecorr | $w_{gg}$, $w_{g+}$ | $\lesssim2\times10^{-5}$ ($g+$; $\sim10^{-9}$ where no pair migrates), $\le0.4\%$ ($gg$)³ |
 | Lightcone $w$ | corr_pc | $w_{gg}$, $w_{g+}$ | $\le0.15\%$ ($g+$), $\le0.4\%$ ($gg$) |
 | Lightcone multipoles | corr_pc | $\tilde\xi_{gg,0}$, $\tilde\xi_{g+,2}$ | $\le0.2\%$ / $\le0.3\%$ |
 | Box ↔ lightcone (plane-parallel) | — (self-consistency) | pair counts, $w$ | DD $<1\%$; residuals fully attributed² |
@@ -38,12 +38,14 @@ implementations, for both the box and the lightcone.
 ¹ Agreement is exact up to floating point / the external code's output precision, once the responsivity
 $2\mathcal{R}$ factor is accounted for (MeasureIA divides $S_+$ terms by $2\mathcal{R}$; halotools and corr_pc do
 not — see [Conventions](conventions.md)).
-³ The shape-shape residual against treecorr is the `Rperp` versus midpoint-LOS **separation**
-definition alone, which migrates pairs near bin edges; it grows with angular separation rather than
-with sparseness. The projection *direction* is not a difference at all — MeasureIA's
-midpoint-LOS-perpendicular direction is treecorr's great-circle bearing exactly (verified to
-$3\times10^{-13}$ over separations of $0.3^\circ$–$179^\circ$). See `validation/README.md` for the
-derivation.
+³ The lightcone residuals against treecorr, for $g+$ and shape-shape alike, come only from the
+`Rperp` versus midpoint-LOS **separation** definition. That difference moves pairs near bin edges
+into a neighbouring bin, so it grows with angular separation rather than with sparseness. The
+projection *direction* is not a difference at all. MeasureIA projects each shape in its own
+(east, north) frame, and there its midpoint-LOS-perpendicular direction is exactly treecorr's
+great-circle bearing (verified to $3\times10^{-13}$ over separations of $0.3^\circ$–$179^\circ$).
+See `validation/README.md` for the derivation. Up to 0.6.0, $w_{g+}$ was projected in the
+partner's frame instead, which left a $\sim10^{-6}$ residual even in bins where no pair migrates.
 
 ² The plane-parallel box↔lightcone difference is understood: analytic randoms (periodic box) versus empirical
 randoms (bounded window), plus the box/lightcone estimator and responsivity differences.
