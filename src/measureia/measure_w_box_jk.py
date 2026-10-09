@@ -53,6 +53,7 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 			pi_max=None,
 			boxsize=None,
 			periodicity=True,
+			binning="log",
 	):
 		"""
 		The __init__ method of the MeasureWSimulations class.
@@ -60,11 +61,11 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 		Notes
 		-----
 		Constructor parameters 'data', 'output_file_name', 'simulation', 'snapshot', 'separation_limits', 'num_bins_r',
-		'num_bins_pi', 'pi_max', 'boxsize' and 'periodicity' are passed to MeasureIABase.
+		'num_bins_pi', 'pi_max', 'boxsize', 'periodicity' and 'binning' are passed to MeasureIABase.
 
 		"""
 		super().__init__(data, output_file_name, simulation, snapshot, separation_limits, num_bins_r, num_bins_pi,
-						 pi_max, boxsize, periodicity)
+						 pi_max, boxsize, periodicity, binning)
 		return
 
 	def _measure_xi_rp_pi_box_jk_brute(self, dataset_name, L_subboxes, masks=None, return_output=False,
@@ -482,8 +483,6 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 		self.R = sum(weight_shape * (1 - e ** 2 / 2.0)) / sum(weight_shape) \
 			if getattr(self, "responsivity_correction", True) and sum(weight_shape) > 0 else 0.5
 		L3 = self.boxsize ** 3  # box volume
-		self.sub_box_len_logrp = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
-		self.sub_box_len_pi = (self.pi_bins[-1] - self.pi_bins[0]) / self.num_bins_pi
 		self.num_box = L_subboxes ** 3
 		jackknife_region_indices_pos, jackknife_region_indices_shape = self._get_jackknife_region_indices(
 			masks,
@@ -980,8 +979,6 @@ class MeasureWBoxJackknife(MeasureIABase, ReadData):
 		self.LOS_ind = sample_set.LOS_ind
 		self.not_LOS = sample_set.not_LOS
 		L3 = self.boxsize ** 3  # box volume
-		self.sub_box_len_logrp = (np.log10(self.r_max) - np.log10(self.r_min)) / self.num_bins_r
-		self.sub_box_len_pi = (self.pi_bins[-1] - self.pi_bins[0]) / self.num_bins_pi
 		self.num_box = L_subboxes ** 3
 		jackknife_region_indices_pos, jackknife_region_indices_shape = self._get_jackknife_region_indices(
 			masks,

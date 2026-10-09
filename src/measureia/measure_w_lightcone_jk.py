@@ -36,6 +36,7 @@ class MeasureWLightconeJackknife(MeasureIABase):
 			pi_max=None,
 			boxsize=None,
 			periodicity=True,
+			binning="log",
 	):
 		"""
 		The __init__ method of the MeasureWObservations class.
@@ -43,11 +44,11 @@ class MeasureWLightconeJackknife(MeasureIABase):
 		Notes
 		-----
 		Constructor parameters 'data', 'output_file_name', 'simulation', 'snapshot', 'separation_limits', 'num_bins_r',
-		'num_bins_pi', 'pi_max', 'boxsize' and 'periodicity' are passed to MeasureIABase.
+		'num_bins_pi', 'pi_max', 'boxsize', 'periodicity' and 'binning' are passed to MeasureIABase.
 
 		"""
 		super().__init__(data, output_file_name, simulation, snapshot, separation_limits, num_bins_r, num_bins_pi,
-						 pi_max, boxsize, periodicity)
+						 pi_max, boxsize, periodicity, binning)
 		return
 
 	def _measure_xi_rp_pi_lightcone_jk_brute(self, dataset_name, jackknife_region_indices_pos,
@@ -297,8 +298,8 @@ class MeasureWLightconeJackknife(MeasureIABase):
 			north=shared_data[f"north_{self.ID_shm}"][i:i2],
 			e_pos=(shared_data[f"e_pos_{self.ID_shm}"][i:i2]
 				   if f"e_pos_{self.ID_shm}" in shared_data else None),
-			east_shape=shared_data.get(f"east_shape_{self.ID_shm}"),
-			north_shape=shared_data.get(f"north_shape_{self.ID_shm}"),
+			east_shape=shared_data[f"east_shape_{self.ID_shm}"],
+			north_shape=shared_data[f"north_shape_{self.ID_shm}"],
 			jk_pos=shared_data[f"jk_region_indices_pos_{self.ID_shm}"][i:i2],
 			jk_shape=shared_data[f"jk_region_indices_shape_{self.ID_shm}"],
 		)
@@ -380,8 +381,8 @@ class MeasureWLightconeJackknife(MeasureIABase):
 		e = sample_set.e
 		east = sample_set.east
 		north = sample_set.north
-		# shape-shape only. e_pos is position-aligned (sliced per batch, like east/north);
-		# east_shape/north_shape are shape-aligned and passed whole, like e.
+		# east_shape/north_shape are shape-aligned and passed whole, like e; e_pos
+		# (shape-shape only) is position-aligned and sliced per batch, like east/north.
 		e_pos = sample_set.e_pos
 		east_shape = sample_set.east_shape
 		north_shape = sample_set.north_shape
@@ -420,6 +421,8 @@ class MeasureWLightconeJackknife(MeasureIABase):
 				f"e_{self.ID_shm}": e,
 				f"east_{self.ID_shm}": east,
 				f"north_{self.ID_shm}": north,
+				f"east_shape_{self.ID_shm}": east_shape,
+				f"north_shape_{self.ID_shm}": north_shape,
 				f"weight_{self.ID_shm}": weight,
 				f"weight_shape_{self.ID_shm}": weight_shape,
 				f"jk_region_indices_pos_{self.ID_shm}": jackknife_region_indices_pos,
@@ -427,8 +430,6 @@ class MeasureWLightconeJackknife(MeasureIABase):
 			}
 			if e_pos is not None:
 				shared_data[f"e_pos_{self.ID_shm}"] = e_pos
-				shared_data[f"east_shape_{self.ID_shm}"] = east_shape
-				shared_data[f"north_shape_{self.ID_shm}"] = north_shape
 			for k in shared_data.keys():
 				try:
 					old = shared_memory.SharedMemory(name=k)

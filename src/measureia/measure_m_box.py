@@ -48,6 +48,7 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 			pi_max=None,
 			boxsize=None,
 			periodicity=True,
+			binning="log",
 	):
 		"""
 		The __init__ method of the MeasureMultipolesSimulations class.
@@ -55,11 +56,11 @@ class MeasureMultipolesBox(MeasureIABase, ReadData):
 		Notes
 		-----
 		Constructor parameters 'data', 'output_file_name', 'simulation', 'snapshot', 'separation_limits', 'num_bins_r',
-		'num_bins_pi', 'pi_max', 'boxsize' and 'periodicity' are passed to MeasureIABase.
+		'num_bins_pi', 'pi_max', 'boxsize', 'periodicity' and 'binning' are passed to MeasureIABase.
 
 		"""
 		super().__init__(data, output_file_name, simulation, snapshot, separation_limits, num_bins_r, num_bins_pi,
-						 pi_max, boxsize, periodicity)
+						 pi_max, boxsize, periodicity, binning)
 		return
 
 	def _measure_xi_r_mur_box_brute(self, dataset_name, masks=None, rp_cut=None, return_output=False, jk_group_name="",

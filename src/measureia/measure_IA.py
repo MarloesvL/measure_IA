@@ -56,6 +56,7 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			weight_density_sample_name="weight",
 			weight_shape_sample_name="weight_shape_sample",
 			num_overlap=None,
+			binning="log",
 	):
 		"""
 		The __init__ method of the MeasureIABox class.
@@ -100,11 +101,14 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			object count, converted to a weighted overlap by scaling it with both samples' mean
 			weights (exact for unit weights; 0 stays 0). An override is applied uniformly, so the
 			per-jackknife-region adjustment is only made in the default (measured) mode.
+		binning : str, optional
+			Spacing of the (projected) separation bins between the separation_limits: 'log' for logarithmically
+			spaced bins or 'linear' for linearly spaced bins (e.g. around the BAO peak). Default is 'log'.
 
 		Notes
 		-----
 		Constructor parameters 'data', 'output_file_name', 'simulation', 'snapshot', 'separation_limits', 'num_bins_r',
-		'num_bins_pi', 'pi_max', 'boxsize' and 'periodicity' are passed to MeasureIABase.
+		'num_bins_pi', 'pi_max', 'boxsize', 'periodicity' and 'binning' are passed to MeasureIABase.
 		The data dictionary (and any mask dictionaries passed to the measurement methods) may use any key names;
 		they are given through the *_name parameters and translated to the internal default names on input.
 
@@ -136,7 +140,7 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 		else:
 			self.has_density_sample_shapes = False
 		super().__init__(data, output_file_name, simulation, snapshot, separation_limits, num_bins_r, num_bins_pi,
-						 pi_max, boxsize, periodicity)
+						 pi_max, boxsize, periodicity, binning)
 		if self.data is not None and self.boxsize is not None:
 			self.check_units_coordinates(self.data["Position"], self.boxsize)
 		if not (isinstance(num_nodes, (int, np.integer)) and not isinstance(num_nodes, bool) and num_nodes >= 1):

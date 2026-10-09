@@ -23,6 +23,7 @@ The separation bins are fixed at initialisation and shared by every measurement 
 
 - **Transverse / 3D separation** ($r_p$ for $w$, $r$ for the multipoles): `num_bins_r` **logarithmic** bins
   between `separation_limits[0]` and `separation_limits[1]` (i.e. $r_\mathrm{min}$ and $r_\mathrm{max}$).
+  Pass `binning='linear'` to the constructor for **linear** bins instead (e.g. around the BAO peak).
 - **Line of sight** $\Pi$: `num_bins_pi` **linear** bins spanning the *signed* range
   $[-\Pi_\mathrm{max}, +\Pi_\mathrm{max}]$, with $\Pi_\mathrm{max}$ set by `pi_max`.
 - **$\mu_r = \Pi/r$** (used for the multipoles): `num_bins_pi` **linear** bins over $[-1, 1]$.
@@ -94,8 +95,8 @@ $$\phi = \operatorname{arctan2}\!\left(\mathbf{s}_\perp\cdot\hat{\mathbf{e}}_\ma
 \mathbf{s}_\perp\cdot\hat{\mathbf{e}}_\mathrm{east}\right).$$
 
 $\mathbf{s}_\perp$ is perpendicular to the *midpoint* line of sight, while each basis is tangent to the
-sphere at *one galaxy*, so the two planes differ slightly for a pair at finite angular separation. Which
-galaxy's basis is used differs between $w_{g+}$ and the shape–shape terms; see
+sphere at *one galaxy*, so the two planes differ slightly for a pair at finite angular separation. Each
+shape is projected in its *own* galaxy's basis; see
 [Which tangent frame each shape is projected in](#lightcone-measureialightcone) below.
 
 MeasureIA applies no wide-angle correction. The measured statistic is exact for the line of sight
@@ -181,15 +182,20 @@ vector in the internal (east, north) sky frame. As in the box case, the output $
 
 !!! note "Which tangent frame each shape is projected in"
     On the curved sky the local (east, north) basis differs from galaxy to galaxy, so a pair has two
-    of them. For $w_{g+}$ MeasureIA projects the shape galaxy's `e1`/`e2` in the tangent frame of its
-    **position-sample partner** — a plane-of-the-pair approximation, and the source of part of the
-    residual against TreeCorr documented in `validation/README.md`.
+    of them. MeasureIA projects **every shape in its own galaxy's frame**, the frame its `e1`/`e2`
+    are defined in. This holds for the shape galaxy in $w_{g+}$ and for both members of a
+    shape–shape pair. Using the partner's frame instead would mix two bases. They differ by the
+    convergence of the meridians between the two galaxies, roughly $\Delta\alpha\,\sin\delta$, and
+    that difference would leak $e_+$ into $e_\times$. Versions up to 0.6.0 did this for $w_{g+}$;
+    see the changelog.
 
-    The shape–shape terms instead project **each galaxy in its own frame**, because the pair is
-    symmetric there and no single partner frame is privileged. The two conventions therefore coexist
-    deliberately; they agree in the plane-parallel limit and differ by curvature terms of the same
-    order as the other separation-definition differences. The box has no such ambiguity: its
-    projection plane is fixed by `LOS`.
+    In a galaxy's own frame the direction of $\mathbf{s}_\perp$ is *exactly* the great-circle
+    bearing to its partner, which is the direction TreeCorr projects along. The tangential part of
+    $\mathbf{s}$ at a galaxy depends only on the partner's direction, and the midpoint line of
+    sight lies in the plane of the two directions, so removing it rescales that part without
+    rotating it. The residual against TreeCorr in `validation/README.md` therefore comes from the
+    separation *magnitude* alone. The box has no such ambiguity: its projection plane is fixed by
+    `LOS`.
 
 ## Ellipticity definitions
 

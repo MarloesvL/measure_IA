@@ -8,7 +8,36 @@ public API mean a major version bump.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Lightcone $g+$ now projects each shape in its own tangent frame.** `e1`/`e2` are defined
+  on the shape galaxy's local (RA, DEC) axes, but the angle $\phi$ they were rotated by was
+  measured in the (east, north) frame of the *position-sample* partner. On the curved sky the
+  two bases differ by the convergence of the meridians between the two galaxies, so $\phi$
+  was off by roughly $\Delta\alpha\,\sin\delta$. That rotated part of $e_+$ into $e_\times$
+  and back. $\phi$ is now measured in the shape galaxy's own frame, the convention the
+  shape–shape terms already used. It is also exactly treecorr's great-circle bearing (see
+  [Conventions](conventions.md)), so the two codes now differ only in how they define the
+  separation magnitude.
+
+    Only $g+$ / $g\times$ outputs change ($S_+D$, $S_+R$, $S_\times D$, $\xi_{g+}$,
+    $\xi_{g\times}$, $w_{g+}$, the $g+$ multipoles and their jackknife covariances), and only
+    on the lightcone. $gg$, the shape–shape products and everything on the box are
+    unchanged. Pairs that straddle east–west of each other get rotations of opposite sign, so
+    the effect cancels to first order in $w_{g+}$: on the validation mock the change is
+    $\lesssim 3\times10^{-4}$ relative per bin. In bins where no pairs migrate across a bin
+    edge, the residual against treecorr drops from $\sim 10^{-6}$ to $\sim 10^{-9}$ relative.
+    The error grows with declination and opening angle, and is larger in $g\times$.
+
+## [0.6.0] - 2026-10-02
+
 ### Added
+
+- **Linear separation bins** ([#78](https://github.com/MarloesvL/measure_IA/issues/78)).
+  `MeasureIABox` and `MeasureIALightcone` take `binning='linear'` to space the $r$ / $r_p$
+  bins linearly between `separation_limits`, e.g. for the BAO peak. The default stays
+  `binning='log'`, so existing results are unchanged; the reported bin centres are the
+  arithmetic midpoints of the edges in both schemes, as before.
 
 - **Shape–shape (`++`) correlations, on both entry points.** `corr_type='++'` measures
   $w_{++}$, $w_{\times\times}$ and the parity-odd $w_{+\times}$, plus the $(\ell,s)=(4,4)$
@@ -399,7 +428,8 @@ moment estimator, and sub-box jackknife covariances.
   than kept at the time. Fill in the 0.2.x lines if the detail is worth having.
 -->
 
-[Unreleased]: https://github.com/MarloesvL/measure_IA/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/MarloesvL/measure_IA/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/MarloesvL/measure_IA/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/MarloesvL/measure_IA/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/MarloesvL/measure_IA/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/MarloesvL/measure_IA/compare/v0.2.1...v0.3.0
