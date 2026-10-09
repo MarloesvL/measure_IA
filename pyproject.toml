@@ -90,6 +90,16 @@ filterwarnings = [
     "ignore:.*K-means on the sphere did not converge.*:UserWarning",
 ]
 
+# The backends run their counting batches in `spawn`ed worker processes (worker_pool.py),
+# which coverage only measures when told to follow multiprocessing; each process writes
+# its own data file, which pytest-cov combines.
+[tool.coverage.run]
+source = ["measureia"]
+parallel = true
+concurrency = ["multiprocessing"]
+patch = ["subprocess"]
+sigterm = true
+
 [build-system]
 requires = ["uv_build>=0.8.17,<0.9.0"]
 build-backend = "uv_build"
