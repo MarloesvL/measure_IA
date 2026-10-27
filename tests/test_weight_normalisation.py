@@ -267,7 +267,8 @@ def test_galaxy_contributions_rebuild_weighted_measurement(box_catalogue, tmp_pa
     outfile = tmp_path / "ref.hdf5"
     box = _box(box_catalogue, outfile)
     measure = box.measure_xi_w if statistic == "w" else box.measure_xi_multipoles
-    measure("ref", "g+", BOX_NUM_JK, temp_file_path=str(tmp_path) + "/")
+    # the per-galaxy decomposition rebuilds the jackknife without the edge correction
+    measure("ref", "g+", BOX_NUM_JK, temp_file_path=str(tmp_path) + "/", jk_edge_correction=False)
     out = _box(box_catalogue, tmp_path / "gal.hdf5").measure_galaxy_contributions(
         "gal", num_jk=BOX_NUM_JK, statistic=statistic, return_output=True)
     with h5py.File(outfile, "r") as f:
