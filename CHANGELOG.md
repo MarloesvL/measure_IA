@@ -8,6 +8,31 @@ public API mean a major version bump.
 
 ## [Unreleased]
 
+### Changed
+
+- **Box jackknife: edge correction, on by default (`jk_edge_correction=True`).** Rerun box
+  jackknife covariances will change, mostly at large separations. With analytic randoms, a
+  delete-one realisation had no random terms that follow the galaxies next to the removed
+  sub-box, which inflated the large-scale jackknife errors: by up to $\sim1.5\times$ ($w_{g+}$)
+  and $\sim2.4\times$ ($w_{gg}$) on sparse mocks, and $\sim4\times$ / $\sim6\times$ at a number
+  density of $10^{-2}\,h^3\,\mathrm{Mpc}^{-3}$. Each realisation now gets the $RD$, $SR$ and $S_+R$
+  terms of a uniform random catalogue in the limit of infinitely many randoms, plus the exact $RR$,
+  and uses the full estimators $(DD-RD-SR+RR)/RR$ and $(S_+D-S_+R)/RR$
+  ([Estimator definitions](estimator_definitions.md#box-jackknife-edge-correction)). The
+  jackknife errors now agree with those of a 10$\times$ random catalogue run through MeasureIA
+  to 0.93–1.04, for $w$ and the multipoles.
+
+    The full-sample measurement is unchanged, and so are the shape–shape realisations and the
+    lightcone. `jk_edge_correction=False` reproduces the previous behaviour exactly. New
+    per-realisation datasets: `_[i]_RD`, `_[i]_SR` (`xi_gg`) and `_[i]_SplusR` (`xi_g_plus`);
+    `_[i]_RR` is now the exact union $RR$. With the correction on, every separation component
+    must be at most half the box, or a `ValueError` is raised. `measure_galaxy_contributions`
+    still rebuilds the uncorrected jackknife.
+
+    Cost on a box with $n=10^{-2}\,h^3\,\mathrm{Mpc}^{-3}$ (34k galaxies, one core): 0–2% extra
+    run time for $w$ and 19–36% for the multipoles ($N_\mathrm{jk}$ = 8–64), with up to
+    $\sim1.5$ GB extra peak memory for the multipoles.
+
 ### Fixed
 
 - **Lightcone $g+$ now projects each shape in its own tangent frame.** `e1`/`e2` are defined

@@ -489,5 +489,33 @@ Rerun outputs are kept under `validation/`.
 
    For scale: measureia's whole r–μ jackknife pair counting on the same mock takes 52 s; the
    loop prototype took ~12 min per N_jk.
-5. **Dense mock size:** record the galaxy counts with the rerun (an earlier draft said 64k
-   galaxies, which does not match n = 10⁻² at L = 150 Mpc/h for one sample).
+5. **Benchmark (`run_box_jk_benchmark.py`, 2026-10-28).** Dense mock (n = 10⁻², L = 150; 33,750
+   positions, 30,000 shapes), 10 r bins up to 60, π_max = 30 with 6 π bins or 10 μ bins, tree
+   backend, 1 core, one process per configuration:
+
+   | statistic | N_jk | correction off | on | of which correction | added | peak memory off / on |
+   |---|---|---|---|---|---|---|
+   | w | 8 | 56 s | 56 s | 1 s | 0% | 0.28 / 0.62 GB |
+   | w | 27 | 57 s | 58 s | 1 s | 1% | 0.28 / 0.70 GB |
+   | w | 64 | 58 s | 59 s | 2 s | 2% | 0.30 / 0.49 GB |
+   | multipoles | 8 | 48 s | 56 s | 9 s | 19% | 0.25 / 1.68 GB |
+   | multipoles | 27 | 49 s | 62 s | 13 s | 27% | 0.25 / 1.59 GB |
+   | multipoles | 64 | 50 s | 69 s | 18 s | 36% | 0.26 / 1.69 GB |
+
+   Before the speed-ups below, multipoles added 44–102%.
+6. **Further speed-ups, not pursued yet (2026-10-28).** Done so far: arc endpoints without extra
+   trigonometry, arcs only where non-zero, a sorted scatter-sum, and one geometry pass over the
+   union of the two samples (the reflected bin j is bin n−1−j for symmetric bins). Together
+   these took the dense r–μ correction at N_jk = 27 from 33.5 s to 13.6 s. Still possible:
+   - **Parallelise over `num_nodes`.** Galaxy chunks are independent. Wall time scales down
+     with the counting; the added fraction stays about the same.
+   - **Fewer r–μ nodes** (8 instead of 16 per segment). About 2× fewer arcs; trades accuracy,
+     measurable with `run_box_jk_quadrature_check.py`.
+   - **Tabulate and interpolate** the overlaps against position relative to a sub-box (all
+     sub-boxes are congruent). Potentially the largest gain. Needs its own accuracy test, since
+     interpolation is worst at the overlaps' kinks, and costs memory for 3-D tables per bin.
+   - **Integrate over height in r–μ.** At fixed height the sky part is an annulus with the rp–π
+     closed form, so no arc integrals. Whether it needs fewer evaluations is untested.
+7. **Dense mock size (resolved):** 33,750 positions and 30,000 shapes at L = 150 Mpc/h
+   (3,750 haloes × 9 galaxies, n = 10⁻²). The earlier "64k galaxies" was the two samples
+   added together.
