@@ -294,6 +294,42 @@ class TestMatchesPrototype:
         for x, y in zip(a, b):
             np.testing.assert_allclose(x, y, rtol=1e-13, atol=1e-15)
 
+    @pytest.mark.parametrize("binning,bins2", BINNINGS)
+    @pytest.mark.parametrize("samples", ["same", "separate", "partial", "duplicates"])
+    def test_single_pass_equals_two_passes(self, binning, bins2, samples):
+        """With symmetric second-coordinate bins the reflected bin j is bin n-1-j, so both
+        samples are handled in one geometry pass over their union (objects in both samples,
+        matched by coordinates, computed once). Same result as one pass per sample."""
+        pos, shape, theta, e, w, w_s = _small_mock(50, n_pos=100, n_shape=80)
+        if samples == "same":
+            shape = pos.copy()
+            theta, e, w_s = (np.resize(v, len(pos)) for v in (theta, e, w_s))
+        elif samples == "partial":
+            shape[:40] = pos[10:50]
+        elif samples == "duplicates":
+            pos[5] = pos[6]
+            shape[:30] = pos[:30]
+        lab_p, lab_s = _labels(pos, 3), _labels(shape, 3)
+        kw = dict(weight=w, weight_shape=w_s, **_kw(binning, bins2))
+        one = bja.analytic_dr_terms(pos, shape, theta, e, lab_p, lab_s, 3, _single_pass=True, **kw)
+        two = bja.analytic_dr_terms(pos, shape, theta, e, lab_p, lab_s, 3, _single_pass=False, **kw)
+        for name, a, b in zip(["DR", "RD", "S+R"], one, two):
+            np.testing.assert_allclose(a, b, rtol=1e-12, atol=1e-12 * np.abs(b).max(), err_msg=name)
+
+    def test_asymmetric_bins_fall_back_to_two_passes(self):
+        """Bins that are not symmetric about zero cannot be reflected by reversing their order;
+        the result must still match the prototype."""
+        pi_bins = np.array([-30.0, -10.0, 5.0, 30.0])
+        pos, shape, theta, e, w, w_s = _small_mock(51)
+        lab_p, lab_s = _labels(pos, 3), _labels(shape, 3)
+        got = bja.analytic_dr_terms(pos, shape, theta, e, lab_p, lab_s, 3, weight=w, weight_shape=w_s,
+                                    **_kw("rppi", pi_bins))
+        want = ref.dr_terms(pos, shape, theta, e, lab_p, lab_s, 27, boxsize=BOXSIZE, r_bins=R_BINS,
+                            bins2=pi_bins, binning="rppi", w=w, w_shape=w_s)
+        per_pair = ref.shell_volumes(R_BINS, pi_bins) / (BOXSIZE ** 3 * (1 - 1 / 27))
+        for name, g, wt in zip(["DR", "RD", "S+R"], got, want):
+            assert np.all(np.abs(g - wt) <= 1e-3 * per_pair[None]), name
+
     @pytest.mark.parametrize("reflect", [False, True])
     def test_rppi_closed_form_matches_precise_reference(self, reflect):
         """rp-pi overlaps against adaptive quadrature split at every kink (tangent and corner

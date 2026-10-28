@@ -96,29 +96,47 @@ def arc_integrals(r, ax, bx, ay, by):
     the intersections of these angle intervals; the second y interval is also shifted by -2pi so
     that every piece inside (-pi, pi] is found.
 
+    Every intersection endpoint is one of the interval endpoints, whose sin 2phi and cos 2phi
+    follow from the ratios without further trigonometry (alpha = arccos c: cos 2alpha =
+    2c^2 - 1, sin 2alpha = 2c sqrt(1 - c^2); beta = arcsin s: cos 2beta = 1 - 2s^2,
+    sin 2beta = 2s sqrt(1 - s^2); -phi and pi - phi flip the sign of sin 2phi only).
+
     Returns
     -------
     I0, Ic, Is : ndarrays
     """
     r, ax, bx, ay, by = np.broadcast_arrays(*(np.asarray(v, dtype=float) for v in (r, ax, bx, ay, by)))
+    ok = r > 0
     with np.errstate(divide="ignore", invalid="ignore"):
-        a1 = np.arccos(np.clip(bx / r, -1.0, 1.0))
-        a2 = np.arccos(np.clip(ax / r, -1.0, 1.0))
-        b1 = np.arcsin(np.clip(ay / r, -1.0, 1.0))
-        b2 = np.arcsin(np.clip(by / r, -1.0, 1.0))
-    x_int = [(a1, a2), (-a2, -a1)]
-    y_int = [(b1, b2), (np.pi - b2, np.pi - b1), (-np.pi - b2, -np.pi - b1)]
+        ratios = [np.clip(v / np.where(ok, r, 1.0), -1.0, 1.0) for v in (bx, ax, ay, by)]
+    cbx, cax, say, sby = ratios
+    # (angle, sin 2phi, cos 2phi) of every endpoint
+    def x_end(c, sign):
+        return sign * np.arccos(c), sign * 2 * c * np.sqrt(1 - c * c), 2 * c * c - 1
+
+    def y_end(s, shift):
+        b = np.arcsin(s)
+        s2, c2 = 2 * s * np.sqrt(1 - s * s), 1 - 2 * s * s
+        if shift == 0:
+            return b, s2, c2
+        return shift - b, -s2, c2                      # pi - beta or -pi - beta
+
+    x_int = [(x_end(cbx, 1), x_end(cax, 1)), (x_end(cax, -1), x_end(cbx, -1))]
+    y_int = [(y_end(say, 0), y_end(sby, 0)), (y_end(sby, np.pi), y_end(say, np.pi)),
+             (y_end(sby, -np.pi), y_end(say, -np.pi))]
     I0 = np.zeros(r.shape)
     Ic = np.zeros(r.shape)
     Is = np.zeros(r.shape)
     for xl, xh in x_int:
         for yl, yh in y_int:
-            lo = np.maximum(xl, yl)
-            hi = np.maximum(np.minimum(xh, yh), lo)   # empty intersection -> hi = lo
-            I0 += hi - lo
-            Ic += 0.5 * (np.sin(2 * hi) - np.sin(2 * lo))
-            Is += 0.5 * (np.cos(2 * lo) - np.cos(2 * hi))
-    ok = r > 0
+            lo_x = xl[0] >= yl[0]
+            hi_x = xh[0] <= yh[0]
+            lo = np.where(lo_x, xl[0], yl[0])
+            hi = np.where(hi_x, xh[0], yh[0])
+            full = hi > lo                               # empty intersection contributes nothing
+            I0 += np.where(full, hi - lo, 0.0)
+            Ic += np.where(full, 0.5 * (np.where(hi_x, xh[1], yh[1]) - np.where(lo_x, xl[1], yl[1])), 0.0)
+            Is += np.where(full, 0.5 * (np.where(lo_x, xl[2], yl[2]) - np.where(hi_x, xh[2], yh[2])), 0.0)
     return np.where(ok, I0, 0.0), np.where(ok, Ic, 0.0), np.where(ok, Is, 0.0)
 
 
@@ -270,6 +288,19 @@ def _sky_rects(points, L_subboxes, L_sub, boxsize, reach):
     return np.concatenate(gals), np.concatenate(cols), rect[:, 0], rect[:, 1], rect[:, 2], rect[:, 3]
 
 
+def _scatter_sum(n_rows, rows, values):
+    """out[r] = sum of values[i] over all i with rows[i] == r (rows may repeat). Equivalent to
+    np.add.at on the first axis, but by sorting and np.add.reduceat, which is much faster."""
+    out = np.zeros((n_rows,) + values.shape[1:])
+    if len(rows) == 0:
+        return out
+    order = np.argsort(rows, kind="stable")
+    rows_sorted = rows[order]
+    starts = np.flatnonzero(np.r_[True, rows_sorted[1:] != rows_sorted[:-1]])
+    out[rows_sorted[starts]] = np.add.reduceat(values[order], starts, axis=0)
+    return out
+
+
 # ---------------------------------------------------------------------------
 # Per-galaxy overlaps: sky-plane part per column, line-of-sight part per slab
 # ---------------------------------------------------------------------------
@@ -287,18 +318,22 @@ def _sky_part(points, L_subboxes, *, boxsize, r_bins, binning, rp_cut):
     if binning == "rppi":
         radii = np.maximum(r_bins, rp_cut)          # r_p < rp_cut excluded: annulus from max(r1, rp_cut)
         F = _disc_rect_moments(radii[None, :], ax[:, None], bx[:, None], ay[:, None], by[:, None])
-        out = np.zeros((3, G, ncol, len(r_bins) - 1))
-        for m in range(3):
-            np.add.at(out[m], (gal, col), np.diff(F[m], axis=1))
-        return out
+        vals = np.stack([np.diff(F[m], axis=1) for m in range(3)], axis=-1)          # (P, n_r, 3)
+        out = _scatter_sum(G * ncol, gal * ncol + col, vals).reshape(G, ncol, len(r_bins) - 1, 3)
+        return np.moveaxis(out, -1, 0)
     rho_tab, w_tab = _rmu_node_table(r_bins, rp_cut)
     nodes, where = np.unique(rho_tab, return_inverse=True)
     where = where.reshape(rho_tab.shape)
-    I = arc_integrals(nodes[None, :], ax[:, None], bx[:, None], ay[:, None], by[:, None])
-    out = np.zeros((3, G, ncol) + rho_tab.shape)
-    for m in range(3):
-        np.add.at(out[m], (gal, col), I[m][:, where] * w_tab[None])
-    return out
+    # the circle meets the rectangle only between its nearest point and its farthest corner;
+    # elsewhere the arcs are exactly zero and are not evaluated
+    d_min = np.hypot(np.maximum(np.maximum(ax, -bx), 0.0), np.maximum(np.maximum(ay, -by), 0.0))
+    d_max = np.hypot(np.maximum(np.abs(ax), np.abs(bx)), np.maximum(np.abs(ay), np.abs(by)))
+    p, u = np.nonzero((nodes[None, :] > d_min[:, None]) & (nodes[None, :] < d_max[:, None]))
+    I = np.zeros((len(ax), len(nodes), 3))
+    I[p, u] = np.stack(arc_integrals(nodes[u], ax[p], bx[p], ay[p], by[p]), axis=-1)
+    vals = I[:, where] * w_tab[None, :, :, None]                                     # (P, n_r, n_q, 3)
+    out = _scatter_sum(G * ncol, gal * ncol + col, vals).reshape((G, ncol) + rho_tab.shape + (3,))
+    return np.moveaxis(out, -1, 0)
 
 
 def _los_part(points, L_subboxes, *, boxsize, r_bins, bins2, binning, reflect, rp_cut):
@@ -427,13 +462,17 @@ def _retained_overlap_sums(points, lab, L_subboxes, moment_weights, *, boxsize, 
                                     ).reshape(L * L, L, n_2)
                 own_vals = np.einsum("grq,gqrm->grm", s[np.arange(G), col_own], los[np.arange(G), iz_own])
             totals[t] += tot
-            np.add.at(own[t], lab_c, own_vals.reshape(G, n_r * n_2))
+            own[t] += _scatter_sum(n_jk, lab_c, own_vals.reshape(G, n_r * n_2))
     return [tot.reshape(n_jk, n_r, n_2) - o.reshape(n_jk, n_r, n_2) for tot, o in zip(totals, own)]
 
 
 def analytic_dr_terms(pos, shape, theta, e, lab_pos, lab_shape, L_subboxes, *, weight=None, weight_shape=None,
-                      chunk_size=None, boxsize, r_bins, bins2, binning="rppi", rp_cut=0.0):
+                      chunk_size=None, boxsize, r_bins, bins2, binning="rppi", rp_cut=0.0, _single_pass=True):
     r"""Normalised per-realisation D.R_S, R_D.S and S+R_D (union deletion, infinite randoms).
+
+    When the second-coordinate bins are symmetric about zero (always the case in measureia), both
+    samples are handled in one geometry pass over their union; ``_single_pass=False`` forces one
+    pass per sample (used by the tests to check that both give the same result).
 
     Parameters
     ----------
@@ -470,12 +509,34 @@ def analytic_dr_terms(pos, shape, theta, e, lab_pos, lab_shape, L_subboxes, *, w
     if chunk_size is None:
         chunk_size = _chunk_size(L_subboxes, r_bins, bins2, binning)
     kw = dict(boxsize=boxsize, r_bins=r_bins, bins2=bins2, binning=binning, rp_cut=rp_cut, chunk_size=chunk_size)
-    (sum_p,) = _retained_overlap_sums(pos, lab_pos, L_subboxes, [(w, None, None)], reflect=False, **kw)
     ew = np.asarray(e, dtype=float) * ws
     theta = np.asarray(theta, dtype=float)
-    sum_s, sum_q = _retained_overlap_sums(
-        shape, lab_shape, L_subboxes, [(ws, None, None), (None, ew * np.cos(2 * theta), ew * np.sin(2 * theta))],
-        reflect=True, **kw)
+    shape_moments = (ew * np.cos(2 * theta), ew * np.sin(2 * theta))
+    bins2 = np.asarray(bins2, dtype=float)
+    union = _single_pass and np.allclose(bins2, -bins2[::-1], rtol=0, atol=1e-12 * np.abs(bins2).max())
+    if union:
+        # The reflected bin j is bin n-1-j, so the shape terms are the non-reflected overlaps in
+        # reversed bin order, and both samples go through one geometry pass over their union.
+        # Objects in both samples (identical coordinates) are computed once.
+        points, inverse = np.unique(np.concatenate([pos, shape]), axis=0, return_inverse=True)
+        inverse = inverse.ravel()
+        inv_p, inv_s = inverse[:len(pos)], inverse[len(pos):]
+        lab = np.full(len(points), -1)
+        lab[inv_p] = lab_pos
+        union = np.array_equal(lab[inv_s][lab[inv_s] >= 0], lab_shape[lab[inv_s] >= 0])
+    if union:
+        lab[inv_s] = lab_shape
+        to_union = lambda values, inv: np.bincount(inv, weights=values, minlength=len(points))
+        sum_p, sum_s, sum_q = _retained_overlap_sums(
+            points, lab, L_subboxes,
+            [(to_union(w, inv_p), None, None), (to_union(ws, inv_s), None, None),
+             (None, to_union(shape_moments[0], inv_s), to_union(shape_moments[1], inv_s))],
+            reflect=False, **kw)
+        sum_s, sum_q = sum_s[:, :, ::-1], sum_q[:, :, ::-1]
+    else:
+        (sum_p,) = _retained_overlap_sums(pos, lab_pos, L_subboxes, [(w, None, None)], reflect=False, **kw)
+        sum_s, sum_q = _retained_overlap_sums(
+            shape, lab_shape, L_subboxes, [(ws, None, None), (None,) + shape_moments], reflect=True, **kw)
     Wp = (w.sum() - np.bincount(lab_pos, weights=w, minlength=n_jk))[:, None, None]
     Wsk = (ws.sum() - np.bincount(lab_shape, weights=ws, minlength=n_jk))[:, None, None]
     with np.errstate(divide="ignore", invalid="ignore"):
