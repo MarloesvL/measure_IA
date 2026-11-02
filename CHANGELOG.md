@@ -20,7 +20,7 @@ public API mean a major version bump.
   and uses the full estimators $(DD-RD-SR+RR)/RR$ and $(S_+D-S_+R)/RR$
   ([Estimator definitions](estimator_definitions.md#box-jackknife-edge-correction)). The
   jackknife errors now agree with those of a 10$\times$ random catalogue run through MeasureIA
-  to 0.93–1.04, for $w$ and the multipoles.
+  to 0.95–1.04, for $w$ and the multipoles.
 
     The full-sample measurement is unchanged, and so are the shape–shape realisations and the
     lightcone. `jk_edge_correction=False` reproduces the previous behaviour exactly. New
