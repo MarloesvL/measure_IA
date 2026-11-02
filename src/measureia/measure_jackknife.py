@@ -328,6 +328,103 @@ class MeasureJackknife(MeasureIABase):
 				minlength=num_regions)
 		return jk_pos, jk_shape
 
+	def _apply_box_jk_edge_correction(self, kind, dataset_name, jk_group_name, L_subboxes, masks=None,
+									  ellipticity="distortion", rp_cut=None):
+		r"""Replaces the box jackknife realisations written by the counting backends with the
+		edge-corrected estimators, using analytic (infinite-randoms) per-realisation random
+		terms (see ``box_jk_analytic``):
+
+		.. math:: \xi_{gg,k} = (DD_k - RD_k - SR_k + RR_k) / RR_k, \qquad
+				  \xi_{g+,k} = (S_+D_k - S_+R_k) / RR_k
+
+		All terms are in the count units the backends already write: the retained pairs N_k
+		times the per-pair terms, with S+ divided by 2R_k. ``_{i}_RR`` becomes the exact union
+		RR_k and ``_{i}_RD``, ``_{i}_SR`` (gg) and ``_{i}_SplusR`` (g+) are added. The retained
+		DD_k and S+D_k, and the full-sample measurement, are not touched. Only the xi_gg and
+		xi_g_plus realisations that the backend wrote are corrected.
+
+		Parameters
+		----------
+		kind : str
+			'w' (rp-pi bins) or 'multipoles' (r-mu bins).
+		dataset_name : str
+			Name of the dataset in the output file.
+		jk_group_name : str
+			Group in the output file where the jackknife realisations are stored.
+		L_subboxes : int
+			Number of subboxes on one side of the box.
+		masks : dict or NoneType, optional
+			The masks used for the pair counts.
+		ellipticity : str, optional
+			Definition of ellipticity, as for the pair counts.
+		rp_cut : float or NoneType, optional
+			Minimum projected separation (multipoles), as for the pair counts.
+		"""
+		from . import box_jk_analytic, pair_kernel
+		from .measure_IA_base import available_pairs
+		num_box = L_subboxes ** 3
+		binning = "rppi" if kind == "w" else "rmu"
+		bins2 = self.pi_bins if kind == "w" else self.mu_r_bins
+		paths = {stat: f"{self.snap_group}/{kind}/{stat}/{jk_group_name}" for stat in ("xi_gg", "xi_g_plus")}
+		with h5py.File(self.output_file_name, "r") as output_file:
+			present = [stat for stat, path in paths.items() if path in output_file]
+		shapes = "xi_g_plus" in present
+		sample_set = pair_kernel.prepare_box_samples(
+			self.data, masks, self.Num_position, self.Num_shape, shapes=shapes, ellipticity=ellipticity,
+			base=self, require_full_masks=True)
+		jk_pos, jk_shape = self._get_jackknife_region_indices(masks, L_subboxes)
+		num_pairs = np.array([available_pairs(self.sum_w_position_jk[k], self.sum_w_shape_jk[k],
+											  self.num_overlap - self.overlap_jk_counts[k], "cross")
+							  for k in range(num_box)])[:, None, None]
+
+		# box_jk_analytic puts the line of sight last and numbers the sub-boxes along
+		# (projected axis 1, projected axis 2, line of sight); translate the labels both ways
+		axes = np.append(sample_set.not_LOS, sample_set.LOS_ind)
+
+		def module_index(labels):
+			per_axis = np.stack([labels // L_subboxes ** 2, (labels // L_subboxes) % L_subboxes,
+								 labels % L_subboxes], axis=1)[:, axes]
+			return (per_axis[:, 0] * L_subboxes + per_axis[:, 1]) * L_subboxes + per_axis[:, 2]
+
+		if shapes:
+			theta = np.arctan2(sample_set.axis_direction[:, 1], sample_set.axis_direction[:, 0])
+			e = sample_set.e
+		else:
+			theta = e = np.zeros(len(sample_set.pos_shape))
+		geometry = dict(boxsize=self.boxsize, r_bins=self.r_bins, bins2=bins2, binning=binning,
+						rp_cut=0.0 if rp_cut is None else float(rp_cut))
+		DR, RD, SpR = box_jk_analytic.analytic_dr_terms(
+			sample_set.pos[:, axes], sample_set.pos_shape[:, axes], theta, e, module_index(jk_pos),
+			module_index(jk_shape), L_subboxes, weight=sample_set.weight,
+			weight_shape=sample_set.weight_shape, **geometry)
+		order = module_index(np.arange(num_box))  # realisation k of measureia is entry order[k]
+		DR, RD, SpR = DR[order], RD[order], SpR[order]
+		RR_jk = num_pairs * box_jk_analytic.exact_union_rr(L_subboxes, **geometry)[None]
+		RR_jk_denom = RR_jk.copy()  # guard against empty realisations/bins, as the backends do
+		RR_jk_denom[RR_jk_denom == 0] = 1
+
+		with h5py.File(self.output_file_name, "a") as output_file:
+			if "xi_gg" in present:
+				group = output_file[paths["xi_gg"]]
+				for i in np.arange(num_box):
+					DD_i = group[f"{dataset_name}_{i}_DD"][:]
+					RD_i, SR_i = num_pairs[i] * DR[i], num_pairs[i] * RD[i]
+					write_dataset_hdf5(group, dataset_name + f"_{i}", data=(DD_i - RD_i - SR_i + RR_jk[i]) / RR_jk_denom[i])
+					write_dataset_hdf5(group, dataset_name + f"_{i}_RR", data=RR_jk[i])
+					write_dataset_hdf5(group, dataset_name + f"_{i}_RD", data=RD_i)
+					write_dataset_hdf5(group, dataset_name + f"_{i}_SR", data=SR_i)
+			if shapes:
+				R_jk = pair_kernel.compute_R_jk(sample_set.e, sample_set.weight_shape, jk_shape, num_box,
+												getattr(self, "responsivity_correction", True))
+				group = output_file[paths["xi_g_plus"]]
+				for i in np.arange(num_box):
+					SplusD_i = group[f"{dataset_name}_{i}_SplusD"][:]
+					SplusR_i = num_pairs[i] * SpR[i] / (2 * R_jk[i])
+					write_dataset_hdf5(group, dataset_name + f"_{i}", data=(SplusD_i - SplusR_i) / RR_jk_denom[i])
+					write_dataset_hdf5(group, dataset_name + f"_{i}_RR", data=RR_jk[i])
+					write_dataset_hdf5(group, dataset_name + f"_{i}_SplusR", data=SplusR_i)
+		return
+
 	def measure_covariance_multiple_datasets(self, corr_types, dataset_names, num_box=27, return_output=False):
 		"""Combines the jackknife measurements for different datasets into one covariance matrix.
 		Author: Marta Garcia Escobar (starting from measure_jackknife methods); updated

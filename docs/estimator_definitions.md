@@ -67,14 +67,16 @@ worth being explicit about.
 
 The lightcone applies the same rule through its `num_samples["D_S"]` term, so both geometries agree on what
 "the same object in both samples" means. As $DR$ is expected to be equal to $RR$ in simulations, the equation for $\xi_\mathrm{gg}$
-reduces to $\xi_\mathrm{gg}=DD/RR-1$. (For the **lightcone**, $RR$ and the $DR$ terms are counted from explicit
+reduces to $\xi_\mathrm{gg}=DD/RR-1$ (in the full box; for jackknife realisations see
+[Box jackknife: edge correction](#box-jackknife-edge-correction)). (For the **lightcone**, $RR$ and the $DR$ terms are counted from explicit
 random catalogues instead — see [Lightcone estimators](#lightcone-estimators) below.)
 
 The Landy-Szalay estimator $\xi_{\mathrm{g}+}$ is defined as:
 \begin{align}
 \xi_{g,+}(r_\mathrm{p},\Pi) &= \frac{S_+D - S_+R}{RR} \\
 \end{align}
-For $\xi_{g+}$, the $S_+R$ term is negligible in simulations, reducing the equation for $\xi_{g+}$ to $\xi_{g+}=S_+D/RR$,
+For $\xi_{g+}$, the $S_+R$ term is negligible in simulations (in the full box; not in a jackknife realisation,
+see [Box jackknife: edge correction](#box-jackknife-edge-correction)), reducing the equation for $\xi_{g+}$ to $\xi_{g+}=S_+D/RR$,
 where we define $S_+D$ as follows
 \begin{align}
 S_+D &= \sum_{\{i,j\}}^{(r_\mathrm{p},\Pi)} w_i w_j \frac{e_{+}(j|i)}{2\mathcal{R}}
@@ -236,11 +238,69 @@ For **simulation boxes**, $N_\mathrm{jk}$ is the number of sub-boxes, which is r
 via $N_\mathrm{jk}=x^3$ with $L_\mathrm{sub}=L/x$ and $x$ an integer.
 The jack-knife realisations are created by omitting one sub-box from the full volume at a time. In practice, the code
 saves the information about each sub-box so that the correlations do not need to be remeasured $N_\mathrm{jk}$ times.
+A pair is removed from realisation $k$ when either member lies in sub-box $k$. How the box realisations
+are estimated is described [below](#box-jackknife-edge-correction).
 
 For the **lightcone**, the jackknife regions are instead defined on the sky: the objects are grouped into
 $N_\mathrm{jk}$ patches by k-means clustering of the random catalogue on the sphere, and one patch is
 omitted at a time. The number of patches is set with the `num_jk` argument, or the patch assignment can be
 supplied directly through `jk_patches`; the same delete-one covariance formula above then applies.
+
+### Box jackknife: edge correction
+
+In the full box, $DR=RR$ and $S_+R$ vanishes, which is why the box estimators reduce to $DD/RR-1$ and
+$S_+D/RR$ (see [above](#projected-correlation-functions)). Neither holds in a jackknife realisation. The
+galaxies next to the removed sub-box have lost part of their partner volume, and an analytic $RR$ does not
+know which galaxies those are, so the loss is left uncancelled in $DD$ and $S_+D$. This inflates the
+large-scale jackknife errors, by up to $\sim4\times$ for $w_{g+}$ and $\sim6\times$ for $w_{gg}$ at a
+number density of $10^{-2}\,h^3\,\mathrm{Mpc}^{-3}$.
+
+With `jk_edge_correction=True` (the default), each realisation $k$ therefore uses the full estimators
+
+\begin{align}
+\xi_{gg,k} &= \frac{DD_k - RD_k - SR_k + RR_k}{RR_k}\,, \\\\
+\xi_{g+,k} &= \frac{S_+D_k - S_+R_k}{RR_k}\,,
+\end{align}
+
+where the random terms are those of a uniform random catalogue in the limit of infinitely many randoms. They
+are volumes. Write $b$ for one $(r_p,\Pi)$ or $(r,\mu_r)$ bin, $V_b$ for its volume, $V=L^3$ for the box
+volume and $V_k = V/N_\mathrm{jk}$ for a sub-box. For an object at $\mathbf{x}$, $O_k(\mathbf{x};b)$ is the
+volume of the bin around it that falls inside sub-box $k$ (periodically), and $Q_k(\mathbf{x};b)$ is the same
+volume weighted by $\cos(2\phi)$, with $\phi$ the angle between the projected separation and the object's
+semi-major axis, as in $e_+$. Per available pair,
+
+\begin{align}
+\frac{RD_k}{N_{\mathrm{pairs},k}} &= \frac{\sum_{i\notin k} w_i\,[V_b - O_k(\mathbf{x}_i;b)]}{W_{\mathrm{position},k}\,(V-V_k)}\,, \\\\
+\frac{SR_k}{N_{\mathrm{pairs},k}} &= \frac{\sum_{j\notin k} w_j\,[V_b - O_k(\mathbf{x}_j;\tilde b)]}{W_{\mathrm{shape},k}\,(V-V_k)}\,, \\\\
+\frac{S_+R_k}{N_{\mathrm{pairs},k}} &= -\frac{1}{2\mathcal{R}_k}\,
+\frac{\sum_{j\notin k} w_j\,\epsilon_j\,Q_k(\mathbf{x}_j;\tilde b)}{W_{\mathrm{shape},k}\,(V-V_k)}\,, \\\\
+\frac{RR_k}{N_{\mathrm{pairs},k}} &= \frac{V_b}{V}\,\frac{1-2v+v\,f_b}{(1-v)^2}\,,
+\end{align}
+
+with the sums over the position ($i$) and shape ($j$) samples outside sub-box $k$, and:
+
+- $W_{\mathrm{position},k}$, $W_{\mathrm{shape},k}$ and $N_{\mathrm{pairs},k}$: the weight sums and
+  available pairs of realisation $k$, defined as for the full box.
+- $\mathcal{R}_k$: the responsivity of realisation $k$, as for $S_+D_k$.
+- $\tilde b$: the bin with $\Pi$ (or $\mu_r$) reflected. The partner of a shape object sits at $-\mathbf{s}$.
+- $v = 1/N_\mathrm{jk}$.
+- $f_b$: the bin average of $\prod_{a} \max(0, L_\mathrm{sub}-|s_a|)/L_\mathrm{sub}^3$, the chance that both
+  members of a pair fall in the same sub-box.
+
+$S_+R_k$ is negative because $\cos(2\phi)$ integrates to zero over a whole bin, so what remains after the cut
+is minus the part that fell inside the sub-box. Far from the removed sub-box, $O_k=Q_k=0$ and $RD_k$, $SR_k$
+equal the analytic $RR$. At separations well below $L_\mathrm{sub}$, $f_b\to1$ and $RR_k$ reduces to the
+previous $N_{\mathrm{pairs},k}V_b/(V-V_k)$.
+
+In $(r_p,\Pi)$ bins, $O_k$ and $Q_k$ have an exact closed form. In $(r,\mu_r)$ bins the projected radius is
+integrated numerically; this changes the jackknife errors by less than 0.1%. The terms respect `rp_cut`.
+Every separation must be at most half the box ($r_{p,\mathrm{max}}$ and $\Pi_\mathrm{max}$, or
+$r_\mathrm{max}$, at most $L/2$), otherwise a `ValueError` is raised.
+
+The full-sample measurement does not change, nor do the shape-shape realisations; `jk_edge_correction=False`
+reproduces the previous behaviour exactly. Against a 10$\times$ random catalogue run through MeasureIA, the
+jackknife errors agree to within 0.93–1.04 for $w_{gg}$, $w_{g+}$, $\tilde{\xi}_{gg,0}$ and
+$\tilde{\xi}_{g+,2}$ (`validation/box_jk_analytic_randoms.md`).
 
 ### How many patches?
 

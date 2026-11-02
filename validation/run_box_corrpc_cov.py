@@ -229,8 +229,10 @@ def run_measureia_jk(mock, output_file, temp_path):
 					  # convention explicitly so the comparison is like for like
 					  # (see run_box_halotools.py).
 					  num_overlap=0)
+	# corr_pc's jackknife measures each deleted catalogue directly with analytic RR over the
+	# reduced volume: measureia's uncorrected realisations are the like-for-like comparison.
 	ia.measure_xi_w(DATASET, "both", num_jk=NUM_JK, temp_file_path=temp_path,
-					responsivity=False)
+					responsivity=False, jk_edge_correction=False)
 	with h5py.File(output_file, "r") as f:
 		for grp, key in [("w_g_plus", "w_gp"), ("w_gg", "w_gg")]:
 			out[f"{key}_full"] = f[f"{grp}/{DATASET}"][:]
@@ -250,7 +252,7 @@ def run_measureia_jk(mock, output_file, temp_path):
 					  # (see run_box_halotools.py).
 					  num_overlap=0)
 	ia.measure_xi_multipoles(DATASET, "both", num_jk=NUM_JK,
-							 temp_file_path=temp_path, responsivity=False)
+							 temp_file_path=temp_path, responsivity=False, jk_edge_correction=False)
 	with h5py.File(output_file, "r") as f:
 		for grp, key in [("multipoles_g_plus", "mult_gp"),
 						 ("multipoles_gg", "mult_gg")]:

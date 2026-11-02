@@ -179,9 +179,25 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 		if not (isinstance(num_jk, (int, np.integer)) and not isinstance(num_jk, bool) and num_jk >= 0):
 			raise ValueError(f"num_jk must be an integer >= 0, got {num_jk!r}.")
 
+	def _box_jk_edge_correction_applies(self, jk_edge_correction, num_jk, corr_type, kind):
+		"""Validates ``jk_edge_correction`` and returns whether the analytic edge correction of the
+		box jackknife realisations applies: only with a jackknife and to the g+ / gg correlations
+		(shape-shape realisations are unchanged). Checked before any pair counting, so a
+		separation beyond half the box fails fast."""
+		if not isinstance(jk_edge_correction, (bool, np.bool_)):
+			raise TypeError(f"jk_edge_correction must be True or False, got {jk_edge_correction!r}.")
+		if not (jk_edge_correction and num_jk > 0 and corr_type != "++"):
+			return False
+		from .box_jk_analytic import check_half_box
+		if kind == "w":
+			check_half_box(self.boxsize, self.r_bins, self.pi_bins, "rppi")
+		else:
+			check_half_box(self.boxsize, self.r_bins, self.mu_r_bins, "rmu")
+		return True
+
 	@worker_pool.pooled
 	def measure_xi_w(self, dataset_name, corr_type, num_jk=0, temp_file_path=None, masks=None,
-					 ellipticity='distortion', chunk_size=1000, responsivity=True):
+					 ellipticity='distortion', chunk_size=1000, responsivity=True, jk_edge_correction=True):
 		r"""Measures $\xi_{gg}$, $\xi_{g+}$ and $w_{gg}$, $w_{g+}$ including jackknife covariance if desired.
 		Manages the various _measure_xi_rp_pi_box method options in MeasureWBox and MeasureWBoxJackknife.
 
@@ -214,6 +230,15 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			when False or when the shape weights sum to zero). Use the default for raw shape distortions derived
 			from axis ratios; set to False when the input shapes are already calibrated shears. Only the g+
 			correlations are affected; the clustering (gg) signal is unchanged. Default is True.
+		jk_edge_correction : bool, optional
+			If True (default), each jackknife realisation gets the random terms a uniform random catalogue
+			would supply after its sub-box is removed (DR, RD and S+R, in the limit of infinitely many
+			randoms) and the exact union RR, so the realisations use the full estimators
+			(DD - RD - SR + RR) / RR and (S+D - S+R) / RR. Without it, the analytic randoms do not
+			follow the galaxies next to the removed sub-box, which inflates the large-scale jackknife
+			errors. Requires every separation component to be at most half the box. Only the
+			jackknife realisations of g+ and gg change; the full-sample measurement is identical.
+			False reproduces the previous behaviour. Default is True.
 
 		"""
 		self._validate_measure_options(corr_type, ellipticity, num_jk,
@@ -233,6 +258,7 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			except AssertionError:
 				raise ValueError(
 					f"Use x^3 as input for num_jk, with x as an int. {float(int(num_jk ** (1. / 3)))},{num_jk ** (1. / 3)}")
+		edge_correction = self._box_jk_edge_correction_applies(jk_edge_correction, num_jk, corr_type, "w")
 
 		if temp_file_path == False:
 			temp_storage = False
@@ -279,6 +305,9 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 				self._measure_xi_rp_pi_box_jk_brute(masks=masks, L_subboxes=L, dataset_name=dataset_name,
 													return_output=False, ellipticity=ellipticity,
 													jk_group_name=f"{dataset_name}_jk{num_jk}")
+			if edge_correction:
+				self._apply_box_jk_edge_correction("w", dataset_name, f"{dataset_name}_jk{num_jk}", L,
+												   masks=masks, ellipticity=ellipticity)
 			self._measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
 			for i in np.arange(num_jk):
 				self._measure_w_g_i(corr_type=corr_type, dataset_name=f"{dataset_name}_{i}",
@@ -313,7 +342,7 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 
 	@worker_pool.pooled
 	def measure_xi_multipoles(self, dataset_name, corr_type, num_jk=0, temp_file_path=None, masks=None, rp_cut=None,
-							  ellipticity='distortion', chunk_size=1000, responsivity=True):
+							  ellipticity='distortion', chunk_size=1000, responsivity=True, jk_edge_correction=True):
 		r"""Measures $\xi_{gg}$, $\xi_{g+}$ and $\tilde{\xi}_{gg,0}$, $\tilde{\xi}_{g+,2}$ including jackknife covariance
 		if desired. Manages the various _measure_xi_r_mur_box method options in MeasureMultipolesBox and
 		MeasureMultipolesBoxJackknife.
@@ -341,6 +370,12 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 		ellipticity : str, optional
 			Definition of ellipticity. Choose from 'distortion', defined as (1-q^2)/(1+q^2), or 'ellipticity', defined
 			 as (1-q)/(1+q). Default is 'distortion'.
+		jk_edge_correction : bool, optional
+			If True (default), each jackknife realisation gets the random terms a uniform random catalogue
+			would supply after its sub-box is removed (DR, RD and S+R, in the limit of infinitely many
+			randoms, restricted to r_p >= rp_cut) and the exact union RR. See measure_xi_w. Requires
+			r_max to be at most half the box. Only the jackknife realisations of g+ and gg change; the
+			full-sample measurement is identical. False reproduces the previous behaviour.
 		"""
 		self._validate_measure_options(corr_type, ellipticity, num_jk,
 									   getattr(self, "has_density_sample_shapes", False))
@@ -358,6 +393,7 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			except AssertionError:
 				raise ValueError(
 					f"Use x^3 as input for num_jk, with x as an int. {float(int(num_jk ** (1. / 3)))},{num_jk ** (1. / 3)}")
+		edge_correction = self._box_jk_edge_correction_applies(jk_edge_correction, num_jk, corr_type, "multipoles")
 
 		if temp_file_path == False:
 			temp_storage = False
@@ -404,6 +440,9 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 				self._measure_xi_r_mur_box_jk_brute(masks=masks, L_subboxes=L, dataset_name=dataset_name,
 													return_output=False, rp_cut=rp_cut, ellipticity=ellipticity,
 													jk_group_name=f"{dataset_name}_jk{num_jk}")
+			if edge_correction:
+				self._apply_box_jk_edge_correction("multipoles", dataset_name, f"{dataset_name}_jk{num_jk}", L,
+												   masks=masks, ellipticity=ellipticity, rp_cut=rp_cut)
 			self._measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
 			for i in np.arange(num_jk):
 				self._measure_multipoles(corr_type=corr_type, dataset_name=f"{dataset_name}_{i}",
