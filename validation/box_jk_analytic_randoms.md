@@ -343,9 +343,11 @@ None of this affects the option 2 vs reference comparison. Matching a random cat
 target, removes the *analytic-randoms* problem; it does not make jackknife errors equal the true
 errors.
 
-### Open point
+### Open point (resolved, see section 8 phase B)
 
-Dense w_g+ at rp < 3 Mpc/h: option 2 sits 2–4% below the reference (40 mocks).
+Dense w_g+ at rp < 3 Mpc/h: option 2 sits 2–4% below the reference (40 mocks). The
+section 8 rerun confirms the noise explanation: Δ is uncorrelated with option 2 and σ²_Δ
+accounts for the gap.
 - This is most likely the reference's own random-catalogue noise, which the noise-free analytic
   term lacks; option 1 shows 1.00 there only because it shares the reference's randoms.
 - The 20× check on 5 mocks is too noisy to settle it: option 2 gives 0.96–1.00 with 20× and
@@ -449,11 +451,59 @@ An external review of this note raised the points below. The per-realisation out
 October runs were in a temporary directory that has since been cleared, so these need reruns.
 Rerun outputs are kept under `validation/`.
 
-1. **Smallest-r ξ_gg,0 deficit:** term swap and 20× reference (section 6 notes).
-2. **Dense w_g+ open point:** variance decomposition (section 5, open point).
-3. **Uncertainties:** mean ± s.e.m. across mocks for every σ ratio, at least in the extreme
+1. **Smallest-r ξ_gg,0 deficit.** Term swap and 20× reference (section 6 notes).
+2. **Dense w_g+ open point.** Variance decomposition (section 5, open point).
+3. **Uncertainties.** Mean ± s.e.m. across mocks for every σ ratio, at least in the extreme
    bins. Until then, the ranges above have no error bars; this matters most for the 5-mock
    dense multipole test 23.
+
+   **Rerun, phase A (sparse, 100 mocks, N_jk 8/27/64; production module).**
+   `run_box_jk_review_reruns.py`; full output in `rerun/analysis_sparse_*.txt`. The ratio is
+   the per-mock σ_jk(option)/σ_jk(reference), averaged over mocks ± s.e.m. Δ_k = ref_k − opt2_k.
+
+   | | option 2 / reference | s.e.m. | corr(opt2, Δ) | σ²_Δ / σ²_ref |
+   |---|---|---|---|---|
+   | w_g+, w_gg | 0.986–1.003 | 0.002–0.008 | \|·\| ≤ 0.07 | 0.014–0.037 |
+   | ξ_g+,2, ξ_gg,0 | 0.954–1.005 | 0.002–0.012 | \|·\| ≤ 0.09 | 0.006–0.090 |
+
+   - **Point 1 resolved (sparse).** In the smallest r bin, ξ_gg,0 option 2 is 0.954–0.990.
+     With the reference's own counted RR_k instead of the exact RR, it is 0.998–1.003
+     (± 0.001–0.002). Option 1, which differs from the reference only in RR, shows the same
+     deficit. So it is noise in the reference's counted RR, not a flaw in the exact RR.
+   - **The general ~1% deficit is the reference's random-catalogue noise.** Δ is uncorrelated
+     with option 2 everywhere, so σ²_ref = σ²_opt2 + σ²_Δ, and σ²_Δ predicts ratios of
+     √(1 − σ²_Δ/σ²_ref) ≈ 0.98–0.99, as measured. In w the noise sits in the DR / S+R terms
+     (the RR swap barely moves the ratio); in the smallest multipole bins, in RR.
+   - **Point 3 (sparse).** The ranges in sections 5 and 6 now have error bars of 0.002–0.012.
+
+   **Rerun, phase B (dense, n = 10⁻²; w 20 mocks, multipoles 10 mocks; N_jk 8/27/64).**
+   `rerun/phase_b.sh`; full output in `rerun/analysis_dense_*.txt`.
+
+   | | option 2 / reference | s.e.m. | corr(opt2, Δ), N_jk 27/64 (8) | σ²_Δ / σ²_ref |
+   |---|---|---|---|---|
+   | w_g+ | 0.966–1.034 | 0.003–0.033 | \|·\| ≤ 0.06 (0.21) | 0.012–0.096 |
+   | w_gg | 0.970–1.027 | 0.004–0.022 | \|·\| ≤ 0.08 (0.18) | 0.016–0.051 |
+   | ξ_g+,2 | 0.968–1.009 | 0.005–0.036 | \|·\| ≤ 0.13 (0.20) | 0.011–0.067 |
+   | ξ_gg,0 | 0.956–1.021 | 0.002–0.023 | \|·\| ≤ 0.11 (0.33) | 0.014–0.037 |
+
+   For comparison, today's analytic jackknife reaches 3.4–4.2 (w_g+), 4.7–6.7 (w_gg),
+   3.4–4.2 (ξ_g+,2) and 4.7–6.4 (ξ_gg,0) in the largest bin on the same mocks.
+   - **Point 2 resolved.** Dense w_g+ at rp < 3, N_jk 27/64: option 2 is 0.966–0.985
+     (± 0.007–0.013), confirming the 2–4% deficit. The decomposition explains it: the gap
+     σ²_ref − σ²_opt2 is 0.03–0.065 of σ²_ref, σ²_Δ is 0.057–0.078, and Δ is uncorrelated with
+     option 2 (\|corr\| ≤ 0.06). √(1 − σ²_Δ/σ²_ref) ≈ 0.96–0.97 predicts the measured ratio.
+     The reference carries an extra, independent fluctuation, the noise of its 10× random S+R
+     term. It is largest at small rp, where shape noise dominates, and falls to ~1% at large rp.
+     Option 1, which uses the same random S+R, reproduces the reference to 0.999–1.001 (± ≤ 0.001).
+     The larger correlations at N_jk = 8 come from only 8 realisations per mock.
+   - **Point 1 at high density.** The smallest-r ξ_gg,0 deficit is 0.975 ± 0.016, 0.986 ± 0.010
+     and 0.994 ± 0.005 for N_jk 8/27/64, within 1.5 s.e.m. of 1. The RR swap gives the same
+     values, so at this density no RR-noise deficit is detectable.
+   - **The exact RR is needed at high density.** Option 2 with the counted RR_k (the swap)
+     drifts at large r to 1.09–1.27 (w_gg) and 1.11–1.42 (ξ_gg,0), like option 1 (1.10–1.21 and
+     1.16–1.39). With the exact RR, option 2 stays within 0.97–1.03.
+   - **Point 3 (dense).** Error bars on the dense ranges: 0.003–0.036, largest at N_jk = 8.
+     The earlier 5-mock range for test 23 (0.93–1.04) narrows to 0.956–1.021.
 4. **Quadrature accuracy (done, 2026-10-27).** Per galaxy, the prototype's r–μ quadrature
    error is up to 2.6×10⁻³ of V_b (95th percentile 4×10⁻⁴), compared with an adaptive
    reference. Its effect on the error bars was measured with
