@@ -36,6 +36,7 @@ import pytest
 
 from measureia import box_jk_analytic as bja
 import box_jk_reference as ref
+from data import make_box_jk_analytic_snapshot as snap
 
 
 BOXSIZE = 150.0
@@ -295,6 +296,19 @@ class TestMatchesPrototype:
             np.testing.assert_allclose(x, y, rtol=1e-13, atol=1e-15)
 
     @pytest.mark.parametrize("binning,bins2", BINNINGS)
+    def test_num_nodes_does_not_change_the_result(self, binning, bins2):
+        """Galaxy chunks are spread over worker processes; their partial sums add up to the
+        single-process result (to rounding)."""
+        pos, shape, theta, e, w, w_s = _small_mock(32, n_pos=150, n_shape=110)
+        shape[:40] = pos[:40]
+        lab_p, lab_s = _labels(pos, 3), _labels(shape, 3)
+        kw = dict(weight=w, weight_shape=w_s, chunk_size=13, **_kw(binning, bins2))
+        serial = bja.analytic_dr_terms(pos, shape, theta, e, lab_p, lab_s, 3, num_nodes=1, **kw)
+        parallel = bja.analytic_dr_terms(pos, shape, theta, e, lab_p, lab_s, 3, num_nodes=2, **kw)
+        for name, a, b in zip(["DR", "RD", "S+R"], parallel, serial):
+            np.testing.assert_allclose(a, b, rtol=1e-12, atol=1e-12 * np.abs(b).max(), err_msg=name)
+
+    @pytest.mark.parametrize("binning,bins2", BINNINGS)
     @pytest.mark.parametrize("samples", ["same", "separate", "partial", "duplicates"])
     def test_single_pass_equals_two_passes(self, binning, bins2, samples):
         """With symmetric second-coordinate bins the reflected bin j is bin n-1-j, so both
@@ -372,6 +386,29 @@ class TestMatchesPrototype:
             np.testing.assert_allclose(DR[k], Vb / (V - V / 27), rtol=1e-12)
             np.testing.assert_allclose(RD[k], Vb / (V - V / 27), rtol=1e-12)
             np.testing.assert_allclose(SpR[k], 0.0, atol=1e-14)
+
+
+class TestSnapshot:
+    """The per-realisation terms equal those of the module before its r-mu speed-up (dev at
+    bbcd21b, tests/data/make_box_jk_analytic_snapshot.py) to rounding, at the 16 nodes per
+    segment that version used. Pins memory-layout, chunking and parallelisation changes,
+    which must not change the result."""
+
+    @pytest.fixture(scope="class")
+    def snapshot(self):
+        import os
+        return np.load(os.path.join(os.path.dirname(__file__), "data", "box_jk_analytic_snapshot.npz"))
+
+    @pytest.mark.parametrize("name", list(snap.CASES))
+    @pytest.mark.parametrize("chunk_size", [None, 13])
+    def test_reproduces_snapshot(self, snapshot, name, chunk_size, monkeypatch):
+        monkeypatch.setattr(bja, "_N_GL_RMU", 16)
+        args, kwargs = snap.case_inputs(name)
+        got = bja.analytic_dr_terms(*args, chunk_size=chunk_size, **kwargs)
+        for term, g in zip(["DR", "RD", "SpR"], got):
+            want = snapshot[f"{name}/{term}"]
+            np.testing.assert_allclose(g, want, rtol=1e-12, atol=1e-12 * np.abs(want).max(),
+                                       err_msg=f"{name}/{term}")
 
 
 # ---------------------------------------------------------------------------
