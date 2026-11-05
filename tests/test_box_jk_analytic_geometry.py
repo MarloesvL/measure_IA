@@ -26,9 +26,9 @@ Sections
 
 Accuracy: rp-pi overlaps are exact (closed form for the area of disc ∩ rectangle and its
 cos 2phi / sin 2phi moments). r-mu overlaps use Gauss-Legendre quadrature in the projected
-radius, 16 nodes on each of [0, r_i] and [r_i, r_{i+1}] for bin i: per galaxy up to ~6e-3 of
-V_b, which changes the jackknife sigma by <= 0.1% (validation/run_box_jk_quadrature_check.py,
-validation/run_box_jk_node_layout.py).
+radius, on each of [0, r_i] and [r_i, r_{i+1}] for bin i: 16 nodes per segment at N_jk = 8
+and 8 from N_jk = 27 (TestNodeRule). Per galaxy up to ~5e-3 (16) or ~1.7e-2 (8) of V_b, which
+changes the jackknife sigma by <= 0.6% (validation/run_box_jk_node_rule_check.py).
 """
 
 import numpy as np
@@ -123,8 +123,12 @@ class TestPartitionIdentity:
     ALL sub-boxes (including its own) cover the whole bin: sum_k O_k = V_b and
     sum_k Oc_k = sum_k Os_k = 0 (cos 2phi and sin 2phi integrate to zero over a full ring).
     In rp-pi this is exact (closed form). In r-mu the full bin is itself integrated by the
-    Gauss-Legendre quadrature in rho, which for the full bin is accurate to 3.6e-3 of V_b (the
-    same for the loop prototype: the error sits in the [r_i, r_{i+1}] segment both share)."""
+    Gauss-Legendre quadrature in rho: for the full bin accurate to 3.6e-3 of V_b with 16 nodes
+    per segment (N_jk = 8) and 1.3e-2 with 8 (N_jk >= 27; validation/run_box_jk_node_rule_check.py)."""
+
+    @staticmethod
+    def _rmu_rtol(L_subboxes):
+        return 5e-3 if bja._n_gl_rmu(L_subboxes) == 16 else 2e-2
 
     @pytest.mark.parametrize("binning,bins2", BINNINGS)
     @pytest.mark.parametrize("L_subboxes", [2, 3, 4])
@@ -137,7 +141,7 @@ class TestPartitionIdentity:
         for k in range(L_subboxes ** 3):
             O, Oc, Os = bja.subbox_overlaps(pts, k, L_subboxes, reflect=reflect, **_kw(binning, bins2))
             tot += np.array([O, Oc, Os])
-        rtol = 1e-12 if binning == "rppi" else 5e-3
+        rtol = 1e-12 if binning == "rppi" else self._rmu_rtol(L_subboxes)
         np.testing.assert_allclose(tot[0], np.broadcast_to(Vb, tot[0].shape), rtol=rtol)
         np.testing.assert_allclose(tot[1], 0.0, atol=1e-11 * Vb.max())
         np.testing.assert_allclose(tot[2], 0.0, atol=1e-11 * Vb.max())
@@ -152,7 +156,7 @@ class TestPartitionIdentity:
         for k in range(27):
             O, _, _ = bja.subbox_overlaps(pts, k, 3, rp_cut=rp_cut, **_kw("rmu", MU_BINS))
             tot = tot + O
-        np.testing.assert_allclose(tot, np.broadcast_to(Vb, tot.shape), rtol=5e-3, atol=1e-6 * Vb.max())
+        np.testing.assert_allclose(tot, np.broadcast_to(Vb, tot.shape), rtol=self._rmu_rtol(3), atol=1e-6 * Vb.max())
 
 
 # ---------------------------------------------------------------------------
@@ -206,6 +210,13 @@ class TestSimpleConfigurations:
 # ---------------------------------------------------------------------------
 
 class TestMonteCarlo:
+    """Geometry (arcs, periodic images, reflection, rp_cut) against brute force. The r-mu
+    quadrature is pinned to 16 nodes per segment so that its error stays well below the Monte
+    Carlo noise; the production node count is covered by TestPartitionIdentity and TestNodeRule."""
+
+    @pytest.fixture(autouse=True)
+    def _sixteen_nodes(self, monkeypatch):
+        monkeypatch.setattr(bja, "_N_GL_RMU", 16)
 
     @pytest.mark.parametrize("binning,bins2", BINNINGS)
     @pytest.mark.parametrize("reflect", [False, True])
@@ -409,6 +420,43 @@ class TestSnapshot:
             want = snapshot[f"{name}/{term}"]
             np.testing.assert_allclose(g, want, rtol=1e-12, atol=1e-12 * np.abs(want).max(),
                                        err_msg=f"{name}/{term}")
+
+
+class TestNodeRule:
+    """r-mu nodes per rho segment depend on N_jk: 16 at N_jk = 8 (few realisations, each
+    weighing heavily: 8 nodes moved sigma_jk by up to 5.5% on the dense mock) and 8 from
+    N_jk = 27 (<= 0.6%; validation/run_box_jk_node_rule_check.py)."""
+
+    def test_node_count_by_n_jk(self):
+        assert bja._n_gl_rmu(2) == 16
+        assert bja._n_gl_rmu(3) == 8
+        assert bja._n_gl_rmu(4) == 8
+
+    @pytest.fixture(scope="class")
+    def snapshot(self):
+        import os
+        return np.load(os.path.join(os.path.dirname(__file__), "data", "box_jk_analytic_snapshot.npz"))
+
+    def test_n_jk_8_keeps_16_nodes(self, snapshot):
+        """Unpatched, the N_jk = 8 case reproduces the 16-node snapshot to rounding."""
+        args, kwargs = snap.case_inputs("rmu_L2_w_same")
+        for term, g in zip(["DR", "RD", "SpR"], bja.analytic_dr_terms(*args, **kwargs)):
+            want = snapshot[f"rmu_L2_w_same/{term}"]
+            np.testing.assert_allclose(g, want, rtol=1e-12, atol=1e-12 * np.abs(want).max(), err_msg=term)
+
+    @pytest.mark.parametrize("name", ["rmu_L3_w_partial", "rmu_L4_rpcut_separate"])
+    def test_larger_n_jk_uses_8_nodes(self, snapshot, name):
+        """From N_jk = 27 the terms differ from the 16-node snapshot, by no more than the
+        8-node quadrature error (per galaxy <= 1.7e-2 of V_b, so per pair well below 2e-2)."""
+        args, kwargs = snap.case_inputs(name)
+        L = args[-1]
+        per_pair = ref.shell_volumes(kwargs["r_bins"], kwargs["bins2"], "rmu") / (BOXSIZE ** 3 * (1 - 1 / L ** 3))
+        differs = False
+        for term, g in zip(["DR", "RD", "SpR"], bja.analytic_dr_terms(*args, **kwargs)):
+            want = snapshot[f"{name}/{term}"]
+            assert np.all(np.abs(g - want) <= 2e-2 * per_pair[None]), term
+            differs |= bool(np.any(np.abs(g - want) > 1e-10 * per_pair[None]))
+        assert differs
 
 
 # ---------------------------------------------------------------------------

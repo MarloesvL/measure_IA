@@ -31,10 +31,12 @@ indices (ix, iy, iz) = (k // L^2, (k // L) % L, k % L) along the three coordinat
 
 Accuracy: in rp-pi the sky-plane overlaps are exact (closed form for the area of a disc
 inside a rectangle and its cos 2phi / sin 2phi moments). In r-mu the projected radius is
-integrated with 16-point Gauss-Legendre quadrature on [0, r_i] and [r_i, r_{i+1}], separately
-for each r bin (so a bin does not depend on the other bins): up to ~6e-3 of V_b for a single
-galaxy, which changes the jackknife errors by <= 0.1% (``validation/run_box_jk_quadrature_check.py``,
-``validation/run_box_jk_node_layout.py``). The sub-box self-overlap f(b) is computed by
+integrated with Gauss-Legendre quadrature on [0, r_i] and [r_i, r_{i+1}], separately for each
+r bin (so a bin does not depend on the other bins): 16 nodes per segment at N_jk = 8 and 8 from
+N_jk = 27. Per galaxy the error is up to ~5e-3 (16) or ~1.7e-2 (8) of V_b; against a 64-node
+reference the jackknife errors change by <= 0.5% (16, N_jk = 8) and <= 0.6% (8, N_jk = 27, 64)
+on the dense validation mock (``validation/run_box_jk_node_rule_check.py``; with 8 nodes at
+N_jk = 8 it was 5.5%, hence the 16 there). The sub-box self-overlap f(b) is computed by
 deterministic quadrature split at every kink.
 
 Everything here is plain numpy, vectorised over galaxies in bounded-memory chunks. The
@@ -57,7 +59,8 @@ __all__ = [
     "check_half_box",
 ]
 
-_N_GL_RMU = 16       # Gauss-Legendre nodes per rho segment (r-mu overlaps)
+_N_GL_RMU = 8           # Gauss-Legendre nodes per rho segment (r-mu overlaps), N_jk >= 27
+_N_GL_RMU_FEW_JK = 16   # the same at N_jk = 8 (see _n_gl_rmu)
 _N_GL_F = 32         # nodes per segment for the self-overlap fraction f(b)
 _CHUNK_ELEMENTS = 10_000_000  # rp-pi: target size (float64 elements, ~80 MB) of the largest per-chunk array
 _CHUNK_BYTES_RMU = 200_000_000  # r-mu: target size of all of a chunk's temporaries (per worker)
@@ -216,22 +219,29 @@ def _images(start, L_sub, boxsize):
     return [(start + n * boxsize, start + n * boxsize + L_sub) for n in (-1.0, 0.0, 1.0)]
 
 
-def _gl_segments(segments):
-    """16-point Gauss-Legendre nodes and weights (incl. the rho Jacobian) on the given
-    segments; zero-length segments get zero weight."""
-    x, w = np.polynomial.legendre.leggauss(_N_GL_RMU)
+def _n_gl_rmu(L_subboxes):
+    """Gauss-Legendre nodes per rho segment in r-mu: _N_GL_RMU_FEW_JK at N_jk = 8, where each of
+    the few realisations weighs heavily (8 nodes moved sigma_jk by up to 5.5% there), and
+    _N_GL_RMU from N_jk = 27 (<= 0.6%; validation/run_box_jk_node_rule_check.py)."""
+    return _N_GL_RMU_FEW_JK if L_subboxes <= 2 else _N_GL_RMU
+
+
+def _gl_segments(segments, n_gl=None):
+    """n_gl-point (default _N_GL_RMU) Gauss-Legendre nodes and weights (incl. the rho
+    Jacobian) on the given segments; zero-length segments get zero weight."""
+    x, w = np.polynomial.legendre.leggauss(_N_GL_RMU if n_gl is None else n_gl)
     rho = np.concatenate([0.5 * (b - a) * x + 0.5 * (a + b) for a, b in segments])
     wrho = np.concatenate([0.5 * (b - a) * w for a, b in segments]) * rho
     return rho, wrho
 
 
-def _rmu_node_table(r_bins, rp_cut):
-    """Projected-radius nodes and weights for each r bin, shapes (n_r, 32): bin i has its own
-    16-point Gauss-Legendre nodes on [rp_cut, r_i] and [r_i, r_{i+1}] (r_p >= rp_cut), so a
-    bin's result does not depend on the other bins. Segments below rp_cut have zero length."""
+def _rmu_node_table(r_bins, rp_cut, n_gl=None):
+    """Projected-radius nodes and weights for each r bin, shapes (n_r, 2 n_gl): bin i has its
+    own n_gl-point Gauss-Legendre nodes on [rp_cut, r_i] and [r_i, r_{i+1}] (r_p >= rp_cut), so
+    a bin's result does not depend on the other bins. Segments below rp_cut have zero length."""
     r_bins = np.asarray(r_bins, dtype=float)
     rows = [_gl_segments([(min(rp_cut, r_bins[i]), r_bins[i]),
-                          (max(rp_cut, r_bins[i]), max(rp_cut, r_bins[i + 1]))])
+                          (max(rp_cut, r_bins[i]), max(rp_cut, r_bins[i + 1]))], n_gl)
             for i in range(len(r_bins) - 1)]
     return np.array([r for r, _ in rows]), np.array([w for _, w in rows])
 
@@ -348,7 +358,7 @@ def _sky_part_rmu(points, L_subboxes, moment_weights, *, boxsize, r_bins, rp_cut
     L_sub = boxsize / L_subboxes
     r_bins = np.asarray(r_bins, dtype=float)
     G, ncol, T = len(points), L_subboxes ** 2, len(moment_weights)
-    rho_tab, w_tab = _rmu_node_table(r_bins, rp_cut)
+    rho_tab, w_tab = _rmu_node_table(r_bins, rp_cut, _n_gl_rmu(L_subboxes))
     n_r, Q = rho_tab.shape
     size = n_r * T * ncol * G * Q
     r_idx, q_idx = np.nonzero(w_tab != 0)          # zero-length segments (below rp_cut) add nothing
@@ -382,7 +392,7 @@ def _los_part_rmu(points, L_subboxes, *, boxsize, r_bins, bins2, reflect, rp_cut
     L_sub = boxsize / L_subboxes
     lo2, hi2 = _second_bins(bins2, reflect)
     z = points[:, 2]
-    rho_tab, _ = _rmu_node_table(r_bins, rp_cut)                                 # (n_r, Q)
+    rho_tab, _ = _rmu_node_table(r_bins, rp_cut, _n_gl_rmu(L_subboxes))          # (n_r, Q)
     a_sh, b_sh = (h.T[:, None, :, None] for h in _shell_heights(rho_tab, r_bins))  # (n_r, 1, Q, 1)
     m_lo = (rho_tab[:, :, None] * _mu_slopes(lo2)[None, None])[:, None]            # (n_r, 1, Q, n_mu)
     m_hi = (rho_tab[:, :, None] * _mu_slopes(hi2)[None, None])[:, None]
@@ -455,7 +465,7 @@ def _chunk_size(L_subboxes, r_bins, bins2, binning, boxsize):
     L_sub = boxsize / L_subboxes
     r_max = float(np.max(r_bins))
     images_per_axis = min(3 * L_subboxes, int(np.ceil(2 * r_max / L_sub)) + 1)
-    Q = 2 * _N_GL_RMU
+    Q = 2 * _n_gl_rmu(L_subboxes)
     per_galaxy = 48 * images_per_axis ** 2 * n_r * Q + 2 * (n_r * 3 * L_subboxes ** 2 * Q + n_r * Q * L_subboxes * n_2)
     return max(1, _CHUNK_BYTES_RMU // (8 * per_galaxy))
 
