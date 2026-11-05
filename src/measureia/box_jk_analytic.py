@@ -31,10 +31,12 @@ indices (ix, iy, iz) = (k // L^2, (k // L) % L, k % L) along the three coordinat
 
 Accuracy: in rp-pi the sky-plane overlaps are exact (closed form for the area of a disc
 inside a rectangle and its cos 2phi / sin 2phi moments). In r-mu the projected radius is
-integrated with 16-point Gauss-Legendre quadrature on [0, r_i] and [r_i, r_{i+1}], separately
-for each r bin (so a bin does not depend on the other bins): up to ~6e-3 of V_b for a single
-galaxy, which changes the jackknife errors by <= 0.1% (``validation/run_box_jk_quadrature_check.py``,
-``validation/run_box_jk_node_layout.py``). The sub-box self-overlap f(b) is computed by
+integrated with Gauss-Legendre quadrature on [0, r_i] and [r_i, r_{i+1}], separately for each
+r bin (so a bin does not depend on the other bins): 16 nodes per segment at N_jk = 8 and 8 from
+N_jk = 27. Per galaxy the error is up to ~5e-3 (16) or ~1.7e-2 (8) of V_b; against a 64-node
+reference the jackknife errors change by <= 0.5% (16, N_jk = 8) and <= 0.6% (8, N_jk = 27, 64)
+on the dense validation mock (``validation/run_box_jk_node_rule_check.py``; with 8 nodes at
+N_jk = 8 it was 5.5%, hence the 16 there). The sub-box self-overlap f(b) is computed by
 deterministic quadrature split at every kink.
 
 Everything here is plain numpy, vectorised over galaxies in bounded-memory chunks. The
@@ -44,6 +46,8 @@ column by one matrix product.
 """
 
 import numpy as np
+
+from . import worker_pool
 
 __all__ = [
     "arc_integrals",
@@ -55,9 +59,12 @@ __all__ = [
     "check_half_box",
 ]
 
-_N_GL_RMU = 16       # Gauss-Legendre nodes per rho segment (r-mu overlaps)
+_N_GL_RMU = 8           # Gauss-Legendre nodes per rho segment (r-mu overlaps), N_jk >= 27
+_N_GL_RMU_FEW_JK = 16   # the same at N_jk = 8 (see _n_gl_rmu)
 _N_GL_F = 32         # nodes per segment for the self-overlap fraction f(b)
-_CHUNK_ELEMENTS = 10_000_000  # target size (float64 elements, ~80 MB) of the largest per-chunk array
+_CHUNK_ELEMENTS = 10_000_000  # rp-pi: target size (float64 elements, ~80 MB) of the largest per-chunk array
+_CHUNK_BYTES_RMU = 200_000_000  # r-mu: target size of all of a chunk's temporaries (per worker)
+_BLOCKS_PER_NODE = 4  # with num_nodes > 1: blocks of chunks per worker (galaxies near sub-box edges cost more)
 
 
 # ---------------------------------------------------------------------------
@@ -212,22 +219,29 @@ def _images(start, L_sub, boxsize):
     return [(start + n * boxsize, start + n * boxsize + L_sub) for n in (-1.0, 0.0, 1.0)]
 
 
-def _gl_segments(segments):
-    """16-point Gauss-Legendre nodes and weights (incl. the rho Jacobian) on the given
-    segments; zero-length segments get zero weight."""
-    x, w = np.polynomial.legendre.leggauss(_N_GL_RMU)
+def _n_gl_rmu(L_subboxes):
+    """Gauss-Legendre nodes per rho segment in r-mu: _N_GL_RMU_FEW_JK at N_jk = 8, where each of
+    the few realisations weighs heavily (8 nodes moved sigma_jk by up to 5.5% there), and
+    _N_GL_RMU from N_jk = 27 (<= 0.6%; validation/run_box_jk_node_rule_check.py)."""
+    return _N_GL_RMU_FEW_JK if L_subboxes <= 2 else _N_GL_RMU
+
+
+def _gl_segments(segments, n_gl=None):
+    """n_gl-point (default _N_GL_RMU) Gauss-Legendre nodes and weights (incl. the rho
+    Jacobian) on the given segments; zero-length segments get zero weight."""
+    x, w = np.polynomial.legendre.leggauss(_N_GL_RMU if n_gl is None else n_gl)
     rho = np.concatenate([0.5 * (b - a) * x + 0.5 * (a + b) for a, b in segments])
     wrho = np.concatenate([0.5 * (b - a) * w for a, b in segments]) * rho
     return rho, wrho
 
 
-def _rmu_node_table(r_bins, rp_cut):
-    """Projected-radius nodes and weights for each r bin, shapes (n_r, 32): bin i has its own
-    16-point Gauss-Legendre nodes on [rp_cut, r_i] and [r_i, r_{i+1}] (r_p >= rp_cut), so a
-    bin's result does not depend on the other bins. Segments below rp_cut have zero length."""
+def _rmu_node_table(r_bins, rp_cut, n_gl=None):
+    """Projected-radius nodes and weights for each r bin, shapes (n_r, 2 n_gl): bin i has its
+    own n_gl-point Gauss-Legendre nodes on [rp_cut, r_i] and [r_i, r_{i+1}] (r_p >= rp_cut), so
+    a bin's result does not depend on the other bins. Segments below rp_cut have zero length."""
     r_bins = np.asarray(r_bins, dtype=float)
     rows = [_gl_segments([(min(rp_cut, r_bins[i]), r_bins[i]),
-                          (max(rp_cut, r_bins[i]), max(rp_cut, r_bins[i + 1]))])
+                          (max(rp_cut, r_bins[i]), max(rp_cut, r_bins[i + 1]))], n_gl)
             for i in range(len(r_bins) - 1)]
     return np.array([r for r, _ in rows]), np.array([w for _, w in rows])
 
@@ -253,12 +267,13 @@ def _shell_heights(rho_tab, r_bins):
 def _rmu_height_overlap(zlo, zhi, a_sh, b_sh, m_lo, m_hi):
     """Length of the heights h that lie in the (r, mu) bin at projected radius rho AND in
     [zlo, zhi): the shell |h| in [a, b], the mu-bin h in [rho g_lo, rho g_hi].
-    zlo, zhi: (G,); a_sh, b_sh: (Q, n_r); m_lo, m_hi: (Q, n_r, n_mu) -> (G, Q, n_r, n_mu)."""
-    zl, zh = zlo[:, None, None, None], zhi[:, None, None, None]
+    zlo, zhi: (G,); a_sh, b_sh: (n_r, 1, Q, 1); m_lo, m_hi: (n_r, 1, Q, n_mu)
+    -> (n_r, G, Q, n_mu)."""
+    zl, zh = zlo[None, :, None, None], zhi[None, :, None, None]
     out = 0.0
     for lo_s, hi_s in ((a_sh, b_sh), (-b_sh, -a_sh)):
-        lo = np.maximum(lo_s[None, :, :, None], m_lo[None])
-        hi = np.minimum(hi_s[None, :, :, None], m_hi[None])
+        lo = np.maximum(lo_s, m_lo)
+        hi = np.minimum(hi_s, m_hi)
         out = out + np.clip(np.minimum(hi, zh) - np.maximum(lo, zl), 0, None)
     return out
 
@@ -266,26 +281,20 @@ def _rmu_height_overlap(zlo, zhi, a_sh, b_sh, m_lo, m_hi):
 def _sky_rects(points, L_subboxes, L_sub, boxsize, reach):
     """For every galaxy and sub-box column c = ix * L + iy, the periodic images of the column's
     (x, y) rectangle relative to the galaxy that come within ``reach`` of it.
-    Returns flat arrays (gal, col, ax, bx, ay, by)."""
-    gals, cols, rects = [], [], []
-    for ix in range(L_subboxes):
-        xs = _images(ix * L_sub - points[:, 0], L_sub, boxsize)
-        for iy in range(L_subboxes):
-            ys = _images(iy * L_sub - points[:, 1], L_sub, boxsize)
-            for xl, xh in xs:
-                dx = np.maximum(np.maximum(xl, -xh), 0.0)
-                for yl, yh in ys:
-                    dy = np.maximum(np.maximum(yl, -yh), 0.0)
-                    near = np.nonzero(np.hypot(dx, dy) < reach)[0]
-                    if len(near):
-                        gals.append(near)
-                        cols.append(np.full(len(near), ix * L_subboxes + iy))
-                        rects.append(np.column_stack([xl[near], xh[near], yl[near], yh[near]]))
-    if not gals:
-        e = np.zeros(0)
-        return e.astype(int), e.astype(int), e, e, e, e
-    rect = np.concatenate(rects)
-    return np.concatenate(gals), np.concatenate(cols), rect[:, 0], rect[:, 1], rect[:, 2], rect[:, 3]
+    Returns flat arrays (gal, col, ax, bx, ay, by).
+
+    Vectorised over the 3L interval images per axis: the x and y intervals, and their
+    distances from the galaxy, are (G, 3L) arrays, and one mask over (G, 3L, 3L) selects the
+    rectangles in reach."""
+    starts = (np.arange(L_subboxes)[:, None] * L_sub + np.array([-1.0, 0.0, 1.0])[None] * boxsize).ravel()
+    idx = np.repeat(np.arange(L_subboxes), 3)                        # interval image -> column index
+    lo = [starts[None, :] - points[:, a][:, None] for a in (0, 1)]   # (G, 3L)
+    d = [np.maximum(np.maximum(l, -(l + L_sub)), 0.0) for l in lo]
+    near_x, near_y = (di < reach for di in d)
+    g, i, j = np.nonzero(near_x[:, :, None] & near_y[:, None, :]
+                         & (np.hypot(d[0][:, :, None], d[1][:, None, :]) < reach))
+    ax, ay = lo[0][g, i], lo[1][g, j]
+    return g, idx[i] * L_subboxes + idx[j], ax, ax + L_sub, ay, ay + L_sub
 
 
 def _scatter_sum(n_rows, rows, values):
@@ -305,70 +314,97 @@ def _scatter_sum(n_rows, rows, values):
 # Per-galaxy overlaps: sky-plane part per column, line-of-sight part per slab
 # ---------------------------------------------------------------------------
 
-def _sky_part(points, L_subboxes, *, boxsize, r_bins, binning, rp_cut):
-    """Sky-plane factors for every galaxy and sub-box column, three moments (1, cos 2phi,
-    sin 2phi).
-    rppi: annulus moments, shape (3, G, L^2, n_r) — exact.
-    rmu:  arc integrals at each bin's rho nodes times the node weights, shape
-          (3, G, L^2, n_r, n_q); the arcs are evaluated once per distinct node."""
+def _sky_part(points, L_subboxes, *, boxsize, r_bins, rp_cut):
+    """rp-pi sky-plane factors for every galaxy and sub-box column: the exact annulus moments
+    (1, cos 2phi, sin 2phi), shape (3, G, L^2, n_r)."""
     L_sub = boxsize / L_subboxes
     r_bins = np.asarray(r_bins, dtype=float)
     G, ncol = len(points), L_subboxes ** 2
     gal, col, ax, bx, ay, by = _sky_rects(points, L_subboxes, L_sub, boxsize, r_bins[-1])
-    if binning == "rppi":
-        radii = np.maximum(r_bins, rp_cut)          # r_p < rp_cut excluded: annulus from max(r1, rp_cut)
-        F = _disc_rect_moments(radii[None, :], ax[:, None], bx[:, None], ay[:, None], by[:, None])
-        vals = np.stack([np.diff(F[m], axis=1) for m in range(3)], axis=-1)          # (P, n_r, 3)
-        out = _scatter_sum(G * ncol, gal * ncol + col, vals).reshape(G, ncol, len(r_bins) - 1, 3)
-        return np.moveaxis(out, -1, 0)
-    rho_tab, w_tab = _rmu_node_table(r_bins, rp_cut)
-    nodes, where = np.unique(rho_tab, return_inverse=True)
-    where = where.reshape(rho_tab.shape)
-    # the circle meets the rectangle only between its nearest point and its farthest corner;
-    # elsewhere the arcs are exactly zero and are not evaluated
-    d_min = np.hypot(np.maximum(np.maximum(ax, -bx), 0.0), np.maximum(np.maximum(ay, -by), 0.0))
-    d_max = np.hypot(np.maximum(np.abs(ax), np.abs(bx)), np.maximum(np.abs(ay), np.abs(by)))
-    p, u = np.nonzero((nodes[None, :] > d_min[:, None]) & (nodes[None, :] < d_max[:, None]))
-    I = np.zeros((len(ax), len(nodes), 3))
-    I[p, u] = np.stack(arc_integrals(nodes[u], ax[p], bx[p], ay[p], by[p]), axis=-1)
-    vals = I[:, where] * w_tab[None, :, :, None]                                     # (P, n_r, n_q, 3)
-    out = _scatter_sum(G * ncol, gal * ncol + col, vals).reshape((G, ncol) + rho_tab.shape + (3,))
+    radii = np.maximum(r_bins, rp_cut)          # r_p < rp_cut excluded: annulus from max(r1, rp_cut)
+    F = _disc_rect_moments(radii[None, :], ax[:, None], bx[:, None], ay[:, None], by[:, None])
+    vals = np.stack([np.diff(F[m], axis=1) for m in range(3)], axis=-1)          # (P, n_r, 3)
+    out = _scatter_sum(G * ncol, gal * ncol + col, vals).reshape(G, ncol, len(r_bins) - 1, 3)
     return np.moveaxis(out, -1, 0)
 
 
-def _los_part(points, L_subboxes, *, boxsize, r_bins, bins2, binning, reflect, rp_cut):
-    """Line-of-sight factors for every galaxy and sub-box slab iz.
-    rppi: overlap length of each pi bin with the slab, shape (G, L, n_pi).
-    rmu:  height overlap per (r, mu) bin at that bin's rho nodes, shape (G, L, n_q, n_r, n_mu)."""
+def _los_part(points, L_subboxes, *, boxsize, bins2, reflect):
+    """rp-pi line-of-sight factors: the overlap length of each pi bin with every sub-box slab
+    iz (periodic), shape (G, L, n_pi)."""
     L_sub = boxsize / L_subboxes
     lo2, hi2 = _second_bins(bins2, reflect)
     z = points[:, 2]
-    if binning == "rppi":
-        out = np.zeros((len(points), L_subboxes, len(lo2)))
-        for iz in range(L_subboxes):
-            for zl, zh in _images(iz * L_sub - z, L_sub, boxsize):
-                out[:, iz] += np.clip(np.minimum(zh[:, None], hi2[None]) - np.maximum(zl[:, None], lo2[None]), 0, None)
-        return out
-    rho_tab, _ = _rmu_node_table(r_bins, rp_cut)
-    a_sh, b_sh = _shell_heights(rho_tab, r_bins)
-    m_lo = rho_tab.T[:, :, None] * _mu_slopes(lo2)[None, None]
-    m_hi = rho_tab.T[:, :, None] * _mu_slopes(hi2)[None, None]
-    r_max = float(np.max(r_bins))
-    out = np.zeros((len(points), L_subboxes, rho_tab.shape[1], len(r_bins) - 1, len(lo2)))
+    out = np.zeros((len(points), L_subboxes, len(lo2)))
     for iz in range(L_subboxes):
         for zl, zh in _images(iz * L_sub - z, L_sub, boxsize):
-            near = np.nonzero((zh > -r_max) & (zl < r_max))[0]
-            if len(near):
-                out[near, iz] += _rmu_height_overlap(zl[near], zh[near], a_sh, b_sh, m_lo, m_hi)
+            out[:, iz] += np.clip(np.minimum(zh[:, None], hi2[None]) - np.maximum(zl[:, None], lo2[None]), 0, None)
     return out
 
 
-def _combine(sky, los, binning):
-    """Overlap of every galaxy with every sub-box: (..., G, L^2, a) x (G, L, ...) -> per galaxy
-    and sub-box k = c * L + iz."""
-    if binning == "rppi":
-        return np.einsum("...gcr,gzp->...gczrp", sky, los)
-    return np.einsum("...gcrq,gzqrm->...gczrm", sky, los)
+def _sky_part_rmu(points, L_subboxes, moment_weights, *, boxsize, r_bins, rp_cut):
+    """r-mu sky-plane factors, already weighted per galaxy. For every combination t of
+    ``moment_weights`` (tuples (u_0, u_1, u_2) of per-galaxy arrays or None),
+
+        A[r, t, c, g, q] = w_q(r) sum_m u_m[g] I_m(rho_q(r); g, c),
+
+    with I_m the arc integrals of (1, cos 2phi, sin 2phi) over column c's periodic images about
+    galaxy g, at bin r's node rho_q and with its quadrature weight w_q. Shape
+    (n_r, T, L^2, G, n_q), so that A[r].reshape(T L^2, G n_q) is a view (no copy) for the
+    matrix product with the line-of-sight factors.
+
+    Arcs are evaluated only where the circle meets the rectangle (between its nearest point
+    and its farthest corner), and accumulated with one bincount. That also adds up two images
+    of the same column about one galaxy, which can both be in reach when r_max is close to L/2."""
+    L_sub = boxsize / L_subboxes
+    r_bins = np.asarray(r_bins, dtype=float)
+    G, ncol, T = len(points), L_subboxes ** 2, len(moment_weights)
+    rho_tab, w_tab = _rmu_node_table(r_bins, rp_cut, _n_gl_rmu(L_subboxes))
+    n_r, Q = rho_tab.shape
+    size = n_r * T * ncol * G * Q
+    r_idx, q_idx = np.nonzero(w_tab != 0)          # zero-length segments (below rp_cut) add nothing
+    nodes, node_w = rho_tab[r_idx, q_idx], w_tab[r_idx, q_idx]
+    gal, col, ax, bx, ay, by = _sky_rects(points, L_subboxes, L_sub, boxsize, r_bins[-1])
+    d_min = np.hypot(np.maximum(np.maximum(ax, -bx), 0.0), np.maximum(np.maximum(ay, -by), 0.0))
+    d_max = np.hypot(np.maximum(np.abs(ax), np.abs(bx)), np.maximum(np.abs(ay), np.abs(by)))
+    p, u = np.nonzero((nodes[None, :] > d_min[:, None]) & (nodes[None, :] < d_max[:, None]))
+    if len(p) == 0:
+        return np.zeros((n_r, T, ncol, G, Q))
+    I = arc_integrals(nodes[u], ax[p], bx[p], ay[p], by[p])
+    g = gal[p]
+    flat = ((r_idx[u] * T * ncol + col[p]) * G + g) * Q + q_idx[u]          # index of (r, t = 0, c, g, q)
+    vals = []
+    for uw in moment_weights:
+        v = 0.0
+        for m, um in enumerate(uw):
+            if um is not None:
+                v = v + I[m] * um[g]
+        vals.append(v * node_w[u])
+    stride_t = ncol * G * Q
+    out = np.bincount(np.concatenate([flat + t * stride_t for t in range(T)]),
+                      weights=np.concatenate(vals), minlength=size)
+    return out.reshape(n_r, T, ncol, G, Q)
+
+
+def _los_part_rmu(points, L_subboxes, *, boxsize, r_bins, bins2, reflect, rp_cut):
+    """r-mu line-of-sight factors: per (r, mu) bin, at each of bin r's rho nodes, the length of
+    the bin's heights that fall in sub-box slab iz (periodic). Shape (n_r, G, n_q, L, n_mu), so
+    that los[r].reshape(G n_q, L n_mu) is a view."""
+    L_sub = boxsize / L_subboxes
+    lo2, hi2 = _second_bins(bins2, reflect)
+    z = points[:, 2]
+    rho_tab, _ = _rmu_node_table(r_bins, rp_cut, _n_gl_rmu(L_subboxes))          # (n_r, Q)
+    a_sh, b_sh = (h.T[:, None, :, None] for h in _shell_heights(rho_tab, r_bins))  # (n_r, 1, Q, 1)
+    m_lo = (rho_tab[:, :, None] * _mu_slopes(lo2)[None, None])[:, None]            # (n_r, 1, Q, n_mu)
+    m_hi = (rho_tab[:, :, None] * _mu_slopes(hi2)[None, None])[:, None]
+    r_max = float(np.max(r_bins))
+    out = np.zeros((rho_tab.shape[0], len(points), rho_tab.shape[1], L_subboxes, len(lo2)))
+    for iz in range(L_subboxes):
+        slab = out[:, :, :, iz]                                                    # view (n_r, G, Q, n_mu)
+        for zl, zh in _images(iz * L_sub - z, L_sub, boxsize):
+            near = np.nonzero((zh > -r_max) & (zl < r_max))[0]
+            if len(near):
+                slab[:, near] += _rmu_height_overlap(zl[near], zh[near], a_sh, b_sh, m_lo, m_hi)
+    return out
 
 
 def subbox_overlaps(points, k, L_subboxes, *, boxsize, r_bins, bins2, binning="rppi", reflect=False,
@@ -400,74 +436,132 @@ def subbox_overlaps(points, k, L_subboxes, *, boxsize, r_bins, bins2, binning="r
     check_half_box(boxsize, r_bins, bins2, binning)
     points = np.atleast_2d(np.asarray(points, dtype=float))
     L = L_subboxes
-    ix, iy, iz = k // (L * L), (k // L) % L, k % L
-    one = np.zeros(L * L, dtype=bool)
-    one[ix * L + iy] = True
-    kw = dict(boxsize=boxsize, r_bins=r_bins, binning=binning, rp_cut=rp_cut)
-    sky = _sky_part(points, L, **kw)[:, :, one]                       # (3, N, 1, ...)
-    los = _los_part(points, L, bins2=bins2, reflect=reflect, **kw)[:, iz:iz + 1]
-    full = _combine(sky, los, binning)                               # (3, N, 1, 1, n_r, n_2)
-    return tuple(full[m, :, 0, 0] for m in range(3))
+    c, iz = k // L, k % L                                            # column ix * L + iy, slab iz
+    if binning == "rppi":
+        sky = _sky_part(points, L, boxsize=boxsize, r_bins=r_bins, rp_cut=rp_cut)[:, :, c]   # (3, N, n_r)
+        los = _los_part(points, L, boxsize=boxsize, bins2=bins2, reflect=reflect)[:, iz]      # (N, n_2)
+        return tuple(sky[m][:, :, None] * los[:, None, :] for m in range(3))
+    one = np.ones(len(points))
+    moments = [(one, None, None), (None, one, None), (None, None, one)]
+    sky = _sky_part_rmu(points, L, moments, boxsize=boxsize, r_bins=r_bins, rp_cut=rp_cut)[:, :, c]  # (n_r, 3, N, Q)
+    los = _los_part_rmu(points, L, boxsize=boxsize, r_bins=r_bins, bins2=bins2, reflect=reflect,
+                        rp_cut=rp_cut)[:, :, :, iz]                                                # (n_r, N, Q, n_2)
+    return tuple(np.einsum("rgq,rgqm->grm", sky[:, m], los) for m in range(3))
 
 
 # ---------------------------------------------------------------------------
 # Per-realisation random terms
 # ---------------------------------------------------------------------------
 
-def _chunk_size(L_subboxes, r_bins, bins2, binning):
+def _chunk_size(L_subboxes, r_bins, bins2, binning, boxsize):
+    """Galaxies per chunk.
+    rppi: the largest per-chunk array (galaxy x sub-box x bin) is ~_CHUNK_ELEMENTS.
+    rmu: the temporaries of the whole chunk are ~_CHUNK_BYTES_RMU. They are dominated by the
+    arc integrals, ~48 floats per (galaxy, column image within r_max, rho node); the sky and
+    line-of-sight factors and their own-sub-box copies add 2 (n_r T L^2 Q + n_r Q L n_mu)."""
+    n_r, n_2 = len(r_bins) - 1, len(bins2) - 1
     if binning == "rppi":
-        per = L_subboxes ** 3 * (len(r_bins) - 1) * (len(bins2) - 1)
-    else:
-        per = L_subboxes * _rmu_node_table(r_bins, 0.0)[0].shape[1] * (len(r_bins) - 1) * (len(bins2) - 1)
-    return max(1, _CHUNK_ELEMENTS // per)
+        return max(1, _CHUNK_ELEMENTS // (L_subboxes ** 3 * n_r * n_2))
+    L_sub = boxsize / L_subboxes
+    r_max = float(np.max(r_bins))
+    images_per_axis = min(3 * L_subboxes, int(np.ceil(2 * r_max / L_sub)) + 1)
+    Q = 2 * _n_gl_rmu(L_subboxes)
+    per_galaxy = 48 * images_per_axis ** 2 * n_r * Q + 2 * (n_r * 3 * L_subboxes ** 2 * Q + n_r * Q * L_subboxes * n_2)
+    return max(1, _CHUNK_BYTES_RMU // (8 * per_galaxy))
 
 
 def _retained_overlap_sums(points, lab, L_subboxes, moment_weights, *, boxsize, r_bins, bins2, binning,
-                           reflect, rp_cut, chunk_size):
+                           reflect, rp_cut, chunk_size, num_nodes=1):
     """For each sub-box k, sum over the galaxies NOT in k of sum_m u_m O^m_k, with O^m the
     overlap moments (1, cos 2phi, sin 2phi) and u_m = moment_weights[m] (per galaxy, or None).
     Returns a list of arrays (N_jk, n_r, n_2), one per requested combination.
 
     The sum over all galaxies is one matrix product per chunk: (galaxy x column) sky factors
     against (galaxy x slab) line-of-sight factors, contracted over galaxies (and rho nodes in
-    r-mu). The galaxies' own sub-box is then subtracted."""
+    r-mu). The galaxies' own sub-box is then subtracted.
+
+    With num_nodes > 1 the chunks are grouped into contiguous blocks (about _BLOCKS_PER_NODE
+    per worker, for load balance) that are summed in worker processes; each block's slice of
+    the inputs is sent with its task. Chunk boundaries do not move, so only the order in which
+    the partial sums are added changes (rounding)."""
     L = L_subboxes
     n_jk = L ** 3
     n_r, n_2 = len(r_bins) - 1, len(bins2) - 1
-    kw = dict(boxsize=boxsize, r_bins=r_bins, binning=binning, rp_cut=rp_cut)
-    totals = [np.zeros((L * L, L, n_r, n_2)) for _ in moment_weights]
-    own = [np.zeros((n_jk, n_r * n_2)) for _ in moment_weights]
+    T = len(moment_weights)
+    kw = dict(boxsize=boxsize, r_bins=r_bins, bins2=bins2, binning=binning, reflect=reflect, rp_cut=rp_cut)
+    n_chunks = -(-len(points) // chunk_size)
+    n_blocks = min(n_chunks, _BLOCKS_PER_NODE * num_nodes) if num_nodes > 1 else min(n_chunks, 1)
+    edges = [chunk_size * (n_chunks * b // n_blocks) for b in range(n_blocks)] + [len(points)]
+    tasks = [(points[a:b], lab[a:b], L, [tuple(None if u is None else u[a:b] for u in uw) for uw in moment_weights],
+              chunk_size, kw) for a, b in zip(edges[:-1], edges[1:])]
+    if num_nodes > 1 and len(tasks) > 1:
+        with worker_pool.active_pool(num_nodes) as pool:
+            results = pool.map(_block_overlap_sums, tasks)
+    else:
+        results = [_block_overlap_sums(task) for task in tasks]
+    totals = np.zeros((T, L * L, L, n_r, n_2))
+    own = np.zeros((T, n_jk, n_r * n_2))
+    for tot, own_b in results:
+        totals += tot
+        own += own_b
+    return [(totals[t].reshape(n_jk, n_r, n_2) - own[t].reshape(n_jk, n_r, n_2)) for t in range(T)]
+
+
+def _block_overlap_sums(task):
+    """Worker (module level, so that it pickles): the summed ``_chunk_overlap_sums`` of one
+    contiguous block of galaxies, chunk by chunk."""
+    points, lab, L, moment_weights, chunk_size, kw = task
+    totals, own = 0.0, 0.0
     for c0 in range(0, len(points), chunk_size):
         sl = slice(c0, c0 + chunk_size)
-        x = points[sl]
-        G = len(x)
-        sky = _sky_part(x, L, **kw)
-        los = _los_part(x, L, bins2=bins2, reflect=reflect, **kw)
-        lab_c = lab[sl]
-        col_own, iz_own = lab_c // L, lab_c % L
+        uw_chunk = [tuple(None if u is None else u[sl] for u in uw) for uw in moment_weights]
+        tot, own_c = _chunk_overlap_sums(points[sl], lab[sl], L, uw_chunk, **kw)
+        totals = totals + tot
+        own = own + own_c
+    return totals, own
+
+
+def _chunk_overlap_sums(x, lab_c, L, moment_weights, *, boxsize, r_bins, bins2, binning, reflect, rp_cut):
+    """One chunk of galaxies' contribution to ``_retained_overlap_sums``: the sum over the chunk
+    of sum_m u_m O^m for every (column, slab) sub-box, shape (T, L^2, L, n_r, n_2), and the
+    same restricted to each galaxy's own sub-box, summed per sub-box, shape (T, N_jk, n_r n_2).
+    ``moment_weights`` holds the chunk's slices."""
+    G = len(x)
+    n_jk = L ** 3
+    n_r, n_2 = len(r_bins) - 1, len(bins2) - 1
+    T = len(moment_weights)
+    col_own, iz_own = lab_c // L, lab_c % L
+    g = np.arange(G)
+    tot = np.empty((T, L * L, L, n_r, n_2))
+    own = np.zeros((T, n_jk, n_r * n_2))
+    if binning == "rppi":
+        sky = _sky_part(x, L, boxsize=boxsize, r_bins=r_bins, rp_cut=rp_cut)              # (3, G, L^2, n_r)
+        los = _los_part(x, L, boxsize=boxsize, bins2=bins2, reflect=reflect)              # (G, L, n_2)
         for t, uw in enumerate(moment_weights):
-            s = sum(sky[m] * u[sl].reshape((G,) + (1,) * (sky.ndim - 2))
-                    for m, u in enumerate(uw) if u is not None)
-            if binning == "rppi":
-                # (c, r) x (z, p) summed over galaxies
-                tot = np.einsum("gcr,gzp->czrp", s, los, optimize=True)
-                own_vals = np.einsum("gr,gp->grp", s[np.arange(G), col_own], los[np.arange(G), iz_own])
-            else:
-                # per r bin: (column, galaxy x node) @ (galaxy x node, slab x mu)
-                Q = s.shape[-1]
-                tot = np.empty((L * L, L, n_r, n_2))
-                for r in range(n_r):
-                    tot[:, :, r] = (s[:, :, r].transpose(1, 0, 2).reshape(L * L, G * Q)
-                                    @ los[:, :, :, r].transpose(0, 2, 1, 3).reshape(G * Q, L * n_2)
-                                    ).reshape(L * L, L, n_2)
-                own_vals = np.einsum("grq,gqrm->grm", s[np.arange(G), col_own], los[np.arange(G), iz_own])
-            totals[t] += tot
-            own[t] += _scatter_sum(n_jk, lab_c, own_vals.reshape(G, n_r * n_2))
-    return [tot.reshape(n_jk, n_r, n_2) - o.reshape(n_jk, n_r, n_2) for tot, o in zip(totals, own)]
+            s = sum(sky[m] * u[:, None, None] for m, u in enumerate(uw) if u is not None)
+            # (c, r) x (z, p) summed over galaxies
+            tot[t] = np.einsum("gcr,gzp->czrp", s, los, optimize=True)
+            own_vals = np.einsum("gr,gp->grp", s[g, col_own], los[g, iz_own])
+            own[t] = _scatter_sum(n_jk, lab_c, own_vals.reshape(G, n_r * n_2))
+        return tot, own
+    A = _sky_part_rmu(x, L, moment_weights, boxsize=boxsize, r_bins=r_bins, rp_cut=rp_cut)  # (n_r, T, L^2, G, Q)
+    los = _los_part_rmu(x, L, boxsize=boxsize, r_bins=r_bins, bins2=bins2, reflect=reflect,
+                        rp_cut=rp_cut)                                                     # (n_r, G, Q, L, n_2)
+    Q = A.shape[-1]
+    # per r bin, all combinations at once: (combination x column, galaxy x node) @ (galaxy x node, slab x mu)
+    for r in range(n_r):
+        tot[:, :, :, r] = (A[r].reshape(T * L * L, G * Q) @ los[r].reshape(G * Q, L * n_2)).reshape(T, L * L, L, n_2)
+    A_own = A[:, :, col_own, g]                                         # (n_r, T, G, Q)
+    los_own = los[:, g, :, iz_own]                                      # (G, n_r, Q, n_2): advanced axes first
+    own_vals = np.einsum("rtgq,grqm->tgrm", A_own, los_own)
+    for t in range(T):
+        own[t] = _scatter_sum(n_jk, lab_c, own_vals[t].reshape(G, n_r * n_2))
+    return tot, own
 
 
 def analytic_dr_terms(pos, shape, theta, e, lab_pos, lab_shape, L_subboxes, *, weight=None, weight_shape=None,
-                      chunk_size=None, boxsize, r_bins, bins2, binning="rppi", rp_cut=0.0, _single_pass=True):
+                      chunk_size=None, num_nodes=1, boxsize, r_bins, bins2, binning="rppi", rp_cut=0.0,
+                      _single_pass=True):
     r"""Normalised per-realisation D.R_S, R_D.S and S+R_D (union deletion, infinite randoms).
 
     When the second-coordinate bins are symmetric about zero (always the case in measureia), both
@@ -486,6 +580,9 @@ def analytic_dr_terms(pos, shape, theta, e, lab_pos, lab_shape, L_subboxes, *, w
     weight, weight_shape : ndarrays or None
     chunk_size : int or None
         Galaxies per chunk (bounds peak memory; does not change the result beyond rounding).
+    num_nodes : int
+        Worker processes for the chunks (> 1 uses ``worker_pool.active_pool``, i.e. the
+        measurement's pool when one is open). Does not change the result beyond rounding.
     boxsize, r_bins, bins2, binning, rp_cut
         As in ``subbox_overlaps``.
 
@@ -507,8 +604,9 @@ def analytic_dr_terms(pos, shape, theta, e, lab_pos, lab_shape, L_subboxes, *, w
     Vk = V / n_jk
     Vb = bin_volumes(r_bins, bins2, binning, rp_cut)
     if chunk_size is None:
-        chunk_size = _chunk_size(L_subboxes, r_bins, bins2, binning)
-    kw = dict(boxsize=boxsize, r_bins=r_bins, bins2=bins2, binning=binning, rp_cut=rp_cut, chunk_size=chunk_size)
+        chunk_size = _chunk_size(L_subboxes, r_bins, bins2, binning, boxsize)
+    kw = dict(boxsize=boxsize, r_bins=r_bins, bins2=bins2, binning=binning, rp_cut=rp_cut, chunk_size=chunk_size,
+              num_nodes=int(num_nodes or 1))
     ew = np.asarray(e, dtype=float) * ws
     theta = np.asarray(theta, dtype=float)
     shape_moments = (ew * np.cos(2 * theta), ew * np.sin(2 * theta))

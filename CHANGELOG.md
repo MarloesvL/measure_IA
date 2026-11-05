@@ -29,9 +29,9 @@ public API mean a major version bump.
     must be at most half the box, or a `ValueError` is raised. `measure_galaxy_contributions`
     still rebuilds the uncorrected jackknife.
 
-    Cost on a box with $n=10^{-2}\,h^3\,\mathrm{Mpc}^{-3}$ (34k galaxies, one core): 0–2% extra
-    run time for $w$ and 19–36% for the multipoles ($N_\mathrm{jk}$ = 8–64), with up to
-    $\sim1.5$ GB extra peak memory for the multipoles.
+    Cost on a box with $n=10^{-2}\,h^3\,\mathrm{Mpc}^{-3}$ (34k galaxies, $N_\mathrm{jk}$ = 8–64):
+    1–3% extra run time for $w$ and 9–11% for the multipoles on one core (2–8% with 5 workers:
+    the correction uses `num_nodes`), with at most $\sim0.4$ GB extra peak memory.
 
 ### Fixed
 

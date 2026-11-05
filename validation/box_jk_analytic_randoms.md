@@ -569,3 +569,56 @@ Rerun outputs are kept under `validation/`.
 7. **Dense mock size (resolved):** 33,750 positions and 30,000 shapes at L = 150 Mpc/h
    (3,750 haloes × 9 galaxies, n = 10⁻²). The earlier "64k galaxies" was the two samples
    added together.
+
+## 9. r–μ speed-up (2026-11-05)
+
+Section 8.5 left the multipoles correction at +19–36% run time and ~1.6 GB peak memory.
+Profiling `analytic_dr_terms` on the dense mock (N_jk = 27, 13.2 s, one core) showed that the
+geometry was not the bottleneck: the arc integrals took 2.4 s, while expanding them from nodes
+to bins, the sort-based scatter-sum and the copies before the matrix products took ~7.5 s. The
+peak memory came from temporaries ~15× the 80 MB chunk target.
+
+**Changes** (`src/measureia/box_jk_analytic.py`; results equal to the previous module to
+rounding, pinned by `tests/data/box_jk_analytic_snapshot.npz`):
+- the arcs are accumulated with one `bincount` straight into the layout the matrix products
+  use, with the node and per-galaxy moment weights folded in; one matrix product per r bin
+  serves DR, RD and S+R together;
+- the line-of-sight factors are built in the matching layout (no copies);
+- the column rectangles in reach are found without Python loops over the periodic images;
+- the r–μ chunk size follows the real per-galaxy footprint (200 MB target per worker);
+- the galaxy chunks run in worker processes when `num_nodes > 1` (the measurement's pool).
+
+**Node count** (`run_box_jk_node_rule_check.py`, results in `node_rule_check/`). Against a
+64-node reference on the dense mock, largest σ_jk change over all bins of ξ_gg,0 and ξ_g+,2:
+
+| rule | N_jk 8 | N_jk 27 | N_jk 64 | largest realisation shift / σ |
+|---|---|---|---|---|
+| plain Gauss–Legendre, 16 per segment | 0.47% | 0.27% | 0.10% | 0.008 |
+| plain, 8 | 5.5% | 0.42% | 0.62% | 0.039 |
+| cosine-substituted, 16 | 0.71% | 0.31% | 0.34% | 0.022 |
+| cosine-substituted, 8 | 6.6% | 0.63% | 1.4% | 0.053 |
+
+Per galaxy (partial overlaps, test binning), the overlap error in units of V_b is at most
+5.2×10⁻³ (plain 16), 1.7×10⁻² (plain 8), 8.0×10⁻³ (cosine 16) and 3.1×10⁻² (cosine 8). The
+cosine rule fixes the full-bin volume (8×10⁻⁴ at 16 nodes), but for partial overlaps the error
+is set by galaxy-dependent kinks (where the circle crosses a sub-box edge or corner), so it
+does not help. Splitting the segments at the cone–shell kinks needs at least as many nodes
+for the same accuracy. **Decision:** plain Gauss–Legendre, 16 nodes per segment at N_jk = 8
+(few realisations, each weighing heavily) and 8 from N_jk = 27.
+
+**Benchmark** (`run_box_jk_benchmark.py [NUM_NODES]`, outputs in `benchmark/`; same mock and
+binning as section 8.5, clean machine):
+
+| statistic | N_jk | 1 core: off / on | correction | added | 5 workers: off / on | correction | added | peak memory on (1 core) |
+|---|---|---|---|---|---|---|---|---|
+| w | 8 | 57 / 58 s | 0.8 s | 1% | 19 / 20 s | 0.6 s | 6% | 0.60 GB |
+| w | 27 | 57 / 59 s | 1.4 s | 3% | 20 / 20 s | 0.6 s | 3% | 0.69 GB |
+| w | 64 | 58 / 59 s | 1.9 s | 1% | 20 / 21 s | 0.8 s | 3% | 0.47 GB |
+| multipoles | 8 | 47 / 52 s | 4.9 s | 11% | 20 / 21 s | 1.5 s | 8% | 0.33 GB |
+| multipoles | 27 | 48 / 53 s | 3.6 s | 9% | 21 / 22 s | 1.2 s | 2% | 0.26 GB |
+| multipoles | 64 | 50 / 55 s | 4.7 s | 9% | 21 / 23 s | 1.6 s | 8% | 0.25 GB |
+
+Before (section 8.5): multipoles correction 9 / 13 / 18 s and ~1.6 GB peak. With 5 workers the
+largest worker peaks at 0.25–0.6 GB. Of the options in 8.6, tabulating the overlaps and
+integrating over height in r–μ remain untested; the correction is no longer a large fraction
+of the run, so neither is pursued.

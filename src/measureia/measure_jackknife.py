@@ -396,7 +396,7 @@ class MeasureJackknife(MeasureIABase):
 		DR, RD, SpR = box_jk_analytic.analytic_dr_terms(
 			sample_set.pos[:, axes], sample_set.pos_shape[:, axes], theta, e, module_index(jk_pos),
 			module_index(jk_shape), L_subboxes, weight=sample_set.weight,
-			weight_shape=sample_set.weight_shape, **geometry)
+			weight_shape=sample_set.weight_shape, num_nodes=self.num_nodes, **geometry)
 		order = module_index(np.arange(num_box))  # realisation k of measureia is entry order[k]
 		DR, RD, SpR = DR[order], RD[order], SpR[order]
 		RR_jk = num_pairs * box_jk_analytic.exact_union_rr(L_subboxes, **geometry)[None]
