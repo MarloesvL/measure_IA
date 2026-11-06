@@ -8,6 +8,8 @@ public API mean a major version bump.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-06
+
 ### Changed
 
 - **Box jackknife: edge correction, on by default (`jk_edge_correction=True`).** Rerun box
@@ -459,7 +461,8 @@ moment estimator, and sub-box jackknife covariances.
   than kept at the time. Fill in the 0.2.x lines if the detail is worth having.
 -->
 
-[Unreleased]: https://github.com/MarloesvL/measure_IA/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/MarloesvL/measure_IA/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/MarloesvL/measure_IA/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/MarloesvL/measure_IA/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/MarloesvL/measure_IA/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/MarloesvL/measure_IA/compare/v0.3.0...v0.4.0
