@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="author" content="Marloes van Heukelum" />
+      <link rel="shortcut icon" href="../img/favicon.ico" />
+    <title>Performance - MeasureIA Documentation</title>
+    <link rel="stylesheet" href="../css/theme.css" />
+    <link rel="stylesheet" href="../css/theme_extra.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css" />
+        <link href="../assets/_mkdocstrings.css" rel="stylesheet" />
+    
+      <script>
+        // Current page data
+        var mkdocs_page_name = "Performance";
+        var mkdocs_page_input_path = "performance.md";
+        var mkdocs_page_url = null;
+      </script>
+    
+    <!--[if lt IE 9]>
+      <script src="../js/html5shiv.min.js"></script>
+    <![endif]-->
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+      <script>hljs.highlightAll();</script> 
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+    <div class="wy-side-scroll">
+      <div class="wy-side-nav-search">
+          <a href=".." class="icon icon-home"> MeasureIA Documentation
+        </a><div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
+      <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" title="Type search term here" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="..">Home</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../getting_started/">Getting started</a>
+                </li>
+              </ul>
+              <ul>
+                <li class="toctree-l1"><a class="reference internal" href="../installation/">Installation</a>
+                </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Guides</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../input/">Input</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../usage/">Usage</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../output_structure/">Output</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../galaxy_contributions/">Per-galaxy contributions</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../simulations/">Included simulations</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Concepts</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../conventions/">Conventions</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../estimator_definitions/">Estimator definitions</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Examples</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../examples/example_MeasureIA_box/">Simulation box</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../examples/example_MeasureIA_lightcone/">Lightcone</a>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">Validation & performance</span></p>
+              <ul class="current">
+                  <li class="toctree-l1"><a class="reference internal" href="../validation/">Validation</a>
+                  </li>
+                  <li class="toctree-l1 current"><a class="reference internal current" href="#">Performance</a>
+    <ul class="current">
+    <li class="toctree-l2"><a class="reference internal" href="#how-it-is-measured">How it is measured</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#how-measureia-compares">How MeasureIA compares</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#trade-offs">Trade-offs</a>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#roughly-how-long-will-my-measurement-take">Roughly how long will my measurement take?</a>
+        <ul>
+    <li class="toctree-l3"><a class="reference internal" href="#why-w-costs-about-twice-what-the-multipoles-cost">Why \(w\) costs about twice what the multipoles cost</a>
+    </li>
+        </ul>
+    </li>
+    <li class="toctree-l2"><a class="reference internal" href="#running-the-benchmarks-yourself">Running the benchmarks yourself</a>
+    </li>
+    </ul>
+                  </li>
+              </ul>
+              <p class="caption"><span class="caption-text">API Reference</span></p>
+              <ul>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/measureIABox/">MeasureIABox</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/measureIALightcone/">MeasureIALightcone</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/MeasureIABase/">MeasureIABase</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/MeasureJackknife/">MeasureJackknife</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Box backends</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWBox/">MeasureWBox</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMBox/">MeasureMultipolesBox</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWBoxJackknife/">MeasureWBoxJackknife</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMBoxJackknife/">MeasureMBoxJackknife</a>
+                </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" >Lightcone backends</a>
+    <ul>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWLightcone/">MeasureWLightcone</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMLightcone/">MeasureMultipolesLightcone</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureWLightconeJackknife/">MeasureWLightconeJackknife</a>
+                </li>
+                <li class="toctree-l2"><a class="reference internal" href="../api/MeasureMLightconeJackknife/">MeasureMultipolesLightconeJackknife</a>
+                </li>
+    </ul>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/pair_kernel/">pair_kernel</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/SimInfo/">SimInfo</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/ReadData/">ReadData</a>
+                  </li>
+                  <li class="toctree-l1"><a class="reference internal" href="../api/mocks/">mocks</a>
+                  </li>
+              </ul>
+      </div>
+    </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+      <nav class="wy-nav-top" role="navigation" aria-label="Mobile navigation menu">
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="..">MeasureIA Documentation</a>
+        
+      </nav>
+      <div class="wy-nav-content">
+        <div class="rst-content"><div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href=".." class="icon icon-home" aria-label="Docs"></a></li>
+          <li class="breadcrumb-item">Validation & performance</li>
+      <li class="breadcrumb-item active">Performance</li>
+    <li class="wy-breadcrumbs-aside">
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+            <div class="section" itemprop="articleBody">
+              
+                <h1 id="performance">Performance</h1>
+<p>Alongside the correctness checks in <a href="../validation/">Validation</a>, MeasureIA is <strong>benchmarked against the same
+external codes</strong> — halotools for the periodic box and TreeCorr for the lightcone. Validation answers "is the
+answer right"; this answers "what does the answer cost", so you can size a run before starting it.</p>
+<h2 id="how-it-is-measured">How it is measured</h2>
+<ul>
+<li><strong>Identical inputs and binning.</strong> Both codes read byte-identical seeded mocks, and the binning is imported
+  from the validation scripts, so a timed run measures the configuration whose cross-package agreement is
+  already established.</li>
+<li><strong>Every timing is gated on correctness.</strong> A point is only reported if MeasureIA reproduces the reference
+  result at the validation tolerances. A timing for a configuration that computes the wrong answer is worse
+  than no timing.</li>
+<li><strong>Threads pinned on both sides</strong>, one untimed warm-up then best-of-five, and each point in its own process.</li>
+<li><strong>At a realistic number density</strong> — <span class="arithmatex">\(n \simeq 10^{-2}\,h^3\,\mathrm{Mpc}^{-3}\)</span>, about 345 neighbours per
+  galaxy within <span class="arithmatex">\(r_\mathrm{max}=20\)</span>. This matters more than anything else in this list: the package's own test
+  mock is ~30× sparser, and MeasureIA's fixed per-galaxy cost amortises over more pairs as density rises. The
+  same comparison measured on the sparse mock reports the box gap as 22× rather than 3.6×.¹</li>
+</ul>
+<h2 id="how-measureia-compares">How MeasureIA compares</h2>
+<p>Single thread, box <span class="arithmatex">\(w_{gg}\)</span>/<span class="arithmatex">\(w_{g+}\)</span> against halotools and lightcone against TreeCorr:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;"><span class="arithmatex">\(N_\mathrm{shape}\)</span></th>
+<th style="text-align: right;">box vs halotools</th>
+<th style="text-align: right;">lightcone vs TreeCorr</th>
+<th style="text-align: right;">lightcone memory</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">2,400</td>
+<td style="text-align: right;">2.7×</td>
+<td style="text-align: right;">2.0×</td>
+<td style="text-align: right;">1.0×</td>
+</tr>
+<tr>
+<td style="text-align: right;">9,600</td>
+<td style="text-align: right;">3.6×</td>
+<td style="text-align: right;">2.4×</td>
+<td style="text-align: right;">1.3×</td>
+</tr>
+<tr>
+<td style="text-align: right;">38,400</td>
+<td style="text-align: right;">3.6×</td>
+<td style="text-align: right;">2.5×</td>
+<td style="text-align: right;">2.2×</td>
+</tr>
+<tr>
+<td style="text-align: right;">100,000</td>
+<td style="text-align: right;"><strong>3.6×</strong></td>
+<td style="text-align: right;"><strong>2.6×</strong></td>
+<td style="text-align: right;"><strong>4.5× less than TreeCorr</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The ratios are <strong>flat</strong>, not growing: scaling exponents are 1.05 for MeasureIA against 0.98 for halotools, and
+1.16 against 1.09 for TreeCorr, where 1.0 is ideal at fixed number density.</p>
+<p>With all cores in use, each code at <strong>its own best setting</strong> (12-core laptop, <span class="arithmatex">\(N=38{,}400\)</span>):</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th style="text-align: right;">MeasureIA</th>
+<th style="text-align: right;">reference</th>
+<th style="text-align: right;">ratio</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>box vs halotools</td>
+<td style="text-align: right;">2.59 s (8 workers)</td>
+<td style="text-align: right;">1.78 s (1 thread²)</td>
+<td style="text-align: right;"><strong>1.45×</strong></td>
+</tr>
+<tr>
+<td>lightcone vs TreeCorr</td>
+<td style="text-align: right;">4.83 s (8 workers)</td>
+<td style="text-align: right;">1.03 s (8 threads)</td>
+<td style="text-align: right;"><strong>4.7×</strong></td>
+</tr>
+</tbody>
+</table>
+<h2 id="trade-offs">Trade-offs</h2>
+<p><strong>In MeasureIA's favour</strong></p>
+<ul>
+<li><strong>No compiler, no build step.</strong> <code>pip install measureia</code> needs nothing but Python and NumPy. It is pure
+  Python/NumPy throughout — no Cython, no C extension, no OpenMP toolchain to get working.</li>
+<li><strong>Substantially less memory on the lightcone</strong> — 4.5× less than TreeCorr at 100,000 galaxies, and the gap
+  widens with size. Memory is often what decides whether a catalogue runs at all.</li>
+<li><strong>One call gives the whole measurement.</strong> <code>measure_xi_w</code> returns <span class="arithmatex">\(w_{gg}\)</span>, <span class="arithmatex">\(w_{g+}\)</span>, the responsivity
+  correction and the jackknife covariance together. Obtaining the same from TreeCorr means assembling the IA
+  estimator yourself from 24 separate correlation runs.</li>
+</ul>
+<p><strong>Against it</strong></p>
+<ul>
+<li><strong>A constant factor behind compiled codes</strong>, as the tables above show. That factor is now stable with
+  catalogue size rather than growing, but it is real.</li>
+<li><strong>Parallel efficiency is the weakest point.</strong> MeasureIA reaches 31–49% on 8 cores where TreeCorr reaches
+  91%: it parallelises with processes rather than threads, and each pool costs ~0.9 s to start.</li>
+<li><strong>Multiprocessing does not pay below ~40,000 galaxies.</strong> Below that, <code>num_nodes &gt; 1</code> is <em>slower</em> than
+  leaving it at 1. Set it for large runs only.</li>
+</ul>
+<h2 id="roughly-how-long-will-my-measurement-take">Roughly how long will my measurement take?</h2>
+<p>Single thread, realistic density, on one core of an Apple M2 Max. Peak resident memory in brackets, of which
+~160 MB is the Python interpreter and imports.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;"><span class="arithmatex">\(N_\mathrm{shape}\)</span></th>
+<th style="text-align: right;">box <span class="arithmatex">\(w\)</span></th>
+<th style="text-align: right;">box multipoles</th>
+<th style="text-align: right;">lightcone <span class="arithmatex">\(w\)</span></th>
+<th style="text-align: right;">lightcone multipoles</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">2,400</td>
+<td style="text-align: right;">0.3 s (170 MB)</td>
+<td style="text-align: right;">0.2 s (164 MB)</td>
+<td style="text-align: right;">0.7 s (188 MB)</td>
+<td style="text-align: right;">0.4 s (175 MB)</td>
+</tr>
+<tr>
+<td style="text-align: right;">9,600</td>
+<td style="text-align: right;">1.6 s (176 MB)</td>
+<td style="text-align: right;">0.9 s (168 MB)</td>
+<td style="text-align: right;">4.1 s (228 MB)</td>
+<td style="text-align: right;">1.9 s (194 MB)</td>
+</tr>
+<tr>
+<td style="text-align: right;">38,400</td>
+<td style="text-align: right;">6.4 s (188 MB)</td>
+<td style="text-align: right;">3.4 s (181 MB)</td>
+<td style="text-align: right;">19.1 s (281 MB)</td>
+<td style="text-align: right;">8.8 s (233 MB)</td>
+</tr>
+<tr>
+<td style="text-align: right;">100,000</td>
+<td style="text-align: right;">16.6 s (212 MB)</td>
+<td style="text-align: right;">9.0 s (194 MB)</td>
+<td style="text-align: right;">53.3 s (345 MB)</td>
+<td style="text-align: right;">23.4 s (304 MB)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Extrapolating</strong> is safe, because cost is now linear in <span class="arithmatex">\(N\)</span> at fixed density: ten times the galaxies costs
+about ten times the time. Memory grows at roughly <strong>330 bytes per galaxy</strong> for the box and <strong>240–360 bytes per
+point</strong> for the lightcone (counting randoms, which dominate) — so a 10⁷-galaxy lightcone with 10× randoms
+needs of order 20 GB.</p>
+<p>Two things change the cost substantially, both through the number of neighbours per galaxy: <strong>number density</strong>
+and <strong><span class="arithmatex">\(r_\mathrm{max}\)</span></strong>. A sample twice as dense, or a maximum separation <span class="arithmatex">\(2^{1/3}\)</span> times larger, roughly
+doubles the pair count and so the runtime. Use <code>num_nodes</code> above ~40,000 galaxies for a further 2–4×.</p>
+<h3 id="why-w-costs-about-twice-what-the-multipoles-cost">Why <span class="arithmatex">\(w\)</span> costs about twice what the multipoles cost</h3>
+<p>The projected statistics are consistently slower than the multipoles in the table above, and the reason is
+geometry rather than implementation. <span class="arithmatex">\(w_{gg}\)</span> and <span class="arithmatex">\(w_{g+}\)</span> are binned in <span class="arithmatex">\((r_p, \pi)\)</span>, which selects a
+<em>cylinder</em>, so the neighbour search has to cover a ball large enough to contain it — radius
+<span class="arithmatex">\(\sqrt{r_\mathrm{max}^2 + \pi_\mathrm{max}^2}\)</span>. The multipoles are binned in <span class="arithmatex">\((r, \mu)\)</span>, which selects a
+<em>sphere</em>, so <span class="arithmatex">\(r_\mathrm{max}\)</span> is enough. The projected run therefore examines
+<span class="arithmatex">\(\left(1 + (\pi_\mathrm{max}/r_\mathrm{max})^2\right)^{3/2}\)</span> times as many candidate pairs, which makes
+<strong><span class="arithmatex">\(\pi_\mathrm{max}\)</span> a cost knob in its own right</strong> — and a fairly sharp one:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: right;"><span class="arithmatex">\(\pi_\mathrm{max}/r_\mathrm{max}\)</span></th>
+<th style="text-align: right;">candidate pairs, relative to the multipoles</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: right;">0.5</td>
+<td style="text-align: right;">1.4×</td>
+</tr>
+<tr>
+<td style="text-align: right;">1 (the default, <span class="arithmatex">\(\pi_\mathrm{max}=r_\mathrm{max}\)</span>)</td>
+<td style="text-align: right;">2.8×</td>
+</tr>
+<tr>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">11×</td>
+</tr>
+</tbody>
+</table>
+<p>At the default this predicts 2.8× the candidates, and the measured ratio is 2.78×; it shows up as ~1.9× in wall
+time because the per-galaxy overhead is common to both. None of those extra pairs is wasted work — the <span class="arithmatex">\(w\)</span>
+estimator integrates over <span class="arithmatex">\(|\pi| \le \pi_\mathrm{max}\)</span>, so they carry signal. But if you do not need a large
+<span class="arithmatex">\(\pi_\mathrm{max}\)</span>, lowering it is one of the cheapest speed-ups available.</p>
+<h2 id="running-the-benchmarks-yourself">Running the benchmarks yourself</h2>
+<p>The benchmark harness lives in <code>benchmarks/</code> in the repository rather than in the installed package, so it is
+run from a clone (see <a href="../installation/#installing-an-unreleased-version">Installation</a>). It needs the same
+external codes as the validation scripts:</p>
+<pre><code class="language-bash">git clone https://github.com/MarloesvL/measure_IA.git
+cd measure_IA
+uv sync --extra validation            # or: pip install -e &quot;.[validation]&quot;  -- halotools + treecorr
+
+uv run python benchmarks/run_sweep.py --density 1e-2
+uv run python benchmarks/plot_results.py benchmarks/results/laptop_local.jsonl
+</code></pre>
+<p>The methodology, the full result records and the reasoning behind each optimisation — including analyses that
+turned out to be wrong and were corrected — are in
+<a href="https://github.com/MarloesvL/measure_IA/blob/main/benchmarks/README.md"><code>benchmarks/README.md</code></a> and
+<a href="https://github.com/MarloesvL/measure_IA/blob/main/benchmarks/FINDINGS.md"><code>benchmarks/FINDINGS.md</code></a>.</p>
+<hr />
+<p>¹ Measured on the package's own mock at <span class="arithmatex">\(n \simeq 3\times10^{-4}\)</span>, where each galaxy has ~19 neighbours instead
+of ~345. Benchmarks quoted at that density understate MeasureIA roughly sixfold and suggest a scaling problem
+that does not exist.</p>
+<p>² halotools' <code>num_threads</code> uses <code>multiprocessing</code>, not OpenMP, so on a problem this size more workers make it
+slower; 1 thread is its best setting here. TreeCorr uses OpenMP and scales to 91% efficiency — note that its
+macOS wheels are often built without OpenMP, in which case it silently runs single-threaded.</p>
+              
+            </div>
+          </div><footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer Navigation">
+        <a href="../validation/" class="btn btn-neutral float-left" title="Validation"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+        <a href="../api/measureIABox/" class="btn btn-neutral float-right" title="MeasureIABox">Next <span class="icon icon-circle-arrow-right"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+  </div>
+
+  Built with <a href="https://www.mkdocs.org/">MkDocs</a> using a <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+          
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <div class="rst-versions" role="note" aria-label="Versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    
+    
+      <span><a href="../validation/" style="color: #fcfcfc">&laquo; Previous</a></span>
+    
+    
+      <span><a href="../api/measureIABox/" style="color: #fcfcfc">Next &raquo;</a></span>
+    
+  </span>
+</div>
+    <script src="../js/jquery-3.6.0.min.js"></script>
+    <script>var base_url = "..";</script>
+    <script src="../js/theme_extra.js"></script>
+    <script src="../js/theme.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      <script src="../search/main.js"></script>
+    <script>
+        jQuery(function () {
+            SphinxRtdTheme.Navigation.enable(true);
+        });
+    </script>
+
+</body>
+</html>
