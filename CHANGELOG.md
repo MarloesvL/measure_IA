@@ -22,8 +22,14 @@ public API mean a major version bump.
   jackknife errors now agree with those of a 10$\times$ random catalogue run through MeasureIA
   to 0.95–1.04, for $w$ and the multipoles.
 
-    The full-sample measurement is unchanged, and so are the shape–shape realisations and the
-    lightcone. `jk_edge_correction=False` reproduces the previous behaviour exactly. New
+    The shape–shape realisations ($++$, $\times\times$, $+\times$) have no random term in the
+    numerator, so for them the correction is the exact $RR$ alone. Without it their large-scale
+    jackknife errors were too *small*: for $w_{++}$ out to $r_p = \Pi_\mathrm{max} = L/2$, by up
+    to 12%, 4% and 1.6% at $N_\mathrm{jk}$ = 8, 27 and 64 (#90). With `corr_type='++'` the $g+$ / $gg$ realisation groups written as a by-product
+    are left uncorrected (use `'all'` to correct everything).
+
+    The full-sample measurement is unchanged, and so is the lightcone.
+    `jk_edge_correction=False` reproduces the previous behaviour exactly. New
     per-realisation datasets: `_[i]_RD`, `_[i]_SR` (`xi_gg`) and `_[i]_SplusR` (`xi_g_plus`);
     `_[i]_RR` is now the exact union $RR$. With the correction on, every separation component
     must be at most half the box, or a `ValueError` is raised. `measure_galaxy_contributions`

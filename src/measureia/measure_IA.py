@@ -181,12 +181,11 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 
 	def _box_jk_edge_correction_applies(self, jk_edge_correction, num_jk, corr_type, kind):
 		"""Validates ``jk_edge_correction`` and returns whether the analytic edge correction of the
-		box jackknife realisations applies: only with a jackknife and to the g+ / gg correlations
-		(shape-shape realisations are unchanged). Checked before any pair counting, so a
-		separation beyond half the box fails fast."""
+		box jackknife realisations applies: whenever there is a jackknife. Checked before any
+		pair counting, so a separation beyond half the box fails fast."""
 		if not isinstance(jk_edge_correction, (bool, np.bool_)):
 			raise TypeError(f"jk_edge_correction must be True or False, got {jk_edge_correction!r}.")
-		if not (jk_edge_correction and num_jk > 0 and corr_type != "++"):
+		if not (jk_edge_correction and num_jk > 0):
 			return False
 		from .box_jk_analytic import check_half_box
 		if kind == "w":
@@ -236,9 +235,11 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 			randoms) and the exact union RR, so the realisations use the full estimators
 			(DD - RD - SR + RR) / RR and (S+D - S+R) / RR. Without it, the analytic randoms do not
 			follow the galaxies next to the removed sub-box, which inflates the large-scale jackknife
-			errors. Requires every separation component to be at most half the box. Only the
-			jackknife realisations of g+ and gg change; the full-sample measurement is identical.
-			False reproduces the previous behaviour. Default is True.
+			errors. The shape-shape realisations (++, xx, +x) have no random term in the numerator
+			and only get the exact union RR. Requires every separation component to be at most half
+			the box. Only the jackknife realisations change; the full-sample measurement is
+			identical. With corr_type='++' the g+ / gg realisation groups that are written as a
+			by-product are left uncorrected. False reproduces the previous behaviour. Default is True.
 
 		"""
 		self._validate_measure_options(corr_type, ellipticity, num_jk,
@@ -307,7 +308,7 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 													jk_group_name=f"{dataset_name}_jk{num_jk}")
 			if edge_correction:
 				self._apply_box_jk_edge_correction("w", dataset_name, f"{dataset_name}_jk{num_jk}", L,
-												   masks=masks, ellipticity=ellipticity)
+												   corr_type=corr_type, masks=masks, ellipticity=ellipticity)
 			self._measure_w_g_i(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
 			for i in np.arange(num_jk):
 				self._measure_w_g_i(corr_type=corr_type, dataset_name=f"{dataset_name}_{i}",
@@ -373,9 +374,10 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 		jk_edge_correction : bool, optional
 			If True (default), each jackknife realisation gets the random terms a uniform random catalogue
 			would supply after its sub-box is removed (DR, RD and S+R, in the limit of infinitely many
-			randoms, restricted to r_p >= rp_cut) and the exact union RR. See measure_xi_w. Requires
-			r_max to be at most half the box. Only the jackknife realisations of g+ and gg change; the
-			full-sample measurement is identical. False reproduces the previous behaviour.
+			randoms, restricted to r_p >= rp_cut) and the exact union RR; the shape-shape
+			realisations get the exact union RR only. See measure_xi_w. Requires r_max to be at most
+			half the box. Only the jackknife realisations change; the full-sample measurement is
+			identical. False reproduces the previous behaviour.
 		"""
 		self._validate_measure_options(corr_type, ellipticity, num_jk,
 									   getattr(self, "has_density_sample_shapes", False))
@@ -442,7 +444,8 @@ class MeasureIABox(MeasureWBox, MeasureMultipolesBox, MeasureWBoxJackknife, Meas
 													jk_group_name=f"{dataset_name}_jk{num_jk}")
 			if edge_correction:
 				self._apply_box_jk_edge_correction("multipoles", dataset_name, f"{dataset_name}_jk{num_jk}", L,
-												   masks=masks, ellipticity=ellipticity, rp_cut=rp_cut)
+												   corr_type=corr_type, masks=masks, ellipticity=ellipticity,
+												   rp_cut=rp_cut)
 			self._measure_multipoles(corr_type=corr_type, dataset_name=dataset_name, return_output=False)
 			for i in np.arange(num_jk):
 				self._measure_multipoles(corr_type=corr_type, dataset_name=f"{dataset_name}_{i}",

@@ -297,7 +297,13 @@ integrated numerically; this changes the jackknife errors by less than 0.1%. The
 Every separation must be at most half the box ($r_{p,\mathrm{max}}$ and $\Pi_\mathrm{max}$, or
 $r_\mathrm{max}$, at most $L/2$), otherwise a `ValueError` is raised.
 
-The full-sample measurement does not change, nor do the shape-shape realisations; `jk_edge_correction=False`
+The [shape–shape](#shape-shape-correlations) realisations have no random term in the numerator, because
+random points carry no shape. With a random catalogue they are $\xi_{++,k} = S_+S_{+,k}/RR_k$ (and the same for
+$\times\times$ and $+\times$), so the correction only replaces their $RR$ with the exact $RR_k$ above. With
+`corr_type='++'`, the $g+$ and $gg$ realisations written as a by-product of the pair counting are not
+corrected; use `'all'` to get every statistic corrected.
+
+The full-sample measurement does not change; `jk_edge_correction=False`
 reproduces the previous behaviour exactly. Against a 10$\times$ random catalogue run through MeasureIA, the
 jackknife errors agree to within 0.93–1.04 for $w_{gg}$, $w_{g+}$, $\tilde{\xi}_{gg,0}$ and
 $\tilde{\xi}_{g+,2}$ (`validation/box_jk_analytic_randoms.md`).

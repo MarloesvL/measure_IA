@@ -9,6 +9,7 @@ catalogue in the infinite-randoms limit (``measureia.box_jk_analytic``):
 
     xi_gg,k = (DD_k - RD_k - SR_k + RR_k) / RR_k
     xi_g+,k = (S+D_k - S+R_k) / RR_k            (both S+ terms already divided by 2 R_k)
+    xi_ab,k = S_aS_b,k / RR_k                   (ab = ++, xx, +x: no random term)
 
 with, in measureia's count units (N_k = the retained available pairs):
     _RD    = N_k * DR_k        positions x random shape-sample points  (lightcone naming)
@@ -27,7 +28,8 @@ Sections
 4. Masks, weights, empty sub-boxes, responsivity
 5. Poisson null: the corrected realisations are unbiased (incl. rp_cut)
 6. Line-of-sight invariance
-7. Input validation (incl. separations beyond half the box) and shape-shape correlations
+7. Input validation (incl. separations beyond half the box)
+8. Shape-shape realisations (++, xx, +x): exact union RR (issue #90)
 """
 
 import os
@@ -528,17 +530,122 @@ class TestInputs:
         for p in da:
             np.testing.assert_array_equal(da[p], db[p])
 
-    @pytest.mark.parametrize("kind", ["w", "multipoles"])
-    def test_shape_shape_realisations_unchanged(self, tmp_path, kind):
-        """Shape-shape (++, xx) realisations are out of scope: identical on and off."""
-        data = _mock(16)
-        data["Axis_Direction_density_sample"] = data["Axis_Direction"]
-        data["q_density_sample"] = data["q"]
-        on = _box(tmp_path, data, "on")
-        _run(on, kind, "d", "++")
-        off = _box(tmp_path, data, "off")
-        _run(off, kind, "d", "++", jk_edge_correction=False)
+
+
+# ---------------------------------------------------------------------------
+# 8. Shape-shape realisations (issue #90)
+# ---------------------------------------------------------------------------
+
+SS_STATS = {"xi_plus_plus": "_SplusSplus", "xi_cross_cross": "_ScrossScross",
+            "xi_plus_cross": "_SplusScross"}
+
+
+def _ss_mock(seed, **kw):
+    data = _mock(seed, **kw)
+    rng = np.random.default_rng(seed + 1000)
+    th = rng.uniform(0, np.pi, len(data["Position"]))
+    data["Axis_Direction_density_sample"] = np.column_stack([np.cos(th), np.sin(th)])
+    data["q_density_sample"] = rng.uniform(0.3, 1.0, len(data["Position"]))
+    return data
+
+
+def _ss_pair(tmp_path, kind, corr_type, seed=16, rp_cut=None, **mock_kw):
+    data = _ss_mock(seed, **mock_kw)
+    kw = {} if rp_cut is None else dict(rp_cut=rp_cut)
+    on = _box(tmp_path, data, "on")
+    _run(on, kind, "d", corr_type, **kw)
+    off = _box(tmp_path, data, "off")
+    _run(off, kind, "d", corr_type, jk_edge_correction=False, **kw)
+    return on, off
+
+
+@pytest.mark.parametrize("kind", ["w", "multipoles"])
+class TestShapeShapeRealisations:
+    """++, xx and +x have no random term in the numerator (random points carry no shape),
+    so with a random catalogue each realisation is S_aS_b,k / RR_k: the correction is the
+    exact union RR_k alone. The numerators (retained counts over the per-realisation
+    responsivities) are unchanged."""
+
+    @pytest.mark.parametrize("corr_type", ["++", "all"])
+    @pytest.mark.parametrize("mock_kw", [dict(), dict(weights=True)], ids=["unweighted", "weighted"])
+    def test_exact_union_rr(self, tmp_path, kind, corr_type, mock_kw):
+        on, off = _ss_pair(tmp_path, kind, corr_type, **mock_kw)
+        N = _n_pairs(off, kind, "d")[:, None, None]
+        rr = ref.exact_union_rr_reference(L_SUB, boxsize=BOXSIZE, r_bins=on.r_bins,
+                                          bins2=_bins2(on, kind), binning=_binning(kind))
+        for stat in SS_STATS:
+            np.testing.assert_allclose(_jk(on, kind, stat, "d", "_RR"), N * rr[None], rtol=3e-4,
+                                       err_msg=stat)
+
+    @pytest.mark.parametrize("corr_type", ["++", "all"])
+    def test_realisation_estimators(self, tmp_path, kind, corr_type):
+        on, off = _ss_pair(tmp_path, kind, corr_type, weights=True)
+        for stat, num in SS_STATS.items():
+            S = _jk(on, kind, stat, "d", num)
+            np.testing.assert_array_equal(S, _jk(off, kind, stat, "d", num), err_msg=stat)
+            np.testing.assert_allclose(_jk(on, kind, stat, "d"), S / _jk(on, kind, stat, "d", "_RR"),
+                                       rtol=1e-12, atol=1e-14, err_msg=stat)
+
+    def test_same_rr_as_g_plus(self, tmp_path, kind):
+        """Under 'all' every statistic divides by the one exact union RR_k."""
+        on, _ = _ss_pair(tmp_path, kind, "all", weights=True)
+        rr = _jk(on, kind, "xi_g_plus", "d", "_RR")
+        for stat in SS_STATS:
+            np.testing.assert_array_equal(_jk(on, kind, stat, "d", "_RR"), rr, err_msg=stat)
+
+    def test_off_keeps_previous_rr(self, tmp_path, kind):
+        """Option off: the previous N_k V_b / (V - V_k), the same RR the g+ / gg
+        realisations had before the correction."""
+        _, off = _ss_pair(tmp_path, kind, "++")
+        N = _n_pairs(off, kind, "d")[:, None, None]
+        Vb = ref.shell_volumes(off.r_bins, _bins2(off, kind), _binning(kind))
+        want = N * Vb[None] / (BOXSIZE ** 3 * (1 - 1 / NUM_JK))
+        for stat in SS_STATS:
+            np.testing.assert_allclose(_jk(off, kind, stat, "d", "_RR"), want, rtol=1e-12, err_msg=stat)
+
+    def test_shape_shape_only_corrects_shape_shape(self, tmp_path, kind):
+        """corr_type='++' writes g+ / gg realisation groups as by-products; they are not
+        reported as w / multipoles and are left exactly as before (no DR / S+R terms are
+        computed). The full-sample measurement is unchanged."""
+        on, off = _ss_pair(tmp_path, kind, "++")
         a, b = _all_datasets(on), _all_datasets(off)
-        assert sorted(a) == sorted(b)
-        for p in a:
-            np.testing.assert_array_equal(a[p], b[p], err_msg=p)
+        assert sorted(a) == sorted(b), "set of datasets changed"
+        changed = [p for p in a if not np.array_equal(a[p], b[p])]
+        assert changed, "nothing changed"
+        for p in changed:
+            assert _is_jk_path(p), p
+            assert "/xi_gg/" not in p and "/xi_g_plus/" not in p, p
+
+    def test_rp_cut(self, tmp_path, kind):
+        if kind == "w":
+            pytest.skip("rp_cut only applies to multipoles")
+        on, off = _ss_pair(tmp_path, kind, "++", rp_cut=4.0)
+        N = _n_pairs(off, kind, "d")[:, None, None]
+        from measureia import box_jk_analytic as bja
+        rr = bja.exact_union_rr(L_SUB, boxsize=BOXSIZE, r_bins=on.r_bins, bins2=_bins2(on, kind),
+                                binning=_binning(kind), rp_cut=4.0)
+        for stat in SS_STATS:
+            np.testing.assert_allclose(_jk(on, kind, stat, "d", "_RR"), N * rr[None], rtol=1e-12,
+                                       err_msg=stat)
+
+    def test_backends_agree(self, tmp_path, kind):
+        data = _ss_mock(17, weights=True)
+        brute = _box(tmp_path, data, "brute")
+        _run(brute, kind, "d", "++")
+        tree = _box(tmp_path, data, "tree")
+        _run(tree, kind, "d", "++", tmp=tmp_path)
+        mp = _box(tmp_path, data, "mp", num_nodes=2)
+        _run(mp, kind, "d", "++", tmp=tmp_path)
+        for stat, num in SS_STATS.items():
+            for s in ["", num, "_RR"]:
+                b = _jk(brute, kind, stat, "d", s)
+                for other in (tree, mp):
+                    np.testing.assert_allclose(_jk(other, kind, stat, "d", s), b, rtol=1e-10,
+                                               atol=1e-12 * max(np.abs(b).max(), 1), err_msg=f"{stat}{s}")
+
+    def test_beyond_half_box_raises(self, tmp_path, kind):
+        obj = MeasureIABox(_ss_mock(18), str(tmp_path / "far.hdf5"),
+                           separation_limits=[1.0, 0.5 * BOXSIZE + 5], num_bins_r=NUM_BINS_R,
+                           num_bins_pi=NUM_BINS_PI, pi_max=PI_MAX, boxsize=BOXSIZE)
+        with pytest.raises(ValueError, match="half the box"):
+            _run(obj, kind, "d", "++")
