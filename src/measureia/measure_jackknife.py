@@ -328,20 +328,25 @@ class MeasureJackknife(MeasureIABase):
 				minlength=num_regions)
 		return jk_pos, jk_shape
 
-	def _apply_box_jk_edge_correction(self, kind, dataset_name, jk_group_name, L_subboxes, masks=None,
-									  ellipticity="distortion", rp_cut=None):
+	def _apply_box_jk_edge_correction(self, kind, dataset_name, jk_group_name, L_subboxes, corr_type="both",
+									  masks=None, ellipticity="distortion", rp_cut=None):
 		r"""Replaces the box jackknife realisations written by the counting backends with the
 		edge-corrected estimators, using analytic (infinite-randoms) per-realisation random
 		terms (see ``box_jk_analytic``):
 
 		.. math:: \xi_{gg,k} = (DD_k - RD_k - SR_k + RR_k) / RR_k, \qquad
-				  \xi_{g+,k} = (S_+D_k - S_+R_k) / RR_k
+				  \xi_{g+,k} = (S_+D_k - S_+R_k) / RR_k, \qquad
+				  \xi_{ab,k} = S_aS_{b,k} / RR_k
 
-		All terms are in the count units the backends already write: the retained pairs N_k
-		times the per-pair terms, with S+ divided by 2R_k. ``_{i}_RR`` becomes the exact union
-		RR_k and ``_{i}_RD``, ``_{i}_SR`` (gg) and ``_{i}_SplusR`` (g+) are added. The retained
-		DD_k and S+D_k, and the full-sample measurement, are not touched. Only the xi_gg and
-		xi_g_plus realisations that the backend wrote are corrected.
+		with ab = ++, xx, +x: random points carry no shape, so the shape-shape numerators have
+		no random term and only RR changes. All terms are in the count units the backends
+		already write: the retained pairs N_k times the per-pair terms, with S+ divided by 2R_k
+		(and the shape-shape products by both samples' responsivities). ``_{i}_RR`` becomes the
+		exact union RR_k and ``_{i}_RD``, ``_{i}_SR`` (gg) and ``_{i}_SplusR`` (g+) are added.
+		The retained DD_k, S+D_k and shape-shape products, and the full-sample measurement, are
+		not touched. Only the realisations that the backend wrote are corrected; with
+		``corr_type='++'`` the g+ and gg realisations it writes as a by-product are left as they
+		are, which also skips the per-galaxy random terms (the costly part).
 
 		Parameters
 		----------
@@ -353,6 +358,8 @@ class MeasureJackknife(MeasureIABase):
 			Group in the output file where the jackknife realisations are stored.
 		L_subboxes : int
 			Number of subboxes on one side of the box.
+		corr_type : str, optional
+			The corr_type of the measurement. Default is 'both'.
 		masks : dict or NoneType, optional
 			The masks used for the pair counts.
 		ellipticity : str, optional
@@ -365,17 +372,51 @@ class MeasureJackknife(MeasureIABase):
 		num_box = L_subboxes ** 3
 		binning = "rppi" if kind == "w" else "rmu"
 		bins2 = self.pi_bins if kind == "w" else self.mu_r_bins
-		paths = {stat: f"{self.snap_group}/{kind}/{stat}/{jk_group_name}" for stat in ("xi_gg", "xi_g_plus")}
+		# shape-shape realisation groups and their (retained, responsivity-divided) numerators
+		shape_shape = {"xi_plus_plus": "_SplusSplus", "xi_cross_cross": "_ScrossScross",
+					   "xi_plus_cross": "_SplusScross"}
+		paths = {stat: f"{self.snap_group}/{kind}/{stat}/{jk_group_name}"
+				 for stat in ("xi_gg", "xi_g_plus", *shape_shape)}
 		with h5py.File(self.output_file_name, "r") as output_file:
 			present = [stat for stat, path in paths.items() if path in output_file]
-		shapes = "xi_g_plus" in present
-		sample_set = pair_kernel.prepare_box_samples(
-			self.data, masks, self.Num_position, self.Num_shape, shapes=shapes, ellipticity=ellipticity,
-			base=self, require_full_masks=True)
+		# corr_type '++' writes the g+ / gg realisations only as a by-product of the counting
+		dr_stats = [] if corr_type == "++" else [stat for stat in ("xi_gg", "xi_g_plus") if stat in present]
+		ss_stats = [stat for stat in shape_shape if stat in present]
+		shapes = "xi_g_plus" in dr_stats
+		if dr_stats:
+			sample_set = pair_kernel.prepare_box_samples(
+				self.data, masks, self.Num_position, self.Num_shape, shapes=shapes, ellipticity=ellipticity,
+				base=self, require_full_masks=True)
 		jk_pos, jk_shape = self._get_jackknife_region_indices(masks, L_subboxes)
 		num_pairs = np.array([available_pairs(self.sum_w_position_jk[k], self.sum_w_shape_jk[k],
 											  self.num_overlap - self.overlap_jk_counts[k], "cross")
 							  for k in range(num_box)])[:, None, None]
+		geometry = dict(boxsize=self.boxsize, r_bins=self.r_bins, bins2=bins2, binning=binning,
+						rp_cut=0.0 if rp_cut is None else float(rp_cut))
+		RR_jk = num_pairs * box_jk_analytic.exact_union_rr(L_subboxes, **geometry)[None]
+		RR_jk_denom = RR_jk.copy()  # guard against empty realisations/bins, as the backends do
+		RR_jk_denom[RR_jk_denom == 0] = 1
+		if dr_stats:
+			self._write_box_jk_random_terms(kind, dataset_name, paths, dr_stats, sample_set, jk_pos, jk_shape,
+											L_subboxes, num_pairs, RR_jk, RR_jk_denom, geometry)
+		if ss_stats:
+			with h5py.File(self.output_file_name, "a") as output_file:
+				for stat in ss_stats:
+					group = output_file[paths[stat]]
+					for i in np.arange(num_box):
+						S_i = group[f"{dataset_name}_{i}{shape_shape[stat]}"][:]
+						write_dataset_hdf5(group, dataset_name + f"_{i}", data=S_i / RR_jk_denom[i])
+						write_dataset_hdf5(group, dataset_name + f"_{i}_RR", data=RR_jk[i])
+		return
+
+	def _write_box_jk_random_terms(self, kind, dataset_name, paths, present, sample_set, jk_pos, jk_shape,
+								   L_subboxes, num_pairs, RR_jk, RR_jk_denom, geometry):
+		"""The g+ / gg part of :meth:`_apply_box_jk_edge_correction`: the analytic per-galaxy
+		DR, RD and S+R terms of every realisation, and the corrected xi_gg / xi_g_plus
+		realisations written with them."""
+		from . import box_jk_analytic, pair_kernel
+		num_box = L_subboxes ** 3
+		shapes = "xi_g_plus" in present
 
 		# box_jk_analytic puts the line of sight last and numbers the sub-boxes along
 		# (projected axis 1, projected axis 2, line of sight); translate the labels both ways
@@ -391,17 +432,12 @@ class MeasureJackknife(MeasureIABase):
 			e = sample_set.e
 		else:
 			theta = e = np.zeros(len(sample_set.pos_shape))
-		geometry = dict(boxsize=self.boxsize, r_bins=self.r_bins, bins2=bins2, binning=binning,
-						rp_cut=0.0 if rp_cut is None else float(rp_cut))
 		DR, RD, SpR = box_jk_analytic.analytic_dr_terms(
 			sample_set.pos[:, axes], sample_set.pos_shape[:, axes], theta, e, module_index(jk_pos),
 			module_index(jk_shape), L_subboxes, weight=sample_set.weight,
 			weight_shape=sample_set.weight_shape, num_nodes=self.num_nodes, **geometry)
 		order = module_index(np.arange(num_box))  # realisation k of measureia is entry order[k]
 		DR, RD, SpR = DR[order], RD[order], SpR[order]
-		RR_jk = num_pairs * box_jk_analytic.exact_union_rr(L_subboxes, **geometry)[None]
-		RR_jk_denom = RR_jk.copy()  # guard against empty realisations/bins, as the backends do
-		RR_jk_denom[RR_jk_denom == 0] = 1
 
 		with h5py.File(self.output_file_name, "a") as output_file:
 			if "xi_gg" in present:

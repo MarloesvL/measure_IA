@@ -253,10 +253,12 @@ class TestDeleteOneIdentity:
     The kernel-level version of this (tests/test_pair_kernel_shape_shape.py)
     compares raw grids and is exact. This one additionally exercises the analytic
     RR rescaling and the per-realisation responsivity of *both* samples, which
-    only exist above the kernel. As documented for the g+ jackknife, the box
-    rescales the analytic RR to the retained counts and volume, so a delete-one
-    estimator relates to a direct measurement on the deleted catalogue by the
-    exact volume factor VF = L^3 / (L^3 - 1) rather than being equal to it.
+    only exist above the kernel. A direct measurement on the deleted catalogue
+    divides by the RR of the retained counts in the *whole* periodic box,
+    N_k V_b / V, while a realisation divides by the RR of the retained volume,
+    so the two differ by that RR ratio: the exact union RR_k V / (N_k V_b) with
+    the edge correction (the default), and the volume factor
+    VF = L^3 / (L^3 - 1) without it (the analytic V_b / (V - V_k)).
     """
 
     L_SUB = 2                     # 2^3 = 8 subboxes
@@ -267,16 +269,23 @@ class TestDeleteOneIdentity:
         with h5py.File(obj.output_file_name, "r") as f:
             return f[obj.snap_group + group][key][:]
 
-    def test_realisations_match_direct_measurement(self, tmp_path):
+    @pytest.mark.parametrize("edge", [True, False], ids=["edge-corrected", "uncorrected"])
+    def test_realisations_match_direct_measurement(self, tmp_path, edge):
+        from measureia import box_jk_analytic
         from measureia.mocks import subbox_labels
 
         data = _catalogue(seed=11, n_centrals=160, n_sat=6)
         obj = _obj(data, tmp_path, "jkid.hdf5")
-        obj.measure_xi_w("t", "++", self.NUM_BOX, temp_file_path=False)
+        obj.measure_xi_w("t", "++", self.NUM_BOX, temp_file_path=False, jk_edge_correction=edge)
 
         lab_pos = subbox_labels(data["Position"], BOXSIZE, self.L_SUB)
         lab_shape = subbox_labels(data["Position_shape_sample"], BOXSIZE, self.L_SUB)
-        vf = BOXSIZE ** 3 / (BOXSIZE ** 3 - (BOXSIZE / self.L_SUB) ** 3)
+        if edge:
+            vb = box_jk_analytic.bin_volumes(obj.r_bins, obj.pi_bins, "rppi")
+            vf = box_jk_analytic.exact_union_rr(self.L_SUB, boxsize=BOXSIZE, r_bins=obj.r_bins,
+                                                bins2=obj.pi_bins) * BOXSIZE ** 3 / vb
+        else:
+            vf = BOXSIZE ** 3 / (BOXSIZE ** 3 - (BOXSIZE / self.L_SUB) ** 3)
 
         checked = 0
         for i in range(self.NUM_BOX):
