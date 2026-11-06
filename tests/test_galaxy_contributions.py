@@ -194,8 +194,9 @@ def test_contributions_rebuild_multipole_and_jackknife(mock_data, tmp_path):
     """measure_galaxy_contributions reproduces measure_xi_multipoles, realisation by
     realisation. This is the test the whole feature exists to pass."""
     outfile = tmp_path / "ref.hdf5"
+    # the rebuild reproduces the jackknife without the edge correction (jk_edge_correction)
     _box(mock_data, outfile).measure_xi_multipoles(
-        "ref", "g+", num_jk=NUM_JK, temp_file_path=str(tmp_path))
+        "ref", "g+", num_jk=NUM_JK, temp_file_path=str(tmp_path), jk_edge_correction=False)
     out = _box(mock_data, tmp_path / "gal.hdf5").measure_galaxy_contributions(
         "gal", num_jk=NUM_JK, return_output=True)
 
@@ -215,8 +216,9 @@ def test_contributions_rebuild_wgplus_and_jackknife(mock_data, tmp_path):
     """Same identity for the projected statistic: statistic='w' reproduces
     measure_xi_w's w_g+ and each of its jackknife realisations."""
     outfile = tmp_path / "ref.hdf5"
+    # the rebuild reproduces the jackknife without the edge correction (jk_edge_correction)
     _box(mock_data, outfile).measure_xi_w(
-        "ref", "g+", num_jk=NUM_JK, temp_file_path=str(tmp_path))
+        "ref", "g+", num_jk=NUM_JK, temp_file_path=str(tmp_path), jk_edge_correction=False)
     out = _box(mock_data, tmp_path / "gal.hdf5").measure_galaxy_contributions(
         "gal", num_jk=NUM_JK, statistic="w", return_output=True)
 

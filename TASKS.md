@@ -604,6 +604,28 @@ and treecorr (lightcone), plus measureia-only profiling. Methodology in
   with `plot_results.py`. Note the CPU model in the caption, as `validation.md` does for
   package versions.
 
+- [ ] **Jackknife timings on `docs/performance.md`** (queued 2026-11-06, after the 0.7.0 box
+  jackknife edge correction, #87/#91/#92). Every table on the page is `num_jk=0`, so users
+  cannot see what a covariance adds. Add a "With a jackknife" table after "Roughly how long
+  will my measurement take?": no jackknife / with jackknife / ratio, at N = 38,400, 1 core and
+  8 workers, for box w and multipoles (N_jk = 27, edge correction on, the default) and lightcone
+  w and multipoles (N_jk = 9).
+
+  - **Measure it with the harness**, not the validation benchmark: `run_sweep.py --sweeps
+    jackknife --density 1e-2 --tasks box_w box_multipoles lc_w lc_multipoles`, to a *fresh*
+    `--out` file (the sweep skips points already in its output file). Same mocks, density and
+    correctness gate as the existing tables.
+  - **Trim first:** the jackknife sweep always runs both `SIZES_JK` (9,600 and 38,400) and
+    threads 1/2/4/8. Add a way to pick sizes and threads; trimmed run ≈ 20–25 min, defaults
+    ≈ 45–60 min (rough: no jackknife-on time at this density yet). Needs a quiet machine —
+    pause other jobs first.
+  - **Quote alongside**, from `validation/box_jk_analytic_randoms.md` §9 (different set-up:
+    r_max 60, L = 150, so as text, not in the table): the box jackknife costs almost the same
+    at N_jk = 8, 27 and 64 (realisations are built by subtraction), and the edge correction
+    adds 1–3% (w) / 9–11% (multipoles) on one core.
+  - Docs-only, so it can land after a release. The lightcone no-jackknife timings were *not*
+    rerun after #85 (own-frame g+ changed the lightcone hot loop); judged not needed.
+
 - [ ] **Test tooling does not see worker processes, which is where the last real bug
   hid.** Both `benchmarks/axis_audit.py` and `pytest --cov` measure only the parent, so
   the `_batch` methods and any combination reached solely through multiprocessing appear

@@ -23,12 +23,13 @@ implementations, for both the box and the lightcone.
 |---|---|---|---|
 | Box $w_{gg}$, $w_{g+}$ | halotools | projected $w$ | machine precision ($2\times10^{-13}$ / $4\times10^{-15}$)¹ |
 | Box multipoles | corr_pc | $\xi(r,\mu)$ grid + $\tilde\xi_{gg,0}$, $\tilde\xi_{g+,2}$ | $\le5\times10^{-6}$ grid, $\sim10^{-6}$ multipoles¹ |
-| Lightcone $w$ | treecorr | $w_{gg}$, $w_{g+}$ | $\sim10^{-5}$ ($g+$), $\le0.4\%$ ($gg$) |
+| Lightcone $w$ | treecorr | $w_{gg}$, $w_{g+}$ | $\lesssim2\times10^{-5}$ ($g+$; $\sim10^{-9}$ where no pair migrates), $\le0.4\%$ ($gg$)³ |
 | Lightcone $w$ | corr_pc | $w_{gg}$, $w_{g+}$ | $\le0.15\%$ ($g+$), $\le0.4\%$ ($gg$) |
 | Lightcone multipoles | corr_pc | $\tilde\xi_{gg,0}$, $\tilde\xi_{g+,2}$ | $\le0.2\%$ / $\le0.3\%$ |
 | Box ↔ lightcone (plane-parallel) | — (self-consistency) | pair counts, $w$ | DD $<1\%$; residuals fully attributed² |
-| Box jackknife (delete-one identity) | — (self-consistency) | realisations, cov | machine precision ($\le10^{-12}$) |
-| Box jackknife covariance | corr_pc | $w$ + multipole cov | realisations $\le5\times10^{-5}$, std $\le5\times10^{-7}$ |
+| Box jackknife (delete-one identity)⁴ | — (self-consistency) | realisations, cov | machine precision ($\le10^{-12}$) |
+| Box jackknife covariance⁴ | corr_pc | $w$ + multipole cov | realisations $\le5\times10^{-5}$, std $\le5\times10^{-7}$ |
+| Box jackknife edge correction | 10$\times$ random catalogue through MeasureIA | $\sigma_\mathrm{jk}$ of $w$ + multipoles | ratio 0.93–1.04 (sparse, clustered, dense; $N_\mathrm{jk}$ 8/27/64) |
 | Lightcone jackknife covariance | treecorr | $w$ cov | std $\le5\times10^{-5}$ ($g+$), $\le0.6\%$ ($gg$) |
 | Lightcone jackknife covariance | corr_pc | $w$ + multipole cov | realisations $\le3\times10^{-4}$ |
 | Box $w_{++}$ (auto **and** cross) | halotools | projected $w_{++}$ | ratio exactly $1.0$ in every bin¹ |
@@ -38,15 +39,22 @@ implementations, for both the box and the lightcone.
 ¹ Agreement is exact up to floating point / the external code's output precision, once the responsivity
 $2\mathcal{R}$ factor is accounted for (MeasureIA divides $S_+$ terms by $2\mathcal{R}$; halotools and corr_pc do
 not — see [Conventions](conventions.md)).
-³ The shape-shape residual against treecorr is the `Rperp` versus midpoint-LOS **separation**
-definition alone, which migrates pairs near bin edges; it grows with angular separation rather than
-with sparseness. The projection *direction* is not a difference at all — MeasureIA's
-midpoint-LOS-perpendicular direction is treecorr's great-circle bearing exactly (verified to
-$3\times10^{-13}$ over separations of $0.3^\circ$–$179^\circ$). See `validation/README.md` for the
-derivation.
+³ The lightcone residuals against treecorr, for $g+$ and shape-shape alike, come only from the
+`Rperp` versus midpoint-LOS **separation** definition. That difference moves pairs near bin edges
+into a neighbouring bin, so it grows with angular separation rather than with sparseness. The
+projection *direction* is not a difference at all. MeasureIA projects each shape in its own
+(east, north) frame, and there its midpoint-LOS-perpendicular direction is exactly treecorr's
+great-circle bearing (verified to $3\times10^{-13}$ over separations of $0.3^\circ$–$179^\circ$).
+See `validation/README.md` for the derivation. Up to 0.6.0, $w_{g+}$ was projected in the
+partner's frame instead, which left a $\sim10^{-6}$ residual even in bins where no pair migrates.
 
 ² The plane-parallel box↔lightcone difference is understood: analytic randoms (periodic box) versus empirical
 randoms (bounded window), plus the box/lightcone estimator and responsivity differences.
+
+⁴ With `jk_edge_correction=False`: these compare each realisation with a direct measurement on the
+catalogue with the sub-box removed and analytic $RR$ over the reduced volume, which is the uncorrected
+estimator (corr_pc's box jackknife works the same way). The edge correction, on by default, is validated
+separately (row below and [Estimator definitions](estimator_definitions.md#box-jackknife-edge-correction)).
 
 The lightcone comparisons also confirm the **`e1`/`e2` shear convention** and chirality documented on the
 [Conventions](conventions.md) page (treecorr needs only the standard IA flip $g \to -g$). For shape-shape

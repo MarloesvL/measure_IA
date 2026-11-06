@@ -8,6 +8,60 @@ public API mean a major version bump.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-06
+
+### Changed
+
+- **Box jackknife: edge correction, on by default (`jk_edge_correction=True`).** Rerun box
+  jackknife covariances will change, mostly at large separations. With analytic randoms, a
+  delete-one realisation had no random terms that follow the galaxies next to the removed
+  sub-box, which inflated the large-scale jackknife errors: by up to $\sim1.5\times$ ($w_{g+}$)
+  and $\sim2.4\times$ ($w_{gg}$) on sparse mocks, and $\sim4\times$ / $\sim6\times$ at a number
+  density of $10^{-2}\,h^3\,\mathrm{Mpc}^{-3}$. Each realisation now gets the $RD$, $SR$ and $S_+R$
+  terms of a uniform random catalogue in the limit of infinitely many randoms, plus the exact $RR$,
+  and uses the full estimators $(DD-RD-SR+RR)/RR$ and $(S_+D-S_+R)/RR$
+  ([Estimator definitions](estimator_definitions.md#box-jackknife-edge-correction)). The
+  jackknife errors now agree with those of a 10$\times$ random catalogue run through MeasureIA
+  to 0.95–1.04, for $w$ and the multipoles.
+
+    The shape–shape realisations ($++$, $\times\times$, $+\times$) have no random term in the
+    numerator, so for them the correction is the exact $RR$ alone. Without it their large-scale
+    jackknife errors were too *small*: for $w_{++}$ out to $r_p = \Pi_\mathrm{max} = L/2$, by up
+    to 12%, 4% and 1.6% at $N_\mathrm{jk}$ = 8, 27 and 64 (#90). With `corr_type='++'` the $g+$ / $gg$ realisation groups written as a by-product
+    are left uncorrected (use `'all'` to correct everything).
+
+    The full-sample measurement is unchanged, and so is the lightcone.
+    `jk_edge_correction=False` reproduces the previous behaviour exactly. New
+    per-realisation datasets: `_[i]_RD`, `_[i]_SR` (`xi_gg`) and `_[i]_SplusR` (`xi_g_plus`);
+    `_[i]_RR` is now the exact union $RR$. With the correction on, every separation component
+    must be at most half the box, or a `ValueError` is raised. `measure_galaxy_contributions`
+    still rebuilds the uncorrected jackknife.
+
+    Cost on a box with $n=10^{-2}\,h^3\,\mathrm{Mpc}^{-3}$ (34k galaxies, $N_\mathrm{jk}$ = 8–64):
+    1–3% extra run time for $w$ and 9–11% for the multipoles on one core (2–8% with 5 workers:
+    the correction uses `num_nodes`), with at most $\sim0.4$ GB extra peak memory.
+
+### Fixed
+
+- **Lightcone $g+$ now projects each shape in its own tangent frame.** `e1`/`e2` are defined
+  on the shape galaxy's local (RA, DEC) axes, but the angle $\phi$ they were rotated by was
+  measured in the (east, north) frame of the *position-sample* partner. On the curved sky the
+  two bases differ by the convergence of the meridians between the two galaxies, so $\phi$
+  was off by roughly $\Delta\alpha\,\sin\delta$. That rotated part of $e_+$ into $e_\times$
+  and back. $\phi$ is now measured in the shape galaxy's own frame, the convention the
+  shape–shape terms already used. It is also exactly treecorr's great-circle bearing (see
+  [Conventions](conventions.md)), so the two codes now differ only in how they define the
+  separation magnitude.
+
+    Only $g+$ / $g\times$ outputs change ($S_+D$, $S_+R$, $S_\times D$, $\xi_{g+}$,
+    $\xi_{g\times}$, $w_{g+}$, the $g+$ multipoles and their jackknife covariances), and only
+    on the lightcone. $gg$, the shape–shape products and everything on the box are
+    unchanged. Pairs that straddle east–west of each other get rotations of opposite sign, so
+    the effect cancels to first order in $w_{g+}$: on the validation mock the change is
+    $\lesssim 3\times10^{-4}$ relative per bin. In bins where no pairs migrate across a bin
+    edge, the residual against treecorr drops from $\sim 10^{-6}$ to $\sim 10^{-9}$ relative.
+    The error grows with declination and opening angle, and is larger in $g\times$.
+
 ## [0.6.0] - 2026-10-02
 
 ### Added
@@ -407,7 +461,8 @@ moment estimator, and sub-box jackknife covariances.
   than kept at the time. Fill in the 0.2.x lines if the detail is worth having.
 -->
 
-[Unreleased]: https://github.com/MarloesvL/measure_IA/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/MarloesvL/measure_IA/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/MarloesvL/measure_IA/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/MarloesvL/measure_IA/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/MarloesvL/measure_IA/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/MarloesvL/measure_IA/compare/v0.3.0...v0.4.0

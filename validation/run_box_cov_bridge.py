@@ -93,7 +93,10 @@ def _read_cov(fname):
 def run_box_jk(mock, output_file, temp_path):
 	"""Box jackknife run; returns covariance plus all per-realisation pieces."""
 	ia = _make_box(_box_data(mock), output_file, mock)
-	ia.measure_xi_w(DATASET, "both", num_jk=NUM_JK, temp_file_path=temp_path)
+	# The bridge checks the delete-one identity of the analytic realisations (a realisation
+	# equals a direct run on the deleted catalogue with RR over the reduced volume), which is
+	# the uncorrected estimator; the edge correction is validated in box_jk_analytic_randoms.md.
+	ia.measure_xi_w(DATASET, "both", num_jk=NUM_JK, temp_file_path=temp_path, jk_edge_correction=False)
 	out = _read_cov(output_file)
 	jk = f"{DATASET}_jk{NUM_JK}"
 	with h5py.File(output_file, "r") as f:

@@ -1,0 +1,23 @@
+w 8 False 33750 30000 57.1 0.0 0.29 0.00
+w 8 True 33750 30000 57.6 0.8 0.60 0.00
+w 27 False 33750 30000 57.2 0.0 0.28 0.00
+w 27 True 33750 30000 58.8 1.4 0.69 0.00
+w 64 False 33750 30000 58.1 0.0 0.28 0.00
+w 64 True 33750 30000 58.9 1.9 0.47 0.00
+multipoles 8 False 33750 30000 47.2 0.0 0.26 0.00
+multipoles 8 True 33750 30000 52.2 4.9 0.33 0.00
+multipoles 27 False 33750 30000 48.1 0.0 0.25 0.00
+multipoles 27 True 33750 30000 52.5 3.6 0.26 0.00
+multipoles 64 False 33750 30000 49.9 0.0 0.25 0.00
+multipoles 64 True 33750 30000 54.6 4.7 0.25 0.00
+
+| statistic | N_jk | off: total | on: total | of which correction | added | peak memory off / on |
+|---|---|---|---|---|---|---|
+| w | 8 | 57 s | 58 s | 1 s | 1% | 0.29 / 0.60 GB |
+| w | 27 | 57 s | 59 s | 1 s | 3% | 0.28 / 0.69 GB |
+| w | 64 | 58 s | 59 s | 2 s | 1% | 0.28 / 0.47 GB |
+| multipoles | 8 | 47 s | 52 s | 5 s | 11% | 0.26 / 0.33 GB |
+| multipoles | 27 | 48 s | 52 s | 4 s | 9% | 0.25 / 0.26 GB |
+| multipoles | 64 | 50 s | 55 s | 5 s | 9% | 0.25 / 0.25 GB |
+
+D = 33750, S = 30000 galaxies; 1 core, tree backend
